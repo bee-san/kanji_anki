@@ -21,6 +21,8 @@ import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.testing.DeviceRisk
+import dev.bee.kanjianki.testing.DeviceSmoke
 import java.io.StringReader
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -31,6 +33,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@DeviceSmoke
+@DeviceRisk
 class MainActivityStudyRouteSmokeInstrumentedTest {
     private lateinit var context: Context
 

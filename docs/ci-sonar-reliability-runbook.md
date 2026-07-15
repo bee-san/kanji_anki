@@ -7,7 +7,8 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
 | Surface | Local command | GitHub check / workflow | Notes |
 | --- | --- | --- | --- |
 | Deterministic fast gate | `./gradlew ciFast` | `Fast confidence gate` in `.github/workflows/android-ci.yml` | Split in CI into JVM module tests, app unit tests, app lint/androidTest compile, and Python asset tests. |
-| Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the bytecode and deterministic coverage inputs that Sonar consumes. Advisory on `main`; never blocks releases. This is not a replacement for Android CI. |
+| Connected device smoke | targeted `connectedDebugAndroidTest` annotation run | `.github/workflows/android-device-smoke.yml` | PR/manual-only. Runs a compact API 26/35 matrix and adds an API 35 risk suite for product/provider/scheduler/database/UI changes. Documentation-only changes explicitly skip emulators. |
+| Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the complete bytecode and deterministic coverage set on every analysis. `sonarPreflight` fails closed if any expected class/report input is absent. Advisory on `main`; never blocks releases. |
 | Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run triggers the release, which tags, builds, verifies, and publishes with no further gating. Manual tag/dispatch runs the unit-test surface inline first. |
 | CodeQL extraction | Forced clean compile in `.github/workflows/codeql.yml` | `Analyze Java/Kotlin` | Advisory security scan on `main`; never blocks releases. Keep the clean, no-build-cache compile after CodeQL init so the extractor sees real compiler work. |
 | Live AnkiDroid fixture | workflow-dispatch/nightly Android instrumented workflow | `AnkiDroid provider fixture` | Nightly/dispatch only; deliberately removed from the release path because emulator/provider readiness flakes were the top cause of blocked releases. The local copied-user-collection gate remains the requirement for provider/sync release-risk changes. |
@@ -48,6 +49,7 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
    - Prefer deterministic JVM/unit/lint fixes before adding connected emulator work to the default path.
    - Keep Sonar focused on correctness, maintainability, bugs, vulnerabilities, and security hotspots. Treat 100% coverage as an optimization target, not a reason to slow every PR.
    - For Sonar test assertions, avoid direct `assertFalse(value.equals(...))`; assign to a boolean first or use the appropriate same-type assertion.
+   - If Sonar reports a missing deterministic input, run `ciQuality` first. To validate the fail-closed check itself, override the app path with `-PsonarAppMainBinaries=/definitely/missing` and run `sonarPreflight`.
 
 5. Push and watch when workflows changed.
 
@@ -79,11 +81,31 @@ cannot be blocked by flaky or external gates:
   `android-instrumented.yml` workflow; a red nightly means investigate before
   the next provider/sync release, enforced by the stricter local
   copied-user-collection gate rather than by the release pipeline.
+- Pull-request device smoke is also independent of release publication. It
+  exercises fake-provider and UI contracts without moving the real-provider
+  fixture or any emulator into `android-release.yml`.
+
+## Supply-chain and version integrity
+
+- Every remote workflow action is pinned to a full commit SHA. Renovate may
+  update the digest and its human-readable version comment together.
+- Every Gradle workflow job validates the wrapper before the first Gradle
+  invocation, and `gradle-wrapper.properties` pins the distribution SHA-256.
+- Android SDK package installation is shared by
+  `.github/actions/setup-android-sdk`; keep inline `sdkmanager` copies out of
+  workflow files.
+- Release tags and Android version codes are validated by
+  `ci/scripts/kani_version.py`. A patch component above 999 fails with an
+  instruction to bump the minor version, preventing versionCode collisions.
+- Release packaging validates signing from the selected Gradle task graph, so
+  aggregate entry points such as `ciRelease` cannot silently emit an unsigned
+  artifact.
 
 ## Common reliability pitfalls
 
 - Multiple quick pushes to `main` or the same PR branch intentionally cancel older Android CI, SonarQube, and CodeQL runs because the workflows use concurrency groups. Verify the newest run for the SHA you intend to ship.
 - CodeQL for this Android Gradle project depends on a forced clean compile after `github/codeql-action/init`. Do not replace it with an up-to-date Gradle compile.
+- CodeQL explicitly requests Kotlin compiler tasks as well as the app Java task. Keep `clean`, `--no-daemon`, `--no-build-cache`, `--rerun-tasks`, and the explicit Kotlin targets together.
 - Sonar workflow-dispatch on a branch tries to discover the matching PR through `gh pr view "$GITHUB_REF_NAME"`. If no PR exists, it falls back to branch analysis arguments.
 - Android CI's `Fast confidence gate` is an aggregate check. Inspect the split matrix jobs and uploaded diagnostic artifacts to find the actual failing task.
 - The deterministic AnkiDroid fixture can pass with the small sanitized Kiku collection while the local real-collection gate still finds provider/sync scale issues. Use the stricter local gate before release-risk provider/sync changes.

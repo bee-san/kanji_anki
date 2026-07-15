@@ -16,6 +16,7 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.testing.DeviceRisk
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,6 +39,7 @@ private const val DATABASE_NAME = "kanji_anki_simple.db"
  * hasSimilarKanji) survives SQLite round-trips correctly.
  */
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class LadderSchedulerEndToEndTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore

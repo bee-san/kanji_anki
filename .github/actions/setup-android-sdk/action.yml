@@ -1,0 +1,26 @@
+name: Set up Kani Android SDK
+description: Accept licenses and install the Android packages used by Kani workflows.
+
+inputs:
+  platform:
+    description: Android platform API level.
+    required: false
+    default: "36"
+  build-tools:
+    description: Android build-tools version.
+    required: false
+    default: "36.0.0"
+
+runs:
+  using: composite
+  steps:
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        sdkmanager="${ANDROID_HOME:?ANDROID_HOME is required}/cmdline-tools/latest/bin/sdkmanager"
+        yes | "${sdkmanager}" --licenses >/dev/null || true
+        "${sdkmanager}" \
+          'platform-tools' \
+          "platforms;android-${{ inputs.platform }}" \
+          "build-tools;${{ inputs.build-tools }}"

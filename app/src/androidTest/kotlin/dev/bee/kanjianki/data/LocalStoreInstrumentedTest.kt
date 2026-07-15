@@ -24,6 +24,7 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
 import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.testing.DeviceRisk
 
 import org.junit.After
 import org.junit.Before
@@ -51,6 +52,7 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class LocalStoreInstrumentedTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore

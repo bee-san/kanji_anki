@@ -66,6 +66,8 @@ class MainActivityStudyRouteInitializationTest {
         assertNotNull(activity.flashcardRevealState)
         assertNotNull(activity.flashcardActionBarState)
         assertEquals(session.token, activity.studyAnswerFeedbackState?.sessionToken)
+        assertSame(session, activity.studySessionUiState.value.currentSession)
+        assertEquals(StudySessionPhase.ACTIVE, activity.studySessionUiState.value.phase)
     }
 
     @Test
@@ -425,6 +427,43 @@ class MainActivityStudyRouteInitializationTest {
             assertFalse(requireNotNull(restored.activity.flashcardRevealState).isRevealed)
             assertNotNull(restored.activity.activeStudyRecovery())
             assertNull(restored.activity.pendingStudyRecovery())
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun recoveryOnlyReconcilesRetainedConsumedSubmittingThroughDurableClaim() {
+        val restored = restoreRetainedSubmittingCrashWindow(consumed = true)
+
+        try {
+            assertEquals(
+                StudyAnswerFeedbackPhase.APPLIED,
+                restored.activity.studyAnswerFeedbackState?.snapshot()?.phase,
+            )
+            assertTrue(restored.activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertEquals(
+                StudyAnswerFeedbackPhase.APPLIED,
+                restored.activity.pendingStudyRecovery()?.snapshot?.feedback?.phase,
+            )
+            assertTrue(restored.activity.shouldRestoreStudyRouteAfterRecreation())
+        } finally {
+            restored.close()
+        }
+    }
+
+    @Test
+    fun recoveryOnlyRestoresRetainedUnconsumedSubmittingFallbackAsAnswerable() {
+        val restored = restoreRetainedSubmittingCrashWindow(consumed = false)
+
+        try {
+            assertEquals(
+                StudyAnswerFeedbackPhase.UNANSWERED,
+                restored.activity.studyAnswerFeedbackState?.snapshot()?.phase,
+            )
+            assertNotNull(restored.activity.activeStudyRecovery())
+            assertNull(restored.activity.pendingStudyRecovery())
+            assertTrue(restored.activity.shouldRestoreStudyRouteAfterRecreation())
         } finally {
             restored.close()
         }
@@ -880,7 +919,13 @@ class MainActivityStudyRouteInitializationTest {
         return RestoredActivity(activity, controller, preferences, ioTasks)
     }
 
-    private fun restoreSubmittingCrashWindow(consumed: Boolean): RestoredActivity {
+    private data class SubmittingCrashFixture(
+        val preferences: android.content.SharedPreferences,
+        val session: RecordsSchedulerModels.StudySession,
+        val pendingSnapshot: StudyPendingAnswerSnapshot,
+    )
+
+    private fun seedSubmittingCrashWindow(consumed: Boolean): SubmittingCrashFixture {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
@@ -912,22 +957,23 @@ class MainActivityStudyRouteInitializationTest {
                 typedDraft = "divide",
             ),
         )!!
+        val pendingSnapshot = StudyPendingAnswerSnapshot(
+            feedback = StudyAnswerFeedbackSnapshot(
+                sessionToken = token,
+                phase = StudyAnswerFeedbackPhase.SUBMITTING,
+                outcome = StudyAnswerOutcome.CORRECT,
+                selectedAnswer = "divide",
+            ),
+            kanji = before.kanji,
+            taskType = StudyTaskTypes.TYPE_MEANING,
+            writingRequired = false,
+            prompt = row.reasonText,
+            answerSignature = signature,
+            schedulerRevision = before.schedulerRevision,
+        )
         recoveryStore.transitionActiveToPending(
             active,
-            StudyPendingAnswerSnapshot(
-                feedback = StudyAnswerFeedbackSnapshot(
-                    sessionToken = token,
-                    phase = StudyAnswerFeedbackPhase.SUBMITTING,
-                    outcome = StudyAnswerOutcome.CORRECT,
-                    selectedAnswer = "divide",
-                ),
-                kanji = before.kanji,
-                taskType = StudyTaskTypes.TYPE_MEANING,
-                writingRequired = false,
-                prompt = row.reasonText,
-                answerSignature = signature,
-                schedulerRevision = before.schedulerRevision,
-            ),
+            pendingSnapshot,
         )!!
         if (consumed) {
             LocalStore(context).use { store ->
@@ -951,6 +997,16 @@ class MainActivityStudyRouteInitializationTest {
             }
         }
 
+        return SubmittingCrashFixture(
+            preferences = preferences,
+            session = pendingSnapshot.restoreSession(before, row),
+            pendingSnapshot = pendingSnapshot,
+        )
+    }
+
+    private fun restoreSubmittingCrashWindow(consumed: Boolean): RestoredActivity {
+        val fixture = seedSubmittingCrashWindow(consumed)
+
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         val controller = Robolectric.buildActivity(MainActivity::class.java)
         val activity = controller.get()
@@ -959,7 +1015,27 @@ class MainActivityStudyRouteInitializationTest {
         controller.create().start().resume()
         ioTasks.runAll()
         shadowOf(Looper.getMainLooper()).idle()
-        return RestoredActivity(activity, controller, preferences, ioTasks)
+        return RestoredActivity(activity, controller, fixture.preferences, ioTasks)
+    }
+
+    private fun restoreRetainedSubmittingCrashWindow(consumed: Boolean): RestoredActivity {
+        val fixture = seedSubmittingCrashWindow(consumed)
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(MainActivity::class.java)
+        val activity = controller.get()
+        val ioTasks = QueueingExecutorService()
+        replaceField(activity, "io", ioTasks)
+        controller.create().start().resume()
+        ioTasks.discardAll()
+
+        // Model the retained ViewModel state present after a configuration
+        // replacement, then require recoveryOnly to revalidate durable state.
+        activity.activeSession = fixture.session
+        activity.restorePendingStudyAnswer(fixture.pendingSnapshot)
+        activity.renderStudyRecoveryOnly()
+        ioTasks.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+        return RestoredActivity(activity, controller, fixture.preferences, ioTasks)
     }
 
     private fun restoreContinuedHandoffAfterProcessRestart(
@@ -1345,6 +1421,10 @@ class MainActivityStudyRouteInitializationTest {
             while (tasks.isNotEmpty()) {
                 tasks.removeFirst().run()
             }
+        }
+
+        fun discardAll() {
+            tasks.clear()
         }
     }
 }

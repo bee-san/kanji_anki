@@ -177,14 +177,25 @@ internal class LocalStoreTimeline(private val activity: LocalStoreHistory) {
     fun backfillReviewTimeline(db: SQLiteDatabase) {
         db.query(LocalStoreBase.TABLE_REVIEW_LOG, null, null, null, null, null, "reviewed_at ASC, id ASC").use { reviews ->
             while (reviews.moveToNext()) {
-                val request = RecordsSchedulerModels.ReviewRequest(
-                    LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_KANJI),
-                    LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_TOKEN),
-                    LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_RATING),
-                    LocalStoreBase.integer(reviews, LocalStoreBase.COLUMN_WRITING_REQUIRED) == 1,
-                    LocalStoreBase.integer(reviews, LocalStoreBase.COLUMN_WRITING_PASSED) == 1,
-                    LocalStoreBase.integer(reviews, LocalStoreBase.COLUMN_MANUAL_OVERRIDE) == 1,
-                    0
+                val rating = LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_RATING)
+                val writingPassed = LocalStoreBase.integer(reviews, LocalStoreBase.COLUMN_WRITING_PASSED) == 1
+                val request = RecordsSchedulerModels.ReviewRequest.fromFields(
+                    RecordsSchedulerModels.ReviewRequest.Fields(
+                        kanji = LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_KANJI),
+                        token = LocalStoreBase.string(reviews, LocalStoreBase.COLUMN_TOKEN),
+                        rating = rating,
+                        writingRequired = LocalStoreBase.integer(
+                            reviews,
+                            LocalStoreBase.COLUMN_WRITING_REQUIRED,
+                        ) == 1,
+                        writingPassed = writingPassed,
+                        writingClean = writingPassed && (rating == "good" || rating == "easy"),
+                        manualOverride = LocalStoreBase.integer(
+                            reviews,
+                            LocalStoreBase.COLUMN_MANUAL_OVERRIDE,
+                        ) == 1,
+                        hintsUsed = 0,
+                    ),
                 )
                 appendReviewTimelineEvent(
                     db,

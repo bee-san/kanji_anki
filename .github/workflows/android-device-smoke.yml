@@ -1,0 +1,194 @@
+name: Android device smoke
+
+# This PR-only device signal is intentionally independent from Android CI and
+# android-release.yml. The automatic release path remains emulator-free, while
+# risky changes still get connected coverage before merge.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: android-device-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Classify device risk
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      level: ${{ steps.risk.outputs.level }}
+      run_smoke: ${{ steps.risk.outputs.run_smoke }}
+      run_full: ${{ steps.risk.outputs.run_full }}
+      reason: ${{ steps.risk.outputs.reason }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: risk
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            python3 ci/scripts/classify_device_smoke.py --force full >> "${GITHUB_OUTPUT}"
+          else
+            git diff --name-only --diff-filter=ACDMRT -z "${BASE_SHA}" "${HEAD_SHA}" \
+              | python3 ci/scripts/classify_device_smoke.py --null >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Report selected lane
+        env:
+          LEVEL: ${{ steps.risk.outputs.level }}
+          REASON: ${{ steps.risk.outputs.reason }}
+        run: echo "Selected ${LEVEL} device lane - ${REASON}"
+
+  compact-smoke:
+    name: Device smoke (API ${{ matrix.api-level }})
+    needs: classify
+    if: needs.classify.outputs.run_smoke == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api-level: 26
+            target: default
+          - api-level: 35
+            target: aosp_atd
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e
+
+      - name: Set up Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install Android SDK packages
+        uses: ./.github/actions/setup-android-sdk
+
+      - name: Enable KVM access
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run compact connected smoke
+        uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          profile: pixel_2
+          force-avd-creation: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: >-
+            ./gradlew :app:connectedDebugAndroidTest
+            -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceSmoke
+            --no-daemon
+
+      - name: Upload compact-smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: device-smoke-api-${{ matrix.api-level }}-diagnostics
+          if-no-files-found: ignore
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+
+  full-risk-suite:
+    name: Device risk suite (API 35)
+    needs: classify
+    if: needs.classify.outputs.run_full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e
+
+      - name: Set up Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install Android SDK packages
+        uses: ./.github/actions/setup-android-sdk
+
+      - name: Enable KVM access
+        run: |
+          sudo sh -c 'echo KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm" > /etc/udev/rules.d/99-kvm4all.rules'
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run risk-focused connected suite
+        uses: reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7
+        with:
+          api-level: 35
+          target: aosp_atd
+          arch: x86_64
+          profile: pixel_2
+          force-avd-creation: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            ./gradlew :app:connectedDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceRisk \
+              --no-daemon
+
+            ./gradlew :app:assembleMinifiedSmoke --no-daemon
+            smoke_apk='app/build/outputs/apk/minifiedSmoke/app-minifiedSmoke.apk'
+            test -s "${smoke_apk}"
+            adb install -r "${smoke_apk}"
+            adb shell am start -W \
+              -n dev.bee.kanjianki.smoke/dev.bee.kanjianki.MainActivity
+            sleep 2
+            adb shell pidof dev.bee.kanjianki.smoke >/dev/null
+
+      - name: Upload risk-suite diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: device-risk-api-35-diagnostics
+          if-no-files-found: ignore
+          path: |
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/**
+            app/build/outputs/apk/minifiedSmoke/**
+            app/build/outputs/mapping/minifiedSmoke/**

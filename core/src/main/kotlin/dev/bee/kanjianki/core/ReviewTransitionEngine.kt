@@ -608,19 +608,21 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     private fun updatedStudyItem(context: ReviewContext, state: ReviewState): RecordsStudyModels.StudyItem {
-        val updatedMemory = RecordsStudyModels.TaskMemory(
-            state.schedulerState,
-            state.due,
-            state.stability,
-            state.difficulty,
-            state.taskTotal,
-            state.taskLapses,
-            state.stepIndex,
-            context.rating,
-            state.scheduledIntervalDays,
-            taskMemoryConsecutivePasses(context, state),
-            taskMemoryLastPassedDueAt(context, state),
-            context.nowMillis,
+        val updatedMemory = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = state.schedulerState,
+                dueAtMillis = state.due,
+                stability = state.stability,
+                difficulty = state.difficulty,
+                totalReviews = state.taskTotal,
+                lapses = state.taskLapses,
+                learningStep = state.stepIndex,
+                lastRating = context.rating,
+                matureIntervalDays = state.scheduledIntervalDays,
+                consecutivePasses = taskMemoryConsecutivePasses(context, state),
+                lastPassedDueAtMillis = taskMemoryLastPassedDueAt(context, state),
+                lastReviewedAtMillis = context.nowMillis,
+            )
         )
         val base = context.item.copyBuilder()
             .state(state.schedulerState)
@@ -689,15 +691,18 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             if (memory.totalReviews > 0 || item.totalReviews <= 0) {
                 return memory
             }
-            return RecordsStudyModels.TaskMemory.fromStudyFields(
-                item.state,
-                item.dueAtMillis,
-                item.stability,
-                item.difficulty,
-                item.totalReviews,
-                item.lapses,
-                item.learningStep,
-                item.matureIntervalDays
+            return RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = item.state,
+                    dueAtMillis = item.dueAtMillis,
+                    stability = item.stability,
+                    difficulty = item.difficulty,
+                    totalReviews = item.totalReviews,
+                    lapses = item.lapses,
+                    learningStep = item.learningStep,
+                    lastRating = "",
+                    matureIntervalDays = item.matureIntervalDays,
+                )
             )
         }
 

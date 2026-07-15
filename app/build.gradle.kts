@@ -1,9 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("kani.release-integrity")
     jacoco
 }
 
+import dev.bee.kanjianki.buildlogic.KaniReleaseIntegrityExtension
+import dev.bee.kanjianki.buildlogic.KaniVersioning
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
@@ -27,10 +30,29 @@ fun configValue(name: String): String? =
 fun renamedConfigValue(name: String, legacyName: String): String? =
     configValue(name) ?: configValue(legacyName)
 
-val appVersionName = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME")
-    ?: libs.versions.appVersionName.get()
-val appVersionCode = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE")?.toIntOrNull()
-    ?: libs.versions.appVersionCode.get().toInt()
+// ProviderFactory.exec makes Git metadata an explicit configuration input, so
+// the local-tag fallback remains compatible with Gradle's configuration cache.
+// The provider is realized only if neither release-tag nor name metadata exists.
+val latestReachableGitTag = providers.exec {
+    workingDir(rootProject.projectDir)
+    commandLine("git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map(String::trim)
+
+val resolvedAppVersion = try {
+    KaniVersioning.resolve(
+        releaseTag = providers.gradleProperty("kaniReleaseTag").orNull,
+        versionNameOverride = renamedConfigValue("KANI_VERSION_NAME", "KANJI_ANKI_VERSION_NAME"),
+        versionCodeOverride = renamedConfigValue("KANI_VERSION_CODE", "KANJI_ANKI_VERSION_CODE"),
+        latestReachableGitTag = { latestReachableGitTag.orNull },
+        fallbackVersionName = libs.versions.appVersionName.get(),
+        fallbackVersionCode = libs.versions.appVersionCode.get(),
+    )
+} catch (error: IllegalArgumentException) {
+    throw GradleException("Invalid Kani version metadata: ${error.message}", error)
+}
+val appVersionName = resolvedAppVersion.version.versionName
+val appVersionCode = resolvedAppVersion.version.versionCode
 val releaseOwner = renamedConfigValue("KANI_RELEASE_OWNER", "KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
 val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
 
@@ -40,13 +62,18 @@ val signingKeyAlias = renamedConfigValue("KANI_SIGNING_KEY_ALIAS", "KANJI_ANKI_S
 val signingKeyPassword = renamedConfigValue("KANI_SIGNING_KEY_PASSWORD", "KANJI_ANKI_SIGNING_KEY_PASSWORD")
 val hasReleaseSigning = listOf(signingStoreFile, signingStorePassword, signingKeyAlias, signingKeyPassword)
     .all { !it.isNullOrBlank() }
-val releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
-    taskName == "assembleRelease" || taskName.endsWith(":assembleRelease") ||
-        taskName == "bundleRelease" || taskName.endsWith(":bundleRelease")
-}
 
-if (releaseBuildRequested && !hasReleaseSigning) {
-    throw GradleException("Release signing is required. Set KANI_SIGNING_STORE_FILE, KANI_SIGNING_STORE_PASSWORD, KANI_SIGNING_KEY_ALIAS, and KANI_SIGNING_KEY_PASSWORD.")
+extensions.configure<KaniReleaseIntegrityExtension> {
+    versionName.set(appVersionName)
+    versionCode.set(appVersionCode)
+    versionSource.set(resolvedAppVersion.source.machineName)
+    signingStoreFileConfigured.set(!signingStoreFile.isNullOrBlank())
+    if (!signingStoreFile.isNullOrBlank()) {
+        signingStoreFilePath.set(file(signingStoreFile).absolutePath)
+    }
+    signingStorePasswordConfigured.set(!signingStorePassword.isNullOrBlank())
+    signingKeyAliasConfigured.set(!signingKeyAlias.isNullOrBlank())
+    signingKeyPasswordConfigured.set(!signingKeyPassword.isNullOrBlank())
 }
 
 android {
@@ -110,6 +137,20 @@ android {
                 abiFilters += setOf("arm64-v8a", "armeabi-v7a")
             }
         }
+        create("minifiedSmoke") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".smoke"
+            versionNameSuffix = "-smoke"
+            signingConfig = signingConfigs.getByName("debug")
+            ndk {
+                abiFilters.clear()
+                abiFilters += "x86_64"
+            }
+        }
+    }
+
+    sourceSets.getByName("minifiedSmoke") {
+        kotlin.directories.add("src/release/kotlin")
     }
 
     lint {

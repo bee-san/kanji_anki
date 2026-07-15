@@ -1,107 +1,127 @@
 package dev.bee.kanjianki
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class StudySessionViewModelTest {
-
     @Test
-    fun initialStateIsInactive() {
-        val vm = StudySessionViewModel()
-        val state = vm.uiState.value
+    fun initialStateIsIdleAndEmpty() {
+        val state = StudySessionViewModel().uiState.value
+
+        assertEquals(StudySessionPhase.IDLE, state.phase)
         assertFalse(state.sessionActive)
-        assertEquals(0, state.targetCount)
-        assertEquals(0, state.completedCount)
-        assertEquals(0, state.correctCount)
-        assertNull(state.currentItem)
+        assertEquals(StudySessionProgressUiState(), state.progress)
     }
 
     @Test
-    fun startSessionSetsActiveAndTarget() {
-        val vm = StudySessionViewModel()
-        vm.startSession(10)
-        val state = vm.uiState.value
-        assertTrue(state.sessionActive)
-        assertEquals(10, state.targetCount)
-        assertEquals(0, state.completedCount)
+    fun mountedFeedbackTransitionsArePublishedAsImmutableSnapshots() {
+        val viewModel = StudySessionViewModel()
+        val session = session("token-1")
+        viewModel.mountSession(session)
+
+        val feedback = viewModel.feedbackFor(session.token)
+        assertEquals(StudySessionPhase.ACTIVE, viewModel.uiState.value.phase)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, "good"))
+        assertEquals(StudySessionPhase.SUBMITTING, viewModel.uiState.value.phase)
+        assertEquals("good", viewModel.uiState.value.feedback?.selectedAnswer)
+
+        assertTrue(feedback.markApplied(session.token))
+        assertEquals(StudySessionPhase.FEEDBACK, viewModel.uiState.value.phase)
+        assertTrue(feedback.tryContinue())
+        assertEquals(StudySessionPhase.ADVANCING, viewModel.uiState.value.phase)
     }
 
     @Test
-    fun recordCorrectAnswerIncrementsBoth() {
-        val vm = StudySessionViewModel()
-        vm.startSession(5)
-        vm.recordAnswer(correct = true)
-        val state = vm.uiState.value
-        assertEquals(1, state.completedCount)
-        assertEquals(1, state.correctCount)
+    fun trackerMutationsPublishRealProgress() {
+        val viewModel = StudySessionViewModel()
+
+        viewModel.tracker.setTargetCount(3)
+        viewModel.tracker.registerTaskShown("kanji_meaning:裂")
+        viewModel.tracker.markTaskCompleted("kanji_meaning:裂")
+
+        assertEquals(3, viewModel.uiState.value.progress.targetCount)
+        assertEquals(1, viewModel.uiState.value.progress.completedCount)
     }
 
     @Test
-    fun recordIncorrectAnswerIncrementsOnlyCompleted() {
-        val vm = StudySessionViewModel()
-        vm.startSession(5)
-        vm.recordAnswer(correct = false)
-        val state = vm.uiState.value
-        assertEquals(1, state.completedCount)
-        assertEquals(0, state.correctCount)
+    fun staleFeedbackDoesNotChangeMountedSessionPhase() {
+        val state = StudySessionUiState(
+            currentSession = session("new-token"),
+            phase = StudySessionPhase.ACTIVE,
+        )
+        val stale = StudyAnswerFeedbackSnapshot(
+            sessionToken = "old-token",
+            phase = StudyAnswerFeedbackPhase.APPLIED,
+            outcome = StudyAnswerOutcome.CORRECT,
+            selectedAnswer = "good",
+        )
+
+        val reduced = StudySessionReducer.reduce(state, StudySessionEvent.FeedbackChanged(stale))
+
+        assertEquals(StudySessionPhase.ACTIVE, reduced.phase)
+        assertEquals(stale, reduced.feedback)
     }
 
     @Test
-    fun multipleAnswersAccumulate() {
-        val vm = StudySessionViewModel()
-        vm.startSession(10)
-        vm.recordAnswer(correct = true)
-        vm.recordAnswer(correct = true)
-        vm.recordAnswer(correct = false)
-        val state = vm.uiState.value
-        assertEquals(3, state.completedCount)
-        assertEquals(2, state.correctCount)
+    fun loadingAndCompleteAreExplicitPresentationStates() {
+        val viewModel = StudySessionViewModel()
+        viewModel.mountSession(session("token"))
+
+        viewModel.showLoading()
+        assertEquals(StudySessionPhase.LOADING, viewModel.uiState.value.phase)
+        viewModel.showComplete()
+        assertEquals(StudySessionPhase.COMPLETE, viewModel.uiState.value.phase)
     }
 
     @Test
-    fun endSessionPreservesCountsButDeactivates() {
-        val vm = StudySessionViewModel()
-        vm.startSession(5)
-        vm.recordAnswer(correct = true)
-        vm.endSession()
-        val state = vm.uiState.value
-        assertFalse(state.sessionActive)
-        assertEquals(1, state.completedCount)
-        assertEquals(1, state.correctCount)
+    fun autoContinueIsDeliveredAsOneShotEffect() = runTest {
+        val viewModel = StudySessionViewModel()
+        val effect = async { viewModel.effects.first() }
+
+        viewModel.requestAutoContinue("token")
+
+        assertEquals(StudySessionEffect.AutoContinue("token"), effect.await())
     }
 
     @Test
-    fun resetClearsEverything() {
-        val vm = StudySessionViewModel()
-        vm.startSession(5)
-        vm.recordAnswer(correct = true)
-        vm.reset()
-        val state = vm.uiState.value
-        assertFalse(state.sessionActive)
-        assertEquals(0, state.targetCount)
-        assertEquals(0, state.completedCount)
+    fun viewModelStoreRetainsTheRealSessionAcrossConfigurationOwnerReplacement() {
+        val store = ViewModelStore()
+        val firstOwner = TestOwner(store)
+        val first = ViewModelProvider(firstOwner)[StudySessionViewModel::class.java]
+        val session = session("retained-token")
+        first.mountSession(session)
+        first.tracker.setTargetCount(8)
+
+        val replacementOwner = TestOwner(store)
+        val replacement = ViewModelProvider(replacementOwner)[StudySessionViewModel::class.java]
+
+        assertSame(first, replacement)
+        assertSame(session, replacement.uiState.value.currentSession)
+        assertEquals(8, replacement.uiState.value.progress.targetCount)
+        store.clear()
     }
 
-    @Test
-    fun configChangePreservesState() {
-        val vm = StudySessionViewModel()
-        vm.startSession(8)
-        vm.recordAnswer(correct = true)
-        vm.recordAnswer(correct = false)
+    private class TestOwner(
+        override val viewModelStore: ViewModelStore,
+    ) : ViewModelStoreOwner
 
-        // ViewModel survives config change — same instance, state intact
-        val stateAfter = vm.uiState.value
-        assertTrue(stateAfter.sessionActive)
-        assertEquals(8, stateAfter.targetCount)
-        assertEquals(2, stateAfter.completedCount)
-        assertEquals(1, stateAfter.correctCount)
-    }
+    private fun session(token: String): RecordsSchedulerModels.StudySession =
+        RecordsSchedulerModels.StudySession(
+            item = null,
+            row = null,
+            token = token,
+            taskType = "kanji_meaning",
+            writingRequired = false,
+            prompt = "meaning",
+        )
 }

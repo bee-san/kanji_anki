@@ -84,14 +84,18 @@ class SchedulerTimelineSimulator(
     fun answer(rating: String): SchedulerTimelineEvent {
         val session = activeSession ?: throw IllegalStateException("Call nextSession() before answer().")
         val before = session.item ?: throw IllegalStateException("The active session has no study item.")
-        val request = RecordsSchedulerModels.ReviewRequest(
-            before.kanji,
-            session.token,
-            rating,
-            session.writingRequired,
-            !session.writingRequired,
-            !session.writingRequired,
-            0,
+        val request = RecordsSchedulerModels.ReviewRequest.fromFields(
+            RecordsSchedulerModels.ReviewRequest.Fields(
+                kanji = before.kanji,
+                token = session.token,
+                rating = rating,
+                writingRequired = session.writingRequired,
+                writingPassed = !session.writingRequired,
+                writingClean = !session.writingRequired &&
+                    (StudyRatings.GOOD == rating || StudyRatings.EASY == rating),
+                manualOverride = !session.writingRequired,
+                hintsUsed = 0,
+            )
         )
         val traced = scheduler.debugTraceApplyReview(
             BridgeScheduler.ReviewApplication.builder(before, request, consumedTokens, nowMillis)
@@ -116,15 +120,17 @@ class SchedulerTimelineSimulator(
     fun answerWriting(rating: String, passed: Boolean, clean: Boolean, hintsUsed: Int): SchedulerTimelineEvent {
         val session = activeSession ?: throw IllegalStateException("Call nextSession() before answerWriting().")
         val before = session.item ?: throw IllegalStateException("The active session has no study item.")
-        val request = RecordsSchedulerModels.ReviewRequest(
-            before.kanji,
-            session.token,
-            rating,
-            true,
-            passed,
-            clean,
-            false,
-            hintsUsed,
+        val request = RecordsSchedulerModels.ReviewRequest.fromFields(
+            RecordsSchedulerModels.ReviewRequest.Fields(
+                kanji = before.kanji,
+                token = session.token,
+                rating = rating,
+                writingRequired = true,
+                writingPassed = passed,
+                writingClean = clean,
+                manualOverride = false,
+                hintsUsed = hintsUsed,
+            )
         )
         val traced = scheduler.debugTraceApplyReview(
             BridgeScheduler.ReviewApplication.builder(before, request, consumedTokens, nowMillis)

@@ -500,7 +500,19 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         val fontFallback = taskMemoryFallback(1, recognitionStage, memoryFields)
         val wordFallback = taskMemoryFallback(2, recognitionStage, memoryFields)
         val writingFallback = if (writingRemediationPending) {
-            RecordsStudyModels.TaskMemory.fromStudyFields(state, dueAt, stability, difficulty, totalReviews, lapses, learningStep, matureIntervalDays)
+            RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = state,
+                    dueAtMillis = dueAt,
+                    stability = stability,
+                    difficulty = difficulty,
+                    totalReviews = totalReviews,
+                    lapses = lapses,
+                    learningStep = learningStep,
+                    lastRating = "",
+                    matureIntervalDays = matureIntervalDays,
+                ),
+            )
         } else {
             RecordsStudyModels.TaskMemory.initial()
         }
@@ -577,15 +589,18 @@ internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(co
         fields: StudyMemoryFields,
     ): RecordsStudyModels.TaskMemory {
         return if (recognitionStage.coerceIn(-1, 2) == memoryStage) {
-            RecordsStudyModels.TaskMemory.fromStudyFields(
-                fields.state(),
-                fields.dueAtMillis(),
-                fields.stability(),
-                fields.difficulty(),
-                fields.totalReviews(),
-                fields.lapses(),
-                fields.learningStep(),
-                fields.matureIntervalDays(),
+            RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = fields.state(),
+                    dueAtMillis = fields.dueAtMillis(),
+                    stability = fields.stability(),
+                    difficulty = fields.difficulty(),
+                    totalReviews = fields.totalReviews(),
+                    lapses = fields.lapses(),
+                    learningStep = fields.learningStep(),
+                    lastRating = "",
+                    matureIntervalDays = fields.matureIntervalDays(),
+                ),
             )
         } else {
             RecordsStudyModels.TaskMemory.initial()

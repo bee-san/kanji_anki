@@ -12,6 +12,8 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.testing.DeviceRisk
+import dev.bee.kanjianki.testing.DeviceSmoke
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,6 +27,7 @@ import java.lang.reflect.Constructor
 import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class AnkiDroidGatewayProviderInstrumentedTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore
@@ -57,6 +60,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    @DeviceSmoke
     fun readsKikuCollectionWithBulkCardsQuery() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
@@ -259,6 +263,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    @DeviceSmoke
     fun manualSyncWorksAgainstFakeAnkiDroidProviderContract() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
@@ -352,6 +357,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    @DeviceSmoke
     fun manualSyncFallsBackWhenBulkSchedulerCursorThrowsUnknownQueue() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)

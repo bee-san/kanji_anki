@@ -33,7 +33,6 @@ jobs:
   analyze:
     name: Analyze Java/Kotlin
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 20
     permissions:
       actions: read
@@ -42,10 +41,13 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
         with:
           distribution: temurin
           java-version: '17'
@@ -56,12 +58,10 @@ jobs:
           cache-read-only: true
 
       - name: Install Android SDK packages
-        run: |
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+        uses: ./.github/actions/setup-android-sdk
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           languages: java-kotlin
           build-mode: manual
@@ -69,19 +69,27 @@ jobs:
       - name: Force clean compiler activity for extraction
         run: |
           ./gradlew clean \
+            :fsrs-java:compileKotlin \
             :fsrs-java:compileJava \
+            :core:compileKotlin \
             :core:compileJava \
             :domain:compileKotlin \
+            :sync-domain:compileKotlin \
             :sync-domain:compileJava \
+            :writing-core:compileKotlin \
             :writing-core:compileJava \
+            :dictionary-core:compileKotlin \
             :dictionary-core:compileJava \
+            :update-core:compileKotlin \
             :update-core:compileJava \
+            :app:compileDebugKotlin \
             :app:compileDebugJavaWithJavac \
+            --parallel \
             --no-daemon \
             --no-build-cache \
             --rerun-tasks
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
         with:
           category: '/language:java-kotlin'

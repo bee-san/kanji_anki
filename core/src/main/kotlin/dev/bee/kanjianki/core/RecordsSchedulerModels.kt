@@ -153,75 +153,75 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         }
     }
 
-    class ReviewRequest(
-        kanji: String?,
-        token: String?,
-        @JvmField val rating: String?,
-        @JvmField val writingRequired: Boolean,
-        @JvmField val writingPassed: Boolean,
-        vararg rest: Any?,
-    ) {
-        @JvmField val kanji: String = nullToEmpty(kanji)
-        @JvmField val taskType: String
-        @JvmField val token: String = nullToEmpty(token)
-        @JvmField val answerSignature: String
-        @JvmField val prompt: String
-        @JvmField val writingClean: Boolean
-        @JvmField val manualOverride: Boolean
-        @JvmField val hintsUsed: Int
-        @JvmField val coreSkill: String
-        @JvmField val failureCause: String
-        @JvmField val evidenceSource: String
-        @JvmField val selectedAnswer: String
-        @JvmField val correctAnswer: String
-        @JvmField val answerEvidenceJson: String
+    class ReviewRequest private constructor(fields: Fields) {
+        /**
+         * Legacy constructor retained for Java/source compatibility.
+         *
+         * New production code should use [fromFields], whose typed, named
+         * fields cannot be shifted by adding another positional value.
+         */
+        constructor(
+            kanji: String?,
+            token: String?,
+            rating: String?,
+            writingRequired: Boolean,
+            writingPassed: Boolean,
+            vararg rest: Any?,
+        ) : this(legacyFields(kanji, token, rating, writingRequired, writingPassed, rest))
 
-        init {
-            val suppliedArgs = rest.toSchedulerArgsArray()
-            val evidence = suppliedArgs.lastOrNull() as? ReviewEvidence
-            val args = if (evidence == null) suppliedArgs else suppliedArgs.copyOf(suppliedArgs.size - 1)
-            requireArgCount(CONTEXT_REVIEW_REQUEST, args, 2, 3, 6)
-            if (args.size == 2) {
-                writingClean = writingPassed && ("good" == rating || "easy" == rating)
-                manualOverride = booleanArg(args, 0, CONTEXT_REVIEW_REQUEST)
-                hintsUsed = intArg(args, 1, CONTEXT_REVIEW_REQUEST)
-                taskType = ""
-                answerSignature = ""
-                prompt = ""
-            } else {
-                writingClean = booleanArg(args, 0, CONTEXT_REVIEW_REQUEST)
-                manualOverride = booleanArg(args, 1, CONTEXT_REVIEW_REQUEST)
-                hintsUsed = intArg(args, 2, CONTEXT_REVIEW_REQUEST)
-                taskType = if (args.size == 3) "" else nullToEmpty(stringArg(args, 3, CONTEXT_REVIEW_REQUEST))
-                answerSignature = if (args.size == 3) "" else nullToEmpty(stringArg(args, 4, CONTEXT_REVIEW_REQUEST))
-                prompt = if (args.size == 3) "" else nullToEmpty(stringArg(args, 5, CONTEXT_REVIEW_REQUEST))
-            }
-            coreSkill = nullToEmpty(evidence?.coreSkill)
-            failureCause = nullToEmpty(evidence?.failureCause)
-            evidenceSource = nullToEmpty(evidence?.evidenceSource)
-            selectedAnswer = nullToEmpty(evidence?.selectedAnswer)
-            correctAnswer = nullToEmpty(evidence?.correctAnswer)
-            answerEvidenceJson = nullToEmpty(evidence?.answerEvidenceJson)
-        }
+        @JvmField val kanji: String = nullToEmpty(fields.kanji)
+        @JvmField val taskType: String = nullToEmpty(fields.taskType)
+        @JvmField val token: String = nullToEmpty(fields.token)
+        @JvmField val rating: String? = fields.rating
+        @JvmField val answerSignature: String = nullToEmpty(fields.answerSignature)
+        @JvmField val prompt: String = nullToEmpty(fields.prompt)
+        @JvmField val writingRequired: Boolean = fields.writingRequired
+        @JvmField val writingPassed: Boolean = fields.writingPassed
+        @JvmField val writingClean: Boolean = fields.writingClean
+        @JvmField val manualOverride: Boolean = fields.manualOverride
+        @JvmField val hintsUsed: Int = fields.hintsUsed
+        @JvmField val coreSkill: String = nullToEmpty(fields.evidence?.coreSkill)
+        @JvmField val failureCause: String = nullToEmpty(fields.evidence?.failureCause)
+        @JvmField val evidenceSource: String = nullToEmpty(fields.evidence?.evidenceSource)
+        @JvmField val selectedAnswer: String = nullToEmpty(fields.evidence?.selectedAnswer)
+        @JvmField val correctAnswer: String = nullToEmpty(fields.evidence?.correctAnswer)
+        @JvmField val answerEvidenceJson: String = nullToEmpty(fields.evidence?.answerEvidenceJson)
+
+        data class Fields(
+            val kanji: String?,
+            val token: String?,
+            val rating: String?,
+            val writingRequired: Boolean,
+            val writingPassed: Boolean,
+            val writingClean: Boolean,
+            val manualOverride: Boolean,
+            val hintsUsed: Int,
+            val taskType: String? = null,
+            val answerSignature: String? = null,
+            val prompt: String? = null,
+            val evidence: ReviewEvidence? = null,
+        )
 
         /**
          * Adds v31 answer evidence through one typed value rather than another
          * positional vararg layout. Existing constructor calls remain valid.
          */
         fun withEvidence(evidence: ReviewEvidence?): ReviewRequest {
-            return ReviewRequest(
-                kanji,
-                token,
-                rating,
-                writingRequired,
-                writingPassed,
-                writingClean,
-                manualOverride,
-                hintsUsed,
-                taskType,
-                answerSignature,
-                prompt,
-                evidence ?: ReviewEvidence.empty(),
+            return fromFields(
+                Fields(
+                    kanji = kanji,
+                    token = token,
+                    rating = rating,
+                    writingRequired = writingRequired,
+                    writingPassed = writingPassed,
+                    writingClean = writingClean,
+                    manualOverride = manualOverride,
+                    hintsUsed = hintsUsed,
+                    taskType = taskType,
+                    answerSignature = answerSignature,
+                    prompt = prompt,
+                    evidence = evidence ?: ReviewEvidence.empty(),
+                )
             )
         }
 
@@ -252,6 +252,53 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
             companion object {
                 @JvmStatic
                 fun empty(): ReviewEvidence = ReviewEvidence("", "", "", "", "", "")
+            }
+        }
+
+        companion object {
+            @JvmStatic
+            fun fromFields(fields: Fields): ReviewRequest = ReviewRequest(fields)
+
+            private fun legacyFields(
+                kanji: String?,
+                token: String?,
+                rating: String?,
+                writingRequired: Boolean,
+                writingPassed: Boolean,
+                rest: Array<out Any?>,
+            ): Fields {
+                val suppliedArgs = rest.toSchedulerArgsArray()
+                val evidence = suppliedArgs.lastOrNull() as? ReviewEvidence
+                val args = if (evidence == null) suppliedArgs else suppliedArgs.copyOf(suppliedArgs.size - 1)
+                requireArgCount(CONTEXT_REVIEW_REQUEST, args, 2, 3, 6)
+                return if (args.size == 2) {
+                    Fields(
+                        kanji = kanji,
+                        token = token,
+                        rating = rating,
+                        writingRequired = writingRequired,
+                        writingPassed = writingPassed,
+                        writingClean = writingPassed && ("good" == rating || "easy" == rating),
+                        manualOverride = booleanArg(args, 0, CONTEXT_REVIEW_REQUEST),
+                        hintsUsed = intArg(args, 1, CONTEXT_REVIEW_REQUEST),
+                        evidence = evidence,
+                    )
+                } else {
+                    Fields(
+                        kanji = kanji,
+                        token = token,
+                        rating = rating,
+                        writingRequired = writingRequired,
+                        writingPassed = writingPassed,
+                        writingClean = booleanArg(args, 0, CONTEXT_REVIEW_REQUEST),
+                        manualOverride = booleanArg(args, 1, CONTEXT_REVIEW_REQUEST),
+                        hintsUsed = intArg(args, 2, CONTEXT_REVIEW_REQUEST),
+                        taskType = if (args.size == 3) null else stringArg(args, 3, CONTEXT_REVIEW_REQUEST),
+                        answerSignature = if (args.size == 3) null else stringArg(args, 4, CONTEXT_REVIEW_REQUEST),
+                        prompt = if (args.size == 3) null else stringArg(args, 5, CONTEXT_REVIEW_REQUEST),
+                        evidence = evidence,
+                    )
+                }
             }
         }
     }

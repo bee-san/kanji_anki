@@ -15,6 +15,8 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.testing.DeviceRisk
+import dev.bee.kanjianki.testing.DeviceSmoke
 import org.junit.After
 import org.junit.Assert.assertNotNull
 import org.junit.Before
@@ -22,6 +24,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@DeviceSmoke
+@DeviceRisk
 class MainActivityPrimaryRouteSmokeInstrumentedTest {
     private lateinit var context: Context
 

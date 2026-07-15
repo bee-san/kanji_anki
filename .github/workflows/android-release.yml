@@ -37,6 +37,7 @@ jobs:
   metadata:
     name: Release metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     permissions:
       contents: read
@@ -50,7 +51,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -74,25 +75,7 @@ jobs:
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             release_tag="${RELEASE_TAG_INPUT}"
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            release_tag="$(python3 <<'PY'
-          import re
-          import subprocess
-
-          tags = subprocess.check_output(
-              ["git", "tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
-              text=True,
-          ).splitlines()
-          versions = []
-          for tag in tags:
-              match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", tag)
-              if match:
-                  versions.append(tuple(int(part) for part in match.groups()))
-          if not versions:
-              raise SystemExit("No existing vMAJOR.MINOR.PATCH tag found to bump from.")
-          major, minor, patch = max(versions)
-          print(f"v{major}.{minor}.{patch + 1}")
-          PY
-          )"
+            release_tag="$(python3 ci/scripts/kani_version.py next-tag)"
             if git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
               echo "::error::Computed auto-release tag ${release_tag} already exists."
               exit 1
@@ -101,27 +84,9 @@ jobs:
             release_tag="${GITHUB_REF_NAME}"
           fi
 
-          if [[ ! "${release_tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo '::error::Release tag must match vMAJOR.MINOR.PATCH.'
-            exit 1
-          fi
-
-          major="${BASH_REMATCH[1]}"
-          minor="${BASH_REMATCH[2]}"
-          patch="${BASH_REMATCH[3]}"
-          version_name="${major}.${minor}.${patch}"
-          version_code=$((major * 1000000 + minor * 1000 + patch))
-          apk_name="kani-android-${version_name}.apk"
-          checksum_name="${apk_name}.sha256"
-
-          {
-            echo "release_tag=${release_tag}"
-            echo "build_sha=${build_sha}"
-            echo "version_name=${version_name}"
-            echo "version_code=${version_code}"
-            echo "apk_name=${apk_name}"
-            echo "checksum_name=${checksum_name}"
-          } >> "${GITHUB_OUTPUT}"
+          python3 ci/scripts/kani_version.py metadata \
+            --tag "${release_tag}" \
+            --build-sha "${build_sha}" >> "${GITHUB_OUTPUT}"
 
   validate:
     name: Validate and assemble release
@@ -133,7 +98,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           ref: ${{ needs.metadata.outputs.build_sha }}
 
@@ -144,7 +109,7 @@ jobs:
         uses: "gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e"
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
         with:
           distribution: temurin
           java-version: '17'
@@ -156,19 +121,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Install Android SDK packages
-        run: |
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
-
-      - name: Decode signing keystore
-        id: signing
-        env:
-          KANJI_ANKI_SIGNING_KEYSTORE_BASE64: ${{ secrets.KANJI_ANKI_SIGNING_KEYSTORE_BASE64 }}
-        run: |
-          : "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64:?Missing KANJI_ANKI_SIGNING_KEYSTORE_BASE64 secret}"
-          keystore_path="${RUNNER_TEMP}/kani-release.jks"
-          printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
-          echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
+        uses: ./.github/actions/setup-android-sdk
 
       # The workflow_run path only fires after Android CI succeeded on this
       # exact commit, so the deterministic test surface is already green and
@@ -188,6 +141,18 @@ jobs:
             :update-core:test \
             :app:testDebugUnitTest \
             --parallel -Dorg.gradle.parallel=true
+
+      # Keep signing material off disk until untrusted project tests have
+      # completed on manual release paths.
+      - name: Decode signing keystore
+        id: signing
+        env:
+          KANJI_ANKI_SIGNING_KEYSTORE_BASE64: ${{ secrets.KANJI_ANKI_SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          : "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64:?Missing KANJI_ANKI_SIGNING_KEYSTORE_BASE64 secret}"
+          keystore_path="${RUNNER_TEMP}/kani-release.jks"
+          printf '%s' "${KANJI_ANKI_SIGNING_KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          echo "keystore_path=${keystore_path}" >> "${GITHUB_OUTPUT}"
 
       - name: Build signed release APK
         env:
@@ -231,7 +196,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Upload workflow artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: kani-android-release-${{ needs.metadata.outputs.version_name }}
           path: |
@@ -241,6 +206,7 @@ jobs:
   publish-release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     needs:
@@ -249,7 +215,7 @@ jobs:
 
     steps:
       - name: Download release assets
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: kani-android-release-${{ needs.metadata.outputs.version_name }}
           path: ${{ runner.temp }}/release-assets

@@ -11,6 +11,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.testing.DeviceRisk
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -26,6 +27,7 @@ import org.junit.runner.RunWith
 private const val DATABASE_NAME = "kanji_anki_simple.db"
 
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class ManualSyncEngineInstrumentedTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore

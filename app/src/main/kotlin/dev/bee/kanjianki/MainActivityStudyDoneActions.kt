@@ -119,6 +119,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         model: StudyDoneScreenModel,
     ) {
+        home.studySessionViewModel.showComplete()
         KaniWidgetUpdater.requestUpdate(home)
         renderedPlan = plan
         renderedScreenModel = model

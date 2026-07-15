@@ -4,6 +4,8 @@ import android.os.SystemClock
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.withFrameNanos
 import dev.bee.kanjianki.theme.resolveSystemBars
@@ -167,6 +169,15 @@ internal class MainActivityShellHost(
 
     @Composable
     private fun HostedRouteContent(route: HostedRoute) {
+        val studyState by activity.studySessionUiState.collectAsState()
+        val observedModel = route.model.copy(
+            studyBadgeCount = studySessionBadgeCount(
+                studySessionActive = route.model.studySessionActive,
+                trackerTargetCount = studyState.progress.targetCount,
+                trackerCompletedCount = studyState.progress.completedCount,
+                cachedStudyNowCount = activity.studySessionBadgeCount,
+            ).takeIf { it > 0 },
+        )
         LaunchedEffect(route.revision) {
             withFrameNanos { }
             if (AppDebugLog.isCapturing()) {
@@ -187,7 +198,7 @@ internal class MainActivityShellHost(
         val actionBar = route.actionBar
         if (actionBar == null) {
             MainActivityComposeRoute(
-                model = route.model,
+                model = observedModel,
                 initialScrollY = route.initialScrollY,
                 onScrollY = route.onScrollY,
                 navActions = route.navActions,
@@ -198,7 +209,7 @@ internal class MainActivityShellHost(
             )
         } else {
             MainActivityComposeRouteWithActionBar(
-                model = route.model,
+                model = observedModel,
                 initialScrollY = route.initialScrollY,
                 onScrollY = route.onScrollY,
                 navActions = route.navActions,

@@ -117,6 +117,10 @@ Other product areas:
 
 ## Build
 
+Developer scripts and the local CI gate require Python 3.9 or newer. Their
+test and workflow-inspection paths use only the Python standard library, so no
+separate `pip` install is required.
+
 ```bash
 ./gradlew :core:test :app:assembleDebug
 ```
