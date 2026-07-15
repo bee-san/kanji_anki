@@ -12,6 +12,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "ci/scripts/classify_device_smoke.py"
 WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
 RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
+PROGUARD_RULES = ROOT / "app/proguard-rules.pro"
 
 SPEC = importlib.util.spec_from_file_location("classify_device_smoke", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
@@ -114,6 +115,7 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.workflow = WORKFLOW.read_text(encoding="utf-8")
         self.risk_script = RISK_SCRIPT.read_text(encoding="utf-8")
         self.app_build = (ROOT / "app/build.gradle.kts").read_text(encoding="utf-8")
+        self.proguard_rules = PROGUARD_RULES.read_text(encoding="utf-8")
 
     def test_workflow_is_pr_or_manual_only_and_not_a_release_dependency(self) -> None:
         self.assertIn("pull_request:", self.workflow)
@@ -168,6 +170,13 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn('signingConfigs.getByName("debug")', smoke_build)
         self.assertIn('abiFilters += "x86_64"', smoke_build)
         self.assertNotIn("isDebuggable = true", smoke_build)
+
+    def test_mlkit_component_registrar_constructors_survive_r8_full_mode(self) -> None:
+        registrar_rule = self.proguard_rules.split(
+            "-keep class * implements com.google.firebase.components.ComponentRegistrar",
+            maxsplit=1,
+        )[1].split("}", maxsplit=1)[0]
+        self.assertIn("void <init>();", registrar_rule)
 
 
 if __name__ == "__main__":
