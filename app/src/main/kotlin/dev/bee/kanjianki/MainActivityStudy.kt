@@ -44,6 +44,19 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val writingFlow by lazy { MainActivityStudyWritingFlow(this) }
     private val writingCheck by lazy { MainActivityStudyWritingCheck(this) }
     private val writingReview by lazy { MainActivityStudyReviewFlow(this) }
+    private val answerSubmissionCoordinator by lazy {
+        StudyAnswerSubmissionCoordinator(
+            stateStore = studySessionViewModel,
+            persistence = object : StudyAnswerPersistence {
+                override fun persistPending(state: StudyAnswerFeedbackState): Boolean =
+                    persistPendingStudyAnswer(state)
+
+                override fun restoreAfterRejectedAnswer(sessionToken: String) {
+                    restoreActiveRecoveryAfterRejectedAnswer(sessionToken)
+                }
+            },
+        )
+    }
 
     val doneActions by lazy { MainActivityStudyDoneActions(this) }
 
@@ -105,6 +118,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderStudyLoading(studySessionActive: Boolean) {
+        studySessionViewModel.showLoading()
         renderComposeStudyRoute(studySessionActive = studySessionActive) {
             HomeRouteLoadingScreen(
                 title = dev.bee.kanjianki.core.StudyTextCopy.studyPracticeTitle(),
@@ -483,24 +497,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         autoContinue: Boolean = false,
         submit: () -> Boolean,
     ): Boolean {
-        val token = activeSession?.token ?: return false
-        val state = studyAnswerFeedbackState
-            ?.takeIf { it.sessionToken == token }
-            ?: StudyAnswerFeedbackState(token).also { studyAnswerFeedbackState = it }
-        val outcome = if (correct) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT
-        if (!state.begin(outcome, selectedAnswer, autoContinue)) {
-            return false
-        }
-        if (!persistPendingStudyAnswer(state)) {
-            state.resetForRetry(token)
-            return false
-        }
-        val accepted = submit()
-        if (!accepted) {
-            state.resetForRetry(token)
-            restoreActiveRecoveryAfterRejectedAnswer(token)
-        }
-        return accepted
+        return answerSubmissionCoordinator.submit(
+            correct = correct,
+            selectedAnswer = selectedAnswer,
+            autoContinue = autoContinue,
+            enqueueReview = submit,
+        )
     }
 
     fun prepareStudyAnswerFeedback(token: String): StudyAnswerFeedbackState {
@@ -509,7 +511,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             ?.takeIf { it.feedback.sessionToken == token }
             ?.feedback
             ?.let(StudyAnswerFeedbackState::restore)
-        return (restored ?: StudyAnswerFeedbackState(token)).also { studyAnswerFeedbackState = it }
+        return studySessionViewModel.feedbackFor(token, restored)
     }
 
     fun markStudyAnswerApplied(token: String) {
@@ -518,13 +520,21 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             if (state?.markApplied(token) == true) {
                 persistPendingStudyAnswer(state)
                 if (state.autoContinueOnApply) {
-                    // Self-graded submits arm this: the user already saw the
-                    // answer before rating, so skip the manual Continue tap.
-                    // tryContinue() is one-shot and a CAS-failed handoff rolls
-                    // back to APPLIED, leaving the manual button as fallback.
-                    continueAfterStudyAnswer()
+                    // The currently STARTED Activity consumes this one-shot
+                    // effect. A stale route rejects it and leaves the manual
+                    // Continue action enabled as the fallback.
+                    studySessionViewModel.requestAutoContinue(token)
                 }
             }
+        }
+    }
+
+    override fun handleStudySessionEffect(effect: StudySessionEffect) {
+        when (effect) {
+            is StudySessionEffect.AutoContinue -> continueAfterStudyAnswer(
+                effect.sessionToken,
+                expectedRecovery = null,
+            )
         }
     }
 

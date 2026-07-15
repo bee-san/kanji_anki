@@ -68,19 +68,21 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         if (rating == StudyRatings.AGAIN) {
             val nextLapses = beforeMemory.lapses + 1
             val coreDue = nowMillis + result.intervalMillis
-            val postLapseMemory = RecordsStudyModels.TaskMemory(
-                StudyLadderRules.STATE_REVIEW,
-                coreDue,
-                result.stability,
-                result.difficulty,
-                nextTotalReviews,
-                nextLapses,
-                0,
-                StudyRatings.AGAIN,
-                result.intervalDays(),
-                0,
-                0L,
-                nowMillis,
+            val postLapseMemory = RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = StudyLadderRules.STATE_REVIEW,
+                    dueAtMillis = coreDue,
+                    stability = result.stability,
+                    difficulty = result.difficulty,
+                    totalReviews = nextTotalReviews,
+                    lapses = nextLapses,
+                    learningStep = 0,
+                    lastRating = StudyRatings.AGAIN,
+                    matureIntervalDays = result.intervalDays(),
+                    consecutivePasses = 0,
+                    lastPassedDueAtMillis = 0L,
+                    lastReviewedAtMillis = nowMillis,
+                )
             )
             val recurrence = AdaptiveRepairPolicy.recordFailure(
                 AdaptiveRepairPolicy.FailureRecurrence(route.recurringFailure, route.recurringFailureCount),
@@ -135,19 +137,21 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         }
 
         val passStreak = if (realDue) item.realPassStreak + 1 else item.realPassStreak
-        var memory = RecordsStudyModels.TaskMemory(
-            StudyLadderRules.STATE_REVIEW,
-            nowMillis + result.intervalMillis,
-            result.stability,
-            result.difficulty,
-            nextTotalReviews,
-            beforeMemory.lapses,
-            0,
-            rating,
-            result.intervalDays(),
-            passStreak,
-            if (realDue) item.dueAtMillis else beforeMemory.lastPassedDueAtMillis,
-            nowMillis,
+        var memory = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = StudyLadderRules.STATE_REVIEW,
+                dueAtMillis = nowMillis + result.intervalMillis,
+                stability = result.stability,
+                difficulty = result.difficulty,
+                totalReviews = nextTotalReviews,
+                lapses = beforeMemory.lapses,
+                learningStep = 0,
+                lastRating = rating,
+                matureIntervalDays = result.intervalDays(),
+                consecutivePasses = passStreak,
+                lastPassedDueAtMillis = if (realDue) item.dueAtMillis else beforeMemory.lastPassedDueAtMillis,
+                lastReviewedAtMillis = nowMillis,
+            )
         )
         var nextCore = core
         var nextPassStreak = passStreak
@@ -358,15 +362,18 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
     private fun usableCoreMemory(item: RecordsStudyModels.StudyItem, core: CoreSkill): RecordsStudyModels.TaskMemory {
         val memory = AdaptiveStudyItemPolicy.coreMemory(item, core)
         if (memory.totalReviews > 0 || item.totalReviews <= 0) return memory
-        return RecordsStudyModels.TaskMemory.fromStudyFields(
-            item.state,
-            item.dueAtMillis,
-            item.stability,
-            item.difficulty,
-            item.totalReviews,
-            item.lapses,
-            item.learningStep,
-            item.matureIntervalDays,
+        return RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = item.state,
+                dueAtMillis = item.dueAtMillis,
+                stability = item.stability,
+                difficulty = item.difficulty,
+                totalReviews = item.totalReviews,
+                lapses = item.lapses,
+                learningStep = item.learningStep,
+                lastRating = "",
+                matureIntervalDays = item.matureIntervalDays,
+            )
         )
     }
 
@@ -414,19 +421,21 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
     private fun RecordsStudyModels.TaskMemory.withSchedule(
         dueAtMillis: Long,
         intervalDays: Int,
-    ): RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
-        state,
-        dueAtMillis,
-        stability,
-        difficulty,
-        totalReviews,
-        lapses,
-        learningStep,
-        lastRating,
-        intervalDays,
-        consecutivePasses,
-        lastPassedDueAtMillis,
-        lastReviewedAtMillis,
+    ): RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory.fromFields(
+        RecordsStudyModels.TaskMemory.Fields(
+            state = state,
+            dueAtMillis = dueAtMillis,
+            stability = stability,
+            difficulty = difficulty,
+            totalReviews = totalReviews,
+            lapses = lapses,
+            learningStep = learningStep,
+            lastRating = lastRating,
+            matureIntervalDays = intervalDays,
+            consecutivePasses = consecutivePasses,
+            lastPassedDueAtMillis = lastPassedDueAtMillis,
+            lastReviewedAtMillis = lastReviewedAtMillis,
+        )
     )
 
     private fun scheduledIntervalDays(nowMillis: Long, dueAtMillis: Long): Int {

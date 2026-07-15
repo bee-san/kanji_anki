@@ -59,6 +59,7 @@ jobs:
   analyze:
     name: Build coverage and analyze
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 40
     permissions:
       contents: read
@@ -66,78 +67,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Fetch pull request base
-        if: github.event_name == 'pull_request'
-        env:
-          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: git fetch --no-tags --depth=1 origin "${PR_BASE_REF}:refs/remotes/origin/${PR_BASE_REF}"
-
-      - name: Detect changed project areas
-        id: changed-areas
-        run: |
-          set -euo pipefail
-
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
-            echo "core=true" >> "$GITHUB_OUTPUT"
-            echo "fsrs=true" >> "$GITHUB_OUTPUT"
-            echo "pure_modules=true" >> "$GITHUB_OUTPUT"
-            echo "gradle=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            BASE_SHA="${{ github.event.before }}"
-            if [ -n "${BASE_SHA}" ] && [ "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]; then
-              git fetch --no-tags --depth=1 origin "${BASE_SHA}" || true
-            fi
-          else
-            BASE_SHA="${{ github.sha }}"
-          fi
-
-          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
-            BASE_SHA="${{ github.sha }}"
-          fi
-          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            BASE_SHA="${{ github.sha }}"
-          fi
-
-          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "${{ github.sha }}")"
-          APP_CHANGED=false
-          CORE_CHANGED=false
-          FSRS_CHANGED=false
-          PURE_MODULES_CHANGED=false
-          GRADLE_CHANGED=false
-
-          if [ -z "$CHANGED_FILES" ]; then
-            GRADLE_CHANGED=false
-          else
-            while IFS= read -r FILE; do
-              case "$FILE" in
-                app/*)
-                  APP_CHANGED=true
-                  ;;
-                core/*)
-                  CORE_CHANGED=true
-                  ;;
-                fsrs-java/*)
-                  FSRS_CHANGED=true
-                  ;;
-                domain/*|sync-domain/*|writing-core/*|dictionary-core/*|update-core/*)
-                  PURE_MODULES_CHANGED=true
-                  ;;
-                build.gradle*|settings.gradle*|gradle/*|gradle.properties|gradle/libs.versions.toml|tools/*|.github/workflows/*)
-                  GRADLE_CHANGED=true
-                  ;;
-              esac
-            done <<< "$CHANGED_FILES"
-          fi
-
-          echo "app=$APP_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "core=$CORE_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "fsrs=$FSRS_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "pure_modules=$PURE_MODULES_CHANGED" >> "$GITHUB_OUTPUT"
-          echo "gradle=$GRADLE_CHANGED" >> "$GITHUB_OUTPUT"
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
 
       - name: Select coverage mode
         id: coverage-mode
@@ -162,7 +95,7 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
         with:
           distribution: temurin
           # SonarCloud dropped Java 17 support for the scanner runtime; it now requires
@@ -173,15 +106,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
         with:
-          gradle-version: "9.4.1"
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Install Android SDK packages
-        if: github.event_name == 'workflow_dispatch' || steps.changed-areas.outputs.app == 'true' || steps.changed-areas.outputs.core == 'true' || steps.changed-areas.outputs.fsrs == 'true' || steps.changed-areas.outputs.pure_modules == 'true' || steps.changed-areas.outputs.gradle == 'true'
-        run: |
-          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0'
+        uses: ./.github/actions/setup-android-sdk
 
       - name: Enable KVM access (full-coverage mode only)
         if: steps.coverage-mode.outputs.full == 'true'
@@ -191,11 +120,17 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Cache SonarQube packages
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache Robolectric android-all jars
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-android-all-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
 
       - name: Build and analyze (PR-safe fast path)
         if: steps.coverage-mode.outputs.full != 'true'
@@ -207,61 +142,7 @@ jobs:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           SONAR_PROJECT_VERSION: ${{ steps.sonar-version.outputs.version }}
         run: |
-          set -euo pipefail
-          SONAR_ARGS=()
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            SONAR_ARGS+=(
-              "-Dsonar.pullrequest.key=${PR_NUMBER}"
-              "-Dsonar.pullrequest.branch=${PR_HEAD_REF}"
-              "-Dsonar.pullrequest.base=${PR_BASE_REF}"
-            )
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PR_INFO="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
-            if [ -n "${PR_INFO}" ]; then
-              IFS=$'\t' read -r PR_NUMBER PR_BASE PR_HEAD <<< "${PR_INFO}"
-              SONAR_ARGS+=(
-                "-Dsonar.pullrequest.key=${PR_NUMBER}"
-                "-Dsonar.pullrequest.branch=${PR_HEAD}"
-                "-Dsonar.pullrequest.base=${PR_BASE}"
-              )
-            fi
-          fi
-          TASKS=()
-          if [ "${{ steps.changed-areas.outputs.fsrs }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :fsrs-java:test :fsrs-java:jacocoTestReport )
-          fi
-          if [ "${{ steps.changed-areas.outputs.pure_modules }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=(
-              :domain:test :domain:jacocoTestReport
-              :sync-domain:test :sync-domain:jacocoTestReport
-              :writing-core:test :writing-core:jacocoTestReport
-              :dictionary-core:test :dictionary-core:jacocoTestReport
-              :update-core:test :update-core:jacocoTestReport
-            )
-          fi
-          if [ "${{ steps.changed-areas.outputs.core }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :core:test :core:jacocoTestReport )
-          fi
-          if [ "${{ steps.changed-areas.outputs.app }}" = "true" ] || [ "${{ steps.changed-areas.outputs.gradle }}" = "true" ]; then
-            TASKS+=( :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
-          fi
-          if [ ${#TASKS[@]} -eq 0 ]; then
-            TASKS+=( :core:test :core:jacocoTestReport :app:testDebugUnitTest :app:jacocoDebugUnitTestReport :app:compileDebugAndroidTestKotlin :app:compileDebugAndroidTestJavaWithJavac )
-          fi
-          ./gradlew \
-            :core:jar \
-            :domain:jar \
-            :sync-domain:jar \
-            :writing-core:jar \
-            :dictionary-core:jar \
-            :update-core:jar \
-            :app:compileDebugJavaWithJavac \
-            "${TASKS[@]}" \
-            --parallel \
-            -Dorg.gradle.parallel=true \
-            -PsonarFullCoverage=false \
-            -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }}
-          ./gradlew sonar --parallel -Dorg.gradle.parallel=true -PsonarFullCoverage=false -PsonarProjectVersion=${{ steps.sonar-version.outputs.version }} "${SONAR_ARGS[@]}"
+          bash .github/scripts/run-sonar-analysis.sh fast
 
       - name: Build and analyze (full connected coverage)
         if: steps.coverage-mode.outputs.full == 'true'

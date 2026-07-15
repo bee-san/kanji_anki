@@ -362,7 +362,10 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                     capture_path=str(capture_path),
                     sha256=provided_sha256,
                 )
-            ui_dump_path = cast(Path | None, entry.get("uiautomator_dump_path"))
+            # typing.cast evaluates its first argument at runtime. Optional is
+            # intentional here so this path remains executable on Python 3.9,
+            # where the PEP 604 ``Path | None`` expression is not supported.
+            ui_dump_path = cast(Optional[Path], entry.get("uiautomator_dump_path"))
             if ui_dump_path is not None:
                 if not ui_dump_path.exists():
                     return _status(

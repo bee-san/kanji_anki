@@ -112,6 +112,23 @@ class StudyCueFormatterTest {
     }
 
     @Test
+    fun cleanMeaningStripsJapaneseExamplesWithoutUnicodeRegexProperties() {
+        assertEquals("To eat", StudyCueFormatter.cleanFallbackMeaning("to eat たべます", "", 96))
+        assertEquals("Loan word", StudyCueFormatter.cleanFallbackMeaning("loan word カタカナ", "", 96))
+        assertEquals("Rare", StudyCueFormatter.cleanFallbackMeaning("rare \uD840\uDC00 example", "", 96))
+        assertEquals("From (within)!", StudyCueFormatter.cleanFallbackMeaning("from (within)! 日本語", "", 96))
+    }
+
+    @Test
+    fun cleanMeaningRetainsTextThatDoesNotMatchEnglishGlossThenJapaneseExampleShape() {
+        assertEquals("日本語だけ", StudyCueFormatter.cleanCollectionMeaning("日本語だけ", 96))
+        assertEquals("level 2 日本語", StudyCueFormatter.cleanCollectionMeaning("level 2 日本語", 96))
+        assertEquals("café 日本語", StudyCueFormatter.cleanCollectionMeaning("café 日本語", 96))
+        assertEquals("word日本語", StudyCueFormatter.cleanCollectionMeaning("word日本語", 96))
+        assertEquals("word 日本語\u2028keep", StudyCueFormatter.cleanCollectionMeaning("word 日本語\u2028keep", 96))
+    }
+
+    @Test
     fun cleanFallbackMeaningCompactsAtWordOrHardLimit() {
         val wordy = "meaning ".repeat(30)
         assertEquals("Meaning meaning meaning...", StudyCueFormatter.cleanFallbackMeaning(wordy, "", 27))

@@ -6,47 +6,55 @@ import java.util.Collections
 private fun Array<out Any?>.toStudyArgsArray(): Array<Any?> = Array(size) { index -> this[index] }
 
 abstract class RecordsStudyModels protected constructor() : RecordsImportModels() {
-    class TaskMemory(
-        state: String?,
-        dueAtMillis: Long,
-        stability: Double,
-        difficulty: Double,
-        totalReviews: Int,
-        lapses: Int,
-        vararg rest: Any?,
-    ) {
-        @JvmField
-        val state: String
+    class TaskMemory private constructor(fields: Fields) {
+        /**
+         * Legacy constructor retained for Java/source compatibility.
+         *
+         * New production code should use [fromFields], whose typed, named
+         * fields cannot silently shift when the persisted memory grows.
+         */
+        constructor(
+            state: String?,
+            dueAtMillis: Long,
+            stability: Double,
+            difficulty: Double,
+            totalReviews: Int,
+            lapses: Int,
+            vararg rest: Any?,
+        ) : this(legacyFields(state, dueAtMillis, stability, difficulty, totalReviews, lapses, rest))
 
         @JvmField
-        val dueAtMillis: Long
+        val state: String = if (fields.state.isNullOrEmpty()) "new" else fields.state
 
         @JvmField
-        val stability: Double
+        val dueAtMillis: Long = fields.dueAtMillis.coerceAtLeast(0L)
 
         @JvmField
-        val difficulty: Double
+        val stability: Double = fields.stability
 
         @JvmField
-        val totalReviews: Int
+        val difficulty: Double = fields.difficulty
 
         @JvmField
-        val lapses: Int
+        val totalReviews: Int = fields.totalReviews.coerceAtLeast(0)
 
         @JvmField
-        val learningStep: Int
+        val lapses: Int = fields.lapses.coerceAtLeast(0)
 
         @JvmField
-        val lastRating: String
+        val learningStep: Int = fields.learningStep.coerceAtLeast(0)
 
         @JvmField
-        val matureIntervalDays: Int
+        val lastRating: String = nullToEmpty(fields.lastRating)
 
         @JvmField
-        val consecutivePasses: Int
+        val matureIntervalDays: Int = fields.matureIntervalDays.coerceAtLeast(0)
 
         @JvmField
-        val lastPassedDueAtMillis: Long
+        val consecutivePasses: Int = fields.consecutivePasses.coerceAtLeast(0)
+
+        @JvmField
+        val lastPassedDueAtMillis: Long = fields.lastPassedDueAtMillis.coerceAtLeast(0L)
 
         /**
          * Exact wall-clock time of the review that produced this memory.
@@ -54,41 +62,41 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
          * Older encodings do not contain this field; callers deliberately
          * fall back to the legacy due-minus-interval reconstruction for those
          * rows until the next committed review writes an exact timestamp.
-         */
+        */
         @JvmField
-        val lastReviewedAtMillis: Long
+        val lastReviewedAtMillis: Long = fields.lastReviewedAtMillis.coerceAtLeast(0L)
 
-        init {
-            val args = rest.toStudyArgsArray()
-            requireArgCount(CONTEXT_TASK_MEMORY, args, 3, 5, 6)
-            this.state = if (state.isNullOrEmpty()) "new" else state
-            this.dueAtMillis = dueAtMillis.coerceAtLeast(0L)
-            this.stability = stability
-            this.difficulty = difficulty
-            this.totalReviews = totalReviews.coerceAtLeast(0)
-            this.lapses = lapses.coerceAtLeast(0)
-            this.learningStep = intArg(args, 0, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.lastRating = nullToEmpty(stringArg(args, 1, CONTEXT_TASK_MEMORY))
-            this.matureIntervalDays = intArg(args, 2, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.consecutivePasses = if (args.size == 3) 0 else intArg(args, 3, CONTEXT_TASK_MEMORY).coerceAtLeast(0)
-            this.lastPassedDueAtMillis = if (args.size == 3) 0L else longArg(args, 4, CONTEXT_TASK_MEMORY).coerceAtLeast(0L)
-            this.lastReviewedAtMillis = if (args.size < 6) 0L else longArg(args, 5, CONTEXT_TASK_MEMORY).coerceAtLeast(0L)
-        }
+        data class Fields(
+            val state: String?,
+            val dueAtMillis: Long,
+            val stability: Double,
+            val difficulty: Double,
+            val totalReviews: Int,
+            val lapses: Int,
+            val learningStep: Int,
+            val lastRating: String?,
+            val matureIntervalDays: Int,
+            val consecutivePasses: Int = 0,
+            val lastPassedDueAtMillis: Long = 0L,
+            val lastReviewedAtMillis: Long = 0L,
+        )
 
         fun withDueAtMillis(dueAtMillis: Long): TaskMemory {
-            return TaskMemory(
-                state,
-                dueAtMillis,
-                stability,
-                difficulty,
-                totalReviews,
-                lapses,
-                learningStep,
-                lastRating,
-                matureIntervalDays,
-                consecutivePasses,
-                lastPassedDueAtMillis,
-                lastReviewedAtMillis,
+            return fromFields(
+                Fields(
+                    state = state,
+                    dueAtMillis = dueAtMillis,
+                    stability = stability,
+                    difficulty = difficulty,
+                    totalReviews = totalReviews,
+                    lapses = lapses,
+                    learningStep = learningStep,
+                    lastRating = lastRating,
+                    matureIntervalDays = matureIntervalDays,
+                    consecutivePasses = consecutivePasses,
+                    lastPassedDueAtMillis = lastPassedDueAtMillis,
+                    lastReviewedAtMillis = lastReviewedAtMillis,
+                )
             )
         }
 
@@ -109,8 +117,23 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
 
         companion object {
             @JvmStatic
+            fun fromFields(fields: Fields): TaskMemory = TaskMemory(fields)
+
+            @JvmStatic
             fun initial(): TaskMemory {
-                return TaskMemory("new", 0L, 0.4, 5.0, 0, 0, 0, "", 0)
+                return fromFields(
+                    Fields(
+                        state = "new",
+                        dueAtMillis = 0L,
+                        stability = 0.4,
+                        difficulty = 5.0,
+                        totalReviews = 0,
+                        lapses = 0,
+                        learningStep = 0,
+                        lastRating = "",
+                        matureIntervalDays = 0,
+                    )
+                )
             }
 
             @JvmStatic
@@ -123,17 +146,20 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                 lapses: Int,
                 vararg rest: Any?,
             ): TaskMemory {
-                requireArgCount(CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS, rest.toStudyArgsArray(), 2)
-                return TaskMemory(
-                    state,
-                    dueAtMillis,
-                    stability,
-                    difficulty,
-                    totalReviews,
-                    lapses,
-                    intArg(rest.toStudyArgsArray(), 0, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS),
-                    "",
-                    intArg(rest.toStudyArgsArray(), 1, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS),
+                val args = rest.toStudyArgsArray()
+                requireArgCount(CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS, args, 2)
+                return fromFields(
+                    Fields(
+                        state = state,
+                        dueAtMillis = dueAtMillis,
+                        stability = stability,
+                        difficulty = difficulty,
+                        totalReviews = totalReviews,
+                        lapses = lapses,
+                        learningStep = intArg(args, 0, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS),
+                        lastRating = "",
+                        matureIntervalDays = intArg(args, 1, CONTEXT_TASK_MEMORY_FROM_STUDY_FIELDS),
+                    )
                 )
             }
 
@@ -148,23 +174,52 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     return safeFallback
                 }
                 return try {
-                    TaskMemory(
-                        parts[0],
-                        parts[1].toLong(),
-                        parts[2].toDouble(),
-                        parts[3].toDouble(),
-                        parts[4].toInt(),
-                        parts[5].toInt(),
-                        parts[6].toInt(),
-                        parts[7],
-                        parts[8].toInt(),
-                        if (parts.size > 9) parts[9].toInt() else 0,
-                        if (parts.size > 10) parts[10].toLong() else 0L,
-                        if (parts.size > 11) parts[11].toLong() else 0L,
+                    fromFields(
+                        Fields(
+                            state = parts[0],
+                            dueAtMillis = parts[1].toLong(),
+                            stability = parts[2].toDouble(),
+                            difficulty = parts[3].toDouble(),
+                            totalReviews = parts[4].toInt(),
+                            lapses = parts[5].toInt(),
+                            learningStep = parts[6].toInt(),
+                            lastRating = parts[7],
+                            matureIntervalDays = parts[8].toInt(),
+                            consecutivePasses = if (parts.size > 9) parts[9].toInt() else 0,
+                            lastPassedDueAtMillis = if (parts.size > 10) parts[10].toLong() else 0L,
+                            lastReviewedAtMillis = if (parts.size > 11) parts[11].toLong() else 0L,
+                        )
                     )
                 } catch (_: RuntimeException) {
                     safeFallback
                 }
+            }
+
+            private fun legacyFields(
+                state: String?,
+                dueAtMillis: Long,
+                stability: Double,
+                difficulty: Double,
+                totalReviews: Int,
+                lapses: Int,
+                rest: Array<out Any?>,
+            ): Fields {
+                val args = rest.toStudyArgsArray()
+                requireArgCount(CONTEXT_TASK_MEMORY, args, 3, 5, 6)
+                return Fields(
+                    state = state,
+                    dueAtMillis = dueAtMillis,
+                    stability = stability,
+                    difficulty = difficulty,
+                    totalReviews = totalReviews,
+                    lapses = lapses,
+                    learningStep = intArg(args, 0, CONTEXT_TASK_MEMORY),
+                    lastRating = stringArg(args, 1, CONTEXT_TASK_MEMORY),
+                    matureIntervalDays = intArg(args, 2, CONTEXT_TASK_MEMORY),
+                    consecutivePasses = if (args.size == 3) 0 else intArg(args, 3, CONTEXT_TASK_MEMORY),
+                    lastPassedDueAtMillis = if (args.size == 3) 0L else longArg(args, 4, CONTEXT_TASK_MEMORY),
+                    lastReviewedAtMillis = if (args.size < 6) 0L else longArg(args, 5, CONTEXT_TASK_MEMORY),
+                )
             }
         }
     }
@@ -997,15 +1052,18 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     if (safeStage != memoryStage) {
                         return TaskMemory.initial()
                     }
-                    return TaskMemory.fromStudyFields(
-                        state,
-                        dueAtMillis,
-                        stability,
-                        difficulty,
-                        totalReviews,
-                        args.lapses,
-                        args.learningStep,
-                        args.matureIntervalDays,
+                    return TaskMemory.fromFields(
+                        TaskMemory.Fields(
+                            state = state,
+                            dueAtMillis = dueAtMillis,
+                            stability = stability,
+                            difficulty = difficulty,
+                            totalReviews = totalReviews,
+                            lapses = args.lapses,
+                            learningStep = args.learningStep,
+                            lastRating = "",
+                            matureIntervalDays = args.matureIntervalDays,
+                        )
                     )
                 }
 
@@ -1020,15 +1078,18 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     if (!args.writingRemediationPending) {
                         return TaskMemory.initial()
                     }
-                    return TaskMemory.fromStudyFields(
-                        state,
-                        dueAtMillis,
-                        stability,
-                        difficulty,
-                        totalReviews,
-                        args.lapses,
-                        args.learningStep,
-                        args.matureIntervalDays,
+                    return TaskMemory.fromFields(
+                        TaskMemory.Fields(
+                            state = state,
+                            dueAtMillis = dueAtMillis,
+                            stability = stability,
+                            difficulty = difficulty,
+                            totalReviews = totalReviews,
+                            lapses = args.lapses,
+                            learningStep = args.learningStep,
+                            lastRating = "",
+                            matureIntervalDays = args.matureIntervalDays,
+                        )
                     )
                 }
             }

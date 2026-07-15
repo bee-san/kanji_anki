@@ -11,6 +11,14 @@
 -keep class dev.bee.kanjianki.widget.KaniWidget { *; }
 
 # --- ML Kit Digital Ink Recognition ---
+# ML Kit discovers Firebase component registrars by class name and invokes their
+# no-argument constructors reflectively. Firebase's bundled consumer rule keeps
+# registrar classes, but R8 full mode may still remove an otherwise-unreferenced
+# constructor.
+-keep class * implements com.google.firebase.components.ComponentRegistrar {
+    void <init>();
+}
+
 # ML Kit uses reflection to load model classes and recognizer implementations.
 -keep class com.google.mlkit.vision.digitalink.** { *; }
 -keep class com.google.android.gms.internal.mlkit_vision_digital_ink.** { *; }

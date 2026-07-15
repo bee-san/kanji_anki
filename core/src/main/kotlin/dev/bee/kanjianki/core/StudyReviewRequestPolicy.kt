@@ -13,18 +13,20 @@ object StudyReviewRequestPolicy {
         val mappedRating = applyRequestedRating(rating, session.writingRequired, writingOutcome, override)
         val passed = !session.writingRequired || (writingOutcome != null && writingOutcome.writingPassed)
         val cleanWriting = writingOutcome != null && writingOutcome.cleanWriting
-        val request = RecordsSchedulerModels.ReviewRequest(
-            item.kanji,
-            session.token,
-            mappedRating,
-            session.writingRequired,
-            passed,
-            cleanWriting,
-            override,
-            hintsUsed,
-            session.taskType,
-            item.answerSignature,
-            session.prompt,
+        val request = RecordsSchedulerModels.ReviewRequest.fromFields(
+            RecordsSchedulerModels.ReviewRequest.Fields(
+                kanji = item.kanji,
+                token = session.token,
+                rating = mappedRating,
+                writingRequired = session.writingRequired,
+                writingPassed = passed,
+                writingClean = cleanWriting,
+                manualOverride = override,
+                hintsUsed = hintsUsed,
+                taskType = session.taskType,
+                answerSignature = item.answerSignature,
+                prompt = session.prompt,
+            )
         )
         return MappedReview.create(request, mappedRating)
     }

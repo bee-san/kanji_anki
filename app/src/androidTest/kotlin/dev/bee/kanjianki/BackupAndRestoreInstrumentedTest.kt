@@ -22,6 +22,7 @@ import dev.bee.kanjianki.backup.ValidatedBackup
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
+import dev.bee.kanjianki.testing.DeviceRisk
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.GZIPInputStream
@@ -34,6 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class BackupAndRestoreInstrumentedTest {
     @get:Rule
     val composeRule = createComposeRule()

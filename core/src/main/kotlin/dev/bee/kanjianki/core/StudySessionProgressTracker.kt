@@ -27,6 +27,16 @@ class StudySessionProgressTracker {
 
     fun missedCount(): Int = synchronized(lock) { missedKanji.size }
 
+    /** One lock acquisition for UI consumers that need a coherent progress frame. */
+    fun snapshot(): Snapshot = synchronized(lock) {
+        Snapshot(
+            targetCount = targetCount,
+            completedCount = completedCount,
+            movedForwardCount = movedForwardKanji.size,
+            missedCount = missedKanji.size,
+        )
+    }
+
     fun completedTaskBreakdown(): CompletedTaskBreakdown = synchronized(lock) {
         var writingChecks = 0
         var similarKanjiChoices = 0
@@ -163,6 +173,13 @@ class StudySessionProgressTracker {
         @JvmField val completed: Int,
         @JvmField val target: Int,
         @JvmField val fraction: Float,
+    )
+
+    data class Snapshot(
+        val targetCount: Int,
+        val completedCount: Int,
+        val movedForwardCount: Int,
+        val missedCount: Int,
     )
 
     class CompletedTaskBreakdown(

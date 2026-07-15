@@ -7,12 +7,12 @@ graph, and effort estimates for breaking up the monolithic `:app` module.
 
 | Module | Type | Files | Purpose |
 |--------|------|-------|---------|
-| `:app` | Android application | 331 Kotlin | UI, data layer, sync, update, backup, reminders, widget, study |
+| `:app` | Android application | 335 Kotlin | UI, data layer, sync, update, backup, reminders, widget, study |
 | `:core` | Kotlin JVM library | 163 Kotlin | Domain policies, text copy, scheduler engine, models |
 | `:dictionary-core` | Kotlin JVM library | 7 Kotlin | Dictionary lookup interface + asset loader |
 | `:writing-core` | Kotlin JVM library | 29 Kotlin | Handwriting analysis, stroke model, recognition types |
 | `:update-core` | Kotlin JVM library | 18 Kotlin | Update policies, version parsing, artifact validation |
-| `:fsrs-java` | Java library | ~30 Java | FSRS 5 spaced repetition algorithm implementation |
+| `:fsrs-java` | Kotlin JVM library | 9 Kotlin | FSRS-6 implementation; historical module name retained for compatibility |
 | `:domain` | Kotlin JVM library | 1 Kotlin | Shared domain model interfaces |
 | `:sync-domain` | Kotlin JVM library | 8 Kotlin | Sync-specific domain models |
 | `:build-logic` | Gradle convention plugin | — | Shared Kotlin library build conventions |
@@ -36,7 +36,7 @@ and `:writing-core`. All other modules are pulled transitively through `:core`
 
 ## Problem statement
 
-The `:app` module contains 331 Kotlin files spanning:
+The `:app` module contains 335 Kotlin files spanning:
 - **Data layer** (49 files in `data/`): `LocalStore*`, settings, migrations, schema
 - **Study UI** (~70 files): `MainActivityStudy*`, writing session, choice rendering
 - **Home UI** (~50 files): `MainActivityHome*`, dashboard, focus queue, browse
@@ -169,10 +169,24 @@ Phase 3 (After :data extraction):
    Without ViewModels, UI modules would still need to reach into activity fields
    for session state, effectively negating the extraction.
 
+## Enforced boundaries today
+
+`tools/test_module_boundaries.py`, run by `ciFast` through the normal tools
+suite, locks the current project dependency DAG and verifies that every
+pure-JVM module remains free of `android.*` and `androidx.*` imports. This is
+deliberately narrower than the future extraction roadmap: it prevents new
+coupling and cycles now without pretending the activity/data interfaces are
+ready for a large module move.
+
+The remaining split packages under `dev.bee.kanjianki.core` are known debt.
+They should be resolved as part of a deliberate module extraction rather than
+through package-only churn that provides no compile-time boundary.
+
 ## Notes
 
 - The `:core` module is already well-extracted (163 files, pure JVM, no Android
   dependencies). It should remain the policy/model layer.
-- `:fsrs-java` is a standalone algorithm library (no Kani dependencies).
+- `:fsrs-java` is a standalone Kotlin algorithm library (no Kani dependencies).
 - `:dictionary-core` and `:writing-core` are already appropriately scoped.
-- This roadmap is analysis only — no code changes accompany it.
+- The extraction phases remain a roadmap; the current boundary test is the only
+  enforcement change included here.

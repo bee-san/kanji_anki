@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
+import dev.bee.kanjianki.testing.DeviceRisk
 import kotlin.coroutines.EmptyCoroutineContext
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -37,6 +38,7 @@ private fun completedVoidFuture(): SettableFuture<Void> {
 }
 
 @RunWith(AndroidJUnit4::class)
+@DeviceRisk
 class DatabaseBackupWorkerInstrumentedTest {
     private lateinit var context: Context
 

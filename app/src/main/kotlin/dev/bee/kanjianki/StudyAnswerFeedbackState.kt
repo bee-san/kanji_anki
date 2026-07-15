@@ -38,6 +38,8 @@ class StudyAnswerFeedbackState private constructor(
     initialOutcome: StudyAnswerOutcome?,
     initialSelectedAnswer: String,
 ) {
+    private var changeObserver: (() -> Unit)? = null
+
     constructor(sessionToken: String) : this(
         sessionToken,
         StudyAnswerFeedbackPhase.UNANSWERED,
@@ -74,6 +76,7 @@ class StudyAnswerFeedbackState private constructor(
         this.selectedAnswer = selectedAnswer
         autoContinueOnApply = autoContinue
         phase = StudyAnswerFeedbackPhase.SUBMITTING
+        notifyChanged()
         return true
     }
 
@@ -82,6 +85,7 @@ class StudyAnswerFeedbackState private constructor(
             return false
         }
         phase = StudyAnswerFeedbackPhase.APPLIED
+        notifyChanged()
         return true
     }
 
@@ -93,6 +97,7 @@ class StudyAnswerFeedbackState private constructor(
         selectedAnswer = ""
         autoContinueOnApply = false
         phase = StudyAnswerFeedbackPhase.UNANSWERED
+        notifyChanged()
         return true
     }
 
@@ -101,6 +106,7 @@ class StudyAnswerFeedbackState private constructor(
             return false
         }
         phase = StudyAnswerFeedbackPhase.CONTINUED
+        notifyChanged()
         return true
     }
 
@@ -110,11 +116,21 @@ class StudyAnswerFeedbackState private constructor(
             return false
         }
         phase = StudyAnswerFeedbackPhase.APPLIED
+        notifyChanged()
         return true
     }
 
     fun snapshot(): StudyAnswerFeedbackSnapshot {
         return StudyAnswerFeedbackSnapshot(sessionToken, phase, outcome, selectedAnswer)
+    }
+
+    /** The retained state holder uses this to mirror mutable Compose state into StateFlow. */
+    internal fun observeChanges(observer: (() -> Unit)?) {
+        changeObserver = observer
+    }
+
+    private fun notifyChanged() {
+        changeObserver?.invoke()
     }
 
     companion object {

@@ -13,6 +13,10 @@ import android.widget.EditText
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.DictionaryLookup
@@ -41,6 +45,7 @@ import dev.bee.kanjianki.sync.SyncSettings
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlinx.coroutines.launch
 
 internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
@@ -88,8 +93,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     val hintProgression = HintProgression()
 
-    @JvmField
-    val studySessionTracker = StudySessionTracker()
+    internal val studySessionViewModel: StudySessionViewModel by lazy(LazyThreadSafetyMode.NONE) {
+        ViewModelProvider(this)[StudySessionViewModel::class.java]
+    }
+
+    val studySessionUiState
+        get() = studySessionViewModel.uiState
+
+    val studySessionTracker: StudySessionTracker
+        get() = studySessionViewModel.tracker
 
     lateinit var store: LocalStore
 
@@ -113,11 +125,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var screenshotThemeChoiceOverride: KaniThemeChoice? = null
 
-    @JvmField
-    var activeSession: RecordsSchedulerModels.StudySession? = null
+    var activeSession: RecordsSchedulerModels.StudySession?
+        get() = studySessionViewModel.activeSession()
+        set(value) = studySessionViewModel.mountSession(value)
 
-    @JvmField
-    var studyAnswerFeedbackState: StudyAnswerFeedbackState? = null
+    var studyAnswerFeedbackState: StudyAnswerFeedbackState?
+        get() = studySessionViewModel.feedbackState()
+        set(value) {
+            studySessionViewModel.installFeedback(value)
+        }
 
     @JvmField
     var activeSimilarWritingRepair: RecordsImportModels.SimilarKanjiWritingRepair? = null
@@ -323,6 +339,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     abstract fun thresholdInput(value: Int): EditText
     abstract fun parseThresholdInput(input: EditText): Int
 
+    /** Handles one-shot work emitted by the retained Study state holder. */
+    open fun handleStudySessionEffect(effect: StudySessionEffect) = Unit
+
     /** Subclasses with a durable Study payload opt into route restoration after recreation. */
     open fun shouldRestoreStudyRouteAfterRecreation(): Boolean = false
 
@@ -371,6 +390,13 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             ActivityResultContracts.RequestPermission(),
         ) { granted -> handlePostNotificationPermission(granted) }
         onBackPressedDispatcher.addCallback(this, backCallback)
+        // Create the retained owner on main before startup can dispatch Study work to IO.
+        val retainedStudySession = studySessionViewModel
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                retainedStudySession.effects.collect(::handleStudySessionEffect)
+            }
+        }
         startup.start()
     }
 

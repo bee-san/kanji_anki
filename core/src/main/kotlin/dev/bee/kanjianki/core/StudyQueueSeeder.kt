@@ -412,16 +412,18 @@ class StudyQueueSeeder {
         // review evolves the real FSRS state rather than the new-card
         // placeholder. Due is now, so this validates the skill once and then
         // rides a real interval.
-        val seededMemory = RecordsStudyModels.TaskMemory(
-            StudyLadderRules.STATE_REVIEW,
-            nowMillis,
-            seed.stability,
-            seed.difficulty,
-            0,
-            0,
-            0,
-            "",
-            0,
+        val seededMemory = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = StudyLadderRules.STATE_REVIEW,
+                dueAtMillis = nowMillis,
+                stability = seed.stability,
+                difficulty = seed.difficulty,
+                totalReviews = 0,
+                lapses = 0,
+                learningStep = 0,
+                lastRating = "",
+                matureIntervalDays = 0,
+            )
         )
         val route = AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING)
         return seeded.copyBuilder()

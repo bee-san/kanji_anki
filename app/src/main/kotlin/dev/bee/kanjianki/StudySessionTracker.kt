@@ -21,6 +21,7 @@ import dev.bee.kanjianki.data.ReviewTaskTiming
  * here guards this class's own fields (activeTask, planned-key sets).
  */
 internal class StudySessionTracker(
+    private val onChanged: () -> Unit = {},
     private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() },
 ) {
     private val lock = Any()
@@ -40,10 +41,24 @@ internal class StudySessionTracker(
 
     fun missedCount(): Int = progressTracker.missedCount()
 
-    fun resetProgress() = synchronized(lock) {
-        progressTracker.resetProgress()
-        plannedSessionTaskKeys.clear()
-        completedPlannedSessionTaskKeys.clear()
+    fun snapshot(): Snapshot = synchronized(lock) {
+        val progress = progressTracker.snapshot()
+        Snapshot(
+            targetCount = progress.targetCount,
+            completedCount = progress.completedCount,
+            movedForwardCount = progress.movedForwardCount,
+            missedCount = progress.missedCount,
+            activeTask = activeTask != null,
+        )
+    }
+
+    fun resetProgress() {
+        synchronized(lock) {
+            progressTracker.resetProgress()
+            plannedSessionTaskKeys.clear()
+            completedPlannedSessionTaskKeys.clear()
+        }
+        onChanged()
     }
 
     /**
@@ -55,17 +70,20 @@ internal class StudySessionTracker(
     fun initializeSessionPlan(
         taskKeys: List<String>?,
         pendingRepeatTaskKeys: List<String>? = null,
-    ) = synchronized(lock) {
-        val normalized = normalizeSessionTaskKeys(taskKeys)
-        val normalizedRepeats = normalizeSessionTaskKeys(pendingRepeatTaskKeys)
-        val reconciled = reconcileSessionTaskKeys(normalized)
-        plannedSessionTaskKeys.clear()
-        plannedSessionTaskKeys.addAll(reconciled)
-        progressTracker.setTargetCount(
-            progressTracker.completedCount() +
-                pendingPlannedSessionTaskKeysLocked().size +
-                normalizedRepeats.size,
-        )
+    ) {
+        synchronized(lock) {
+            val normalized = normalizeSessionTaskKeys(taskKeys)
+            val normalizedRepeats = normalizeSessionTaskKeys(pendingRepeatTaskKeys)
+            val reconciled = reconcileSessionTaskKeys(normalized)
+            plannedSessionTaskKeys.clear()
+            plannedSessionTaskKeys.addAll(reconciled)
+            progressTracker.setTargetCount(
+                progressTracker.completedCount() +
+                    pendingPlannedSessionTaskKeysLocked().size +
+                    normalizedRepeats.size,
+            )
+        }
+        onChanged()
     }
 
     private fun normalizeSessionTaskKeys(taskKeys: List<String>?): List<String> {
@@ -207,13 +225,19 @@ internal class StudySessionTracker(
 
     fun initializeTarget(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
         progressTracker.initializeTarget(plan)
+        onChanged()
     }
 
     fun setTargetCount(targetCount: Int) {
         progressTracker.setTargetCount(targetCount)
+        onChanged()
     }
 
-    fun includePendingTask(key: String?): Boolean = progressTracker.includePendingTask(key)
+    fun includePendingTask(key: String?): Boolean {
+        val included = progressTracker.includePendingTask(key)
+        if (included) onChanged()
+        return included
+    }
 
     fun atHardCap(continueAllKanjiSession: Boolean): Boolean {
         return progressTracker.atHardCap(continueAllKanjiSession)
@@ -228,10 +252,14 @@ internal class StudySessionTracker(
 
     fun registerTaskShown(key: String?) {
         progressTracker.registerTaskShown(key)
+        onChanged()
     }
 
-    fun markTaskCompleted(key: String?) = synchronized(lock) {
-        progressTracker.markTaskCompleted(key)
+    fun markTaskCompleted(key: String?) {
+        synchronized(lock) {
+            progressTracker.markTaskCompleted(key)
+        }
+        onChanged()
     }
 
     fun hasActiveTask(): Boolean = synchronized(lock) { activeTask != null }
@@ -242,17 +270,19 @@ internal class StudySessionTracker(
         taskType: String?,
         startedAt: Long,
         resumeImmediately: Boolean,
-    ) = synchronized(lock) {
-        if (key.isNullOrEmpty()) {
-            return@synchronized
+    ) {
+        val changed = synchronized(lock) {
+            if (key.isNullOrEmpty() || activeTask?.taskKey == key) {
+                false
+            } else {
+                activeTask = ActiveStudyTask(key, kanji, taskType, startedAt)
+                if (resumeImmediately) {
+                    activeTask?.resume(elapsedRealtime())
+                }
+                true
+            }
         }
-        if (activeTask?.taskKey == key) {
-            return@synchronized
-        }
-        activeTask = ActiveStudyTask(key, kanji, taskType, startedAt)
-        if (resumeImmediately) {
-            activeTask?.resume(elapsedRealtime())
-        }
+        if (changed) onChanged()
     }
 
     fun completeActiveTask(
@@ -308,18 +338,23 @@ internal class StudySessionTracker(
         )
     }
 
-    fun commitPreparedTask(prepared: PreparedTaskCompletion?) = synchronized(lock) {
-        if (prepared == null || activeTask !== prepared.task) {
-            return@synchronized
-        }
-        if (prepared.countProgress) {
-            progressTracker.markTaskCompleted(prepared.task.taskKey)
-            val plannedKey = plannedSessionTaskKey(prepared.task.taskType, prepared.task.kanji)
-            if (plannedKey.isNotEmpty()) {
-                completedPlannedSessionTaskKeys.add(plannedKey)
+    fun commitPreparedTask(prepared: PreparedTaskCompletion?) {
+        val changed = synchronized(lock) {
+            if (prepared == null || activeTask !== prepared.task) {
+                false
+            } else {
+                if (prepared.countProgress) {
+                    progressTracker.markTaskCompleted(prepared.task.taskKey)
+                    val plannedKey = plannedSessionTaskKey(prepared.task.taskType, prepared.task.kanji)
+                    if (plannedKey.isNotEmpty()) {
+                        completedPlannedSessionTaskKeys.add(plannedKey)
+                    }
+                }
+                activeTask = null
+                true
             }
         }
-        activeTask = null
+        if (changed) onChanged()
     }
 
     fun rollbackPreparedTask(prepared: PreparedTaskCompletion?) = synchronized(lock) {
@@ -338,10 +373,12 @@ internal class StudySessionTracker(
         after: RecordsStudyModels.StudyItem?,
     ) {
         progressTracker.recordReviewOutcome(kanji, appliedRating, before, after)
+        onChanged()
     }
 
     fun recordRepairOutcome(kanji: String?, passed: Boolean) {
         progressTracker.recordRepairOutcome(kanji, passed)
+        onChanged()
     }
 
     fun pauseActiveTask() = synchronized(lock) {
@@ -354,8 +391,13 @@ internal class StudySessionTracker(
         Unit
     }
 
-    fun abandonActiveTask() = synchronized(lock) {
-        activeTask = null
+    fun abandonActiveTask() {
+        val changed = synchronized(lock) {
+            val hadActiveTask = activeTask != null
+            activeTask = null
+            hadActiveTask
+        }
+        if (changed) onChanged()
     }
 
     class ActiveStudyTask(
@@ -401,6 +443,14 @@ internal class StudySessionTracker(
             )
         }
     }
+
+    data class Snapshot(
+        val targetCount: Int,
+        val completedCount: Int,
+        val movedForwardCount: Int,
+        val missedCount: Int,
+        val activeTask: Boolean,
+    )
 
     class PreparedTaskCompletion internal constructor(
         internal val task: ActiveStudyTask,

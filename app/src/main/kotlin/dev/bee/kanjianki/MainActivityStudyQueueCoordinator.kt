@@ -19,7 +19,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val feedback = study.studyAnswerFeedbackState
         val active = study.activeSession
         val feedbackPhase = feedback?.snapshot()?.phase
-        if (!study.preserveStudyRecoveryForHarnessRoute && active != null &&
+        if (!recoveryOnly && !study.preserveStudyRecoveryForHarnessRoute && active != null &&
             feedback?.sessionToken == active.token &&
             (feedbackPhase == StudyAnswerFeedbackPhase.SUBMITTING || feedbackPhase == StudyAnswerFeedbackPhase.APPLIED)
         ) {

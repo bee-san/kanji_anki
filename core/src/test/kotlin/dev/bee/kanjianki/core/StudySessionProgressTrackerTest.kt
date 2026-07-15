@@ -34,6 +34,22 @@ class StudySessionProgressTrackerTest {
     }
 
     @Test
+    fun snapshotReturnsOneCoherentProgressFrame() {
+        val tracker = StudySessionProgressTracker()
+        val item = item("裂", RecordsBase.LadderRung.KANJI_MEANING, 0, 0)
+        tracker.setTargetCount(3)
+        tracker.markTaskCompleted("session:kanji_meaning:裂:token")
+        tracker.recordReviewOutcome("裂", BridgeScheduler.RATING_AGAIN, item, item)
+
+        val snapshot = tracker.snapshot()
+
+        assertEquals(3, snapshot.targetCount)
+        assertEquals(1, snapshot.completedCount)
+        assertEquals(0, snapshot.movedForwardCount)
+        assertEquals(1, snapshot.missedCount)
+    }
+
+    @Test
     fun targetInitializationUsesRemainingThenTargetAndClampsManualValues() {
         val tracker = StudySessionProgressTracker()
 

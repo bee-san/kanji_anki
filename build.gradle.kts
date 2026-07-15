@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.Exec
+import org.gradle.api.GradleException
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -16,35 +17,33 @@ val sonarProjectVersion = providers.gradleProperty("sonarProjectVersion")
     .orElse(libs.versions.appVersionName.get())
 
 val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String::toBoolean).getOrElse(false)
-val maybeSonarMainBinaries = listOf(
-    rootPath("fsrs-java/build/classes"),
-    rootPath("core/build/classes"),
-    rootPath("domain/build/classes"),
-    rootPath("sync-domain/build/classes"),
-    rootPath("writing-core/build/classes"),
-    rootPath("dictionary-core/build/classes"),
-    rootPath("update-core/build/classes"),
-    rootPath("app/build/intermediates/javac"),
-    rootPath("app/build/tmp/kotlin-classes/debug"),
-    rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+val sonarAppMainBinaries = providers.gradleProperty("sonarAppMainBinaries")
+    .getOrElse(rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"))
+val sonarMainBinaries = listOf(
+    rootPath("fsrs-java/build/classes/kotlin/main"),
+    rootPath("core/build/classes/kotlin/main"),
+    rootPath("domain/build/classes/kotlin/main"),
+    rootPath("sync-domain/build/classes/kotlin/main"),
+    rootPath("writing-core/build/classes/kotlin/main"),
+    rootPath("dictionary-core/build/classes/kotlin/main"),
+    rootPath("update-core/build/classes/kotlin/main"),
+    rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
+    sonarAppMainBinaries,
 )
-val maybeSonarTestBinaries = listOf(
-    rootPath("fsrs-java/build/classes"),
-    rootPath("core/build/classes"),
-    rootPath("domain/build/classes"),
-    rootPath("sync-domain/build/classes"),
-    rootPath("writing-core/build/classes"),
-    rootPath("dictionary-core/build/classes"),
-    rootPath("update-core/build/classes"),
-    rootPath("app/build/intermediates/javac"),
+val sonarTestBinaries = listOf(
+    rootPath("fsrs-java/build/classes/kotlin/test"),
+    rootPath("core/build/classes/kotlin/test"),
+    rootPath("core/build/classes/java/test"),
+    rootPath("domain/build/classes/kotlin/test"),
+    rootPath("sync-domain/build/classes/kotlin/test"),
+    rootPath("writing-core/build/classes/kotlin/test"),
+    rootPath("dictionary-core/build/classes/kotlin/test"),
+    rootPath("update-core/build/classes/kotlin/test"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
+    rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
 )
-fun existingSonarPaths(paths: Iterable<String>): String = paths
-    .filter { file(it).exists() }
-    .joinToString(",")
-
-val maybeSonarCoveragePaths = buildList<String> {
+val sonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -57,8 +56,38 @@ val maybeSonarCoveragePaths = buildList<String> {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
     }
 }
+
+val sonarPreflight = tasks.register("sonarPreflight") {
+    group = "verification"
+    description = "Fails closed when deterministic Sonar bytecode or coverage inputs are missing."
+    inputs.property("binaryPaths", (sonarMainBinaries + sonarTestBinaries).distinct())
+    inputs.property("coveragePaths", sonarCoveragePaths)
+    doLast {
+        fun inputPaths(name: String): List<String> =
+            (inputs.properties.getValue(name) as Iterable<*>).map { it.toString() }
+
+        val missingBinaries = inputPaths("binaryPaths")
+            .filterNot { path ->
+                val input = java.io.File(path)
+                input.isFile || (
+                    input.isDirectory && input.walkTopDown().any { candidate ->
+                        candidate.isFile && (candidate.extension == "class" || candidate.extension == "jar")
+                    }
+                )
+            }
+        val missingCoverage = inputPaths("coveragePaths").filterNot { path ->
+            java.io.File(path).let { it.isFile && it.length() > 0L }
+        }
+        val missing = missingBinaries + missingCoverage
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Missing deterministic Sonar inputs; run ./gradlew ciQuality before sonar:\n" +
+                    missing.joinToString("\n") { " - $it" },
+            )
+        }
+    }
+}
 val fastSonarCoverageExclusions = listOf(
-    "app/src/main/java/dev/bee/kanjianki/MainActivity*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/MainActivity*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeChromeCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/HomeFocusQueueCompose.kt",
@@ -67,24 +96,15 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/HomeSyncConfirmDialogCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/ProgressAnalyticsCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/KaniBottomNavCompose.kt",
-    "app/src/main/java/dev/bee/kanjianki/*View.java",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
-    "app/src/main/java/dev/bee/kanjianki/SyncProgressPanel.java",
     "app/src/main/kotlin/dev/bee/kanjianki/SyncProgressPanel.kt",
-    "app/src/main/java/dev/bee/kanjianki/anki/*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
-    "app/src/main/java/dev/bee/kanjianki/data/HistoricalSyncStore.java",
     "app/src/main/kotlin/dev/bee/kanjianki/data/HistoricalSyncStore.kt",
-    "app/src/main/java/dev/bee/kanjianki/data/LocalStore*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore.kt",
-    "app/src/main/java/dev/bee/kanjianki/data/SettingsRepository.java",
     "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/DictionaryStore.kt",
-    "app/src/main/java/dev/bee/kanjianki/reminders/*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/ReminderReceiverDailyActions.kt",
-    "app/src/main/java/dev/bee/kanjianki/sync/*.java",
     "app/src/main/kotlin/dev/bee/kanjianki/sync/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/widget/KaniWidget.kt",
 )
@@ -104,13 +124,17 @@ sonar {
         property("sonar.projectKey", "bee-san_kanji_anki")
         property("sonar.organization", "bee-san")
         property("sonar.projectVersion", sonarProjectVersion.get())
-        property("sonar.java.binaries", existingSonarPaths(maybeSonarMainBinaries))
-        property("sonar.java.test.binaries", existingSonarPaths(maybeSonarTestBinaries))
-        property("sonar.coverage.jacoco.xmlReportPaths", existingSonarPaths(maybeSonarCoveragePaths))
+        property("sonar.java.binaries", sonarMainBinaries.joinToString(","))
+        property("sonar.java.test.binaries", sonarTestBinaries.joinToString(","))
+        property("sonar.coverage.jacoco.xmlReportPaths", sonarCoveragePaths.joinToString(","))
         property("sonar.coverage.exclusions", sonarCoverageExclusions.joinToString(","))
         property("sonar.scanner.skipJreProvisioning", "true")
         property("sonar.exclusions", "**/src/debug/**")
     }
+}
+
+tasks.named("sonar") {
+    dependsOn(sonarPreflight)
 }
 
 tasks.register<Exec>("testDictionaryAssets") {
