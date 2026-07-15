@@ -12,9 +12,6 @@ class StudyCueFormatter private constructor() {
         private val NUMBERED_PREFIX_PATTERN: Pattern = Pattern.compile("^\\d+\\.\\s*")
         private val GODAN_PATTERN: Pattern = Pattern.compile("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+")
         private val ADJECTIVE_VERB_PATTERN: Pattern = Pattern.compile("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+")
-        private val TRAILING_JAPANESE_EXAMPLE_PATTERN: Pattern = Pattern.compile(
-            "(?i)([a-z][\\p{Punct}]*)\\s+[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}].*$",
-        )
         private val TRAILING_SEE_ALSO_PATTERN: Pattern = Pattern.compile("(?i)[\\s\\p{Punct}]*\\bsee also\\b[\\s\\p{Punct}]*$")
         private val LEADING_METADATA_SEPARATOR_PATTERN: Pattern = Pattern.compile("\\s+")
         private val NON_ALPHA_NUMERIC_PATTERN: Pattern = Pattern.compile("[^a-z0-9-]")
@@ -163,7 +160,7 @@ class StudyCueFormatter private constructor() {
             value = GODAN_PATTERN.matcher(value).replaceAll("")
             value = ADJECTIVE_VERB_PATTERN.matcher(value).replaceAll("")
             value = stripLeadingMetadataWords(value)
-            value = TRAILING_JAPANESE_EXAMPLE_PATTERN.matcher(value).replaceAll("\$1")
+            value = stripTrailingJapaneseExample(value)
             value = TRAILING_SEE_ALSO_PATTERN.matcher(value).replaceAll("")
             return cleanInline(value)
         }
@@ -238,6 +235,66 @@ class StudyCueFormatter private constructor() {
                 normalized == "no-adj" ||
                 LEADING_METADATA.contains(normalized)
         }
+
+        /**
+         * Removes a Japanese usage example appended after an English gloss.
+         *
+         * This deliberately avoids Unicode-script properties in a regular
+         * expression. Android 8's ICU-backed Pattern rejects Java's `IsHan`,
+         * `IsHiragana`, and `IsKatakana` spellings while initializing this
+         * class. Code-point classification is supported on every minSdk and
+         * also retains supplementary-plane Han characters.
+         */
+        private fun stripTrailingJapaneseExample(value: String): String {
+            var japaneseIndex = 0
+            while (japaneseIndex < value.length) {
+                val codePoint = value.codePointAt(japaneseIndex)
+                if (isJapaneseScript(codePoint)) {
+                    var whitespaceStart = japaneseIndex
+                    while (whitespaceStart > 0) {
+                        val previous = value.codePointBefore(whitespaceStart)
+                        if (!isAsciiRegexWhitespace(previous)) {
+                            break
+                        }
+                        whitespaceStart -= Character.charCount(previous)
+                    }
+                    if (whitespaceStart < japaneseIndex) {
+                        var englishEnd = whitespaceStart
+                        while (englishEnd > 0) {
+                            val previous = value.codePointBefore(englishEnd)
+                            if (!isAsciiPunctuation(previous)) {
+                                break
+                            }
+                            englishEnd -= Character.charCount(previous)
+                        }
+                        if (englishEnd > 0 && isAsciiLetter(value.codePointBefore(englishEnd))) {
+                            return value.substring(0, whitespaceStart)
+                        }
+                    }
+                }
+                japaneseIndex += Character.charCount(codePoint)
+            }
+            return value
+        }
+
+        private fun isJapaneseScript(codePoint: Int): Boolean = when (Character.UnicodeScript.of(codePoint)) {
+            Character.UnicodeScript.HAN,
+            Character.UnicodeScript.HIRAGANA,
+            Character.UnicodeScript.KATAKANA,
+            -> true
+            else -> false
+        }
+
+        private fun isAsciiLetter(codePoint: Int): Boolean =
+            codePoint in 'a'.code..'z'.code || codePoint in 'A'.code..'Z'.code
+
+        // java.util.regex.Pattern's default \s and \p{Punct} classes are ASCII.
+        private fun isAsciiRegexWhitespace(codePoint: Int): Boolean =
+            codePoint == ' '.code || codePoint in '\t'.code..'\r'.code
+
+        private fun isAsciiPunctuation(codePoint: Int): Boolean =
+            codePoint in 0x21..0x2F || codePoint in 0x3A..0x40 ||
+                codePoint in 0x5B..0x60 || codePoint in 0x7B..0x7E
 
         private fun cleanInline(value: String?): String {
             if (value == null) {

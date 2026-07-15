@@ -12,14 +12,20 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
+import java.io.Closeable
 import java.util.LinkedHashSet
 
+/**
+ * Declares [Closeable] directly because API 26's SQLiteOpenHelper does not yet
+ * implement the AutoCloseable interface exposed by the compile SDK. This keeps
+ * Kotlin's `use` blocks binary-compatible with the app's minimum API level.
+ */
 abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOpenHelper(
     context!!.applicationContext,
     DB_NAME,
     null,
     DB_VERSION,
-) {
+), Closeable {
     init {
         // Write-Ahead Logging lets readers proceed concurrently with the large sync
         // write transaction instead of being blocked for its whole duration (jank/ANR
