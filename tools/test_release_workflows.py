@@ -15,6 +15,7 @@ WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 GRADLE_WRAPPER_PROPERTIES = ROOT / "gradle/wrapper/gradle-wrapper.properties"
 ANDROID_RELEASE_WORKFLOW = ROOT / ".github/workflows/android-release.yml"
 ANDROID_INSTRUMENTED_WORKFLOW = ROOT / ".github/workflows/android-instrumented.yml"
+ANDROID_DEVICE_SMOKE_WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
 SONAR_WORKFLOW = ROOT / ".github/workflows/sonarqube.yml"
 CODEQL_WORKFLOW = ROOT / ".github/workflows/codeql.yml"
 DEBUG_MANIFEST = ROOT / "app/src/debug/AndroidManifest.xml"
@@ -175,6 +176,17 @@ class WorkflowSupplyChainTest(unittest.TestCase):
             6,
         )
         self.assertNotIn("sdkmanager", workflow_text)
+
+
+class AndroidDeviceSmokeWorkflowTest(unittest.TestCase):
+    def test_emulator_runner_script_is_posix_sh_compatible(self) -> None:
+        workflow = ANDROID_DEVICE_SMOKE_WORKFLOW.read_text(encoding="utf-8")
+        risk_job = _yaml_mapping_block(workflow, "full-risk-suite", 2)
+
+        # android-emulator-runner executes `script` with /usr/bin/sh, even on
+        # Ubuntu. Dash rejects Bash's `set -o pipefail` before tests can run.
+        self.assertIn("set -eu", risk_job)
+        self.assertNotIn("set -euo pipefail", risk_job)
 
 
 class WorkflowAnalysisIntegrityTest(unittest.TestCase):
