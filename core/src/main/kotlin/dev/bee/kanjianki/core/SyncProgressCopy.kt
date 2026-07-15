@@ -138,6 +138,11 @@ object SyncProgressCopy {
         return localizedText("Sync progress: $value", "同期の進捗: $value")
     }
 
+    @JvmStatic
+    fun initialCountBody(): String {
+        return localizedText("Reading collection details.", "コレクションの詳細を読み込み中です。")
+    }
+
     private fun cardsPerSecondText(perSecond: Double): String {
         val pattern = if (perSecond >= 10.0) "%.0f" else "%.1f"
         val value = String.format(Locale.US, pattern, perSecond)

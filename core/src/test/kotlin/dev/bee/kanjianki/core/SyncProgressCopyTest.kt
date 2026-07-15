@@ -58,6 +58,7 @@ class SyncProgressCopyTest {
             )
             assertEquals("Preparing card scan.", SyncProgressCopy.stageBody(null))
             assertEquals("Sync progress: Finding note type", SyncProgressCopy.progressDescription("Finding note type"))
+            assertEquals("Reading collection details.", SyncProgressCopy.initialCountBody())
         }
     }
 
@@ -166,6 +167,7 @@ class SyncProgressCopyTest {
             )
             assertEquals("カードをスキャンする準備をしています。", SyncProgressCopy.stageBody(null))
             assertEquals("同期の進捗: ノートタイプを確認中", SyncProgressCopy.progressDescription("ノートタイプを確認中"))
+            assertEquals("コレクションの詳細を読み込み中です。", SyncProgressCopy.initialCountBody())
             assertEquals("0 / 10 枚をスキャン済み", SyncProgressCopy.cardProgressText(-2, 10))
             assertEquals("7 / 12 枚をスキャン済み", SyncProgressCopy.cardProgressText(7, 12))
             assertEquals("7 / 0 枚をスキャン済み", SyncProgressCopy.cardProgressText(7, -12))

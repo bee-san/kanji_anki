@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -400,7 +401,14 @@ private fun Modifier.revealedReviewSwipeGestures(
 ): Modifier {
     val touchSlop = LocalViewConfiguration.current.touchSlop.roundToInt()
     val minimumSwipeDistance = with(LocalDensity.current) { 72.dp.toPx().roundToInt() }
-    swipeFeedback?.thresholdPx = minimumSwipeDistance.toFloat()
+    if (swipeFeedback != null) {
+        // Snapshot state writes are not allowed during composition; publish the
+        // threshold after composition commits. The gesture below reads the local
+        // minimumSwipeDistance directly, so it never depends on this state.
+        SideEffect {
+            swipeFeedback.thresholdPx = minimumSwipeDistance.toFloat()
+        }
+    }
     return pointerInput(touchSlop, minimumSwipeDistance, swipeFeedback, submitReview) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)

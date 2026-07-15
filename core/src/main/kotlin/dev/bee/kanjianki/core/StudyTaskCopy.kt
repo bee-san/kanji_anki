@@ -10,12 +10,6 @@ object StudyTaskCopy {
     private const val TASK_TARGETED_FLASHCARD = "targeted_flashcard"
     private const val TASK_MEANING_FLASHCARD = "meaning_flashcard"
     private const val TASK_FONT_RECOGNITION = "font_recognition"
-    private const val TASK_REPAIR_WRITING = "repair_writing"
-    private const val TASK_TARGETED_WRITING = "targeted_writing"
-    private const val TASK_CONTEXT_WRITING = "context_writing"
-    private const val TASK_GUIDED_WRITING = "guided_writing"
-    private const val TASK_BLIND_WRITING = "blind_writing"
-    private const val TASK_SAMPLED_HANDWRITING = "sampled_handwriting"
     private const val TASK_CONFUSABLE_RECOGNITION = "confusable_recognition"
 
     @JvmStatic
@@ -37,12 +31,12 @@ object StudyTaskCopy {
         StudyTaskTypes.SIMILAR_KANJI -> localizedText(LABEL_SIMILAR_KANJI, "似た漢字")
         TASK_MEANING_FLASHCARD -> localizedText("Quick recall", "素早く復習")
         TASK_FONT_RECOGNITION -> localizedText("Font check", "フォント確認")
-        TASK_REPAIR_WRITING -> localizedText("Repair", "修正")
-        TASK_TARGETED_WRITING -> localizedText("Focused practice", "集中練習")
-        TASK_CONTEXT_WRITING -> localizedText("New problem kanji", "新しい問題漢字")
-        TASK_GUIDED_WRITING -> localizedText("Guided review", "ガイド付き復習")
-        TASK_BLIND_WRITING,
-        TASK_SAMPLED_HANDWRITING -> localizedText("Memory check", "記憶確認")
+        StudyTaskTypes.REPAIR_WRITING -> localizedText("Repair", "修正")
+        StudyTaskTypes.TARGETED_WRITING -> localizedText("Focused practice", "集中練習")
+        StudyTaskTypes.CONTEXT_WRITING -> localizedText("New problem kanji", "新しい問題漢字")
+        StudyTaskTypes.GUIDED_WRITING -> localizedText("Guided review", "ガイド付き復習")
+        StudyTaskTypes.BLIND_WRITING,
+        StudyTaskTypes.SAMPLED_HANDWRITING -> localizedText("Memory check", "記憶確認")
 
         TASK_CONFUSABLE_RECOGNITION -> localizedText("Learn the shape", "形を覚える")
         else -> localizedText(LABEL_STUDY, "学習")
@@ -76,9 +70,12 @@ object StudyTaskCopy {
         if (session == null) {
             return false
         }
-        return TASK_CONTEXT_WRITING == session.taskType ||
-            TASK_GUIDED_WRITING == session.taskType ||
-            (TASK_TARGETED_WRITING == session.taskType && (session.item?.learningStep ?: Int.MAX_VALUE) < 2)
+        return StudyTaskTypes.CONTEXT_WRITING == session.taskType ||
+            StudyTaskTypes.GUIDED_WRITING == session.taskType ||
+            (
+                StudyTaskTypes.TARGETED_WRITING == session.taskType &&
+                    (session.item?.learningStep ?: Int.MAX_VALUE) < 2
+                )
     }
 
     @JvmStatic
@@ -86,12 +83,13 @@ object StudyTaskCopy {
         if (session == null) {
             return false
         }
-        return TASK_BLIND_WRITING == session.taskType || TASK_SAMPLED_HANDWRITING == session.taskType
+        return StudyTaskTypes.BLIND_WRITING == session.taskType ||
+            StudyTaskTypes.SAMPLED_HANDWRITING == session.taskType
     }
 
     @JvmStatic
     fun isRepairWritingTask(session: RecordsSchedulerModels.StudySession?): Boolean =
-        session != null && TASK_REPAIR_WRITING == session.taskType
+        session != null && StudyTaskTypes.REPAIR_WRITING == session.taskType
 
     @JvmStatic
     fun isFontRecognitionTask(session: RecordsSchedulerModels.StudySession?): Boolean =

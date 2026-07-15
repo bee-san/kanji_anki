@@ -22,6 +22,15 @@ object StudyTaskTypes {
     const val TYPING_MEANING: String = "typing_meaning"
     const val WRITING_REMEDIATION: String = "writing_remediation"
 
+    // Repair and diagnostic writing wire names used by session routing,
+    // persisted task rows, and study copy.
+    const val TARGETED_WRITING: String = "targeted_writing"
+    const val REPAIR_WRITING: String = "repair_writing"
+    const val CONTEXT_WRITING: String = "context_writing"
+    const val GUIDED_WRITING: String = "guided_writing"
+    const val BLIND_WRITING: String = "blind_writing"
+    const val SAMPLED_HANDWRITING: String = "sampled_handwriting"
+
     @JvmStatic
     fun forRung(rung: RecordsBase.LadderRung): String {
         return rung.wireName()
