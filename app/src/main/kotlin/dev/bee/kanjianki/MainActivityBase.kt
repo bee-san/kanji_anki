@@ -74,6 +74,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         Thread(runnable, "kani-maintenance").apply { isDaemon = true }
     }
 
+    /**
+     * Coroutine view over [io]/[maintenance]. New async code should prefer
+     * `lifecycleScope.launch { withContext(dispatchers.io) { ... } }` over
+     * `io.execute { main.post { } }`; both run on the same threads.
+     */
+    val dispatchers: KaniDispatchers by lazy { KaniDispatchers(io, maintenance) }
+
+    val studyPrefetchCache = StudyPrefetchCache()
+
     @JvmField
     val hintProgression = HintProgression()
 

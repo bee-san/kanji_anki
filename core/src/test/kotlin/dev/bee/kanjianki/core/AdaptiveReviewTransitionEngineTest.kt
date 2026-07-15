@@ -479,6 +479,138 @@ class AdaptiveReviewTransitionEngineTest {
         }
     }
 
+    // --- Golden life-of-kanji timelines (Goal 141) ---
+
+    @Test
+    fun goldenHappyPath_newItemToReadingCeiling() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+
+        // Step 1: New item starts at recognition core, phase=review
+        var item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION))
+            .copyBuilder().realPassStreak(0).build()
+        assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(item)!!.activeCore)
+
+        // Step 2: Pass recognition until promotion threshold (min passes - 1 already done)
+        item = item.copyBuilder().realPassStreak(settings.ladderPromotionMinPasses - 1).build()
+        val promoted = engine.apply(item, request("good", StudyTaskTypes.KANJI_MEANING, null), NOW, parameters, settings, steps, ladder)
+        val promotedRoute = AdaptiveStudyItemPolicy.routeState(promoted.item)!!
+
+        // Step 3: Should promote to contextual reading core
+        assertEquals(CoreSkill.CONTEXTUAL_READING, promotedRoute.activeCore)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, promoted.item.rung)
+        assertEquals(0, promoted.item.realPassStreak)
+
+        // Step 4: Pass reading core
+        val readingItem = promoted.item.copyBuilder().dueAtMillis(NOW).activeToken("t2").build()
+        val readingPass = engine.apply(readingItem, request("good", StudyTaskTypes.WORD_READING, null), NOW, parameters, settings, steps, ladder)
+
+        assertEquals(CoreSkill.CONTEXTUAL_READING, AdaptiveStudyItemPolicy.routeState(readingPass.item)!!.activeCore)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, readingPass.item.phase)
+        assertTrue(readingPass.item.dueAtMillis > NOW)
+    }
+
+    @Test
+    fun goldenRecognitionLapse_repairAndRevalidation() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+
+        // Mature item on recognition core fails
+        val item = adaptiveItem(
+            AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION, recognitionReviewCount = 10),
+            hasSimilarKanji = true,
+        ).copyBuilder().matureIntervalDays(21).build()
+
+        val failed = engine.apply(item, request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION), NOW, parameters, settings, steps, ladder)
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed.item)!!
+
+        // Should enter relearning + repair
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, failed.item.phase)
+        assertEquals(StudyTaskTypes.SIMILAR_KANJI, failedRoute.activeRepairTask())
+        assertEquals(1, failed.item.kanjiMeaningMemory.lapses)
+
+        // Pass repair → practice-only, revalidation pending
+        val repairItem = failed.item.copyBuilder().dueAtMillis(NOW).activeToken("t-repair").build()
+        val repairPass = engine.apply(repairItem, request("good", StudyTaskTypes.SIMILAR_KANJI, null), NOW, parameters, settings, steps, ladder)
+        val afterRepair = AdaptiveStudyItemPolicy.routeState(repairPass.item)!!
+
+        assertTrue(afterRepair.revalidationPending)
+        assertFalse(afterRepair.isRepairActive())
+
+        // Revalidation pass → core memory restored
+        val revalItem = repairPass.item.copyBuilder().dueAtMillis(NOW).activeToken("t-reval").build()
+        val revalPass = engine.apply(revalItem, request("good", StudyTaskTypes.KANJI_MEANING, null), NOW, parameters, settings, steps, ladder)
+        val afterReval = AdaptiveStudyItemPolicy.routeState(revalPass.item)!!
+
+        assertFalse(afterReval.revalidationPending)
+        assertFalse(afterReval.isRepairActive())
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, revalPass.item.phase)
+    }
+
+    @Test
+    fun goldenReadingLapse_repairAndRevalidation() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+
+        // Item at contextual reading core fails
+        val route = AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING, contextualReadingReviewCount = 5)
+        val item = adaptiveItem(route)
+            .copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .hasKanjiReading(true)
+            .matureIntervalDays(21)
+            .build()
+
+        val failed = engine.apply(item, request("again", StudyTaskTypes.WORD_READING, FailureKind.WRONG_READING), NOW, parameters, settings, steps, ladder)
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed.item)!!
+
+        // Should enter relearning with reading repair
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, failed.item.phase)
+        assertTrue(failedRoute.isRepairActive())
+        assertEquals(1, failed.item.wordReadingMemory.lapses)
+
+        // Pass repair → revalidation
+        val repairItem = failed.item.copyBuilder().dueAtMillis(NOW).activeToken("t-rr").build()
+        val repairPass = engine.apply(repairItem, request("good", failedRoute.activeRepairTask()!!, null), NOW, parameters, settings, steps, ladder)
+        val afterRepair = AdaptiveStudyItemPolicy.routeState(repairPass.item)!!
+
+        assertTrue(afterRepair.revalidationPending)
+        assertFalse(afterRepair.isRepairActive())
+
+        // Revalidation pass on reading core
+        val revalItem = repairPass.item.copyBuilder().dueAtMillis(NOW).activeToken("t-rv").build()
+        val revalPass = engine.apply(revalItem, request("good", StudyTaskTypes.WORD_READING, null), NOW, parameters, settings, steps, ladder)
+        val afterReval = AdaptiveStudyItemPolicy.routeState(revalPass.item)!!
+
+        assertFalse(afterReval.revalidationPending)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, revalPass.item.phase)
+        assertEquals(CoreSkill.CONTEXTUAL_READING, afterReval.activeCore)
+    }
+
+    @Test
+    fun goldenStuckRepairEscalation() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+
+        // Item with revalidation pending fails the core again → escalation threshold
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            recurringFailure = FailureKind.VISUAL_CONFUSION,
+            recurringFailureCount = settings.ladderDemotionFailStreak - 1,
+            revalidationPending = true,
+        )
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+
+        // Fail the core task (not repair) → should hit the escalation threshold
+        val failed = engine.apply(item, request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION), NOW, parameters, settings, steps, ladder)
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed.item)!!
+
+        // Escalation adds write_kanji to the repair chain per existing test pattern
+        assertTrue(failedRoute.activeRepairTasks.contains(StudyTaskTypes.WRITE_KANJI))
+        assertTrue(failedRoute.recurringFailureCount >= settings.ladderDemotionFailStreak)
+        assertTrue(failedRoute.isRepairActive())
+    }
+
     private companion object {
         const val NOW = 1_700_000_000_000L
     }

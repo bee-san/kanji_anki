@@ -20,6 +20,9 @@ androidxTestUiautomator = "2.3.0"
 # AndroidX / Compose / ML Kit
 composeBom = "2026.04.01"
 activityCompose = "1.13.0"
+lifecycleRuntime = "2.9.1"
+lifecycleViewmodel = "2.9.1"
+coroutines = "1.10.2"
 workRuntime = "2.11.2"
 glance = "1.1.1"
 mlkitDigitalInk = "19.0.0"
@@ -45,6 +48,10 @@ compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntime" }
+androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodel" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "workRuntime" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "workRuntime" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }

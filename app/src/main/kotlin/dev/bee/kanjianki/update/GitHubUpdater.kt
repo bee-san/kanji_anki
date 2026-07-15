@@ -244,6 +244,11 @@ class GitHubUpdater @JvmOverloads constructor(
     ): UpdateResult {
         LocalStore(context).use { store ->
             store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage)
+            if (!result.success && result.retryable) {
+                store.recordUpdateCheckFailed(checkedAt)
+            } else if (result.success || !result.retryable) {
+                store.clearUpdateCheckFailed()
+            }
         }
         return result
     }

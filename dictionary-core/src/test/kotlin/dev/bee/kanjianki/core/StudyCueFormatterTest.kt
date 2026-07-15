@@ -91,6 +91,24 @@ class StudyCueFormatterTest {
             "Dumbfounded overcome with surprise in blank amazement",
             StudyCueFormatter.cleanFallbackMeaning("Taru to-adverb dumbfounded overcome with surprise in blank amazement", "", 96),
         )
+        assertEquals(
+            "Mystery something inexplicable wonder miracle",
+            StudyCueFormatter.cleanFallbackMeaning(
+                "Na-adj noun yoji mystery something inexplicable wonder miracle See also 不思議",
+                "",
+                96,
+            ),
+        )
+        assertEquals(
+            "Mystery something inexplicable wonder miracle",
+            StudyCueFormatter.cleanFallbackMeaning(
+                "Na-adj noun yoji mystery something inexplicable wonder miracle See also",
+                "",
+                96,
+            ),
+        )
+        assertEquals("Fast", StudyCueFormatter.cleanFallbackMeaning("i-adj fast", "", 96))
+        assertEquals("Unique", StudyCueFormatter.cleanFallbackMeaning("no-adj unique", "", 96))
     }
 
     @Test

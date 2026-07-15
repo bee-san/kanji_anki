@@ -23,4 +23,6 @@ data class HomeScreenModel(
     val repairedHandoff: HomeRepairedHandoffCardModel? = null,
     /** Preloaded off the main thread; route rendering must not read update settings. */
     val updatePermissionPrompt: HomeUpdatePermissionPromptSnapshot? = null,
+    val updateCheckFailedLine: String? = null,
+    val onRetryUpdateCheck: (() -> Unit)? = null,
 )

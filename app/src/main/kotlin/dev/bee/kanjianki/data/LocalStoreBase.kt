@@ -48,6 +48,27 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         LocalStoreMigrations.upgrade(db, oldVersion, newVersion, migrationHooks())
     }
 
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        android.util.Log.w(
+            "KaniDB",
+            "Database downgrade from v$oldVersion to v$newVersion — preserving data intact"
+        )
+        val values = android.content.ContentValues().apply {
+            put("key", SETTING_DOWNGRADED_FROM_VERSION)
+            put(COLUMN_VALUE, oldVersion.toString())
+            put(COLUMN_UPDATED_AT, System.currentTimeMillis())
+        }
+        db.insertWithOnConflict(TABLE_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun consumeDowngradeNotice(): Int? {
+        val version = settingsRepository().getString(SETTING_DOWNGRADED_FROM_VERSION, null)
+            ?.toIntOrNull() ?: return null
+        writableDatabase.delete(TABLE_SETTINGS, WHERE_SETTING_KEY, arrayOf(SETTING_DOWNGRADED_FROM_VERSION))
+        settingsRepository().invalidate()
+        return version
+    }
+
     fun rebuildStudyItemsForLadderScheduler(db: SQLiteDatabase) {
         for (sql in StudySchedulerMigration.rebuildLadderStudyItemsSql(
             TABLE_STUDY_ITEMS,
@@ -681,6 +702,8 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         const val KEY_UPDATE_PERMISSION_PROMPT_SHOWN: String = "update_permission_prompt_shown"
         const val KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION: String = "update_permission_prompt_last_version"
         const val KEY_DEBUG_LOG_ENABLED: String = "debug_log_enabled"
+        const val KEY_UPDATE_CHECK_FAILED_AT: String = "update_check_failed_at"
+        const val SETTING_DOWNGRADED_FROM_VERSION: String = "downgraded_from_version"
 
         @JvmStatic
         fun studyFamilyKey(kanji: String, answerSignature: String?): String {

@@ -675,4 +675,16 @@ object HomeTextCopy {
         }
         return StudyTextCopy.cleanLearnerText(safeExample.meaning, safeExample.meaning, 120)
     }
+
+    @JvmStatic
+    fun databaseDowngradeNotice(): String = localizedText(
+        "Database is from a newer version of Kani; some features may be unavailable until you update.",
+        "データベースはより新しいバージョンのKaniのものです。アップデートするまで一部の機能が使えない場合があります。",
+    )
+
+    @JvmStatic
+    fun updateCheckFailedLine(): String = localizedText(
+        "Last update check failed — check your connection.",
+        "最後のアップデート確認に失敗しました。接続を確認してください。",
+    )
 }

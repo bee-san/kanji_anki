@@ -4,6 +4,9 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.HomeDeckOverviewPolicy
@@ -93,8 +96,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.appTitle(),
-            load = { buildHomeScreenModel() },
-            render = { model ->
+            load = {
+                val downgradeVersion = store.consumeDowngradeNotice()
+                buildHomeScreenModel() to downgradeVersion
+            },
+            render = { (model, downgradeVersion) ->
                 renderHomeScreen(
                     model,
                     initialScrollY = screenshotScrollY(),
@@ -102,8 +108,27 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 )
                 scheduleStatsPrecomputeIfStaleAsync()
                 maybeShowUpdatePermissionPrompt(model.updatePermissionPrompt)
+                if (downgradeVersion != null) {
+                    showDowngradeToast()
+                }
             },
         )
+    }
+
+    private fun triggerManualUpdateCheck() {
+        io.execute {
+            val updater = dev.bee.kanjianki.update.GitHubUpdater(this)
+            updater.checkDownloadAndInstall(dev.bee.kanjianki.update.GitHubUpdater.UpdateSource.MANUAL)
+            postToMainIfActive(::renderHome)
+        }
+    }
+
+    private fun showDowngradeToast() {
+        android.widget.Toast.makeText(
+            this,
+            HomeTextCopy.databaseDowngradeNotice(),
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
     }
 
     private fun buildHomeScreenModel(): HomeScreenModel = homeLoadPhase(
@@ -208,6 +233,14 @@ internal abstract class MainActivityHome : MainActivityBase() {
         val updatePermissionPrompt = homeLoadPhase("update-permission-prompt") {
             loadUpdatePermissionPromptSnapshot()
         }
+        val updateCheckFailedLine = homeLoadPhase("update-check-failed") {
+            val failedAt = store.updateCheckFailedAt()
+            if (failedAt > 0L && (now - failedAt) < UPDATE_CHECK_FAILURE_EXPIRY_MS) {
+                HomeTextCopy.updateCheckFailedLine()
+            } else {
+                null
+            }
+        }
 
         homeLoadPhase("model-assembly") {
             studySessionBadgeCount = studyNowCount
@@ -242,6 +275,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 studyRemainingCount = studyNowCount,
                 repairedHandoff = repairedHandoff,
                 updatePermissionPrompt = updatePermissionPrompt,
+                updateCheckFailedLine = updateCheckFailedLine,
+                onRetryUpdateCheck = if (updateCheckFailedLine != null) this::triggerManualUpdateCheck else null,
             )
         }
     }
@@ -251,9 +286,14 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     private fun dismissRepairedHandoffCard() {
-        io.execute {
-            store.dismissRepairedHandoff()
-            postToMainIfActive(::renderHome)
+        // Coroutine-based async pattern (Goal 135): same io thread as the executor
+        // version, but lifecycle-aware — cancelled automatically on destroy instead
+        // of relying on postToMainIfActive's isFinishing guard.
+        lifecycleScope.launch {
+            withContext(dispatchers.io) {
+                store.dismissRepairedHandoff()
+            }
+            renderHome()
         }
     }
 
@@ -497,11 +537,17 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
+        val classification = dev.bee.kanjianki.core.SyncFailureClassification.classify(
+            result.message,
+            permanentFailure = !result.retryable,
+            retryable = result.retryable,
+        )
+        val guidance = dev.bee.kanjianki.core.SyncFailureClassification.userMessage(classification)
         renderSyncResultScreen(
             SyncResultScreenModel(
                 HomeTextCopy.syncNeedsAttentionTitle(),
                 HomeTextCopy.syncReadErrorTitle(),
-                listOf(nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
+                listOf(guidance, nonEmptyOr(result.message, HomeTextCopy.syncFailureFallback())),
                 CORAL,
                 HomeTextCopy.trySyncAgainLabel(),
                 TEAL,
@@ -560,6 +606,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private companion object {
         const val HOME_PREVIEW_ROW_LIMIT = 3
         const val ANKIDROID_INSTALL_URL = "https://ankidroid.org/#download"
+        const val UPDATE_CHECK_FAILURE_EXPIRY_MS = 24L * 60 * 60 * 1000
     }
 
     fun renderBrowseKanji(query: String?) {
