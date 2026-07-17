@@ -16,7 +16,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
 import dev.bee.kanjianki.core.SimilarKanjiExplanationPolicy
 import dev.bee.kanjianki.core.StudyCueFormatter
-import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.security.SecureRandom
@@ -182,8 +181,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     private fun renderMeaningChoiceRoute(model: MeaningChoiceSessionModel, state: MeaningChoiceSessionState) {
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
         val expectedToken = model.feedbackState?.sessionToken
         val browseAction = model.answerPanel.glyph.takeIf { it.isNotBlank() }?.let { glyph ->
             expectedToken?.let { token ->
@@ -208,7 +206,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             studySessionActive = true,
             content = {
                 Column {
-                    ChoiceStudyTopBar(progress)
+                    ChoiceStudyTopBar(routeSnapshot)
                     MeaningChoiceSessionCard(
                         model = model,
                         state = state,
@@ -519,14 +517,13 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         expectedToken: String,
         expectedRecovery: StoredActiveStudyRecovery?,
     ) {
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
         home.composeRoute(
             selected = MainActivityBase.NAV_STUDY,
             studySessionActive = true,
             content = {
                 Column {
-                    ChoiceStudyTopBar(progress)
+                    ChoiceStudyTopBar(routeSnapshot)
                     SimilarChoiceSessionCard(
                         model = model,
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
@@ -554,8 +551,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
         expectedToken: String,
         expectedRecovery: StoredActiveStudyRecovery?,
     ) {
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
         val withBrowseActions = differenceModel.copy(
             choices = differenceModel.choices.map { choice ->
                 choice.copy(
@@ -593,7 +589,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             studySessionActive = true,
             content = {
                 Column {
-                    ChoiceStudyTopBar(progress)
+                    ChoiceStudyTopBar(routeSnapshot)
                     SimilarKanjiDifferenceScreen(
                         model = withBrowseActions,
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
@@ -682,11 +678,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
     }
 
     @Composable
-    private fun ChoiceStudyTopBar(progress: StudySessionProgressTracker.TopBarProgress) {
+    private fun ChoiceStudyTopBar(routeSnapshot: StudyRouteSnapshot) {
         StudyTopBar(
-            completed = progress.completed,
-            target = progress.target,
-            fraction = progress.fraction,
+            routeSnapshot = routeSnapshot,
             onClose = home::renderHome,
             onSettings = home::renderSettings,
         )

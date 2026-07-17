@@ -113,9 +113,16 @@ class SettingsChromeLocaleTest {
         withLocale(Locale.JAPAN) {
             composeRule.setContent {
                 StudyTopBar(
-                    completed = 1,
-                    target = 4,
-                    fraction = 0.25f,
+                    routeSnapshot = StudyRouteSnapshot(
+                        sessionGeneration = StudySessionGeneration(1L),
+                        version = StudyRouteVersion(1L),
+                        sessionToken = null,
+                        progress = StudySessionProgressUiState(
+                            completedCount = 1,
+                            targetCount = 4,
+                        ),
+                        phase = StudySessionPhase.ACTIVE,
+                    ),
                     onClose = {},
                     onSettings = {},
                 )

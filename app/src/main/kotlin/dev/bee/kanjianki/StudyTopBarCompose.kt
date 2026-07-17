@@ -25,7 +25,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -52,6 +55,15 @@ object StudyTopBarDescriptions {
         get() = StudyTextCopy.studyProgressDescription()
 }
 
+internal object StudyUiTestTags {
+    const val PROGRESS = "study-progress-header"
+    const val DONE = "study-route-done"
+}
+
+internal val StudyRouteVersionSemantics = SemanticsPropertyKey<Long>("StudyRouteVersion")
+internal val StudyExplicitContinueSemantics = SemanticsPropertyKey<Boolean>("StudyExplicitContinue")
+private var SemanticsPropertyReceiver.studyRouteVersion by StudyRouteVersionSemantics
+
 private val StudyTopBarProgressTextStyle: TextStyle
     @Composable get() = TextStyle(
         fontSize = KaniUiTokens.StudyActionTextSizeSp.sp,
@@ -62,13 +74,14 @@ private val StudyTopBarProgressTextStyle: TextStyle
     )
 
 @Composable
-fun StudyTopBar(
-    completed: Int,
-    target: Int,
-    fraction: Float,
+internal fun StudyTopBar(
+    routeSnapshot: StudyRouteSnapshot,
     onClose: () -> Unit,
     onSettings: () -> Unit
 ) {
+    val completed = routeSnapshot.displayedCompletedCount
+    val target = routeSnapshot.displayedTargetCount
+    val fraction = if (target == 0) 0f else completed / target.toFloat()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -90,7 +103,12 @@ fun StudyTopBar(
             ) {
                 Text(
                     text = "$completed / $target",
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(StudyUiTestTags.PROGRESS)
+                        .semantics {
+                            studyRouteVersion = routeSnapshot.version.value
+                        },
                     style = StudyTopBarProgressTextStyle,
                     maxLines = 1,
                     overflow = TextOverflow.Clip

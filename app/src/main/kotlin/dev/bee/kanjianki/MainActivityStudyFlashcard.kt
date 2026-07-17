@@ -32,8 +32,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     private fun renderComposeFlashcardRoute(routeProvider: () -> ComposeFlashcardRouteModel) {
-        activity.initializeSessionProgressTarget(activity.activeStudyPlan)
-        val progress = activity.studySessionTracker.topBarProgress(activity.activeSession != null, activity.continueAllKanjiSession)
+        val routeSnapshot = activity.studySessionViewModel.acceptedRouteSnapshot()
         lateinit var route: ComposeFlashcardRouteModel
         activity.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
@@ -42,9 +41,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             content = {
                 Column {
                     StudyTopBar(
-                        completed = progress.completed,
-                        target = progress.target,
-                        fraction = progress.fraction,
+                        routeSnapshot = routeSnapshot,
                         onClose = activity::renderHome,
                         onSettings = activity::renderSettings,
                     )

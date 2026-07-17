@@ -171,10 +171,13 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         model: StudyDoneScreenModel,
     ) {
         home.activeStudyPlan = plan
-        home.renderComposeStudyRoute {
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
+        if (!routeSnapshot.isComplete) return
+        home.renderComposeStudyRoute(routeSnapshot) {
             StudyDoneScreen(
                 model = model.copy(studyMoreDialog = studyMoreDialog),
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = 10.dp),
+                routeSnapshot = routeSnapshot,
             )
         }
     }

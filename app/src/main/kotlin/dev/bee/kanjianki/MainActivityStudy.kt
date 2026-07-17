@@ -119,7 +119,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderStudyLoading(studySessionActive: Boolean) {
         studySessionViewModel.showLoading()
-        renderComposeStudyRoute(studySessionActive = studySessionActive) {
+        val routeSnapshot = studySessionViewModel.acceptedRouteSnapshot()
+        renderComposeStudyRoute(routeSnapshot, studySessionActive = studySessionActive) {
             HomeRouteLoadingScreen(
                 title = dev.bee.kanjianki.core.StudyTextCopy.studyPracticeTitle(),
                 homeLabel = dev.bee.kanjianki.core.HomeTextCopy.homeLabel(),

@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -86,12 +87,24 @@ fun StudyDoneActions(
 }
 
 @Composable
-fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) {
+internal fun StudyDoneScreen(
+    model: StudyDoneScreenModel,
+    modifier: Modifier = Modifier,
+    routeSnapshot: StudyRouteSnapshot? = null,
+) {
+    require(routeSnapshot == null || routeSnapshot.isComplete) {
+        "The Done screen requires an accepted complete route snapshot"
+    }
     model.studyMoreDialog?.let { dialog ->
         StudyMoreNewCardsDialog(model = dialog)
     }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(StudyUiTestTags.DONE)
+            .semantics {
+                routeSnapshot?.let { this[StudyRouteVersionSemantics] = it.version.value }
+            },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
         color = StudyDoneCardBackground,
         border = BorderStroke(1.dp, StudyDonePrimaryBorder)
