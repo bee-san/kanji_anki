@@ -395,6 +395,10 @@ class MainActivityStudyRouteInitializationTest {
             assertNull(restored.activity.activeStudyRecovery())
             assertNull(restored.activity.pendingStudyRecovery())
             assertFalse(restored.preferences.contains("snapshot"))
+            val route = restored.activity.studySessionViewModel.acceptedRouteSnapshot()
+            assertEquals(StudySessionPhase.COMPLETE, route.phase)
+            assertEquals(StudyRouteCompletionReason.NO_SESSION, route.completionReason)
+            assertTrue(route.isComplete)
         } finally {
             restored.close()
         }

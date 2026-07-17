@@ -80,7 +80,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             pendingRepairOrDoneRender(plan, now, ladder, currentItems, dueRepairs, advancingRecovery)
                 ?.let { return it }
             refreshSessionBadgeCount(0)
-            return terminalRender(advancingRecovery) { study.renderEmptyStudyQueue() }
+            return terminalRender(advancingRecovery) { expectedRoute ->
+                study.doneActions.renderEmptyStudyQueue(expectedRoute)
+            }
         }
         val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
         val seededPlan = withStudyLoadProbe("studyPlanForMode#2") {
@@ -136,11 +138,15 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeSimilarWritingRepair = null
         if (session == null) {
             warmStudyDoneAvailability()
-            return terminalRender(advancingRecovery) { study.renderNoStudySession(seededPlan) }
+            return terminalRender(advancingRecovery) { expectedRoute ->
+                study.doneActions.renderNoStudySession(seededPlan, expectedRoute)
+            }
         }
         if (session.item == null) {
             warmStudyDoneAvailability()
-            return terminalRender(advancingRecovery) { study.renderNoStudySession(seededPlan) }
+            return terminalRender(advancingRecovery) { expectedRoute ->
+                study.doneActions.renderNoStudySession(seededPlan, expectedRoute)
+            }
         }
         StudySessionActions.activateStudySession(
             session,
@@ -422,7 +428,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
-            return { study.renderStudyForKanjiNotAvailable() }
+            return terminalRender(null) { expectedRoute ->
+                study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
+            }
         }
         val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
         val preSeedPlan = study.activeStudyPlan
@@ -460,7 +468,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             ladder
         )
         if (session == null) {
-            return { study.renderStudyForKanjiNotAvailable() }
+            return terminalRender(null) { expectedRoute ->
+                study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
+            }
         }
         StudySessionActions.activateStudySession(
             session,
@@ -548,7 +558,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (pendingRepeats.isEmpty()) {
                 refreshSessionBadgeCount(0)
                 warmStudyDoneAvailability()
-                return terminalRender(advancingRecovery) { study.doneActions.renderStudyRunDone(plan) }
+                return terminalRender(advancingRecovery) { expectedRoute ->
+                    study.doneActions.renderStudyRunDone(plan, expectedRoute)
+                }
             }
         }
         return null
@@ -618,12 +630,19 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
 
     private fun terminalRender(
         advancingRecovery: StoredPendingStudyRecovery?,
-        render: () -> Unit,
-    ): () -> Unit = {
-        if (advancingRecovery == null || study.clearAdvancingStudyRecovery(advancingRecovery, null)) {
-            render()
-        } else {
-            study.renderStudyRecoveryOnly()
+        render: (StudyRouteSnapshot) -> Unit,
+    ): () -> Unit {
+        val expectedRoute = study.studySessionViewModel.acceptedRouteSnapshot()
+        return {
+            if (study.studySessionViewModel.isCurrentRoute(expectedRoute)) {
+                if (advancingRecovery == null) {
+                    render(expectedRoute)
+                } else if (study.clearAdvancingStudyRecovery(advancingRecovery, null)) {
+                    render(study.studySessionViewModel.acceptedRouteSnapshot())
+                } else {
+                    study.renderStudyRecoveryOnly()
+                }
+            }
         }
     }
 }

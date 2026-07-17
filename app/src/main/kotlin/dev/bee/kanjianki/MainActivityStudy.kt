@@ -96,7 +96,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun renderStudy() {
         cancelPendingHomeRouteLoads()
         if (isScreenshotLaunchRequested()) {
-            doneActions.renderEmptyStudyQueue()
+            doneActions.renderEmptyStudyQueue(studySessionViewModel.acceptedRouteSnapshot())
             return
         }
         studyQueueCoordinator.renderStudy(recoveryOnly = false)
@@ -129,19 +129,19 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderEmptyStudyQueue() {
-        doneActions.renderEmptyStudyQueue()
+        doneActions.renderEmptyStudyQueue(studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        doneActions.renderNoStudySession(seededPlan)
+        doneActions.renderNoStudySession(seededPlan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderFocusDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        doneActions.renderFocusDone(plan)
+        doneActions.renderFocusDone(plan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
-        doneActions.renderStudyRunDone(plan)
+        doneActions.renderStudyRunDone(plan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun availableStudyMoreNewCards(): Int {
@@ -177,14 +177,14 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun renderStudyForKanji(kanji: String?) {
         cancelPendingHomeRouteLoads()
         if (isScreenshotLaunchRequested()) {
-            doneActions.renderStudyForKanjiNotAvailable()
+            doneActions.renderStudyForKanjiNotAvailable(studySessionViewModel.acceptedRouteSnapshot())
             return
         }
         studyQueueCoordinator.renderStudyForKanji(kanji)
     }
 
     fun renderStudyForKanjiNotAvailable() {
-        doneActions.renderStudyForKanjiNotAvailable()
+        doneActions.renderStudyForKanjiNotAvailable(studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
@@ -532,8 +532,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun handleStudySessionEffect(effect: StudySessionEffect) {
         when (effect) {
             is StudySessionEffect.AutoContinue -> continueAfterStudyAnswer(
-                effect.sessionToken,
+                expectedToken = effect.sessionToken,
                 expectedRecovery = null,
+                expectedGeneration = effect.sessionGeneration,
+                expectedVersion = effect.routeVersion,
             )
         }
     }
@@ -610,6 +612,23 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         expectedRecovery: StoredActiveStudyRecovery?,
     ): Boolean {
         if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        return continueAfterStudyAnswer()
+    }
+
+    private fun continueAfterStudyAnswer(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+        expectedGeneration: StudySessionGeneration,
+        expectedVersion: StudyRouteVersion,
+    ): Boolean {
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        val claim = studySessionViewModel.claimCurrentRouteAction(
+            expectedToken,
+            expectedGeneration,
+            expectedVersion,
+        ) ?: return false
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        if (!studySessionViewModel.consumeRouteAction(claim)) return false
         return continueAfterStudyAnswer()
     }
 

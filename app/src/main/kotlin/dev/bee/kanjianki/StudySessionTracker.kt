@@ -42,8 +42,12 @@ internal class StudySessionTracker(
     fun missedCount(): Int = progressTracker.missedCount()
 
     fun snapshot(): Snapshot = synchronized(lock) {
+        snapshotLocked()
+    }
+
+    private fun snapshotLocked(): Snapshot {
         val progress = progressTracker.snapshot()
-        Snapshot(
+        return Snapshot(
             targetCount = progress.targetCount,
             completedCount = progress.completedCount,
             movedForwardCount = progress.movedForwardCount,
@@ -54,11 +58,21 @@ internal class StudySessionTracker(
 
     fun resetProgress() {
         synchronized(lock) {
-            progressTracker.resetProgress()
-            plannedSessionTaskKeys.clear()
-            completedPlannedSessionTaskKeys.clear()
+            resetProgressLocked()
         }
         onChanged()
+    }
+
+    internal fun resetProgressWithoutNotification(): Snapshot = synchronized(lock) {
+        resetProgressLocked()
+        snapshotLocked()
+    }
+
+    private fun resetProgressLocked() {
+        progressTracker.resetProgress()
+        plannedSessionTaskKeys.clear()
+        completedPlannedSessionTaskKeys.clear()
+        activeTask = null
     }
 
     /**
@@ -229,8 +243,22 @@ internal class StudySessionTracker(
     }
 
     fun setTargetCount(targetCount: Int) {
-        progressTracker.setTargetCount(targetCount)
+        synchronized(lock) {
+            val minimumTarget = maxOf(progressTracker.completedCount(), progressTracker.targetCount())
+            require(targetCount >= minimumTarget) {
+                "A normal target update cannot lower the accepted target"
+            }
+            progressTracker.setTargetCount(targetCount)
+        }
         onChanged()
+    }
+
+    internal fun reconcileTargetCountWithoutNotification(targetCount: Int): Snapshot = synchronized(lock) {
+        require(targetCount >= progressTracker.completedCount()) {
+            "A reconciled target cannot be below completed progress"
+        }
+        progressTracker.setTargetCount(targetCount)
+        snapshotLocked()
     }
 
     fun includePendingTask(key: String?): Boolean {
