@@ -1,0 +1,47 @@
+build_sha=ed5f37a517551c3c071d0e0aeba60b6832bc3a68
+build_version=0.4.187
+build_ancestry=ed5f37a517551c3c071d0e0aeba60b6832bc3a68 8da6bb6dc593368c983b17b8bcde17e501224adf df8df053b1d8df6e2b6d462a5d1e6cfe2c2a4509
+study-progress-harness build=0.4.187 now=1700000000000
+lookahead=300000 shortProjection=900000 longProjection=7200000
+[seven-visible] initial plan target=7 remaining=7 focusComplete=false rawTaskKeys=7 dueNow=7 due@15m=7 due@2h=7
+[seven-visible] show#1 task=session:kanji_meaning:戊:戊||reading-戊|meaning-戊 kanji=戊 taskType=kanji_meaning progress=0/7 target=7 pending=7/7 dueNow=7 due@15m=7 due@2h=7 sessionGeneration=1/1
+[seven-visible] answer#1 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#1 progress=1/7 topBar=1/7 nextPending=6 studiedToday=1 remaining=6 dueNow=6 due@15m=6 due@2h=6 decision=keep
+[seven-visible] show#2 task=session:kanji_meaning:甲:甲||reading-甲|meaning-甲 kanji=甲 taskType=kanji_meaning progress=1/7 target=7 pending=6/7 dueNow=6 due@15m=6 due@2h=6 sessionGeneration=1/1
+[seven-visible] answer#2 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#2 progress=2/7 topBar=2/7 nextPending=5 studiedToday=2 remaining=5 dueNow=5 due@15m=5 due@2h=5 decision=keep
+[seven-visible] show#3 task=session:kanji_meaning:丙:丙||reading-丙|meaning-丙 kanji=丙 taskType=kanji_meaning progress=2/7 target=7 pending=5/7 dueNow=5 due@15m=5 due@2h=5 sessionGeneration=1/1
+[seven-visible] answer#3 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#3 progress=3/7 topBar=3/7 nextPending=4 studiedToday=3 remaining=4 dueNow=4 due@15m=4 due@2h=4 decision=keep
+[seven-visible] show#4 task=session:kanji_meaning:丁:丁||reading-丁|meaning-丁 kanji=丁 taskType=kanji_meaning progress=3/7 target=7 pending=4/7 dueNow=4 due@15m=4 due@2h=4 sessionGeneration=1/1
+[seven-visible] answer#4 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#4 progress=4/7 topBar=4/7 nextPending=3 studiedToday=4 remaining=3 dueNow=3 due@15m=3 due@2h=3 decision=keep
+[seven-visible] show#5 task=session:kanji_meaning:乙:乙||reading-乙|meaning-乙 kanji=乙 taskType=kanji_meaning progress=4/7 target=7 pending=3/7 dueNow=3 due@15m=3 due@2h=3 sessionGeneration=1/1
+[seven-visible] answer#5 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#5 progress=5/7 topBar=5/7 nextPending=2 studiedToday=5 remaining=2 dueNow=2 due@15m=2 due@2h=2 decision=keep
+[seven-visible] show#6 task=session:kanji_meaning:己:己||reading-己|meaning-己 kanji=己 taskType=kanji_meaning progress=5/7 target=7 pending=2/7 dueNow=2 due@15m=2 due@2h=2 sessionGeneration=1/1
+[seven-visible] answer#6 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#6 progress=6/7 topBar=6/7 nextPending=1 studiedToday=6 remaining=1 dueNow=1 due@15m=1 due@2h=1 decision=keep
+[seven-visible] show#7 task=session:kanji_meaning:庚:庚||reading-庚|meaning-庚 kanji=庚 taskType=kanji_meaning progress=6/7 target=7 pending=1/7 dueNow=1 due@15m=1 due@2h=1 sessionGeneration=1/1
+[seven-visible] answer#7 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[seven-visible] continue#7 progress=7/7 topBar=7/7 nextPending=0 studiedToday=7 remaining=0 dueNow=0 due@15m=0 due@2h=0 decision=done
+[seven-visible] terminal no-session completed=7/7 topBar=7/7 planRemaining=0 focusComplete=false dueNow=0 due@15m=0 due@2h=0
+[five-of-seven] initial plan target=7 remaining=7 focusComplete=false rawTaskKeys=5 dueNow=5 due@15m=5 due@2h=7
+[five-of-seven] show#1 task=session:kanji_meaning:戊:戊||reading-戊|meaning-戊 kanji=戊 taskType=kanji_meaning progress=0/7 target=7 pending=5/5 dueNow=5 due@15m=5 due@2h=7 sessionGeneration=1/1
+[five-of-seven] answer#1 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[five-of-seven] continue#1 progress=1/7 topBar=1/7 nextPending=4 studiedToday=1 remaining=6 dueNow=4 due@15m=4 due@2h=6 decision=keep
+[five-of-seven] show#2 task=session:kanji_meaning:甲:甲||reading-甲|meaning-甲 kanji=甲 taskType=kanji_meaning progress=1/7 target=7 pending=4/5 dueNow=4 due@15m=4 due@2h=6 sessionGeneration=1/1
+[five-of-seven] answer#2 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[five-of-seven] continue#2 progress=2/7 topBar=2/7 nextPending=3 studiedToday=2 remaining=5 dueNow=3 due@15m=3 due@2h=5 decision=keep
+[five-of-seven] show#3 task=session:kanji_meaning:丙:丙||reading-丙|meaning-丙 kanji=丙 taskType=kanji_meaning progress=2/7 target=7 pending=3/5 dueNow=3 due@15m=3 due@2h=5 sessionGeneration=1/1
+[five-of-seven] answer#3 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[five-of-seven] continue#3 progress=3/7 topBar=3/7 nextPending=2 studiedToday=3 remaining=4 dueNow=2 due@15m=2 due@2h=4 decision=keep
+[five-of-seven] show#4 task=session:kanji_meaning:丁:丁||reading-丁|meaning-丁 kanji=丁 taskType=kanji_meaning progress=3/7 target=7 pending=2/5 dueNow=2 due@15m=2 due@2h=4 sessionGeneration=1/1
+[five-of-seven] answer#4 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[five-of-seven] continue#4 progress=4/7 topBar=4/7 nextPending=1 studiedToday=4 remaining=3 dueNow=1 due@15m=1 due@2h=3 decision=keep
+[five-of-seven] show#5 task=session:kanji_meaning:乙:乙||reading-乙|meaning-乙 kanji=乙 taskType=kanji_meaning progress=4/7 target=7 pending=1/5 dueNow=1 due@15m=1 due@2h=3 sessionGeneration=1/1
+[five-of-seven] answer#5 rating=good trace=operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:rung_unchanged:review_pass_fsrs_interval; fsrs=review:good:1
+[five-of-seven] continue#5 progress=5/7 topBar=5/7 nextPending=0 studiedToday=5 remaining=2 dueNow=0 due@15m=0 due@2h=2 decision=keep
+[five-of-seven] terminal no-session completed=5/7 topBar=5/7 planRemaining=2 focusComplete=false dueNow=0 due@15m=0 due@2h=2
+[again-trace] operation=apply_review; now=1700000000000; transition=kanji_meaning->kanji_meaning:duplicate:token_mismatch
+[again-trace] result phase=review dueAt=1700000000000 now=1700000000000
