@@ -124,6 +124,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = flashcard
                 activity.cancelPendingHomeRouteLoads()
+                activity.registerStudyTaskShown(activity.sessionTaskKey(flashcard))
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(flashcard),
                     "裂",
@@ -162,6 +163,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = writing
                 activity.cancelPendingHomeRouteLoads()
+                activity.registerStudyTaskShown(activity.sessionTaskKey(writing))
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(writing),
                     "裂",
@@ -194,6 +196,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = similarChoice
                 activity.cancelPendingHomeRouteLoads()
+                activity.registerStudyTaskShown(activity.sessionTaskKey(similarChoice))
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(similarChoice),
                     "裂",
@@ -222,6 +225,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = meaningChoice
                 activity.cancelPendingHomeRouteLoads()
+                activity.registerStudyTaskShown(activity.sessionTaskKey(meaningChoice))
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(meaningChoice),
                     "裂",
