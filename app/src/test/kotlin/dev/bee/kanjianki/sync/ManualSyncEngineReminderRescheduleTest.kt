@@ -11,7 +11,9 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
+import dev.bee.kanjianki.core.TimelineCopy
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -128,6 +130,92 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
+    fun queueBuildFailureRollsBackMirrorDashboardInventoryAndStudyPublication() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val oldRow = repairRow("旧")
+        val oldSnapshot = completeSnapshot("旧")
+        val oldItem = reviewItem(oldRow, 9_000L, 6, 1_000L)
+        store.saveSuccessfulSync(
+            oldSnapshot,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            listOf(oldRow),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        store.replaceStudyItems(listOf(oldItem))
+        val progress = SyncProgress.Listener {
+            if (it.stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
+                throw IllegalStateException("injected queue-build failure")
+            }
+        }
+
+        val result = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("新")),
+            settings,
+            progress,
+        ).run()
+
+        assertFalse(result.success)
+        assertEquals(listOf("旧"), store.dashboardRows().map { it.kanji })
+        assertEquals("旧", store.inventoryItemForKanji("旧")?.kanji)
+        assertEquals(null, store.inventoryItemForKanji("新"))
+        assertEquals(listOf("旧"), sourceNoteExpressions())
+        val preserved = store.studyItems().single()
+        assertEquals("旧", preserved.kanji)
+        assertEquals(oldItem.totalReviews, preserved.totalReviews)
+        assertEquals(listOf("success", "retryable_error"), syncStatuses())
+    }
+
+    @Test
+    fun failureAfterQueueFinalizationRollsBackTheWholeOuterPublication() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val oldRow = repairRow("旧")
+        val oldItem = reviewItem(oldRow, 9_000L, 6, 1_000L)
+        store.saveSuccessfulSync(
+            completeSnapshot("旧"),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            listOf(oldRow),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        store.replaceStudyItems(listOf(oldItem))
+        val newRow = repairRow("新")
+        val newItem = reviewItem(newRow, 10_000L, 2, 2_000L)
+
+        try {
+            store.publishSyncAtomically {
+                val syncId = store.saveSuccessfulSync(
+                    suspendedSnapshot("新"),
+                    emptyList<RecordsImportModels.SuspendedImport>(),
+                    listOf(newRow),
+                    settings,
+                    LocalStoreBase.SyncTiming(3_000L, 4_000L),
+                    null,
+                    null,
+                    emptyList<RecordsImportModels.SuspendedImport>(),
+                    LocalStoreBase.STATUS_PENDING,
+                    null,
+                )
+                store.commitPendingSyncStudyItems(listOf(newItem), syncId, 4_000L, settings, listOf(oldItem))
+                throw IllegalStateException("injected post-finalization failure")
+            }
+        } catch (expected: IllegalStateException) {
+            assertEquals("injected post-finalization failure", expected.message)
+        }
+
+        assertEquals(listOf("旧"), store.dashboardRows().map { it.kanji })
+        assertEquals(listOf("旧"), sourceNoteExpressions())
+        assertEquals("旧", store.studyItems().single().kanji)
+        assertEquals(listOf("success"), syncStatuses())
+    }
+
+    @Test
     fun notesOnlySnapshotCannotReplacePriorCompleteMirror() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val prior = completeSnapshot("痛")
@@ -241,6 +329,41 @@ class ManualSyncEngineReminderRescheduleTest {
         assertEquals(omitted.schedulerRevision + 1L, retired.schedulerRevision)
         assertTrue(store.hasConsumedToken("represented-review"))
         assertTrue(store.hasConsumedToken("omitted-review"))
+    }
+
+    @Test
+    fun localBrowseSuspensionDoesNotRetireSchedulerStateOrTimeline() {
+        val now = 1_725_000_000_000L
+        val row = repairRow("痛")
+        val original = reviewItem(row, now + 86_400_000L, 8, now - 86_400_000L)
+            .copyBuilder()
+            .schedulerRevision(7L)
+            .build()
+        store.replaceStudyItems(listOf(original))
+        store.setKanjiLocallySuspended("痛", true, now - 1_000L)
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("痛")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(listOf("痛"), store.dashboardRows().map { it.kanji })
+        assertTrue(store.activeDashboardRows().isEmpty())
+        val preserved = store.studyItems().single()
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+        val timeline = store.timelineForKanji("痛")
+        assertFalse(timeline.events.any { it.eventType == StudyLadderRules.STATE_RETIRED })
+        assertFalse(TimelineCopy.statusText(timeline, now).contains("Retired"))
     }
 
     @Test
@@ -390,6 +513,16 @@ class ManualSyncEngineReminderRescheduleTest {
             }
         }
         return statuses
+    }
+
+    private fun sourceNoteExpressions(): List<String> {
+        val expressions = mutableListOf<String>()
+        store.readableDatabase.rawQuery("SELECT expression FROM source_notes ORDER BY note_id", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                expressions += cursor.getString(0)
+            }
+        }
+        return expressions
     }
 
     private fun repairRow(kanji: String): RecordsImportModels.DashboardRow {

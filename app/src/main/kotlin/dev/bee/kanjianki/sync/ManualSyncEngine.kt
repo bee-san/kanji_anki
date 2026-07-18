@@ -162,51 +162,51 @@ internal class ManualSyncEngine {
             val similarKanjiIndex = loadSimilarKanjiIndex()
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
-            // Record the sync run as pending in transaction #1. It is flipped to
-            // success in the same transaction that publishes the study items below,
-            // so a crash between the two transactions leaves a pending row that
-            // hasSuccessfulSyncSince ignores (auto-sync retries) instead of a committed
-            // success sitting on stale study items.
-            val syncId = store.saveSuccessfulSync(
-                snapshot,
-                currentSuspendedImports,
-                rows,
-                settings,
-                LocalStoreBase.SyncTiming(started, finished),
-                null,
-                similarKanjiIndex,
-                selectedImports,
-                LocalStoreBase.STATUS_PENDING,
-                loadDictionary(),
-            )
+            var syncId = 0L
+            lateinit var plan: RecordsSchedulerModels.AdaptiveLoadPlan
+            var activeRows = emptyList<RecordsImportModels.DashboardRow>()
+            store.publishSyncAtomically {
+                // Keep the provider mirror, dashboard/inventory derivations, and
+                // reconciled queue unpublished until every local phase succeeds.
+                syncId = store.saveSuccessfulSync(
+                    snapshot,
+                    currentSuspendedImports,
+                    rows,
+                    settings,
+                    LocalStoreBase.SyncTiming(started, finished),
+                    null,
+                    similarKanjiIndex,
+                    selectedImports,
+                    LocalStoreBase.STATUS_PENDING,
+                    loadDictionary(),
+                )
 
-            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
-            val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
-            val activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
-            // Seeding is a durable reconciliation, so it must see every persisted family.
-            // Restricting this input to the current provider/analyzer rows made an empty,
-            // partial, filtered, or locally-suspended snapshot physically delete omitted
-            // scheduler state at publication. Planning remains scoped to active rows.
-            val currentItems = store.studyItems()
-            val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
-            val activeItems = currentItems.filter { it.kanji in activeKanji }
-            val plan = adaptivePlan(activeRows, activeItems, finished)
-            val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows, started)
-            var seeded = scheduler.seedQueue(
-                activeRows,
-                currentItems,
-                settings,
-                finished,
-                startOfDay(finished),
-                plan,
-                store.studyLadderSettings(),
-                evidenceStatusByKanji,
-            )
-            seeded = store.annotateSimilarKanjiAvailability(seeded)
-            // Pass the pre-seed baseline so the atomic queue commit can preserve any review
-            // the user saved between the studyItems read above and this write
-            // (auto-sync can run while the app is foregrounded and studyable).
-            store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
+                progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
+                val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
+                activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
+                // Seeding is a durable reconciliation, so it must see every persisted family.
+                // Admission and planning stay scoped to rows that are not locally suspended.
+                val currentItems = store.studyItems()
+                val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
+                val activeItems = currentItems.filter { it.kanji in activeKanji }
+                plan = adaptivePlan(activeRows, activeItems, finished)
+                val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows, started)
+                var seeded = scheduler.seedQueue(
+                    rows,
+                    activeRows,
+                    currentItems,
+                    settings,
+                    finished,
+                    startOfDay(finished),
+                    plan,
+                    store.studyLadderSettings(),
+                    evidenceStatusByKanji,
+                )
+                seeded = store.annotateSimilarKanjiAvailability(seeded)
+                // Pass the pre-seed baseline so queue publication preserves any review
+                // saved before this outer write transaction acquired its lock.
+                store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
+            }
             committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)
             // A sync replaces the whole study queue: cards can land newly overdue or
             // the queue can empty. Re-arm the reminder from fresh state so the alarm
