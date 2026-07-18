@@ -88,7 +88,7 @@ repair_collection_ownership() {
   # `adb root` makes subsequent pushes root/shell-owned on hosted emulators.
   # Restore AnkiDroid ownership before launching it so each lifecycle phase
   # opens the newly staged collection instead of failing or serving old state.
-  adb shell "owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\${owner_uid}\" ]; then chown -R \"\${owner_uid}\":ext_data_rw '${app_private_dir}'; chown -R \"\${owner_uid}\":ext_data_rw '${legacy_dir}' 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX '${app_private_dir}' '${legacy_dir}'"
+  adb shell "owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); owner_gid=\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\${owner_uid}\" ] && [ -n \"\${owner_gid}\" ]; then chown -R \"\${owner_uid}\":\"\${owner_gid}\" '${app_private_dir}'; chown -R \"\${owner_uid}\":\"\${owner_gid}\" '${legacy_dir}' 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX '${app_private_dir}' '${legacy_dir}'"
 }
 
 seed_stage() {

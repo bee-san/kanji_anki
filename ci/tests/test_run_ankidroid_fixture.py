@@ -86,6 +86,36 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         tmp_path = Path(tmp_context.name)
         return run_fixture(tmp_path, fake_adb_body, extra_env=extra_env), tmp_path
 
+    def test_fixture_treats_logcat_clear_as_best_effort(self):
+        fake_adb = base_fake_adb(
+            """  logcat\\ -c*)
+    echo "failed to clear the 'main' log" >&2
+    exit 1 ;;
+"""
+        )
+
+        result, tmp_path = self.run_fixture_in_tmp(fake_adb)
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Unable to clear logcat; continuing", result.stdout)
+        self.assertIn("failed to clear the 'main' log", result.stdout)
+        self.assertIn("logcat -c", (tmp_path / "adb-calls.log").read_text())
+        self.assertEqual(SCRIPT.read_text(encoding="utf-8").count("adb logcat -c"), 1)
+
+    def test_fixture_derives_external_storage_owner_uid_and_gid(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn(
+            "owner_uid=\\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki",
+            source,
+        )
+        self.assertIn(
+            "owner_gid=\\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki",
+            source,
+        )
+        self.assertIn('chown -R \\"\\$owner_uid\\":\\"\\$owner_gid\\"', source)
+        self.assertNotIn("ext_data_rw", source)
+
     def test_fixture_retries_transient_external_storage_mount_failure(self):
         fake_adb = base_fake_adb(
             """  shell\\ mkdir*)
