@@ -13,7 +13,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.background
-import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -33,6 +32,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.semantics.contentDescription
@@ -62,23 +62,30 @@ internal class KaniWidget(
     override val sizeMode = SizeMode.Responsive(setOf(COMPACT_SIZE, EXPANDED_SIZE, WIDE_SIZE))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = withContext(ioDispatcher) {
-            KaniWidgetSnapshotLoader.load(context)
-        }
-        // Event-driven boundary refresh: if useful work arrives within the
-        // hourly-fallback window, one inexact alarm re-renders on time.
-        KaniWidgetBoundaryAlarm.scheduleIfUseful(
-            context,
-            System.currentTimeMillis(),
-            snapshot.nextUsefulAtMillis,
+        val prefs = getAppWidgetState<Preferences>(context, id)
+        val options = KaniWidgetInstanceOptions.fromStorageValues(
+            prefs[stringPreferencesKey(KaniWidgetInstanceOptions.STYLE_PREF_KEY)],
+            prefs[stringPreferencesKey(KaniWidgetInstanceOptions.THEME_OVERRIDE_PREF_KEY)],
         )
-        provideContent {
-            val prefs = currentState<Preferences>()
-            val options = KaniWidgetInstanceOptions.fromStorageValues(
-                prefs[stringPreferencesKey(KaniWidgetInstanceOptions.STYLE_PREF_KEY)],
-                prefs[stringPreferencesKey(KaniWidgetInstanceOptions.THEME_OVERRIDE_PREF_KEY)],
+        if (options.style == KaniWidgetStyle.HEATMAP) {
+            val activitySnapshot = withContext(ioDispatcher) {
+                ActivityWidgetSnapshotLoader.load(context)
+            }
+            provideContent {
+                LegacyActivityWidgetContent(activitySnapshot, options)
+            }
+        } else {
+            val snapshot = withContext(ioDispatcher) {
+                StudyWidgetSnapshotLoader.load(context)
+            }
+            KaniWidgetBoundaryAlarm.scheduleIfUseful(
+                context,
+                System.currentTimeMillis(),
+                snapshot.nextUsefulAtMillis,
             )
-            KaniWidgetContent(snapshot, options)
+            provideContent {
+                KaniWidgetContent(snapshot, options)
+            }
         }
     }
 }
@@ -96,27 +103,6 @@ private fun KaniWidgetContent(
     val homeAction = actionStartActivity(kaniWidgetHomeIntent(LocalContext.current))
     val studyAction = actionStartActivity(kaniWidgetLaunchIntent(LocalContext.current, snapshot))
     val description = WidgetTextCopy.widgetDescription(copy.title, copy.body)
-    val showHeatmap = options.style == KaniWidgetStyle.HEATMAP &&
-        isExpanded &&
-        snapshot.state != KaniWidgetState.NOT_SET_UP &&
-        snapshot.last35DayCounts.isNotEmpty()
-    if (showHeatmap) {
-        // The heatmap needs more vertical room, so it trades the 16dp padding
-        // for a denser 12dp frame. Tapping it opens the stats screen that
-        // hosts the full heatmap.
-        val statsAction = actionStartActivity(kaniWidgetStatsIntent(LocalContext.current))
-        HeatmapContent(
-            snapshot = snapshot,
-            palette = palette,
-            modifier = GlanceModifier
-                .fillMaxSize()
-                .background(palette.background.toProvider())
-                .clickable(statsAction)
-                .padding(12.dp)
-                .semantics { contentDescription = description },
-        )
-        return
-    }
     val rootModifier = GlanceModifier
         .fillMaxSize()
         .background(palette.background.toProvider())
@@ -153,6 +139,39 @@ private fun KaniWidgetContent(
             )
         }
     }
+}
+
+@Composable
+private fun LegacyActivityWidgetContent(
+    snapshot: ActivityWidgetSnapshot,
+    options: KaniWidgetInstanceOptions,
+) {
+    if (snapshot.state == ActivityWidgetState.NOT_SET_UP || snapshot.state == ActivityWidgetState.ERROR) {
+        KaniWidgetContent(
+            snapshot = KaniWidgetSnapshot(
+                state = if (snapshot.state == ActivityWidgetState.ERROR) {
+                    KaniWidgetState.ERROR
+                } else {
+                    KaniWidgetState.NOT_SET_UP
+                },
+                themeChoice = snapshot.themeChoice,
+            ),
+            options = options.copy(style = KaniWidgetStyle.DUE_CARD),
+        )
+        return
+    }
+    val palette = KaniWidgetPalette.forChoice(options.resolveTheme(snapshot.themeChoice))
+    val statsAction = actionStartActivity(kaniWidgetStatsIntent(LocalContext.current))
+    HeatmapContent(
+        snapshot = snapshot,
+        palette = palette,
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(palette.background.toProvider())
+            .clickable(statsAction)
+            .padding(12.dp)
+            .semantics { contentDescription = activityHeaderLine(snapshot) },
+    )
 }
 
 @Composable
@@ -249,7 +268,7 @@ internal fun heatCellRole(count: Int, maxCount: Int, palette: KaniWidgetPalette)
 
 @Composable
 private fun HeatmapContent(
-    snapshot: KaniWidgetSnapshot,
+    snapshot: ActivityWidgetSnapshot,
     palette: KaniWidgetPalette,
     modifier: GlanceModifier,
 ) {
@@ -258,7 +277,7 @@ private fun HeatmapContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = heatmapHeaderLine(snapshot),
+            text = activityHeaderLine(snapshot),
             style = TextStyle(
                 color = palette.ink.toProvider(),
                 fontSize = 13.sp,
@@ -270,7 +289,12 @@ private fun HeatmapContent(
     }
 }
 
-/** Header for the heatmap style: brand, due count, and streak in one row. */
+/** Header for the legacy Activity layout without advertising due Study work. */
+internal fun activityHeaderLine(snapshot: ActivityWidgetSnapshot): String =
+    "${WidgetTextCopy.appName()} · ${snapshot.last35DayTotal} reviews · " +
+        WidgetTextCopy.streakLabel(snapshot.streakDays)
+
+/** Header for the original study snapshot, retained for pure compatibility tests. */
 internal fun heatmapHeaderLine(snapshot: KaniWidgetSnapshot): String {
     val status = if (snapshot.state == KaniWidgetState.DUE_NOW) {
         WidgetTextCopy.dueCountLabel(snapshot.dueCount)
@@ -282,10 +306,10 @@ internal fun heatmapHeaderLine(snapshot: KaniWidgetSnapshot): String {
 
 @Composable
 private fun HeatmapGrid(dayCounts: List<Int>, palette: KaniWidgetPalette) {
-    val cells = dayCounts.takeLast(KaniWidgetSnapshotLoader.HEATMAP_DAYS)
+    val cells = dayCounts.takeLast(ActivityWidgetSnapshotLoader.HISTORY_DAYS)
     val maxCount = cells.maxOrNull() ?: 1
     Column {
-        cells.chunked(KaniWidgetSnapshotLoader.STRIP_DAYS).forEachIndexed { rowIndex, week ->
+        cells.chunked(StudyWidgetSnapshotLoader.STRIP_DAYS).forEachIndexed { rowIndex, week ->
             if (rowIndex > 0) Spacer(GlanceModifier.height(2.dp))
             HeatmapWeekRow(week, maxCount, palette)
         }
@@ -357,6 +381,11 @@ internal data class KaniWidgetCopy(
  */
 internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
     KaniWidgetState.NOT_SET_UP -> KaniWidgetCopy(
+        WidgetTextCopy.notSetUpTitle(),
+        WidgetTextCopy.notSetUpBody(),
+        WidgetTextCopy.openKaniLabel(),
+    )
+    KaniWidgetState.ERROR -> KaniWidgetCopy(
         WidgetTextCopy.notSetUpTitle(),
         WidgetTextCopy.notSetUpBody(),
         WidgetTextCopy.openKaniLabel(),
