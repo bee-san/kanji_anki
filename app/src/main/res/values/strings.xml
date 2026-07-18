@@ -5,7 +5,7 @@
     <string name="kani_widget_loading">Loading Kani…</string>
     <string name="kani_widget_preview_count">12 reviews ready</string>
     <string name="kani_widget_preview_streak">5-day streak</string>
-    <string name="study_overview_widget_label">Kani Study overview</string>
+    <string name="study_overview_widget_label">Study overview</string>
     <string name="quick_study_widget_label">Quick study</string>
     <string name="quick_study_widget_description">See what is due and start in one tap.</string>
     <string name="quick_study_widget_loading">Loading quick study…</string>
@@ -20,12 +20,12 @@
     <string name="activity_widget_preview_best">Best: 21 days</string>
     <string name="activity_widget_preview_stats">Stats</string>
     <string name="activity_widget_preview_heatmap" translatable="false">· ▂ ▃ █ · ▂ ▃\n▂ ▃ · ▂ █ ▃ ·\n· · ▂ ▃ █ ▂ ▃\n▃ ▂ █ · ▃ ▂ █\n▂ █ ▃ ▂ · ▃ █</string>
-    <string name="focus_kanji_widget_label">Kani Focus kanji</string>
-    <string name="focus_kanji_widget_description">A kanji from your current study set</string>
+    <string name="focus_kanji_widget_label">Focus kanji</string>
+    <string name="focus_kanji_widget_description">One local kanji to remember next.</string>
     <string name="focus_kanji_widget_loading">Loading focus kanji…</string>
-    <string name="preview_focus_kanji">学</string>
-    <string name="preview_focus_meaning">study</string>
-    <string name="preview_focus_reading">がく</string>
+    <string name="focus_kanji_widget_preview_kanji">学</string>
+    <string name="focus_kanji_widget_preview_meaning">learn</string>
+    <string name="focus_kanji_widget_preview_reading">がく</string>
     <string name="shortcut_study_short_label">Study</string>
     <string name="shortcut_study_long_label">Study now</string>
     <string name="shortcut_browse_short_label">Browse</string>

@@ -4,7 +4,7 @@ import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
 
-/** Localized copy for the three home-screen widget states. */
+/** Localized copy shared by the home-screen widget family. */
 object WidgetTextCopy {
     private const val JAPANESE_LANGUAGE = "ja"
 
@@ -86,6 +86,9 @@ object WidgetTextCopy {
 
     @JvmStatic
     fun studyNowLabel(): String = localizedText("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun studyLabel(): String = localizedText("Study", "学習")
 
     @JvmStatic
     fun nothingDueTitle(): String = localizedText("All caught up", "復習完了")
@@ -174,6 +177,48 @@ object WidgetTextCopy {
         "Quick study widget. $status. $action.",
         "クイック学習ウィジェット。$status。$action。",
     )
+
+    @JvmStatic
+    fun focusKanjiLabel(): String = localizedText("Focus kanji", "注目の漢字")
+
+    @JvmStatic
+    fun focusDetailsLabel(): String = localizedText("Details", "詳細")
+
+    @JvmStatic
+    fun focusDueStatus(): String = localizedText("Due now", "今すぐ復習")
+
+    @JvmStatic
+    fun focusEmptyTitle(): String = localizedText("No focus kanji", "注目の漢字なし")
+
+    @JvmStatic
+    fun focusEmptyBody(): String = localizedText(
+        "Open Kani to sync eligible study items.",
+        "Kaniを開いて学習対象を同期します。",
+    )
+
+    @JvmStatic
+    fun focusKanjiDescription(
+        kanji: String,
+        primaryMeaning: String,
+        readings: String,
+        isDueNow: Boolean,
+    ): String {
+        val parts = listOfNotNull(
+            localizedText("Focus kanji widget", "注目の漢字ウィジェット"),
+            kanji,
+            primaryMeaning,
+            readings.takeIf(String::isNotBlank)?.let {
+                localizedText("Reading: $it", "読み：$it")
+            },
+            focusDueStatus().takeIf { isDueNow },
+            focusDetailsLabel(),
+            studyNowLabel().takeIf { isDueNow },
+        )
+        return localizedText(
+            parts.joinToString(". ", postfix = "."),
+            parts.joinToString("。", postfix = "。"),
+        )
+    }
 
     @JvmStatic
     fun activityStateDescription(title: String, body: String, action: String): String = localizedText(

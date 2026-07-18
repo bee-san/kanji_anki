@@ -46,12 +46,36 @@ class FocusKanjiWidgetSnapshotLoaderTest {
     }
 
     @Test
-    fun resolverReceivesCommittedInventoryAndCanonicalStudyEligibleGlyphs() {
+    fun defaultPolicySelectsCommittedEligibleFactsAndAnnotatesDue() {
         LocalStore(context).use { store ->
             store.saveSuccessfulSync(
                 RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
                 emptyList(),
                 listOf(dashboardRow("裂")),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                NOW - 2_000L,
+                NOW - 1_000L,
+                null,
+            )
+            store.saveStudyItem(studyItem("裂", NOW - 1L))
+        }
+
+        val snapshot = FocusKanjiWidgetSnapshotLoader.load(context, NOW)
+
+        assertEquals(FocusKanjiWidgetState.READY, snapshot.state)
+        assertEquals("裂", snapshot.kanji)
+        assertEquals("split", snapshot.primaryMeaning)
+        assertEquals("れつ", snapshot.readings)
+        assertEquals(true, snapshot.isDueNow)
+    }
+
+    @Test
+    fun resolverReceivesCommittedInventoryAndCanonicalStudyEligibleGlyphs() {
+        LocalStore(context).use { store ->
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList(),
+                listOf(dashboardRow("裂"), dashboardRow("学")),
                 RecordsSyncModels.Settings.kikuDefaults(),
                 NOW - 2_000L,
                 NOW - 1_000L,

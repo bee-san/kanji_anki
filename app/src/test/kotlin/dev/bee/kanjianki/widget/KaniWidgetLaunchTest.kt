@@ -86,6 +86,29 @@ class KaniWidgetLaunchTest {
     }
 
     @Test
+    fun focusDetailsTapCarriesOnlyExactGlyphAndTaskReuseFlags() {
+        val intent = kaniFocusDetailIntent(context, "学")
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertEquals("学", intent.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+    }
+
+    @Test
+    fun focusDueStudySiblingUsesGenericStudyRouteWithoutGlyph() {
+        val intent = kaniWidgetLaunchIntent(
+            context,
+            KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 1),
+        )
+
+        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+    }
+
+    @Test
     fun heatmapTapOpensStatsWithTaskReuseFlags() {
         val intent = kaniWidgetStatsIntent(context)
 

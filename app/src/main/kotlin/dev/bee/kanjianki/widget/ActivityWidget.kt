@@ -89,6 +89,8 @@ internal data class ActivityWidgetPresentation(
 
 internal data class ActivityWidgetLayout(
     val showBestStreak: Boolean,
+    val showStreak: Boolean,
+    val useCompactHero: Boolean,
     val titleFontSp: Float,
     val actionFontSp: Float,
     val supportFontSp: Float,
@@ -99,6 +101,8 @@ internal fun activityWidgetLayout(
     fontScale: Float,
 ) = ActivityWidgetLayout(
     showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
+    showStreak = fontScale < 1.8f,
+    useCompactHero = fontScale >= 1.8f,
     titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
     actionFontSp = 13f,
     supportFontSp = 12f,
@@ -247,10 +251,24 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             -> kaniWidgetHomeIntent(context)
         },
     )
-    val visibleAction = if (presentation.destination == KaniWidgetDestination.STATS) {
+    val visibleAction = if (
+        layout.useCompactHero && presentation.destination == KaniWidgetDestination.HOME
+    ) {
+        WidgetTextCopy.appName()
+    } else if (presentation.destination == KaniWidgetDestination.STATS) {
         WidgetTextCopy.statsLabel()
     } else {
         presentation.action
+    }
+    val visibleTitle = if (layout.useCompactHero) {
+        when (snapshot.state) {
+            ActivityWidgetState.HISTORY -> WidgetTextCopy.visualCountLabel(snapshot.last35DayTotal)
+            ActivityWidgetState.NO_HISTORY -> "0"
+            ActivityWidgetState.NOT_SET_UP -> "—"
+            ActivityWidgetState.ERROR -> "!"
+        }
+    } else {
+        presentation.title
     }
 
     Column(
@@ -264,7 +282,7 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = presentation.title,
+                text = visibleTitle,
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = palette.ink.toGlanceColor(),
@@ -273,17 +291,18 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 ),
                 maxLines = 1,
             )
+            Spacer(modifier = GlanceModifier.width(8.dp))
             Text(
                 text = visibleAction,
                 style = TextStyle(
-                    color = palette.primary.toGlanceColor(),
+                    color = palette.primaryText.toGlanceColor(),
                     fontSize = layout.actionFontSp.sp,
                     fontWeight = FontWeight.Bold,
                 ),
                 maxLines = 1,
             )
         }
-        if (presentation.cells.isEmpty()) {
+        if (presentation.cells.isEmpty() && layout.showStreak) {
             Text(
                 text = presentation.streak,
                 style = TextStyle(
@@ -292,29 +311,31 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 ),
                 maxLines = 2,
             )
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = presentation.streak,
-                    modifier = GlanceModifier.defaultWeight(),
-                    style = TextStyle(
-                        color = palette.ink.toGlanceColor(),
-                        fontSize = layout.supportFontSp.sp,
-                    ),
-                    maxLines = 1,
-                )
-                if (layout.showBestStreak) {
+        } else if (presentation.cells.isNotEmpty()) {
+            if (layout.showStreak) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = presentation.bestStreak,
+                        text = presentation.streak,
+                        modifier = GlanceModifier.defaultWeight(),
                         style = TextStyle(
-                            color = palette.muted.toGlanceColor(),
+                            color = palette.ink.toGlanceColor(),
                             fontSize = layout.supportFontSp.sp,
                         ),
                         maxLines = 1,
                     )
+                    if (layout.showBestStreak) {
+                        Text(
+                            text = presentation.bestStreak,
+                            style = TextStyle(
+                                color = palette.muted.toGlanceColor(),
+                                fontSize = layout.supportFontSp.sp,
+                            ),
+                            maxLines = 1,
+                        )
+                    }
                 }
+                Spacer(modifier = GlanceModifier.height(2.dp))
             }
-            Spacer(modifier = GlanceModifier.height(2.dp))
             ActivityGrid(presentation.cells, tier, palette)
         }
     }

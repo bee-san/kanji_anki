@@ -42,8 +42,12 @@ class ActivityWidgetTest {
         val accessibility = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 2f)
 
         assertTrue(regular.showBestStreak)
+        assertTrue(regular.showStreak)
+        assertFalse(regular.useCompactHero)
         assertFalse(enlarged.showBestStreak)
         assertFalse(accessibility.showBestStreak)
+        assertFalse(accessibility.showStreak)
+        assertTrue(accessibility.useCompactHero)
         assertTrue(accessibility.actionFontSp >= 13f)
         assertTrue(accessibility.supportFontSp >= 12f)
     }

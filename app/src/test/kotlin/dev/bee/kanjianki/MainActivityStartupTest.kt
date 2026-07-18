@@ -32,6 +32,94 @@ import java.util.concurrent.TimeUnit
 @Config(sdk = [35])
 class MainActivityStartupTest {
     @Test
+    fun focusKanjiIntentAcceptsExactlyOneTrimmedKanjiGlyph() {
+        assertEquals(
+            "学",
+            focusKanjiDetailFromIntent(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "  学  "),
+            ),
+        )
+    }
+
+    @Test
+    fun focusKanjiIntentRejectsAbsentBlankKanaAndMultiGlyphValues() {
+        assertNull(focusKanjiDetailFromIntent(null))
+        assertNull(focusKanjiDetailFromIntent(Intent()))
+        assertNull(
+            focusKanjiDetailFromIntent(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "   "),
+            ),
+        )
+        assertNull(
+            focusKanjiDetailFromIntent(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "かな"),
+            ),
+        )
+        assertNull(
+            focusKanjiDetailFromIntent(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学習"),
+            ),
+        )
+    }
+
+    @Test
+    fun coldStartFocusIntentRoutesToTheExactExistingDetailTarget() {
+        val intent = Intent(
+            ApplicationProvider.getApplicationContext(),
+            FocusTrackingStartupActivity::class.java,
+        ).putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学")
+        val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java, intent)
+        val activity = controller.get()
+
+        controller.create()
+
+        assertEquals("学", activity.openedFocusKanji)
+        assertEquals(0, activity.renderHomeCalls)
+    }
+
+    @Test
+    fun invalidColdStartFocusIntentFallsBackToHome() {
+        val intent = Intent(
+            ApplicationProvider.getApplicationContext(),
+            FocusTrackingStartupActivity::class.java,
+        ).putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学習")
+        val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java, intent)
+        val activity = controller.get()
+
+        controller.create()
+
+        assertNull(activity.openedFocusKanji)
+        assertEquals(1, activity.renderHomeCalls)
+    }
+
+    @Test
+    fun warmFocusIntentRoutesToTheExactExistingDetailTarget() {
+        val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java)
+        val activity = controller.create().start().resume().get()
+        activity.openedFocusKanji = null
+        activity.renderHomeCalls = 0
+
+        controller.newIntent(
+            Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学"),
+        )
+
+        assertEquals("学", activity.openedFocusKanji)
+        assertEquals(0, activity.renderHomeCalls)
+    }
+
+    @Test
+    fun focusDetailRouteDoesNotLeakTheGlyphIntoBrowseState() {
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
+        val activity = controller.create().get()
+
+        assertTrue(activity.openFocusKanjiDetail("学"))
+
+        assertEquals("", activity.activeBrowseQuery)
+        assertFalse(activity.activeBrowseSimilarOnly)
+        assertTrue(activity.activeBrowseAllKanji)
+    }
+
+    @Test
     fun launcherShortcutActionsUseOnlyAllowlistedDestinations() {
         assertEquals(
             LauncherShortcutDestination.STUDY,
@@ -365,6 +453,20 @@ class MainActivityStartupTest {
 
         assertEquals("middle", activity.screenshotScrollPositionLabel())
         assertEquals(1080, activity.screenshotScrollY())
+    }
+
+    private class FocusTrackingStartupActivity : MainActivity() {
+        var openedFocusKanji: String? = null
+        var renderHomeCalls = 0
+
+        override fun openFocusKanjiDetail(kanji: String): Boolean {
+            openedFocusKanji = kanji
+            return true
+        }
+
+        override fun renderHome() {
+            renderHomeCalls += 1
+        }
     }
 
     private class NoopStartupActivity : MainActivity() {

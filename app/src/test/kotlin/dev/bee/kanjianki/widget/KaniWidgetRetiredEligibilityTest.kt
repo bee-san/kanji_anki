@@ -2,10 +2,12 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import java.util.Locale
@@ -71,6 +73,42 @@ class KaniWidgetRetiredEligibilityTest {
     }
 
     @Test
+    fun retiredFocusIsExcludedUntilNormalSupportRegressionReopensIt() {
+        val row = rowWithMatureSupport(RETIRED)
+        val retired = item(RETIRED, "retired")
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        LocalStore(context).use { store ->
+            store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList(),
+                listOf(row),
+                settings,
+                NOW - 2_000L,
+                NOW - 1_000L,
+                null,
+            )
+            store.saveStudyItem(retired)
+        }
+
+        assertEquals(emptySet<String>(), focusAllowedKanji())
+
+        val reopened = StudyQueueSeeder().seedQueue(
+            listOf(row),
+            listOf(retired),
+            settings,
+            NOW,
+            0L,
+            ladder = null,
+            evidenceStatusByKanji = mapOf(
+                RETIRED to KanjiRepairEvidencePolicy.Status.REGRESSING,
+            ),
+        ).single()
+        LocalStore(context).use { store -> store.saveStudyItem(reopened) }
+
+        assertEquals(setOf(RETIRED), focusAllowedKanji())
+    }
+
+    @Test
     fun unavailableWidgetCopyDoesNotMislabelMissingOrSuspendedDataAsRetired() {
         val original = Locale.getDefault()
         try {
@@ -102,6 +140,34 @@ class KaniWidgetRetiredEligibilityTest {
         0,
         emptyList<RecordsImportModels.Example>(),
     )
+
+    private fun rowWithMatureSupport(kanji: String) = RecordsImportModels.DashboardRow(
+        kanji,
+        100,
+        "meaning-$kanji",
+        "reading-$kanji",
+        kanji,
+        0,
+        "",
+        "",
+        2,
+        1,
+        2,
+        emptyList<RecordsImportModels.Example>(),
+    )
+
+    private fun focusAllowedKanji(): Set<String> {
+        var allowed = emptySet<String>()
+        FocusKanjiWidgetSnapshotLoader.load(
+            context,
+            NOW,
+            FocusKanjiSelectionResolver { _, allowedKanji, _ ->
+                allowed = allowedKanji
+                null
+            },
+        )
+        return allowed
+    }
 
     private fun item(kanji: String, state: String): RecordsStudyModels.StudyItem =
         RecordsStudyModels.StudyItem(

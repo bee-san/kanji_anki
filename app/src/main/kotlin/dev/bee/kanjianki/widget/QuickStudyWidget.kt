@@ -190,7 +190,7 @@ internal fun QuickStudyWidgetContent(snapshot: KaniWidgetSnapshot) {
         .fillMaxSize()
         .background(palette.background.toGlanceColor())
         .cornerRadius(16.dp)
-        .padding(if (layout.tier == QuickStudyTier.TINY) 4.dp else 6.dp)
+        .padding(if (layout.tier == QuickStudyTier.WIDE) 6.dp else 4.dp)
 
     if (presentation.showSeparateAction) {
         Row(
@@ -267,7 +267,7 @@ private fun QuickStudyHero(
             Text(
                 text = if (useActionAsStatus) presentation.action else presentation.status,
                 style = TextStyle(
-                    color = palette.primary.toGlanceColor(),
+                    color = palette.primaryText.toGlanceColor(),
                     fontSize = (if (useActionAsStatus) layout.actionFontSp else layout.statusFontSp).sp,
                     fontWeight = FontWeight.Bold,
                 ),
@@ -295,7 +295,7 @@ private fun QuickStudyAction(
         Text(
             text = label,
             style = TextStyle(
-                color = palette.primary.toGlanceColor(),
+                color = palette.primaryText.toGlanceColor(),
                 fontSize = fontSizeSp.sp,
                 fontWeight = FontWeight.Bold,
             ),

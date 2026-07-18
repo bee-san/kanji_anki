@@ -614,7 +614,7 @@ No design approval, final QA, or merge may proceed without the real picker and p
 
 ## 13. KANBAN_GRAPH
 
-Board: `kani`  
+Board: `kani`
 Tenant: `kani-multi-widget-family-20260718`
 
 - 00A design: `t_b1a219e8` (design)

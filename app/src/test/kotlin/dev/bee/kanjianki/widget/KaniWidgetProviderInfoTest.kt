@@ -132,14 +132,16 @@ class KaniWidgetProviderInfoTest {
     }
 
     @Test
-    fun quickStudyAndActivityPickerCopyMatchesApprovedEnglishAndJapaneseText() {
+    fun pickerCopyMatchesApprovedEnglishAndJapaneseText() {
         val english = File("src/main/res/values/strings.xml").readText()
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
+        assertTrue(english.contains("name=\"study_overview_widget_label\">Study overview</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_label\">Quick study</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_description\">See what is due and start in one tap.</string>"))
         assertTrue(english.contains("name=\"activity_widget_label\">Activity</string>"))
         assertTrue(english.contains("name=\"activity_widget_description\">Your streak and five weeks of review activity.</string>"))
+        assertTrue(japanese.contains("name=\"study_overview_widget_label\">学習概要</string>"))
         assertTrue(japanese.contains("name=\"quick_study_widget_label\">クイック学習</string>"))
         assertTrue(japanese.contains("name=\"quick_study_widget_description\">復習件数を確認してワンタップで学習します。</string>"))
         assertTrue(japanese.contains("name=\"activity_widget_label\">学習履歴</string>"))
@@ -147,14 +149,20 @@ class KaniWidgetProviderInfoTest {
     }
 
     @Test
-    fun quickAndActivityStaticSurfacesUseSharedDayNightSemanticColors() {
+    fun allStaticWidgetSurfacesUseSharedDayNightSemanticColors() {
         val resourcePaths = listOf(
+            "src/main/res/layout/kani_widget_loading.xml",
+            "src/main/res/layout/kani_widget_preview.xml",
             "src/main/res/layout/quick_study_widget_loading.xml",
             "src/main/res/layout/quick_study_widget_preview.xml",
             "src/main/res/layout/activity_widget_loading.xml",
             "src/main/res/layout/activity_widget_preview.xml",
+            "src/main/res/layout/focus_kanji_widget_loading.xml",
+            "src/main/res/layout/focus_kanji_widget_preview.xml",
+            "src/main/res/drawable/kani_widget_preview_image.xml",
             "src/main/res/drawable/quick_study_widget_preview_image.xml",
             "src/main/res/drawable/activity_widget_preview_image.xml",
+            "src/main/res/drawable/focus_kanji_widget_preview_image.xml",
         )
         resourcePaths.forEach { path ->
             val resource = File(path).readText()
@@ -168,6 +176,55 @@ class KaniWidgetProviderInfoTest {
             assertTrue(night.contains("name=\"widget_preview_$role\""))
         }
     }
+
+    @Test
+    fun focusProviderUsesTheApprovedCompactAndWideSizeContract() {
+        val provider = providerInfo("@xml/focus_kanji_widget_info")
+
+        assertEquals("120dp", provider.androidAttribute("minWidth"))
+        assertEquals("120dp", provider.androidAttribute("minHeight"))
+        assertEquals("120dp", provider.androidAttribute("minResizeWidth"))
+        assertEquals("120dp", provider.androidAttribute("minResizeHeight"))
+        assertEquals("250dp", provider.androidAttribute("maxResizeWidth"))
+        assertEquals("130dp", provider.androidAttribute("maxResizeHeight"))
+        assertEquals("horizontal", provider.androidAttribute("resizeMode"))
+        assertEquals("2", provider.androidAttribute("targetCellWidth"))
+        assertEquals("2", provider.androidAttribute("targetCellHeight"))
+        assertEquals("@layout/focus_kanji_widget_preview", provider.androidAttribute("previewLayout"))
+        assertEquals("@layout/focus_kanji_widget_loading", provider.androidAttribute("initialLayout"))
+    }
+
+    @Test
+    fun focusPreviewUsesOnlyLocalizedDemoFactsAndLoadingHasNoDemoFactsOrActions() {
+        val preview = File("src/main/res/layout/focus_kanji_widget_preview.xml").readText()
+        val loading = File("src/main/res/layout/focus_kanji_widget_loading.xml").readText()
+        val english = File("src/main/res/values/strings.xml").readText()
+        val japanese = File("src/main/res/values-ja/strings.xml").readText()
+
+        assertTrue(preview.contains("@string/focus_kanji_widget_preview_kanji"))
+        assertTrue(preview.contains("@string/focus_kanji_widget_preview_meaning"))
+        assertTrue(preview.contains("@string/focus_kanji_widget_preview_reading"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_preview_kanji\">学</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_preview_meaning\">learn</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_preview_reading\">がく</string>"))
+        assertTrue(japanese.contains("name=\"focus_kanji_widget_preview_meaning\">学ぶ</string>"))
+        assertFalse(loading.contains("focus_kanji_widget_preview_kanji"))
+        assertFalse(loading.contains("focus_kanji_widget_preview_meaning"))
+        assertFalse(loading.contains("focus_kanji_widget_preview_reading"))
+        assertFalse(loading.contains("widget_shortcut_study_now"))
+    }
+
+    @Test
+    fun focusPickerCopyMatchesApprovedEnglishAndJapaneseText() {
+        val english = File("src/main/res/values/strings.xml").readText()
+        val japanese = File("src/main/res/values-ja/strings.xml").readText()
+
+        assertTrue(english.contains("name=\"focus_kanji_widget_label\">Focus kanji</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_description\">One local kanji to remember next.</string>"))
+        assertTrue(japanese.contains("name=\"focus_kanji_widget_label\">注目漢字</string>"))
+        assertTrue(japanese.contains("name=\"focus_kanji_widget_description\">次に覚えたい漢字を1字表示します。</string>"))
+    }
+
 
     @Test
     fun newProvidersNeverDeclareConfigurationState() {

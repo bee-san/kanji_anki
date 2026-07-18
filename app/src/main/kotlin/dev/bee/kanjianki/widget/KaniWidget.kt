@@ -97,49 +97,74 @@ internal fun KaniWidgetContent(
     snapshot: KaniWidgetSnapshot,
     options: KaniWidgetInstanceOptions = KaniWidgetInstanceOptions(),
 ) {
+    val context = LocalContext.current
     val size = LocalSize.current
     val isExpanded = size.height >= 120.dp
     val isWide = isExpanded && size.width >= KaniWidget.WIDE_SIZE.width
+    val fontScale = context.resources.configuration.fontScale
+    val veryLargeFont = fontScale >= 1.8f
+    val showTertiary = isExpanded && fontScale < 1.3f
     val copy = widgetCopy(snapshot, isExpanded)
+    val visibleTitle = if (veryLargeFont) {
+        when (snapshot.state) {
+            KaniWidgetState.DUE_NOW -> WidgetTextCopy.visualCountLabel(snapshot.dueCount)
+            KaniWidgetState.NOTHING_DUE -> "0"
+            KaniWidgetState.NOT_SET_UP -> "—"
+            KaniWidgetState.ERROR -> "!"
+        }
+    } else {
+        copy.title
+    }
+    val visibleAction = if (veryLargeFont) {
+        if (snapshot.state == KaniWidgetState.DUE_NOW) {
+            WidgetTextCopy.studyLabel()
+        } else {
+            WidgetTextCopy.appName()
+        }
+    } else {
+        copy.action
+    }
     val palette = KaniWidgetPalette.forChoice(options.resolveTheme(snapshot.themeChoice))
-    val homeAction = actionStartActivity(kaniWidgetHomeIntent(LocalContext.current))
-    val studyAction = actionStartActivity(kaniWidgetLaunchIntent(LocalContext.current, snapshot))
+    val homeAction = actionStartActivity(kaniWidgetHomeIntent(context))
+    val studyAction = actionStartActivity(kaniWidgetLaunchIntent(context, snapshot))
     val description = WidgetTextCopy.widgetDescription(copy.title, copy.body)
-    val rootModifier = GlanceModifier
+    val cardModifier = GlanceModifier
         .fillMaxSize()
         .background(palette.background.toProvider())
-        .clickable(homeAction)
-        .padding(16.dp)
-        .semantics { contentDescription = description }
-    if (isWide) {
+        .padding(if (isExpanded) 12.dp else 8.dp)
+    Row(
+        modifier = cardModifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Row(
-            modifier = rootModifier,
+            modifier = GlanceModifier
+                .defaultWeight()
+                .fillMaxHeight()
+                .clickable(homeAction)
+                .semantics { contentDescription = description },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                WidgetTextBlock(copy, palette, studyAction)
+                WidgetTextBlock(
+                    copy = copy,
+                    title = visibleTitle,
+                    palette = palette,
+                    showBody = fontScale < 2f,
+                    showBrand = showTertiary,
+                    showExtra = showTertiary,
+                    showStrip = showTertiary && !isWide,
+                    dayCounts = snapshot.last7DayCounts,
+                )
             }
-            if (snapshot.last7DayCounts.isNotEmpty()) {
+            if (showTertiary && isWide && snapshot.last7DayCounts.isNotEmpty()) {
                 Spacer(GlanceModifier.width(16.dp))
                 ActivityStrip(snapshot.last7DayCounts, palette)
             }
         }
-    } else {
-        Column(
-            modifier = rootModifier,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            WidgetTextBlock(
-                copy,
-                palette,
-                studyAction,
-                showStrip = isExpanded,
-                dayCounts = snapshot.last7DayCounts,
-            )
-        }
+        OverviewAction(visibleAction, studyAction, palette)
     }
 }
 
@@ -179,37 +204,44 @@ internal fun LegacyActivityWidgetContent(
 @Composable
 private fun WidgetTextBlock(
     copy: KaniWidgetCopy,
+    title: String,
     palette: KaniWidgetPalette,
-    actionRowAction: Action,
+    showBody: Boolean,
+    showBrand: Boolean,
+    showExtra: Boolean,
     showStrip: Boolean = false,
     dayCounts: List<Int> = emptyList(),
 ) {
+    if (showBrand) {
+        Text(
+            text = WidgetTextCopy.appName(),
+            style = TextStyle(
+                color = palette.primaryText.toProvider(),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+        Spacer(GlanceModifier.height(3.dp))
+    }
     Text(
-        text = WidgetTextCopy.appName(),
-        style = TextStyle(
-            color = palette.primary.toProvider(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        ),
-    )
-    Spacer(GlanceModifier.height(3.dp))
-    Text(
-        text = copy.title,
+        text = title,
         style = TextStyle(
             color = palette.ink.toProvider(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
         ),
     )
-    Spacer(GlanceModifier.height(3.dp))
-    Text(
-        text = copy.body,
-        style = TextStyle(
-            color = palette.muted.toProvider(),
-            fontSize = 13.sp,
-        ),
-    )
-    if (copy.extraLine.isNotEmpty()) {
+    if (showBody) {
+        Spacer(GlanceModifier.height(3.dp))
+        Text(
+            text = copy.body,
+            style = TextStyle(
+                color = palette.muted.toProvider(),
+                fontSize = 13.sp,
+            ),
+        )
+    }
+    if (showExtra && copy.extraLine.isNotEmpty()) {
         Spacer(GlanceModifier.height(2.dp))
         Text(
             text = copy.extraLine,
@@ -223,19 +255,32 @@ private fun WidgetTextBlock(
         Spacer(GlanceModifier.height(8.dp))
         ActivityStrip(dayCounts, palette)
     }
-    Spacer(GlanceModifier.height(6.dp))
-    Text(
-        text = copy.action,
+}
+
+@Composable
+private fun OverviewAction(
+    label: String,
+    action: Action,
+    palette: KaniWidgetPalette,
+) {
+    Box(
         modifier = GlanceModifier
-            .clickable(actionRowAction)
-            .padding(vertical = 4.dp)
-            .semantics { contentDescription = copy.action },
-        style = TextStyle(
-            color = palette.primary.toProvider(),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-        ),
-    )
+            .width(64.dp)
+            .height(56.dp)
+            .clickable(action)
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                color = palette.primaryText.toProvider(),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 2,
+        )
+    }
 }
 
 @Composable
@@ -355,6 +400,12 @@ internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapsh
         if (snapshot.state == KaniWidgetState.DUE_NOW) {
             putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
         }
+    }
+
+/** Focus-kanji card tap: opens the selected glyph's existing in-app detail route. */
+internal fun kaniFocusDetailIntent(context: Context, kanji: String): Intent =
+    kaniWidgetHomeIntent(context).apply {
+        putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, kanji)
     }
 
 /** Heatmap-card tap: opens the stats screen that hosts the full heatmap. */

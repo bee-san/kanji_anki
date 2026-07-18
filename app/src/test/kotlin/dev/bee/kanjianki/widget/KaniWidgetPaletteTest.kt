@@ -24,6 +24,16 @@ class KaniWidgetPaletteTest {
             assertEquals(choice.name, night.bg, palette.background.night)
             assertEquals(choice.name, day.primary, palette.primary.day)
             assertEquals(choice.name, night.primary, palette.primary.night)
+            assertEquals(
+                choice.name,
+                if (contrastRatio(day.primary, day.bg) >= 4.5) day.primary else day.ink,
+                palette.primaryText.day,
+            )
+            assertEquals(
+                choice.name,
+                if (contrastRatio(night.primary, night.bg) >= 4.5) night.primary else night.ink,
+                palette.primaryText.night,
+            )
             assertEquals(choice.name, day.ink, palette.ink.day)
             assertEquals(choice.name, night.ink, palette.ink.night)
             assertEquals(choice.name, day.muted, palette.muted.day)
@@ -113,6 +123,23 @@ class KaniWidgetPaletteTest {
                 "$choice night today outline contrast",
                 contrastRatio(palette.todayOutline.night, palette.background.night) >= 3.0,
             )
+        }
+    }
+
+    @Test
+    fun widgetTextRolesKeepNormalTextContrastAgainstTheBackground() {
+        for (choice in KaniThemeChoice.entries) {
+            val palette = KaniWidgetPalette.forChoice(choice)
+            listOf(palette.ink, palette.muted, palette.primaryText).forEach { role ->
+                assertTrue(
+                    "$choice day text contrast",
+                    contrastRatio(role.day, palette.background.day) >= 4.5,
+                )
+                assertTrue(
+                    "$choice night text contrast",
+                    contrastRatio(role.night, palette.background.night) >= 4.5,
+                )
+            }
         }
     }
 

@@ -1,9 +1,12 @@
 package dev.bee.kanjianki.widget
 
 import android.content.Context
+import dev.bee.kanjianki.core.FocusKanjiSelectionPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
+import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.theme.KaniThemeChoice
+import java.time.ZoneId
 
 internal enum class FocusKanjiWidgetState {
     NOT_SET_UP,
@@ -26,7 +29,20 @@ internal fun interface FocusKanjiSelectionResolver {
     ): FocusKanjiWidgetSelection?
 
     companion object {
-        val NONE = FocusKanjiSelectionResolver { _, _, _ -> null }
+        val DEFAULT = FocusKanjiSelectionResolver { inventory, allowedKanji, nowMillis ->
+            FocusKanjiSelectionPolicy.select(
+                inventory,
+                allowedKanji,
+                nowMillis,
+                ZoneId.systemDefault(),
+            )?.let { selection ->
+                FocusKanjiWidgetSelection(
+                    selection.kanji,
+                    selection.primaryMeaning,
+                    selection.readings,
+                )
+            }
+        }
     }
 }
 
@@ -40,26 +56,30 @@ internal data class FocusKanjiWidgetSnapshot(
 )
 
 /**
- * Reads only committed local inventory and canonical Study eligibility. The deterministic
- * local-day resolver is supplied by the Focus implementation child.
+ * Reads only committed local inventory and canonical Study eligibility. The default resolver
+ * rotates deterministically at the local calendar-day boundary.
  */
 internal object FocusKanjiWidgetSnapshotLoader {
     fun load(
         context: Context,
         nowMillis: Long = System.currentTimeMillis(),
-        resolver: FocusKanjiSelectionResolver = FocusKanjiSelectionResolver.NONE,
+        resolver: FocusKanjiSelectionResolver = FocusKanjiSelectionResolver.DEFAULT,
     ): FocusKanjiWidgetSnapshot = when (val read = WidgetLocalStoreReader.read(context) { store ->
-        val inventory = store.allInventoryItems(store.readableDatabase)
+        val dashboardRows = store.activeDashboardRows()
         val eligibleItems = ReminderEligibilityPolicy.eligibleReminderItems(
-            store.studyItems(),
-            store.activeDashboardRows(),
+            store.studyItemsForKanji(dashboardRows.map { it.kanji }),
+            dashboardRows,
             store.studyLadderSettings(),
         )
         val allowedKanji = eligibleItems.mapTo(linkedSetOf()) { it.kanji }
-        val resolved = resolver.resolve(inventory, allowedKanji, nowMillis)
-        val selected = resolved?.kanji
-            ?.takeIf(allowedKanji::contains)
-            ?.let { kanji -> inventory.firstOrNull { it.kanji == kanji } }
+        // activeDashboardRows is capped; resolve only its canonical eligible glyphs instead of
+        // scanning the full inventory on every widget refresh.
+        val inventory = allowedKanji.mapNotNull(store::inventoryItemForKanji)
+        val selected = resolver.resolve(inventory, allowedKanji, nowMillis)
+            ?.takeIf { selection ->
+                selection.kanji == TextUtil.normalizeSingleKanji(selection.kanji) &&
+                    selection.kanji in allowedKanji
+            }
         if (selected == null) {
             FocusKanjiWidgetSnapshot(
                 state = FocusKanjiWidgetState.EMPTY,
