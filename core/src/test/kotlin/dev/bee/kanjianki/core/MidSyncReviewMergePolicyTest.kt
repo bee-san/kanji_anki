@@ -185,6 +185,30 @@ class MidSyncReviewMergePolicyTest {
     }
 
     @Test
+    fun compatibleLegacyFamilyReviewWinsOverStrongerDifferentMeaningRow() {
+        val compatibleSignature = "痛|痛む|いたむ|pain"
+        val incompatibleSignature = "痛|傷む|いたむ|be damaged"
+        val baseline = listOf(
+            item("痛", 3, 100L, compatibleSignature, schedulerRevision = 7L),
+            item("痛", 9, 900L, incompatibleSignature, schedulerRevision = 20L),
+        )
+        val persisted = listOf(
+            item("痛", 4, 5_000L, compatibleSignature, dueAt = 7_000L, schedulerRevision = 8L),
+            item("痛", 9, 900L, incompatibleSignature, schedulerRevision = 20L),
+        )
+        val seeded = listOf(
+            item("痛", 3, 100L, compatibleSignature, dueAt = 200L, schedulerRevision = 7L),
+        )
+
+        val merged = MidSyncReviewMergePolicy.merge(seeded, baseline, persisted).single()
+
+        assertEquals(compatibleSignature, merged.answerSignature)
+        assertEquals(4, merged.totalReviews)
+        assertEquals(7_000L, merged.dueAtMillis)
+        assertEquals(8L, merged.schedulerRevision)
+    }
+
+    @Test
     fun meaningChangeDoesNotClaimReviewFromOldFamily() {
         val baseline = listOf(
             item("痛", 3, 100L, answerSignature = "痛|痛む|いたむ|pain", schedulerRevision = 7L),
