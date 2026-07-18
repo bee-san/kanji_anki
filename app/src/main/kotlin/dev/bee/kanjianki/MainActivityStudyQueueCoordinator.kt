@@ -17,7 +17,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.renderStudyRecoveryOnly()
             return
         }
-        val candidate = newStudyLoadCandidate()
+        val candidate = newStudyLoadCandidate(recoveryOnly)
         val feedback = study.studyAnswerFeedbackState
         val active = study.activeSession
         val feedbackPhase = feedback?.snapshot()?.phase
@@ -434,7 +434,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
 
     fun renderStudyForKanji(kanji: String?) {
         val supersededRecoveryToken = study.studyRecoverySessionToken()
-        val candidate = newStudyLoadCandidate()
+        val candidate = newStudyLoadCandidate { study.renderStudyForKanji(kanji) }
         // Same async pattern as renderStudy: the targeted-session compute does full
         // dashboard/study-item reads and queue persistence, which used to run on the
         // main thread for undo and browse-detail entry points.
@@ -686,14 +686,20 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         } else if (publishTracker &&
             study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute) != null
         ) {
-            study.renderStudy()
+            candidate.retry()
         }
     }
 
-    private fun newStudyLoadCandidate(): StudyLoadCandidate = StudyLoadCandidate(
+    private fun newStudyLoadCandidate(recoveryOnly: Boolean): StudyLoadCandidate =
+        newStudyLoadCandidate(
+            if (recoveryOnly) study::renderStudyRecoveryOnly else study::renderStudy,
+        )
+
+    private fun newStudyLoadCandidate(retry: () -> Unit): StudyLoadCandidate = StudyLoadCandidate(
         expectedRoute = study.studySessionViewModel.acceptedRouteSnapshot(),
         tracker = study.studySessionTracker.copyForStaging(),
         recoveredTargetReconciliationPending = study.recoveredStudyRunNeedsTargetReconciliation,
+        retry = retry,
     )
 
     private fun nonRestorableSessionRender(
@@ -735,6 +741,7 @@ private data class StudyLoadCandidate(
     val expectedRoute: StudyRouteSnapshot,
     val tracker: StudySessionTracker,
     val recoveredTargetReconciliationPending: Boolean,
+    val retry: () -> Unit,
 )
 
 private data class ContinuedRecoveryInspection(

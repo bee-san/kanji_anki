@@ -874,6 +874,57 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun targetedTrackerRevisionRejectionRetriesRequestedKanji() {
+        val activity = createActivity()
+        val row = dashboardRow("他")
+        activity.store.saveRows(activity.store.writableDatabase, listOf(row), 4_000L)
+        activity.store.saveStudyItem(
+            studyItem("他", "").copyBuilder()
+                .answerSignature(StudyQueueSeeder.answerSignature(row))
+                .build(),
+        )
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val loadingTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, task ->
+                    loadingTasks.addLast(task)
+                    LoadingTaskHandle { }
+                },
+            ),
+        )
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionTracker.startActiveTask(
+            "active-task",
+            session.item?.kanji,
+            session.taskType,
+            0L,
+            resumeImmediately = false,
+        )
+
+        activity.renderStudyForKanji("無")
+        loadingTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        backgroundTasks.removeFirst().run()
+        activity.studySessionTracker.pauseActiveTask()
+        mainTasks.removeFirst().run()
+
+        assertEquals(1, backgroundTasks.size)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        val accepted = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.COMPLETE, accepted.phase)
+        assertEquals(StudyRouteCompletionReason.NO_SESSION, accepted.completionReason)
+        assertNull(activity.activeSession)
+    }
+
+    @Test
     fun supersededStoredRecoveryCannotPublishWithoutCandidateAcceptance() {
         val restored = restoreActiveCardAfterProcessRestart(
             kanji = "裂",
