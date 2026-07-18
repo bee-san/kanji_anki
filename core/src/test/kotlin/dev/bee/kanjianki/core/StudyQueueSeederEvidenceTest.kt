@@ -236,6 +236,24 @@ class StudyQueueSeederEvidenceTest {
     }
 
     @Test
+    fun bridgeSchedulerKeepsLocallyIneligibleProviderRowOutOfRetirement() {
+        val scheduler = BridgeScheduler()
+        val items = scheduler.seedQueue(
+            listOf(activeRow("謎")),
+            emptyList(),
+            listOf(reviewedItem("謎")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1_000L,
+            0L,
+            null as RecordsSchedulerModels.AdaptiveLoadPlan?,
+            RecordsBase.StudyLadderSettings.defaults(),
+            mapOf("謎" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        )
+
+        assertEquals("review", findItem(items, "謎").state)
+    }
+
+    @Test
     fun reopeningRelearningItemRestoresLearningState() {
         val retired = reviewedItem("謎").copyBuilder()
             .state(StudyLadderRules.STATE_RETIRED)
