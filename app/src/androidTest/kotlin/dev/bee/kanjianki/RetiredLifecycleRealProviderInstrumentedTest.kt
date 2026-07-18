@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.content.ContentValues
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -140,6 +141,7 @@ class RetiredLifecycleRealProviderInstrumentedTest {
     private fun missingRouteRetire() {
         LocalStore(context).use { store ->
             val priorRevision = targetItem(store).schedulerRevision
+            markArchivedRouteRestored(store)
             assertSuccessfulSync(store)
             assertTrue(store.dashboardRows().none { it.kanji == TARGET_KANJI })
             val retired = targetItem(store)
@@ -149,6 +151,23 @@ class RetiredLifecycleRealProviderInstrumentedTest {
             assertTransitionCounts(store, retired = 2, reopened = 1)
             assertTargetReminderEligible(store, expected = false)
         }
+    }
+
+    private fun markArchivedRouteRestored(store: LocalStore) {
+        // Archived suspended sources deliberately remain analyzable after AnkiDroid
+        // hides kani_archived notes. Mark the fixture archive restored so this stage
+        // proves the distinct no-live-or-durable-route retirement path.
+        val values = ContentValues().apply {
+            put("restored_at", System.currentTimeMillis())
+        }
+        val updated = store.writableDatabase.update(
+            "suspended_archive",
+            values,
+            "restored_at IS NULL",
+            null,
+        )
+        assertEquals("fixture must restore exactly one archived route", 1, updated)
+        assertTrue(store.unrestoredSuspendedArchiveCardIds().isEmpty())
     }
 
     private fun invalidOrdOneFailsClosed() {
