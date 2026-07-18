@@ -38,13 +38,12 @@ object MidSyncReviewMergePolicy {
         }
         val result = ArrayList<StudyItem>(seeded.size)
         for (item in seeded) {
-            val baselineItem = canonicalCompatibleItem(item, baseline)
-            val current = canonicalCompatibleItem(item, persisted)
-            if (current != null && reviewLandedMidSync(baselineItem, current)) {
+            val reviewed = reviewedCompatibleItem(item, baseline, persisted)
+            if (reviewed != null) {
                 // Preserve the post-review scheduler state, but move it to the
                 // identity selected by this sync. The persistence boundary will
                 // then bump the revision because the key change is material.
-                result.add(current.copyBuilder().answerSignature(item.answerSignature).build())
+                result.add(reviewed.copyBuilder().answerSignature(item.answerSignature).build())
             } else {
                 result.add(item)
             }
@@ -52,18 +51,26 @@ object MidSyncReviewMergePolicy {
         return result
     }
 
-    private fun canonicalCompatibleItem(target: StudyItem, candidates: List<StudyItem>): StudyItem? {
-        var canonical: StudyItem? = null
-        for (candidate in candidates) {
-            if (!StudyItemLineagePolicy.meaningCompatible(target, candidate)) {
+    private fun reviewedCompatibleItem(
+        target: StudyItem,
+        baseline: List<StudyItem>,
+        persisted: List<StudyItem>,
+    ): StudyItem? {
+        var reviewed: StudyItem? = null
+        for (current in persisted) {
+            if (!StudyItemLineagePolicy.meaningCompatible(target, current)) {
                 continue
             }
-            val current = canonical
-            if (current == null || isNewer(candidate, current)) {
-                canonical = candidate
+            val baselineItem = StudyItemLineagePolicy.counterpart(current, baseline) ?: continue
+            if (!reviewLandedMidSync(baselineItem, current)) {
+                continue
+            }
+            val selected = reviewed
+            if (selected == null || isNewer(current, selected)) {
+                reviewed = current
             }
         }
-        return canonical
+        return reviewed
     }
 
     private fun isNewer(candidate: StudyItem, current: StudyItem): Boolean {

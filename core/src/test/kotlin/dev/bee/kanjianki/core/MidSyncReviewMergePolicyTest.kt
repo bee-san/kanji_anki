@@ -209,6 +209,30 @@ class MidSyncReviewMergePolicyTest {
     }
 
     @Test
+    fun reviewedLineageWinsOverUnchangedHigherRevisionDuplicate() {
+        val reviewedSignature = "痛|痛む|いたむ|pain"
+        val staleSignature = "痛|苦痛|くつう|pain"
+        val baseline = listOf(
+            item("痛", 3, 100L, reviewedSignature, schedulerRevision = 7L),
+            item("痛", 2, 50L, staleSignature, schedulerRevision = 20L),
+        )
+        val persisted = listOf(
+            item("痛", 4, 5_000L, reviewedSignature, dueAt = 7_000L, schedulerRevision = 8L),
+            baseline[1],
+        )
+        val seeded = listOf(
+            item("痛", 3, 100L, reviewedSignature, dueAt = 200L, schedulerRevision = 7L),
+        )
+
+        val merged = MidSyncReviewMergePolicy.merge(seeded, baseline, persisted).single()
+
+        assertEquals(reviewedSignature, merged.answerSignature)
+        assertEquals(4, merged.totalReviews)
+        assertEquals(7_000L, merged.dueAtMillis)
+        assertEquals(8L, merged.schedulerRevision)
+    }
+
+    @Test
     fun meaningChangeDoesNotClaimReviewFromOldFamily() {
         val baseline = listOf(
             item("痛", 3, 100L, answerSignature = "痛|痛む|いたむ|pain", schedulerRevision = 7L),
