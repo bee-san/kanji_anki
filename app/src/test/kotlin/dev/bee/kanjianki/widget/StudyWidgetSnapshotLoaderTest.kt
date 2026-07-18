@@ -111,7 +111,7 @@ class StudyWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("裂", NOW - 1L, state = "retired"))
         }
 
-        val retiredSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val retiredSnapshot = StudyWidgetSnapshotLoader.load(context, NOW)
         assertEquals(KaniWidgetState.NOTHING_DUE, retiredSnapshot.state)
         assertEquals(0, retiredSnapshot.dueCount)
 
@@ -119,7 +119,7 @@ class StudyWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("裂", NOW - 1L, state = "review"))
         }
 
-        val reopenedSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val reopenedSnapshot = StudyWidgetSnapshotLoader.load(context, NOW)
         assertEquals(KaniWidgetState.DUE_NOW, reopenedSnapshot.state)
         assertEquals(1, reopenedSnapshot.dueCount)
     }
