@@ -61,33 +61,27 @@ internal class AsyncHomeRouteLoader(
         // for seconds behind other work; if the guard were scheduled inside background.execute it
         // would not start counting until the load dequeues, leaving the UI frozen with no loading
         // screen. Scheduling it here means a queued-but-not-yet-started load still shows loading.
-        val loadingHandle: LoadingTaskHandle? =
-            if (showLoadingAfterMs <= 0) {
-                null
-            } else {
-                loadingTaskScheduler.schedule(
-                    showLoadingAfterMs,
-                    Runnable {
-                        if (token != generation.get() || finished.get()) {
-                            return@Runnable
-                        }
-                        postToMain(
-                            Runnable {
-                                if (token != generation.get() || finished.get()) {
-                                    return@Runnable
-                                }
-                                withAsyncLoadTrace(traceLabel, "show-loading") {
-                                    showLoading()
-                                }
-                            }
-                        )
-                    },
-                )
-            }
+        val loadingHandle = scheduleLoadingGuard(
+            token = token,
+            finished = finished,
+            traceLabel = traceLabel,
+            showLoadingAfterMs = showLoadingAfterMs,
+            showLoading = showLoading,
+        )
 
         val enqueuedAtNanos = nanoClock()
 
         background.execute {
+            if (token != generation.get()) {
+                loadingHandle?.cancel()
+                finished.set(true)
+                postToMain(
+                    Runnable {
+                        runCatching { onStaleResult(token, generation.get(), traceLabel) }
+                    },
+                )
+                return@execute
+            }
             // Surface how long this load waited in the (single-threaded) executor queue before it
             // started running. withAsyncLoadTrace only measures on-thread execution, so without
             // this the debug log hides head-of-line blocking: each load looks fast even when the
@@ -117,9 +111,33 @@ internal class AsyncHomeRouteLoader(
                         // maintenance. Superseded results return above and never settle.
                         runCatching { onRouteSettled(token, traceLabel, result.isSuccess) }
                     }
-                }
+                },
             )
         }
+    }
+
+    private fun scheduleLoadingGuard(
+        token: Int,
+        finished: AtomicBoolean,
+        traceLabel: String,
+        showLoadingAfterMs: Long,
+        showLoading: () -> Unit,
+    ): LoadingTaskHandle? {
+        if (showLoadingAfterMs <= 0) return null
+        return loadingTaskScheduler.schedule(
+            showLoadingAfterMs,
+            Runnable {
+                if (token != generation.get() || finished.get()) return@Runnable
+                postToMain(
+                    Runnable {
+                        if (token != generation.get() || finished.get()) return@Runnable
+                        withAsyncLoadTrace(traceLabel, "show-loading") {
+                            showLoading()
+                        }
+                    },
+                )
+            },
+        )
     }
 }
 

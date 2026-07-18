@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -86,19 +87,31 @@ fun StudyDoneActions(
 }
 
 @Composable
-fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) {
+internal fun StudyDoneScreen(
+    model: StudyDoneScreenModel,
+    modifier: Modifier = Modifier,
+    routeSnapshot: StudyRouteSnapshot? = null,
+) {
+    require(routeSnapshot == null || routeSnapshot.isComplete) {
+        "The Done screen requires an accepted complete route snapshot"
+    }
     model.studyMoreDialog?.let { dialog ->
         StudyMoreNewCardsDialog(model = dialog)
     }
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(StudyUiTestTags.DONE)
+            .semantics {
+                routeSnapshot?.let { this[StudyRouteVersionSemantics] = it.version.value }
+            },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
         color = StudyDoneCardBackground,
-        border = BorderStroke(1.dp, StudyDonePrimaryBorder)
+        border = BorderStroke(1.dp, StudyDonePrimaryBorder),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             StudyModePill(model.modeLabel)
             Text(
@@ -107,54 +120,65 @@ fun StudyDoneScreen(model: StudyDoneScreenModel, modifier: Modifier = Modifier) 
                 color = StudyDoneSecondaryText,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
             )
-            if (!model.showDoneActions && model.summaryLines.isEmpty()) {
-                HomeEmptyState(
-                    title = model.headline ?: model.title,
-                    body = model.body
-                )
-            } else {
-                model.headline?.let { headline ->
-                    Text(
-                        text = headline,
-                        color = StudyDoneSecondaryText,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    text = model.body,
-                    color = StudyDoneMuted,
-                    fontSize = 17.sp
-                )
-            }
+            StudyDoneBody(model)
             if (model.summaryLines.isNotEmpty()) {
                 StudyDoneSummary(lines = model.summaryLines)
             }
-            if (model.showDoneActions) {
-                StudyDoneActions(
-                    availableStudyMoreNewCards = model.availableStudyMoreNewCards,
-                    onStudyMore = { model.onStudyMore.run() },
-                    onContinueAll = { model.onContinueAll.run() },
-                    onBackHome = { model.onBackHome.run() }
-                )
-            } else if (model.showBackHome) {
-                if (model.backHomePrimary) {
-                    StudyPrimaryButton(
-                        label = StudyTextCopy.backHomeLabel(),
-                        traceLabel = "Back home",
-                        onClick = { model.onBackHome.run() }
-                    )
-                } else {
-                    StudySecondaryButton(
-                        label = StudyTextCopy.backHomeLabel(),
-                        traceLabel = "Back home",
-                        onClick = { model.onBackHome.run() }
-                    )
-                }
-            }
+            StudyDoneNavigation(model)
         }
+    }
+}
+
+@Composable
+private fun StudyDoneBody(model: StudyDoneScreenModel) {
+    if (!model.showDoneActions && model.summaryLines.isEmpty()) {
+        HomeEmptyState(
+            title = model.headline ?: model.title,
+            body = model.body,
+        )
+        return
+    }
+    model.headline?.let { headline ->
+        Text(
+            text = headline,
+            color = StudyDoneSecondaryText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+    Text(
+        text = model.body,
+        color = StudyDoneMuted,
+        fontSize = 17.sp,
+    )
+}
+
+@Composable
+private fun StudyDoneNavigation(model: StudyDoneScreenModel) {
+    if (model.showDoneActions) {
+        StudyDoneActions(
+            availableStudyMoreNewCards = model.availableStudyMoreNewCards,
+            onStudyMore = { model.onStudyMore.run() },
+            onContinueAll = { model.onContinueAll.run() },
+            onBackHome = { model.onBackHome.run() },
+        )
+        return
+    }
+    if (!model.showBackHome) return
+    if (model.backHomePrimary) {
+        StudyPrimaryButton(
+            label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
+            onClick = { model.onBackHome.run() },
+        )
+    } else {
+        StudySecondaryButton(
+            label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
+            onClick = { model.onBackHome.run() },
+        )
     }
 }
 

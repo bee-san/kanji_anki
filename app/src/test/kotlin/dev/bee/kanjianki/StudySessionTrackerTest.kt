@@ -13,8 +13,68 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class StudySessionTrackerTest {
+    @Test
+    fun stagedCopyIsIsolatedUntilCommitted() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:裂"))
+
+        val staged = tracker.copyForStaging()
+        staged.setTargetCount(2)
+        staged.registerTaskShown("kanji_meaning:謎")
+        staged.startActiveTask("task", "謎", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+
+        assertEquals(1, tracker.targetCount())
+        assertEquals(listOf("kanji_meaning:裂"), tracker.pendingPlannedSessionTaskKeys())
+        assertFalse(tracker.hasActiveTask())
+
+        assertTrue(tracker.replaceStateFrom(staged))
+
+        assertEquals(2, tracker.targetCount())
+        assertEquals(listOf("kanji_meaning:裂"), tracker.pendingPlannedSessionTaskKeys())
+        assertTrue(tracker.hasActiveTask())
+    }
+
+    @Test
+    fun stagedCommitCannotClobberCanonicalMutationWaitingToPublish() {
+        val blockFirstPublication = AtomicBoolean(false)
+        val mutationCommitted = CountDownLatch(1)
+        val allowPublication = CountDownLatch(1)
+        val tracker = StudySessionTracker(
+            onChanged = {
+                if (blockFirstPublication.compareAndSet(true, false)) {
+                    mutationCommitted.countDown()
+                    allowPublication.await(5, TimeUnit.SECONDS)
+                }
+            },
+        )
+        tracker.setTargetCount(7)
+        val staged = tracker.copyForStaging()
+        staged.startActiveTask("stale-task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+        blockFirstPublication.set(true)
+
+        val mutation = Thread {
+            tracker.markTaskCompleted("session:kanji_meaning:字:canonical-token")
+        }
+        mutation.start()
+        assertTrue(mutationCommitted.await(5, TimeUnit.SECONDS))
+
+        try {
+            assertFalse(tracker.replaceStateFrom(staged))
+        } finally {
+            allowPublication.countDown()
+            mutation.join(5_000L)
+        }
+
+        assertFalse("canonical mutation thread must finish", mutation.isAlive)
+        assertEquals(1, tracker.completedCount())
+        assertFalse("stale staged active task must not replace canonical state", tracker.hasActiveTask())
+    }
+
     @Test
     fun activeTaskLifecycleIgnoresEmptyAndDuplicateKeys() {
         val tracker = StudySessionTracker()
@@ -212,6 +272,29 @@ class StudySessionTrackerTest {
         )
         assertEquals(1, tracker.completedCount())
         assertEquals(3, tracker.targetCount())
+    }
+
+    @Test
+    fun pendingTaskSelectionSkipsCapacityRejectionsAndKeepsTrackedWork() {
+        val tracker = StudySessionTracker()
+        assertTrue(tracker.includePendingTask("existing"))
+        tracker.setTargetCount(Int.MAX_VALUE)
+        val visited = ArrayList<String>()
+
+        val selected = firstTrackablePendingTaskIndex(
+            listOf("overflow", "existing", "later-overflow"),
+        ) { key ->
+            visited.add(key)
+            tracker.admitPendingTask(key)
+        }
+
+        assertEquals(1, selected)
+        assertEquals(listOf("overflow", "existing", "later-overflow"), visited)
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(
+            -1,
+            firstTrackablePendingTaskIndex(listOf("overflow"), tracker::admitPendingTask),
+        )
     }
 
     private fun learningRepeat(kanji: String): RecordsStudyModels.StudyItem {

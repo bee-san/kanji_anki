@@ -24,8 +24,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     private fun renderComposeWritingRoute(routeProvider: () -> WritingSessionRouteModel) {
-        home.initializeSessionProgressTarget(home.activeStudyPlan)
-        val progress = home.studySessionTracker.topBarProgress(home.activeSession != null, home.continueAllKanjiSession)
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
         lateinit var route: WritingSessionRouteModel
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
@@ -34,9 +33,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
             content = {
                 Column {
                     StudyTopBar(
-                        completed = progress.completed,
-                        target = progress.target,
-                        fraction = progress.fraction,
+                        routeSnapshot = routeSnapshot,
                         onClose = home::renderHome,
                         onSettings = home::renderSettings,
                     )

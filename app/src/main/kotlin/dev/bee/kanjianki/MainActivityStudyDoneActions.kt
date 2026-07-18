@@ -24,9 +24,12 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         val existing: List<RecordsStudyModels.StudyItem>,
     )
 
-    fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
+    fun renderNoStudySession(
+        seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan,
+        expectedRoute: StudyRouteSnapshot,
+    ) {
         if (!home.continueAllKanjiSession && seededPlan.focusComplete()) {
-            renderFocusDone(seededPlan)
+            renderFocusDone(seededPlan, expectedRoute)
             return
         }
         renderStudyDone(
@@ -39,11 +42,16 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 false,
                 true,
                 true
-            )
+            ),
+            StudyRouteCompletionReason.NO_SESSION,
+            expectedRoute,
         )
     }
 
-    fun renderFocusDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
+    fun renderFocusDone(
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan,
+        expectedRoute: StudyRouteSnapshot,
+    ) {
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.adaptiveFocusDoneSummary(plan.target))
         if (plan.status.isNotEmpty()) {
@@ -59,11 +67,16 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 true,
                 false,
                 false
-            )
+            ),
+            StudyRouteCompletionReason.FOCUS_COMPLETE,
+            expectedRoute,
         )
     }
 
-    fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
+    fun renderStudyRunDone(
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        expectedRoute: StudyRouteSnapshot,
+    ) {
         val summaryLines = mutableListOf<String>()
         summaryLines.add(StudyTextCopy.movedForwardSummary(home.studySessionTracker.movedForwardCount()))
         summaryLines.add(StudyTextCopy.missedSummary(home.studySessionTracker.missedCount()))
@@ -81,11 +94,15 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 true,
                 false,
                 false
-            )
+            ),
+            StudyRouteCompletionReason.HARD_CAP,
+            expectedRoute,
         )
     }
 
-    fun renderEmptyStudyQueue() {
+    fun renderEmptyStudyQueue(
+        expectedRoute: StudyRouteSnapshot,
+    ) {
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
@@ -96,11 +113,15 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 false,
                 false,
                 false
-            )
+            ),
+            StudyRouteCompletionReason.NO_SESSION,
+            expectedRoute,
         )
     }
 
-    fun renderStudyForKanjiNotAvailable() {
+    fun renderStudyForKanjiNotAvailable(
+        expectedRoute: StudyRouteSnapshot,
+    ) {
         renderStudyDone(
             home.activeStudyPlan,
             studyDoneScreenModel(
@@ -111,15 +132,42 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 false,
                 false,
                 false
-            )
+            ),
+            StudyRouteCompletionReason.NO_SESSION,
+            expectedRoute,
         )
     }
 
     private fun renderStudyDone(
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         model: StudyDoneScreenModel,
+        reason: StudyRouteCompletionReason,
+        expectedRoute: StudyRouteSnapshot,
     ) {
-        home.studySessionViewModel.showComplete()
+        val terminalRoute = if (
+            reason == StudyRouteCompletionReason.NO_SESSION ||
+            reason == StudyRouteCompletionReason.FOCUS_COMPLETE
+        ) {
+            home.acceptTerminalSessionAbsence(expectedRoute) ?: return
+        } else {
+            expectedRoute
+        }
+        val completionEvidence = home.studySessionViewModel.acceptCompletionEvidence(
+            reason,
+            terminalRoute.sessionGeneration,
+            terminalRoute.version,
+            terminalRoute.sessionToken,
+        ) ?: return
+        if (
+            !home.studySessionViewModel.completeRoute(
+                reason,
+                completionEvidence.sessionGeneration,
+                completionEvidence.version,
+                completionEvidence.sessionToken,
+            )
+        ) {
+            return
+        }
         KaniWidgetUpdater.requestUpdate(home)
         renderedPlan = plan
         renderedScreenModel = model
@@ -131,10 +179,13 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         model: StudyDoneScreenModel,
     ) {
         home.activeStudyPlan = plan
-        home.renderComposeStudyRoute {
+        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
+        if (!routeSnapshot.isComplete) return
+        home.renderComposeStudyRoute(routeSnapshot) {
             StudyDoneScreen(
                 model = model.copy(studyMoreDialog = studyMoreDialog),
-                modifier = Modifier.padding(top = 10.dp)
+                modifier = Modifier.padding(top = 10.dp),
+                routeSnapshot = routeSnapshot,
             )
         }
     }

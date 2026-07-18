@@ -96,7 +96,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun renderStudy() {
         cancelPendingHomeRouteLoads()
         if (isScreenshotLaunchRequested()) {
-            doneActions.renderEmptyStudyQueue()
+            doneActions.renderEmptyStudyQueue(studySessionViewModel.acceptedRouteSnapshot())
             return
         }
         studyQueueCoordinator.renderStudy(recoveryOnly = false)
@@ -119,7 +119,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     fun renderStudyLoading(studySessionActive: Boolean) {
         studySessionViewModel.showLoading()
-        renderComposeStudyRoute(studySessionActive = studySessionActive) {
+        val routeSnapshot = studySessionViewModel.acceptedRouteSnapshot()
+        renderComposeStudyRoute(routeSnapshot, studySessionActive = studySessionActive) {
             HomeRouteLoadingScreen(
                 title = dev.bee.kanjianki.core.StudyTextCopy.studyPracticeTitle(),
                 homeLabel = dev.bee.kanjianki.core.HomeTextCopy.homeLabel(),
@@ -129,19 +130,19 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun renderEmptyStudyQueue() {
-        doneActions.renderEmptyStudyQueue()
+        doneActions.renderEmptyStudyQueue(studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderNoStudySession(seededPlan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        doneActions.renderNoStudySession(seededPlan)
+        doneActions.renderNoStudySession(seededPlan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderFocusDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan) {
-        doneActions.renderFocusDone(plan)
+        doneActions.renderFocusDone(plan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderStudyRunDone(plan: RecordsSchedulerModels.AdaptiveLoadPlan?) {
-        doneActions.renderStudyRunDone(plan)
+        doneActions.renderStudyRunDone(plan, studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun availableStudyMoreNewCards(): Int {
@@ -177,14 +178,14 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun renderStudyForKanji(kanji: String?) {
         cancelPendingHomeRouteLoads()
         if (isScreenshotLaunchRequested()) {
-            doneActions.renderStudyForKanjiNotAvailable()
+            doneActions.renderStudyForKanjiNotAvailable(studySessionViewModel.acceptedRouteSnapshot())
             return
         }
         studyQueueCoordinator.renderStudyForKanji(kanji)
     }
 
     fun renderStudyForKanjiNotAvailable() {
-        doneActions.renderStudyForKanjiNotAvailable()
+        doneActions.renderStudyForKanjiNotAvailable(studySessionViewModel.acceptedRouteSnapshot())
     }
 
     fun renderSession(session: RecordsSchedulerModels.StudySession) {
@@ -532,8 +533,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     override fun handleStudySessionEffect(effect: StudySessionEffect) {
         when (effect) {
             is StudySessionEffect.AutoContinue -> continueAfterStudyAnswer(
-                effect.sessionToken,
+                expectedToken = effect.sessionToken,
                 expectedRecovery = null,
+                expectedGeneration = effect.sessionGeneration,
+                expectedVersion = effect.routeVersion,
             )
         }
     }
@@ -610,6 +613,23 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         expectedRecovery: StoredActiveStudyRecovery?,
     ): Boolean {
         if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        return continueAfterStudyAnswer()
+    }
+
+    private fun continueAfterStudyAnswer(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+        expectedGeneration: StudySessionGeneration,
+        expectedVersion: StudyRouteVersion,
+    ): Boolean {
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        val claim = studySessionViewModel.claimCurrentRouteAction(
+            expectedToken,
+            expectedGeneration,
+            expectedVersion,
+        ) ?: return false
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        if (!studySessionViewModel.consumeRouteAction(claim)) return false
         return continueAfterStudyAnswer()
     }
 
@@ -820,6 +840,33 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             activeSimilarWritingRepair = null
         }
         return true
+    }
+
+    internal fun clearAdvancingStudyRecoveryForTerminal(
+        expected: StoredPendingStudyRecovery,
+        terminalEvidence: StudyRouteSnapshot,
+    ): Boolean {
+        val activeToken = activeSession?.token
+        if (!terminalEvidence.canComplete) {
+            return false
+        }
+        if (terminalEvidence.sessionToken == null) {
+            if (activeToken != null) return false
+        } else if (
+            terminalEvidence.progress.targetCount <= 0 ||
+            activeToken.isNullOrEmpty() ||
+            terminalEvidence.sessionToken != activeToken ||
+            expected.snapshot.feedback.sessionToken != activeToken
+        ) {
+            return false
+        }
+        return clearAdvancingStudyRecovery(expected, activeSession)
+    }
+
+    internal fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? {
+        val accepted = studySessionViewModel.acceptTerminalSessionAbsence(expectedRoute) ?: return null
+        activeSimilarWritingRepair = null
+        return accepted
     }
 
     internal fun acceptRestoredActiveStudySession(

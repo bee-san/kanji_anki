@@ -1,0 +1,782 @@
+Reusing configuration cache.
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :update-core:processResources NO-SOURCE
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :domain:processResources NO-SOURCE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :writing-core:processResources NO-SOURCE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :update-core:compileJava NO-SOURCE
+> Task :domain:compileJava NO-SOURCE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :update-core:classes UP-TO-DATE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :domain:classes UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :update-core:jar UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :domain:jar UP-TO-DATE
+> Task :writing-core:classes UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin FAILED
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:34:20 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:55:27 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:58:30 Unresolved reference 'canComplete'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:72:22 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:72:46 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:82:9 No parameter with name 'pendingWork' found.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:27:56 Unresolved reference 'sessionGeneration'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:78:23 Unresolved reference 'completeRoute'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:96:13 No parameter with name 'sessionGeneration' found.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:113:23 Unresolved reference 'reconcileRouteTarget'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:129:23 Unresolved reference 'completeRoute'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:159:31 Unresolved reference 'acceptFeedback'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:164:23 Unresolved reference 'acceptFeedback'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:173:23 Unresolved reference 'acceptFeedback'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:188:13 No parameter with name 'sessionGeneration' found.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:231:25 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:231:25 Not enough information to infer type argument for 'T'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:232:59 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:232:59 Not enough information to infer type argument for 'B'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:232:62 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:235:59 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:235:59 Not enough information to infer type argument for 'B'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:235:62 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:238:47 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:238:47 Not enough information to infer type argument for 'B'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:238:50 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:243:32 Function 'component1()' is ambiguous for this expression:
+fun <T> Array<out T>.component1(): T
+fun ByteArray.component1(): Byte
+fun ShortArray.component1(): Short
+fun IntArray.component1(): Int
+fun LongArray.component1(): Long
+fun FloatArray.component1(): Float
+fun DoubleArray.component1(): Double
+fun BooleanArray.component1(): Boolean
+fun CharArray.component1(): Char
+fun <T> List<T>.component1(): T
+fun <K, V> Map.Entry<K, V>.component1(): K
+fun UIntArray.component1(): UInt
+fun ULongArray.component1(): ULong
+fun UByteArray.component1(): UByte
+fun UShortArray.component1(): UShort.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:243:32 Function 'component2()' is ambiguous for this expression:
+fun <T> Array<out T>.component2(): T
+fun ByteArray.component2(): Byte
+fun ShortArray.component2(): Short
+fun IntArray.component2(): Int
+fun LongArray.component2(): Long
+fun FloatArray.component2(): Float
+fun DoubleArray.component2(): Double
+fun BooleanArray.component2(): Boolean
+fun CharArray.component2(): Char
+fun <T> List<T>.component2(): T
+fun <K, V> Map.Entry<K, V>.component2(): V
+fun UIntArray.component2(): UInt
+fun ULongArray.component2(): ULong
+fun UByteArray.component2(): UByte
+fun UShortArray.component2(): UShort.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:247:27 Unresolved reference 'acceptPendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:257:32 Unresolved reference 'pendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:259:27 Unresolved reference 'completeRoute'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:295:22 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:295:56 Unresolved reference 'pendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:322:13 Argument type mismatch: actual type is 'Unit', but 'Boolean' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:324:17 Too many arguments for 'fun requestAutoContinue(sessionToken: String): Unit'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:325:17 Too many arguments for 'fun requestAutoContinue(sessionToken: String): Unit'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:338:20 Argument type mismatch: actual type is 'Unit', but 'Boolean' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:338:59 Too many arguments for 'fun requestAutoContinue(sessionToken: String): Unit'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:338:84 Too many arguments for 'fun requestAutoContinue(sessionToken: String): Unit'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:360:36 Unresolved reference 'acceptPendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:361:25 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:366:36 Unresolved reference 'acceptPendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:367:25 Unresolved reference 'StudyRoutePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:373:35 Unresolved reference 'reconcileRouteTarget'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:379:36 Unresolved reference 'completeRoute'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:384:39 Unresolved reference 'acceptFeedback'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:444:39 Unresolved reference 'canComplete'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
+43 actionable tasks: 1 executed, 42 up-to-date
+Configuration cache entry reused.
+
+--- Behavioral RED: silent denominator rewrite ---
+Calculating task graph as no cached configuration is available for tasks: :app:testDebugUnitTest --tests dev.bee.kanjianki.StudySessionViewModelTest.directTrackerTargetDropPublishesAnExplicitNonDoneReconciliation
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:processResources NO-SOURCE
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :writing-core:processResources NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :domain:processResources NO-SOURCE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :domain:compileJava NO-SOURCE
+> Task :update-core:compileJava NO-SOURCE
+> Task :update-core:classes UP-TO-DATE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :update-core:jar UP-TO-DATE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :domain:classes UP-TO-DATE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :domain:jar UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :writing-core:classes UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDebugUnitTest FAILED
+
+StudySessionViewModelTest > directTrackerTargetDropPublishesAnExplicitNonDoneReconciliation FAILED
+    java.lang.AssertionError at StudySessionViewModelTest.kt:151
+
+1 test completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 5s
+54 actionable tasks: 2 executed, 52 up-to-date
+Configuration cache entry stored.
+
+--- Behavioral RED: invalid canonical counts ---
+Calculating task graph as no cached configuration is available for tasks: :app:testDebugUnitTest --tests dev.bee.kanjianki.StudyRouteSnapshotTest.canonicalProgressRejectsNegativeAndInvertedCounts
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:processResources NO-SOURCE
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :domain:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :writing-core:processResources NO-SOURCE
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :update-core:compileJava NO-SOURCE
+> Task :update-core:classes UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :domain:compileJava NO-SOURCE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :domain:classes UP-TO-DATE
+> Task :update-core:jar UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :domain:jar UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :writing-core:classes UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDebugUnitTest FAILED
+
+StudyRouteSnapshotTest > canonicalProgressRejectsNegativeAndInvertedCounts FAILED
+    java.lang.AssertionError at StudyRouteSnapshotTest.kt:12
+
+1 test completed, 1 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 5s
+54 actionable tasks: 2 executed, 52 up-to-date
+Configuration cache entry stored.
+
+--- Independent-review corrections RED: guarded completion/action, target drop, reason invariants, blocker union ---
+Calculating task graph as configuration cache cannot be reused because JVM has changed.
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:processResources NO-SOURCE
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :update-core:processResources NO-SOURCE
+> Task :writing-core:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :domain:processResources NO-SOURCE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :update-core:compileJava NO-SOURCE
+> Task :update-core:classes UP-TO-DATE
+> Task :domain:compileJava NO-SOURCE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :update-core:jar UP-TO-DATE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :domain:classes UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :domain:jar UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :writing-core:classes UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :core:classes UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:79:23 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:148:23 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:177:23 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:186:23 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:315:27 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:451:23 Unresolved reference 'runIfCurrentRoute'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:499:36 None of the following candidates is applicable:
+fun completeRoute(reason: StudyRouteCompletionReason, expectedGeneration: StudySessionGeneration, expectedVersion: StudyRouteVersion): Boolean
+fun completeRoute(reason: StudyRouteCompletionReason): Boolean
+
+> Task :app:compileDebugUnitTestKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s
+52 actionable tasks: 1 executed, 51 up-to-date
+Configuration cache entry stored.
+
+--- Independent re-review corrections RED: action claim, reason provenance, hard-cap evidence ---
+Calculating task graph as no cached configuration is available for tasks: :app:testDebugUnitTest --tests dev.bee.kanjianki.StudySessionViewModelTest
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:generateExternalPluginSpecBuilders UP-TO-DATE
+> Task :build-logic:extractPrecompiledScriptPluginPlugins UP-TO-DATE
+> Task :build-logic:compilePluginsBlocks UP-TO-DATE
+> Task :build-logic:generatePrecompiledScriptPluginAccessors UP-TO-DATE
+> Task :build-logic:generateScriptPluginAdapters UP-TO-DATE
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:processResources NO-SOURCE
+> Task :domain:processResources NO-SOURCE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :writing-core:processResources NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :domain:compileJava NO-SOURCE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :update-core:compileJava NO-SOURCE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :update-core:classes UP-TO-DATE
+> Task :domain:classes UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :update-core:jar UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :domain:jar UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :writing-core:classes UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin FAILED
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:476:23 Unresolved reference 'claimCurrentRouteAction'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:486:23 Unresolved reference 'claimCurrentRouteAction'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4s
+52 actionable tasks: 1 executed, 51 up-to-date
+Configuration cache entry stored.
+
+--- Final review corrections RED: authoritative pending-work resolution and consumable route claims ---
+Reusing configuration cache.
+> Task :sync-domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :fsrs-java:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :dictionary-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :domain:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :writing-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :update-core:processResources NO-SOURCE
+> Task :core:processResources NO-SOURCE
+> Task :writing-core:processResources NO-SOURCE
+> Task :dictionary-core:processResources NO-SOURCE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :fsrs-java:processResources NO-SOURCE
+> Task :sync-domain:processResources NO-SOURCE
+> Task :domain:processResources NO-SOURCE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :update-core:compileKotlin UP-TO-DATE
+> Task :domain:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileKotlin UP-TO-DATE
+> Task :fsrs-java:compileKotlin UP-TO-DATE
+> Task :dictionary-core:compileJava NO-SOURCE
+> Task :domain:compileJava NO-SOURCE
+> Task :dictionary-core:classes UP-TO-DATE
+> Task :update-core:compileJava NO-SOURCE
+> Task :fsrs-java:compileJava NO-SOURCE
+> Task :update-core:classes UP-TO-DATE
+> Task :update-core:jar UP-TO-DATE
+> Task :dictionary-core:jar UP-TO-DATE
+> Task :domain:classes UP-TO-DATE
+> Task :fsrs-java:classes UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :domain:jar UP-TO-DATE
+> Task :sync-domain:compileKotlin UP-TO-DATE
+> Task :writing-core:compileKotlin UP-TO-DATE
+> Task :sync-domain:compileJava NO-SOURCE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :sync-domain:classes UP-TO-DATE
+> Task :fsrs-java:jar UP-TO-DATE
+> Task :writing-core:compileJava NO-SOURCE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :writing-core:classes UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :sync-domain:jar UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :writing-core:jar UP-TO-DATE
+> Task :app:generateDebugJacocoPropertiesFile UP-TO-DATE
+> Task :core:compileKotlin UP-TO-DATE
+> Task :core:compileJava NO-SOURCE
+> Task :core:classes UP-TO-DATE
+> Task :core:jar UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugUnitTestManifest UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar UP-TO-DATE
+> Task :app:packageDebugUnitTestForUnitTest UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar UP-TO-DATE
+> Task :app:generateDebugUnitTestConfig UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin FAILED
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudyRouteSnapshotTest.kt:62:84 Unresolved reference 'taskKeys'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:376:66 Unresolved reference 'taskKeys'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:378:23 Unresolved reference 'resolvePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:379:35 Unresolved reference 'taskKeys'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:536:30 Unresolved reference 'consumeRouteAction'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:537:31 Unresolved reference 'consumeRouteAction'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:570:36 Unresolved reference 'resolvePendingWork'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:571:43 Unresolved reference 'taskKeys'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3s
+43 actionable tasks: 1 executed, 42 up-to-date
+Configuration cache entry reused.
+
+=== independent-review evidence/provenance RED ===
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:80:23 Unresolved reference 'acceptCompletionEvidence'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:170:22 Unresolved reference 'markSubmitting'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:200:23 Unresolved reference 'acceptCompletionEvidence'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:218:33 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:219:23 Unresolved reference 'acceptCompletionEvidence'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:229:35 Unresolved reference 'sessionGeneration'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:230:35 Unresolved reference 'version'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:231:35 Unresolved reference 'sessionToken'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:414:31 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:415:23 Unresolved reference 'acceptCompletionEvidence'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:425:33 Unresolved reference 'sessionGeneration'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:426:33 Unresolved reference 'version'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:427:33 Unresolved reference 'sessionToken'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:602:26 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:605:26 Argument type mismatch: actual type is 'Boolean', but 'K (of fun <K> WHEN_CALL)' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:611:26 Argument type mismatch: actual type is 'Boolean', but 'K (of fun <K> WHEN_CALL)' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:616:26 Argument type mismatch: actual type is 'Unit', but 'K (of fun <K> WHEN_CALL)' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:623:26 Argument type mismatch: actual type is 'R? (of fun <T, R> T.let)', but 'K (of fun <K> WHEN_CALL)' was expected.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:623:36 Unresolved reference 'acceptCompletionEvidence'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:628:24 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:628:30 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:631:38 Unresolved reference 'sessionGeneration'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:632:38 Unresolved reference 'version'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:633:38 Unresolved reference 'sessionToken'.
+e: file:///Users/autumnskerritt/.hermes/kanban/boards/kani/workspaces/t_5e045f10/app/src/test/kotlin/dev/bee/kanjianki/StudySessionViewModelTest.kt:636:29 Argument type mismatch: actual type is 'Boolean', but 'K (of fun <K> WHEN_CALL)' was expected.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugUnitTestKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s
+43 actionable tasks: 1 executed, 42 up-to-date
+Configuration cache entry reused.

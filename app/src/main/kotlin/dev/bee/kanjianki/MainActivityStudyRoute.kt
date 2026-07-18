@@ -7,16 +7,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 internal fun MainActivityStudy.renderComposeStudyRoute(
+    routeSnapshot: StudyRouteSnapshot,
     studySessionActive: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val progress = studySessionTracker.topBarProgress(activeSession != null, continueAllKanjiSession)
     composeRoute(MainActivityBase.NAV_STUDY, studySessionActive = studySessionActive) {
         Column {
             StudyTopBar(
-                completed = progress.completed,
-                target = progress.target,
-                fraction = progress.fraction,
+                routeSnapshot = routeSnapshot,
                 onClose = ::renderHome,
                 onSettings = ::renderSettings,
             )

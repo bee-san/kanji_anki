@@ -3,7 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -35,9 +35,7 @@ class StudyTopBarComposeTest {
             MaterialTheme {
                 Box(modifier = Modifier.width(260.dp)) {
                     StudyTopBar(
-                        completed = 2,
-                        target = 5,
-                        fraction = 0.4f,
+                        routeSnapshot = routeSnapshot(completed = 2, target = 5),
                         onClose = { closeClicks.incrementAndGet() },
                         onSettings = { settingsClicks.incrementAndGet() }
                     )
@@ -62,7 +60,7 @@ class StudyTopBarComposeTest {
 
     @Test
     fun progressPillDrawsTrackAndFill() {
-        setTopBarWithProgress(fraction = 0.4f)
+        setTopBarWithProgress(completed = 2, target = 5)
 
         val progressPixels = captureProgressPixels()
 
@@ -71,15 +69,13 @@ class StudyTopBarComposeTest {
     }
 
     @Test
-    fun progressPillClampsOutOfRangeFractions() {
-        val fraction = mutableFloatStateOf(-0.5f)
+    fun progressPillUsesAcceptedSnapshotBounds() {
+        val routeSnapshot = mutableStateOf(routeSnapshot(completed = 0, target = 5))
         composeRule.setContent {
             MaterialTheme {
                 Box(modifier = Modifier.width(260.dp)) {
                     StudyTopBar(
-                        completed = 2,
-                        target = 5,
-                        fraction = fraction.floatValue,
+                        routeSnapshot = routeSnapshot.value,
                         onClose = {},
                         onSettings = {},
                     )
@@ -90,21 +86,21 @@ class StudyTopBarComposeTest {
             .assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
         assertEquals(StudyProgressTrackColor, captureProgressPixels().leftSample)
 
-        composeRule.runOnIdle { fraction.floatValue = 1.5f }
+        composeRule.runOnIdle {
+            routeSnapshot.value = routeSnapshot(completed = 5, target = 5, version = 2L)
+        }
         composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)
             .assertRangeInfoEquals(ProgressBarRangeInfo(1f, 0f..1f))
         assertEquals(StudyProgressFillColor, captureProgressPixels().rightSample)
     }
 
-    private fun setTopBarWithProgress(fraction: Float) {
+    private fun setTopBarWithProgress(completed: Int, target: Int) {
         composeRule.setContent {
             MaterialTheme {
                 Box(modifier = Modifier.width(260.dp)) {
                     StudyTopBar(
-                        completed = 2,
-                        target = 5,
-                        fraction = fraction,
+                        routeSnapshot = routeSnapshot(completed, target),
                         onClose = {},
                         onSettings = {}
                     )
@@ -112,6 +108,20 @@ class StudyTopBarComposeTest {
             }
         }
     }
+
+    private fun routeSnapshot(
+        completed: Int,
+        target: Int,
+        version: Long = 1L,
+    ): StudyRouteSnapshot = StudyRouteSnapshot(
+        version = StudyRouteVersion(version),
+        sessionGeneration = StudySessionGeneration(1L),
+        phase = StudySessionPhase.ACTIVE,
+        progress = StudySessionProgressUiState(
+            completedCount = completed,
+            targetCount = target,
+        ),
+    )
 
     private fun captureProgressPixels(): ProgressPillSamples {
         val bitmap = composeRule.onNodeWithContentDescription(StudyTopBarDescriptions.PROGRESS)

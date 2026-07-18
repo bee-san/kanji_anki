@@ -50,6 +50,28 @@ class StudySessionProgressTrackerTest {
     }
 
     @Test
+    fun stagedCopyIsIsolatedUntilItsWholeProgressFrameIsCommitted() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(2)
+        tracker.markTaskCompleted("task-a")
+        tracker.recordRepairOutcome("裂", false)
+        val accepted = tracker.snapshot()
+
+        val staged = tracker.copyForStaging()
+        staged.markTaskCompleted("task-b")
+        staged.recordRepairOutcome("裂", true)
+
+        assertEquals(accepted, tracker.snapshot())
+
+        tracker.replaceStateFrom(staged)
+
+        assertEquals(staged.snapshot(), tracker.snapshot())
+        assertEquals(2, tracker.completedCount())
+        assertEquals(1, tracker.movedForwardCount())
+        assertEquals(0, tracker.missedCount())
+    }
+
+    @Test
     fun targetInitializationUsesRemainingThenTargetAndClampsManualValues() {
         val tracker = StudySessionProgressTracker()
 
@@ -67,6 +89,77 @@ class StudySessionProgressTrackerTest {
         assertEquals(0, tracker.targetCount())
         tracker.registerTaskShown("visible")
         assertEquals(1, tracker.targetCount())
+    }
+
+    @Test
+    fun pendingTaskFromZeroStartsTargetAtOne() {
+        val tracker = StudySessionProgressTracker()
+
+        assertTrue(tracker.includePendingTask("first"))
+        assertEquals(1, tracker.targetCount())
+        assertEquals(0, tracker.completedCount())
+    }
+
+    @Test
+    fun pendingTaskNormallyIncrementsTargetOnce() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(7)
+
+        assertTrue(tracker.includePendingTask("pending"))
+        assertFalse(tracker.includePendingTask("pending"))
+        assertEquals(8, tracker.targetCount())
+        assertEquals(8, tracker.snapshot().targetCount)
+    }
+
+    @Test
+    fun pendingTaskOneBelowTargetLimitReachesTheLimit() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(Int.MAX_VALUE - 1)
+
+        assertTrue(tracker.includePendingTask("last"))
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+    }
+
+    @Test
+    fun pendingTaskAtTargetLimitIsRejectedWithoutCorruptingProgress() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(Int.MAX_VALUE)
+
+        assertFalse(tracker.includePendingTask("overflow"))
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(0, tracker.completedCount())
+        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+
+        tracker.setTargetCount(0)
+        assertTrue(tracker.includePendingTask("overflow"))
+        assertEquals(1, tracker.targetCount())
+    }
+
+    @Test
+    fun pendingTaskAdmissionDistinguishesExistingWorkFromCapacityRejection() {
+        val tracker = StudySessionProgressTracker()
+
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.ADDED,
+            tracker.admitPendingTask("existing"),
+        )
+        tracker.setTargetCount(Int.MAX_VALUE)
+
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.EXISTING,
+            tracker.admitPendingTask("existing"),
+        )
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.REJECTED,
+            tracker.admitPendingTask("overflow"),
+        )
+
+        tracker.setTargetCount(0)
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.ADDED,
+            tracker.admitPendingTask("overflow"),
+        )
     }
 
     @Test

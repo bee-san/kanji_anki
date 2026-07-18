@@ -41,6 +41,7 @@ import org.robolectric.annotation.Config
 import java.io.StringReader
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 
@@ -81,6 +82,26 @@ class MainActivityStudyRouteInitializationTest {
 
         assertNotNull(activity.writingAnswerPanelState)
         assertEquals(session.token, activity.studyAnswerFeedbackState?.sessionToken)
+    }
+
+    @Test
+    fun noSessionTerminalUnmountsThePreviousSessionBeforeCompleting() {
+        val activity = createActivity()
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionViewModel.mountSession(session)
+        val active = activity.studySessionViewModel.acceptedRouteSnapshot()
+
+        activity.doneActions.renderStudyForKanjiNotAvailable(active)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertNull(activity.activeSession)
+        assertNull(activity.studySessionViewModel.acceptedRouteSnapshot().sessionToken)
+        assertEquals(
+            StudyRouteCompletionReason.NO_SESSION,
+            activity.studySessionViewModel.acceptedRouteSnapshot().completionReason,
+        )
+        assertTrue(activity.studySessionViewModel.acceptedRouteSnapshot().isComplete)
     }
 
     @Test
@@ -395,9 +416,66 @@ class MainActivityStudyRouteInitializationTest {
             assertNull(restored.activity.activeStudyRecovery())
             assertNull(restored.activity.pendingStudyRecovery())
             assertFalse(restored.preferences.contains("snapshot"))
+            val route = restored.activity.studySessionViewModel.acceptedRouteSnapshot()
+            assertEquals(StudySessionPhase.COMPLETE, route.phase)
+            assertEquals(StudyRouteCompletionReason.NO_SESSION, route.completionReason)
+            assertTrue(route.isComplete)
         } finally {
             restored.close()
         }
+    }
+
+    @Test
+    fun terminalContinueHandoffPreservesHardCapEvidenceUntilDoneCommits() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val session = flashcardSession()
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = feedback.snapshot(),
+                    kanji = requireNotNull(session.item).kanji,
+                    taskType = session.taskType,
+                    writingRequired = session.writingRequired,
+                    prompt = session.prompt,
+                ),
+            ),
+        )
+        val advancing = applied.copy(
+            snapshot = applied.snapshot.copy(
+                feedback = applied.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.CONTINUED),
+            ),
+        )
+        assertTrue(feedback.tryContinue())
+
+        val incomplete = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertFalse(activity.clearAdvancingStudyRecoveryForTerminal(advancing, incomplete))
+        assertNotNull(recoveryStore.readPending())
+
+        activity.studySessionTracker.setTargetCount(1)
+        activity.studySessionTracker.markTaskCompleted(StudySessionTracker.sessionTaskKey(session))
+        activity.studySessionViewModel.showLoading()
+        val terminalEvidence = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.LOADING, terminalEvidence.phase)
+        assertEquals(session.token, terminalEvidence.sessionToken)
+        assertTrue(terminalEvidence.canComplete)
+        assertTrue(activity.clearAdvancingStudyRecoveryForTerminal(advancing, terminalEvidence))
+        val terminal = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(session.token, terminal.sessionToken)
+        assertTrue(terminal.canComplete)
+
+        activity.doneActions.renderStudyRunDone(null, terminal)
+
+        val done = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertTrue(done.isComplete)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, done.completionReason)
+        preferences.edit().clear().commit()
     }
 
     @Test
@@ -688,6 +766,69 @@ class MainActivityStudyRouteInitializationTest {
             .build()
         activity.store.saveRows(activity.store.writableDatabase, listOf(row), 4_000L)
         activity.store.saveStudyItem(item)
+        val mainTasks = ArrayDeque<Runnable>()
+        val computeStarted = CountDownLatch(1)
+        val allowCompute = CountDownLatch(1)
+        val computeFinished = CountDownLatch(1)
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { task ->
+                    Thread {
+                        try {
+                            task.run()
+                        } finally {
+                            computeFinished.countDown()
+                        }
+                    }.start()
+                },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+                onQueueWait = { _, _ ->
+                    computeStarted.countDown()
+                    allowCompute.await(5, TimeUnit.SECONDS)
+                },
+            ),
+        )
+        activity.studySessionTracker.setTargetCount(7)
+        repeat(5) { index ->
+            activity.studySessionTracker.markTaskCompleted("session:kanji_meaning:字$index:token-$index")
+        }
+        val acceptedBeforeCompute = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(5, acceptedBeforeCompute.progress.completedCount)
+        assertEquals(7, acceptedBeforeCompute.progress.targetCount)
+        assertFalse(acceptedBeforeCompute.progress.activeTask)
+
+        activity.renderStudy()
+        activity.recoveredStudyRunNeedsTargetReconciliation = true
+        assertTrue("Study compute must start", computeStarted.await(5, TimeUnit.SECONDS))
+        val inFlight = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(5, inFlight.progress.completedCount)
+        assertEquals(7, inFlight.progress.targetCount)
+        assertFalse(inFlight.progress.activeTask)
+
+        activity.renderHome()
+        val acceptedAfterCancel = activity.studySessionViewModel.acceptedRouteSnapshot()
+        allowCompute.countDown()
+        assertTrue("Study compute must finish", computeFinished.await(5, TimeUnit.SECONDS))
+        assertEquals(1, mainTasks.size)
+        assertNotNull(activity.store.studyItemsForKanji(listOf("消")).single().activeToken)
+        assertNull(StudySessionRecoveryStore(preferences).read())
+
+        mainTasks.removeFirst().run()
+
+        assertNull(StudySessionRecoveryStore(preferences).read())
+        assertEquals(
+            "a canceled Study compute must not mutate the accepted tracker frame",
+            acceptedAfterCancel,
+            activity.studySessionViewModel.acceptedRouteSnapshot(),
+        )
+    }
+
+    @Test
+    fun emptyQueueReconcilesOutstandingTargetBeforeNoSessionCompletion() {
+        val activity = createActivity()
         val backgroundTasks = ArrayDeque<Runnable>()
         val mainTasks = ArrayDeque<Runnable>()
         replaceLazyDelegate(
@@ -699,16 +840,168 @@ class MainActivityStudyRouteInitializationTest {
                 loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
             ),
         )
+        activity.activeSession = flashcardSession()
+        activity.studySessionTracker.setTargetCount(5)
+        repeat(3) { index -> activity.studySessionTracker.markTaskCompleted("done-$index") }
 
         activity.renderStudy()
         backgroundTasks.removeFirst().run()
-        assertEquals(1, mainTasks.size)
-        assertNull(StudySessionRecoveryStore(preferences).read())
-
-        activity.renderHome()
         mainTasks.removeFirst().run()
 
-        assertNull(StudySessionRecoveryStore(preferences).read())
+        val accepted = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(3, accepted.progress.completedCount)
+        assertEquals(3, accepted.progress.targetCount)
+        assertEquals(StudySessionPhase.COMPLETE, accepted.phase)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, accepted.completionReason)
+    }
+
+    @Test
+    fun trackerRevisionRejectionRetriesCurrentStudyLoad() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val loadingTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, task ->
+                    loadingTasks.addLast(task)
+                    LoadingTaskHandle { }
+                },
+            ),
+        )
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionTracker.setTargetCount(1)
+        activity.studySessionTracker.startActiveTask(
+            "active-task",
+            session.item?.kanji,
+            session.taskType,
+            0L,
+            resumeImmediately = false,
+        )
+
+        activity.renderStudy()
+        loadingTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        assertEquals(StudySessionPhase.LOADING, activity.studySessionViewModel.acceptedRouteSnapshot().phase)
+        backgroundTasks.removeFirst().run()
+        assertEquals(1, mainTasks.size)
+
+        val routeBeforePause = activity.studySessionViewModel.acceptedRouteSnapshot()
+        activity.studySessionTracker.pauseActiveTask()
+        assertEquals(routeBeforePause, activity.studySessionViewModel.acceptedRouteSnapshot())
+        mainTasks.removeFirst().run()
+
+        assertEquals("a current route must retry a tracker-revision rejection", 1, backgroundTasks.size)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        assertNotEquals(StudySessionPhase.LOADING, activity.studySessionViewModel.acceptedRouteSnapshot().phase)
+    }
+
+    @Test
+    fun targetedTrackerRevisionRejectionRetriesRequestedKanji() {
+        val activity = createActivity()
+        val row = dashboardRow("他")
+        activity.store.saveRows(activity.store.writableDatabase, listOf(row), 4_000L)
+        activity.store.saveStudyItem(
+            studyItem("他", "").copyBuilder()
+                .answerSignature(StudyQueueSeeder.answerSignature(row))
+                .build(),
+        )
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val loadingTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, task ->
+                    loadingTasks.addLast(task)
+                    LoadingTaskHandle { }
+                },
+            ),
+        )
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionTracker.startActiveTask(
+            "active-task",
+            session.item?.kanji,
+            session.taskType,
+            0L,
+            resumeImmediately = false,
+        )
+
+        activity.renderStudyForKanji("無")
+        loadingTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        backgroundTasks.removeFirst().run()
+        activity.studySessionTracker.pauseActiveTask()
+        mainTasks.removeFirst().run()
+
+        assertEquals(1, backgroundTasks.size)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        val accepted = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.COMPLETE, accepted.phase)
+        assertEquals(StudyRouteCompletionReason.NO_SESSION, accepted.completionReason)
+        assertNull(activity.activeSession)
+    }
+
+    @Test
+    fun supersededStoredRecoveryCannotPublishWithoutCandidateAcceptance() {
+        val restored = restoreActiveCardAfterProcessRestart(
+            kanji = "裂",
+            taskType = StudyTaskTypes.TYPE_MEANING,
+            rung = RecordsBase.LadderRung.TYPE_MEANING,
+            typedDraft = "divide",
+            revealed = false,
+        )
+        try {
+            val activity = restored.activity
+            val routeOnlySession = requireNotNull(activity.activeSession)
+            activity.activeSession = null
+            activity.studySessionTracker.resetProgress()
+            activity.studySessionViewModel.mountSession(routeOnlySession)
+            val backgroundTasks = ArrayDeque<Runnable>()
+            val mainTasks = ArrayDeque<Runnable>()
+            replaceLazyDelegate(
+                activity,
+                "asyncHomeRouteLoader",
+                AsyncHomeRouteLoader(
+                    background = Executor { backgroundTasks.addLast(it) },
+                    postToMain = { mainTasks.addLast(it) },
+                    loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+                ),
+            )
+
+            activity.renderStudy()
+            backgroundTasks.removeFirst().run()
+            assertEquals(1, mainTasks.size)
+            assertSame(routeOnlySession, activity.activeSession)
+
+            val loading = activity.studySessionViewModel.acceptedRouteSnapshot()
+            assertNotNull(
+                activity.studySessionViewModel.claimCurrentRouteAction(
+                    requireNotNull(loading.sessionToken),
+                    loading.sessionGeneration,
+                    loading.version,
+                ),
+            )
+            val supersededRoute = activity.studySessionViewModel.acceptedRouteSnapshot()
+            mainTasks.removeFirst().run()
+
+            assertSame(routeOnlySession, activity.activeSession)
+            assertFalse(activity.studySessionTracker.hasActiveTask())
+            assertEquals(supersededRoute, activity.studySessionViewModel.acceptedRouteSnapshot())
+        } finally {
+            restored.close()
+        }
     }
 
     @Test

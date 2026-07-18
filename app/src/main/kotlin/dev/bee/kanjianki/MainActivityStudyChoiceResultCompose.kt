@@ -61,7 +61,10 @@ internal fun MeaningChoiceResultActionBar(
             label = dev.bee.kanjianki.core.StudyTextCopy.continueLabel(),
             onClick = onNext,
             modifier = Modifier
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .semantics {
+                    this[StudyExplicitContinueSemantics] = true
+                },
             enabled = continueEnabled,
             tone = actionTone,
         )

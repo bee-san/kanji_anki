@@ -123,6 +123,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
                 )
                 activity.activeStudyPlan = plan("裂")
                 activity.activeSession = flashcard
+                activity.studySessionTracker.setTargetCount(1)
                 activity.cancelPendingHomeRouteLoads()
                 activity.startActiveStudyTask(
                     activity.sessionTaskKey(flashcard),

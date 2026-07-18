@@ -11,6 +11,12 @@ import kotlin.math.min
  * race a concurrent write (ConcurrentModificationException).
  */
 class StudySessionProgressTracker {
+    enum class PendingTaskAdmission(val isTracked: Boolean) {
+        ADDED(true),
+        EXISTING(true),
+        REJECTED(false),
+    }
+
     private val lock = Any()
     private var completedCount = 0
     private var targetCount = 0
@@ -35,6 +41,37 @@ class StudySessionProgressTracker {
             movedForwardCount = movedForwardKanji.size,
             missedCount = missedKanji.size,
         )
+    }
+
+    fun copyForStaging(): StudySessionProgressTracker {
+        val state = synchronized(lock) { stateLocked() }
+        return StudySessionProgressTracker().also { it.restoreState(state) }
+    }
+
+    fun replaceStateFrom(staged: StudySessionProgressTracker) {
+        restoreState(synchronized(staged.lock) { staged.stateLocked() })
+    }
+
+    private fun stateLocked(): State = State(
+        completedCount = completedCount,
+        targetCount = targetCount,
+        completedTaskKeys = HashSet(completedTaskKeys),
+        seenTaskKeys = HashSet(seenTaskKeys),
+        movedForwardKanji = HashSet(movedForwardKanji),
+        missedKanji = HashSet(missedKanji),
+    )
+
+    private fun restoreState(state: State) = synchronized(lock) {
+        completedCount = state.completedCount
+        targetCount = state.targetCount
+        completedTaskKeys.clear()
+        completedTaskKeys.addAll(state.completedTaskKeys)
+        seenTaskKeys.clear()
+        seenTaskKeys.addAll(state.seenTaskKeys)
+        movedForwardKanji.clear()
+        movedForwardKanji.addAll(state.movedForwardKanji)
+        missedKanji.clear()
+        missedKanji.addAll(state.missedKanji)
     }
 
     fun completedTaskBreakdown(): CompletedTaskBreakdown = synchronized(lock) {
@@ -81,13 +118,19 @@ class StudySessionProgressTracker {
         this.targetCount = max(0, targetCount)
     }
 
-    fun includePendingTask(key: String?): Boolean = synchronized(lock) {
-        if (isEmpty(key) || seenTaskKeys.contains(key) || completedTaskKeys.contains(key)) {
-            return@synchronized false
+    fun includePendingTask(key: String?): Boolean = admitPendingTask(key) == PendingTaskAdmission.ADDED
+
+    fun admitPendingTask(key: String?): PendingTaskAdmission = synchronized(lock) {
+        when {
+            isEmpty(key) -> PendingTaskAdmission.REJECTED
+            seenTaskKeys.contains(key) || completedTaskKeys.contains(key) -> PendingTaskAdmission.EXISTING
+            targetCount == Int.MAX_VALUE -> PendingTaskAdmission.REJECTED
+            else -> {
+                seenTaskKeys.add(key!!)
+                targetCount++
+                PendingTaskAdmission.ADDED
+            }
         }
-        seenTaskKeys.add(key!!)
-        targetCount++
-        true
     }
 
     fun atHardCap(continueAllKanjiSession: Boolean): Boolean = synchronized(lock) {
@@ -180,6 +223,15 @@ class StudySessionProgressTracker {
         val completedCount: Int,
         val movedForwardCount: Int,
         val missedCount: Int,
+    )
+
+    private data class State(
+        val completedCount: Int,
+        val targetCount: Int,
+        val completedTaskKeys: Set<String>,
+        val seenTaskKeys: Set<String>,
+        val movedForwardKanji: Set<String>,
+        val missedKanji: Set<String>,
     )
 
     class CompletedTaskBreakdown(
