@@ -626,7 +626,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun retiredItemsStayRetiredWhenAdmissionRoomIsFull() {
+    public fun retiredItemsReopenWithoutConsumingAdmissionRoom() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var active: RecordsStudyModels.StudyItem = item("謎").copyBuilder()
                 .createdAtMillis(0L)
@@ -642,7 +642,9 @@ public class BridgeSchedulerTest {
                 1000L,
                 500L
         )
-        assertEquals("retired", findItem(items, "裂").state)
+        var reopened: RecordsStudyModels.StudyItem = findItem(items, "裂")
+        assertEquals("review", reopened.state)
+        assertEquals(3, reopened.totalReviews)
     }
 
     @Test
