@@ -135,16 +135,57 @@ class StudyQueueSeederIngestionTest {
     }
 
     @Test
-    fun duplicateLegacySignaturesCollapseToTheHighestRevisionKanjiItem() {
+    fun locallyIneligibleItemDoesNotConsumeAdmissionCapacity() {
+        val suspendedLocally = matureReviewItem(
+            "痛",
+            StudyQueueSeeder.answerSignature(suspendedRow("痛")),
+        ).copyBuilder()
+            .schedulerRevision(5L)
+            .build()
+        val candidate = suspendedRow("新")
+
+        val items = StudyQueueSeeder().seedQueue(
+            listOf(suspendedRow("痛"), candidate),
+            listOf(candidate),
+            listOf(suspendedLocally),
+            settingsWithQueue(activeQueueCap = 1, newPerDay = 5),
+            2_000L,
+            1_000L,
+            plan = null,
+            ladder = null,
+            evidenceStatusByKanji = emptyMap(),
+        )
+
+        assertEquals(StudyLadderRules.STATE_REVIEW, items.single { it.kanji == "痛" }.state)
+        assertEquals(StudyLadderRules.STATE_NEW, items.single { it.kanji == "新" }.state)
+    }
+
+    @Test
+    fun duplicateLegacySignaturesCollapseWithoutDiscardingDurableReviewEvidence() {
         val currentRow = exampleRow("裂", expression = "決裂", meaning = "split")
         val olderRow = exampleRow("裂", expression = "裂ける", meaning = "split")
+        val reviewedMemory = RecordsStudyModels.TaskMemory(
+            "review", 12_000L, 40.0, 4.0, 7, 3, 0, "hard", 45, 2, 8_000L, 9_000L,
+        )
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            recognitionReviewCount = 4,
+            contextualReadingReviewCount = 7,
+            coreDueAtMillis = 12_000L,
+        )
         val strongest = matureReviewItem("裂", StudyQueueSeeder.answerSignature(olderRow))
             .copyBuilder()
+            .lapses(3)
+            .wordReadingMemory(reviewedMemory)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
             .schedulerRevision(4L)
             .build()
         val duplicate = matureReviewItem("裂", "")
             .copyBuilder()
             .totalReviews(1)
+            .lapses(0)
+            .wordReadingMemory(RecordsStudyModels.TaskMemory.initial())
             .schedulerRevision(9L)
             .build()
 
@@ -160,9 +201,29 @@ class StudyQueueSeederIngestionTest {
         assertEquals(1, items.count { it.kanji == "裂" })
         val canonical = find(items, "裂")!!
         assertEquals(9L, canonical.schedulerRevision)
-        assertEquals(1, canonical.totalReviews)
+        assertEquals(5, canonical.totalReviews)
+        assertEquals(3, canonical.lapses)
         assertEquals(50.0, canonical.stability, 0.001)
+        assertEquals(reviewedMemory.encode(), canonical.wordReadingMemory.encode())
+        assertEquals(AdaptiveRouteStateCodec.encode(route), canonical.adaptiveRouteStateJson)
         assertEquals(StudyQueueSeeder.answerSignature(currentRow), canonical.answerSignature)
+
+        val reverseCanonical = seeder.seedQueue(
+            listOf(currentRow),
+            listOf(strongest, duplicate),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            5_000L,
+            0L,
+            ladder = null,
+        ).single()
+        assertEquals(canonical.state, reverseCanonical.state)
+        assertEquals(canonical.dueAtMillis, reverseCanonical.dueAtMillis)
+        assertEquals(canonical.totalReviews, reverseCanonical.totalReviews)
+        assertEquals(canonical.lapses, reverseCanonical.lapses)
+        assertEquals(canonical.wordReadingMemory.encode(), reverseCanonical.wordReadingMemory.encode())
+        assertEquals(canonical.adaptiveRouteStateJson, reverseCanonical.adaptiveRouteStateJson)
+        assertEquals(canonical.answerSignature, reverseCanonical.answerSignature)
+        assertEquals(canonical.schedulerRevision, reverseCanonical.schedulerRevision)
     }
 
     @Test

@@ -1483,12 +1483,12 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun reseedRetiredItemPreservesProgressWhileUpdatingAnswerSignature() {
+    public fun reseedRetiredItemPreservesProgressWhenExampleChangesWithoutMeaningChange() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L)
                 .copyBuilder()
                 .state("retired")
-                .answerSignature("裂|old|old|old")
+                .answerSignature("裂|old|old|new")
                 .build()
         var changed: RecordsImportModels.DashboardRow = rowWithExamples(
                 "裂",

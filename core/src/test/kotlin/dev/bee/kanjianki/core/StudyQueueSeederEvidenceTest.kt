@@ -118,7 +118,7 @@ class StudyQueueSeederEvidenceTest {
             .state("retired")
             .dueAtMillis(777L)
             .createdAtMillis(123L)
-            .answerSignature("裂|裂ける|さける|split")
+            .answerSignature("裂|裂ける|さける|meaning")
             .schedulerRevision(4L)
             .build()
 
@@ -258,6 +258,42 @@ class StudyQueueSeederEvidenceTest {
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, reopened.phase)
     }
 
+    @Test
+    fun reopeningRetiredItemWithChangedMeaningResetsUnrelatedReviewState() {
+        val oldRow = activeRowWithMeaning("謎", "old meaning")
+        val newRow = activeRowWithMeaning("謎", "new meaning")
+        val retired = reviewedItem("謎").copyBuilder()
+            .state(StudyLadderRules.STATE_RETIRED)
+            .answerSignature(StudyQueueSeeder.answerSignature(oldRow))
+            .totalReviews(9)
+            .lapses(3)
+            .wordReadingMemory(
+                RecordsStudyModels.TaskMemory(
+                    "review", 900L, 12.0, 4.0, 7, 2, 0, "good", 30, 1, 700L, 800L,
+                ),
+            )
+            .schedulerRevision(12L)
+            .build()
+
+        val now = 1_000L
+        val reopened = StudyQueueSeeder().seedQueue(
+            listOf(newRow),
+            listOf(retired),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            now,
+            now,
+            ladder = null,
+        ).single()
+
+        assertEquals(StudyLadderRules.STATE_NEW, reopened.state)
+        assertEquals(now, reopened.dueAtMillis)
+        assertEquals(0, reopened.totalReviews)
+        assertEquals(0, reopened.lapses)
+        assertEquals(RecordsStudyModels.TaskMemory.initial().encode(), reopened.wordReadingMemory.encode())
+        assertEquals(StudyQueueSeeder.answerSignature(newRow), reopened.answerSignature)
+        assertEquals(14L, reopened.schedulerRevision)
+    }
+
     private fun newItem(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(kanji, "new", 0, 0.4, 5.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
     }
@@ -287,8 +323,12 @@ class StudyQueueSeederEvidenceTest {
     }
 
     private fun activeRow(kanji: String): RecordsImportModels.DashboardRow {
+        return activeRowWithMeaning(kanji, "meaning")
+    }
+
+    private fun activeRowWithMeaning(kanji: String, meaning: String): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
-            kanji, 900, "meaning", "reading", "search", 30, "reason", "reason text", 1, 0, 0,
+            kanji, 900, meaning, "reading", "search", 30, "reason", "reason text", 1, 0, 0,
             ArrayList<RecordsImportModels.Example>(),
         )
     }

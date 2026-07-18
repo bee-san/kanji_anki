@@ -15,6 +15,8 @@ class TimelineCopyTest {
         assertEquals("Resting until review", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
         assertEquals("Retired by Anki support", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
         assertEquals("Active repair", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+        assertEquals("No active repair", TimelineCopy.statusText(timeline(row(), null), now))
+        assertEquals("No active repair", TimelineCopy.statusText(timeline(null, null), now))
     }
 
     @Test
@@ -24,6 +26,7 @@ class TimelineCopyTest {
         assertEquals(TimelineCopy.Tone.POSITIVE, TimelineCopy.statusTone(timeline(row(), studyItem("retired", now - 1L)), now))
         assertEquals(TimelineCopy.Tone.NEUTRAL, TimelineCopy.statusTone(timeline(row(), studyItem("review", now + 1L)), now))
         assertEquals(TimelineCopy.Tone.WARNING, TimelineCopy.statusTone(timeline(row(), studyItem("review", now)), now))
+        assertEquals(TimelineCopy.Tone.NEUTRAL, TimelineCopy.statusTone(timeline(row(), null), now))
     }
 
     @Test
@@ -128,6 +131,7 @@ class TimelineCopyTest {
             assertEquals("復習まで休止中", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
             assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
             assertEquals("修復中", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+            assertEquals("修復なし", TimelineCopy.statusText(timeline(row(), null), now))
 
             assertEquals("", TimelineCopy.sourceLine(event("", "")))
             assertEquals("出典: expr", TimelineCopy.sourceLine(event("expr", "")))
@@ -203,7 +207,7 @@ class TimelineCopyTest {
 
     private fun timeline(
         row: RecordsImportModels.DashboardRow?,
-        item: RecordsStudyModels.StudyItem,
+        item: RecordsStudyModels.StudyItem?,
     ): RecordsStudyModels.KanjiRecoveryTimeline {
         return RecordsStudyModels.KanjiRecoveryTimeline(row, item, Collections.emptyList())
     }
