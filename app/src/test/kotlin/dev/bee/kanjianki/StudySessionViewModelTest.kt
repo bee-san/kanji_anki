@@ -71,6 +71,28 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun pendingTaskAtBoundaryPublishesOnlyCanonicalProgress() {
+        val viewModel = StudySessionViewModel()
+        viewModel.mountSession(session("route-token"))
+        viewModel.tracker.setTargetCount(Int.MAX_VALUE - 1)
+        val beforeInclusion = viewModel.acceptedRouteSnapshot()
+
+        assertTrue(viewModel.tracker.includePendingTask("last-pending"))
+
+        val atLimit = viewModel.acceptedRouteSnapshot()
+        assertTrue(atLimit.version.value > beforeInclusion.version.value)
+        assertEquals(Int.MAX_VALUE, atLimit.progress.targetCount)
+        assertEquals(0, atLimit.progress.completedCount)
+        assertEquals(Int.MAX_VALUE, atLimit.remainingCount)
+        assertSame(viewModel.uiState.value.progress, atLimit.progress)
+
+        val publishedState = viewModel.uiState.value
+        assertFalse(viewModel.tracker.includePendingTask("overflow"))
+        assertSame(publishedState, viewModel.uiState.value)
+        assertEquals(atLimit, viewModel.acceptedRouteSnapshot())
+    }
+
+    @Test
     fun directFiveOfSevenCompletionIsRejectedWithoutAnyMutation() {
         val viewModel = viewModelAt(completed = 5, target = 7)
         val beforeState = viewModel.uiState.value

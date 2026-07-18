@@ -70,6 +70,36 @@ class StudySessionProgressTrackerTest {
     }
 
     @Test
+    fun pendingTaskFromZeroStartsTargetAtOne() {
+        val tracker = StudySessionProgressTracker()
+
+        assertTrue(tracker.includePendingTask("first"))
+        assertEquals(1, tracker.targetCount())
+        assertEquals(0, tracker.completedCount())
+    }
+
+    @Test
+    fun pendingTaskNormallyIncrementsTargetOnce() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(7)
+
+        assertTrue(tracker.includePendingTask("pending"))
+        assertFalse(tracker.includePendingTask("pending"))
+        assertEquals(8, tracker.targetCount())
+        assertEquals(8, tracker.snapshot().targetCount)
+    }
+
+    @Test
+    fun pendingTaskOneBelowTargetLimitReachesTheLimit() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(Int.MAX_VALUE - 1)
+
+        assertTrue(tracker.includePendingTask("last"))
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+    }
+
+    @Test
     fun pendingTaskAtTargetLimitIsRejectedWithoutCorruptingProgress() {
         val tracker = StudySessionProgressTracker()
         tracker.setTargetCount(Int.MAX_VALUE)
@@ -79,11 +109,35 @@ class StudySessionProgressTrackerTest {
         assertEquals(0, tracker.completedCount())
         assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
 
-        tracker.setTargetCount(Int.MAX_VALUE - 1)
+        tracker.setTargetCount(0)
         assertTrue(tracker.includePendingTask("overflow"))
-        assertEquals(Int.MAX_VALUE, tracker.targetCount())
-        assertFalse(tracker.includePendingTask("beyond-limit"))
-        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+        assertEquals(1, tracker.targetCount())
+    }
+
+    @Test
+    fun pendingTaskAdmissionDistinguishesExistingWorkFromCapacityRejection() {
+        val tracker = StudySessionProgressTracker()
+
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.ADDED,
+            tracker.admitPendingTask("existing"),
+        )
+        tracker.setTargetCount(Int.MAX_VALUE)
+
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.EXISTING,
+            tracker.admitPendingTask("existing"),
+        )
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.REJECTED,
+            tracker.admitPendingTask("overflow"),
+        )
+
+        tracker.setTargetCount(0)
+        assertEquals(
+            StudySessionProgressTracker.PendingTaskAdmission.ADDED,
+            tracker.admitPendingTask("overflow"),
+        )
     }
 
     @Test

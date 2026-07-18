@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
+import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -508,10 +509,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         dueRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
         advancingRecovery: StoredPendingStudyRecovery?,
     ): (() -> Unit)? {
-        for (repair in dueRepairs) {
-            study.studySessionTracker.includePendingTask(study.similarRepairProgressKey(repair))
-        }
-        val repair = dueRepairs.firstOrNull()
+        val repairIndex = firstTrackablePendingTaskIndex(
+            dueRepairs.map(study::similarRepairProgressKey),
+            study.studySessionTracker::admitPendingTask,
+        )
+        val repair = dueRepairs.getOrNull(repairIndex)
         if (repair != null) {
             val active = StudyRepairActions.activateSimilarWritingRepair(
                 repair,
@@ -654,3 +656,16 @@ private data class ContinuedRecoveryInspection(
 
 internal fun recoveredStudyRunTarget(currentTarget: Int, completed: Int, selectableRemaining: Int): Int =
     maxOf(currentTarget, completed + selectableRemaining)
+
+internal fun firstTrackablePendingTaskIndex(
+    taskKeys: List<String>,
+    admit: (String) -> StudySessionProgressTracker.PendingTaskAdmission,
+): Int {
+    var firstTrackable = -1
+    for ((index, key) in taskKeys.withIndex()) {
+        if (admit(key).isTracked && firstTrackable < 0) {
+            firstTrackable = index
+        }
+    }
+    return firstTrackable
+}

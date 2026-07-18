@@ -214,6 +214,29 @@ class StudySessionTrackerTest {
         assertEquals(3, tracker.targetCount())
     }
 
+    @Test
+    fun pendingTaskSelectionSkipsCapacityRejectionsAndKeepsTrackedWork() {
+        val tracker = StudySessionTracker()
+        assertTrue(tracker.includePendingTask("existing"))
+        tracker.setTargetCount(Int.MAX_VALUE)
+        val visited = ArrayList<String>()
+
+        val selected = firstTrackablePendingTaskIndex(
+            listOf("overflow", "existing", "later-overflow"),
+        ) { key ->
+            visited.add(key)
+            tracker.admitPendingTask(key)
+        }
+
+        assertEquals(1, selected)
+        assertEquals(listOf("overflow", "existing", "later-overflow"), visited)
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(
+            -1,
+            firstTrackablePendingTaskIndex(listOf("overflow"), tracker::admitPendingTask),
+        )
+    }
+
     private fun learningRepeat(kanji: String): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(
             kanji,

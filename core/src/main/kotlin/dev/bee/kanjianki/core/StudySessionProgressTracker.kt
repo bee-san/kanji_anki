@@ -11,6 +11,12 @@ import kotlin.math.min
  * race a concurrent write (ConcurrentModificationException).
  */
 class StudySessionProgressTracker {
+    enum class PendingTaskAdmission(val isTracked: Boolean) {
+        ADDED(true),
+        EXISTING(true),
+        REJECTED(false),
+    }
+
     private val lock = Any()
     private var completedCount = 0
     private var targetCount = 0
@@ -81,18 +87,19 @@ class StudySessionProgressTracker {
         this.targetCount = max(0, targetCount)
     }
 
-    fun includePendingTask(key: String?): Boolean = synchronized(lock) {
-        if (
-            isEmpty(key) ||
-            targetCount == Int.MAX_VALUE ||
-            seenTaskKeys.contains(key) ||
-            completedTaskKeys.contains(key)
-        ) {
-            return@synchronized false
+    fun includePendingTask(key: String?): Boolean = admitPendingTask(key) == PendingTaskAdmission.ADDED
+
+    fun admitPendingTask(key: String?): PendingTaskAdmission = synchronized(lock) {
+        when {
+            isEmpty(key) -> PendingTaskAdmission.REJECTED
+            seenTaskKeys.contains(key) || completedTaskKeys.contains(key) -> PendingTaskAdmission.EXISTING
+            targetCount == Int.MAX_VALUE -> PendingTaskAdmission.REJECTED
+            else -> {
+                seenTaskKeys.add(key!!)
+                targetCount++
+                PendingTaskAdmission.ADDED
+            }
         }
-        seenTaskKeys.add(key!!)
-        targetCount++
-        true
     }
 
     fun atHardCap(continueAllKanjiSession: Boolean): Boolean = synchronized(lock) {

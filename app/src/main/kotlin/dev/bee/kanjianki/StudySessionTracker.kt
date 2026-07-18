@@ -262,9 +262,13 @@ internal class StudySessionTracker(
     }
 
     fun includePendingTask(key: String?): Boolean {
-        val included = progressTracker.includePendingTask(key)
-        if (included) onChanged()
-        return included
+        return admitPendingTask(key) == StudySessionProgressTracker.PendingTaskAdmission.ADDED
+    }
+
+    fun admitPendingTask(key: String?): StudySessionProgressTracker.PendingTaskAdmission {
+        val admission = progressTracker.admitPendingTask(key)
+        if (admission == StudySessionProgressTracker.PendingTaskAdmission.ADDED) onChanged()
+        return admission
     }
 
     fun atHardCap(continueAllKanjiSession: Boolean): Boolean {
