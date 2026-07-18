@@ -73,21 +73,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val now = System.currentTimeMillis()
         val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
         studyLoadDebug("renderStudy rows=${rows.size}")
-        val currentItems = withStudyLoadProbe("studyItemsForKanji") {
-            if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
-        }
+        val currentItems = currentStudyItems(rows)
         studyLoadDebug("renderStudy currentItems=${currentItems.size}")
-        val plan = withStudyLoadProbe("studyPlanForMode#1") {
-            if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
-        }
+        val plan = initialStudyPlan(rows, currentItems, now)
         study.activeStudyPlan = plan
-        val dueRepairs = withStudyLoadProbe("dueSimilarWritingRepairs") {
-            if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-                study.store.dueSimilarWritingRepairs(now)
-            } else {
-                emptyList()
-            }
-        }
+        val dueRepairs = dueWritingRepairs(now, ladder)
         if (rows.isEmpty()) {
             candidate.tracker.initializeSessionPlan(emptyList())
             refreshSessionBadgeCount(studyNowCount(0, dueRepairs))
@@ -210,6 +200,31 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             } else {
                 study.renderStudyRecoveryOnly()
             }
+        }
+    }
+
+    private fun currentStudyItems(
+        rows: List<RecordsImportModels.DashboardRow>,
+    ): List<RecordsStudyModels.StudyItem> = withStudyLoadProbe("studyItemsForKanji") {
+        if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
+    }
+
+    private fun initialStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        currentItems: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan? = withStudyLoadProbe("studyPlanForMode#1") {
+        if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+    }
+
+    private fun dueWritingRepairs(
+        now: Long,
+        ladder: RecordsBase.StudyLadderSettings,
+    ): List<RecordsImportModels.SimilarKanjiWritingRepair> = withStudyLoadProbe("dueSimilarWritingRepairs") {
+        if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
+            study.store.dueSimilarWritingRepairs(now)
+        } else {
+            emptyList()
         }
     }
 
@@ -461,7 +476,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
         val ladder = study.studyLadderSettings()
-        val currentItems = if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
+        val currentItems = currentStudyItems(rows)
         study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
@@ -492,11 +507,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 ),
             ),
         )
-        val dueRepairs = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            study.store.dueSimilarWritingRepairs(now)
-        } else {
-            emptyList()
-        }
+        val dueRepairs = dueWritingRepairs(now, ladder)
         refreshSessionBadgeCount(studyNowCount(generalStudyItemCount, dueRepairs))
         val session = scheduler.targetedSession(
             seeded,

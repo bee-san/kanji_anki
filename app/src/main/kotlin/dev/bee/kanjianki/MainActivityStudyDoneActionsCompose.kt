@@ -107,11 +107,11 @@ internal fun StudyDoneScreen(
             },
         shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
         color = StudyDoneCardBackground,
-        border = BorderStroke(1.dp, StudyDonePrimaryBorder)
+        border = BorderStroke(1.dp, StudyDonePrimaryBorder),
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             StudyModePill(model.modeLabel)
             Text(
@@ -120,54 +120,65 @@ internal fun StudyDoneScreen(
                 color = StudyDoneSecondaryText,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
+                style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
             )
-            if (!model.showDoneActions && model.summaryLines.isEmpty()) {
-                HomeEmptyState(
-                    title = model.headline ?: model.title,
-                    body = model.body
-                )
-            } else {
-                model.headline?.let { headline ->
-                    Text(
-                        text = headline,
-                        color = StudyDoneSecondaryText,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Text(
-                    text = model.body,
-                    color = StudyDoneMuted,
-                    fontSize = 17.sp
-                )
-            }
+            StudyDoneBody(model)
             if (model.summaryLines.isNotEmpty()) {
                 StudyDoneSummary(lines = model.summaryLines)
             }
-            if (model.showDoneActions) {
-                StudyDoneActions(
-                    availableStudyMoreNewCards = model.availableStudyMoreNewCards,
-                    onStudyMore = { model.onStudyMore.run() },
-                    onContinueAll = { model.onContinueAll.run() },
-                    onBackHome = { model.onBackHome.run() }
-                )
-            } else if (model.showBackHome) {
-                if (model.backHomePrimary) {
-                    StudyPrimaryButton(
-                        label = StudyTextCopy.backHomeLabel(),
-                        traceLabel = "Back home",
-                        onClick = { model.onBackHome.run() }
-                    )
-                } else {
-                    StudySecondaryButton(
-                        label = StudyTextCopy.backHomeLabel(),
-                        traceLabel = "Back home",
-                        onClick = { model.onBackHome.run() }
-                    )
-                }
-            }
+            StudyDoneNavigation(model)
         }
+    }
+}
+
+@Composable
+private fun StudyDoneBody(model: StudyDoneScreenModel) {
+    if (!model.showDoneActions && model.summaryLines.isEmpty()) {
+        HomeEmptyState(
+            title = model.headline ?: model.title,
+            body = model.body,
+        )
+        return
+    }
+    model.headline?.let { headline ->
+        Text(
+            text = headline,
+            color = StudyDoneSecondaryText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+    Text(
+        text = model.body,
+        color = StudyDoneMuted,
+        fontSize = 17.sp,
+    )
+}
+
+@Composable
+private fun StudyDoneNavigation(model: StudyDoneScreenModel) {
+    if (model.showDoneActions) {
+        StudyDoneActions(
+            availableStudyMoreNewCards = model.availableStudyMoreNewCards,
+            onStudyMore = { model.onStudyMore.run() },
+            onContinueAll = { model.onContinueAll.run() },
+            onBackHome = { model.onBackHome.run() },
+        )
+        return
+    }
+    if (!model.showBackHome) return
+    if (model.backHomePrimary) {
+        StudyPrimaryButton(
+            label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
+            onClick = { model.onBackHome.run() },
+        )
+    } else {
+        StudySecondaryButton(
+            label = StudyTextCopy.backHomeLabel(),
+            traceLabel = "Back home",
+            onClick = { model.onBackHome.run() },
+        )
     }
 }
 
