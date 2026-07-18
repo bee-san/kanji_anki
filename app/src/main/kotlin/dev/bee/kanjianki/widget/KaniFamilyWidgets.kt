@@ -11,19 +11,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class QuickStudyWidget(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(72.dp, 72.dp), DpSize(180.dp, 72.dp)))
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val nowMillis = System.currentTimeMillis()
-        val snapshot = withContext(ioDispatcher) { StudyWidgetSnapshotLoader.load(context, nowMillis) }
-        KaniWidgetBoundaryAlarm.scheduleStudyBoundary(context, nowMillis, snapshot.nextUsefulAtMillis)
-        provideContent { KaniWidgetContent(snapshot) }
-    }
-}
-
 internal class ActivityWidget(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : GlanceAppWidget() {

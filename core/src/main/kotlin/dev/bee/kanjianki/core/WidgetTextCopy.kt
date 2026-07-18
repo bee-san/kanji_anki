@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core
 
+import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -25,9 +26,10 @@ object WidgetTextCopy {
     @JvmStatic
     fun dueCountLabel(dueCount: Int): String {
         val safeCount = dueCount.coerceAtLeast(0)
+        val count = NumberFormat.getIntegerInstance(Locale.getDefault()).format(safeCount)
         return localizedText(
-            if (safeCount == 1) "1 review ready" else "$safeCount reviews ready",
-            "復習できるカード${safeCount}件",
+            if (safeCount == 1) "1 review ready" else "$count reviews ready",
+            "復習できるカード${count}件",
         )
     }
 
@@ -102,6 +104,92 @@ object WidgetTextCopy {
         return localizedText(
             "$streak · More practice at $time",
             "$streak · 次の学習は$time",
+        )
+    }
+
+    @JvmStatic
+    fun errorTitle(): String = localizedText("Kani unavailable", "Kaniを利用できません")
+
+    @JvmStatic
+    fun errorBody(): String = localizedText(
+        "Open Kani to recover your local study data.",
+        "Kaniを開いてローカル学習データを復旧します。",
+    )
+
+    @JvmStatic
+    fun quickDueStatus(): String = localizedText("Due", "期限")
+
+    @JvmStatic
+    fun quickCaughtUpStatus(): String = localizedText("Caught up", "復習完了")
+
+    @JvmStatic
+    fun quickSetupStatus(): String = localizedText("Set up", "設定")
+
+    @JvmStatic
+    fun quickErrorStatus(): String = localizedText("Unavailable", "利用不可")
+
+    @JvmStatic
+    fun visualCountLabel(count: Int): String {
+        val safeCount = count.coerceAtLeast(0)
+        return if (safeCount > 999) "999+" else safeCount.toString()
+    }
+
+    @JvmStatic
+    fun reviewCountLabel(count: Int): String {
+        val safeCount = count.coerceAtLeast(0)
+        val formatted = NumberFormat.getIntegerInstance(Locale.getDefault()).format(safeCount)
+        return localizedText(
+            if (safeCount == 1) "1 review" else "$formatted reviews",
+            "復習${formatted}件",
+        )
+    }
+
+    @JvmStatic
+    fun activityPeriodLabel(count: Int, days: Int): String {
+        val safeDays = days.coerceAtLeast(0)
+        val reviews = reviewCountLabel(count)
+        return localizedText(
+            "$reviews in $safeDays days",
+            "${safeDays}日間で$reviews",
+        )
+    }
+
+    @JvmStatic
+    fun noActivityTitle(): String = localizedText("No activity yet", "学習履歴はまだありません")
+
+    @JvmStatic
+    fun noActivityBody(): String = localizedText(
+        "Reviews will appear here.",
+        "復習するとここに表示されます。",
+    )
+
+    @JvmStatic
+    fun openStatsLabel(): String = localizedText("Open stats", "統計を開く")
+
+    @JvmStatic
+    fun quickStudyDescription(status: String, action: String): String = localizedText(
+        "Quick study widget. $status. $action.",
+        "クイック学習ウィジェット。$status。$action。",
+    )
+
+    @JvmStatic
+    fun activityDescription(
+        reviewCount: Int,
+        days: Int,
+        streakDays: Int,
+        bestStreakDays: Int,
+        action: String,
+    ): String {
+        val period = activityPeriodLabel(reviewCount, days)
+        val streak = streakLabel(streakDays)
+        val best = bestStreakLabel(bestStreakDays)
+        return localizedText(
+            listOf("Activity widget", period, streak, best, action)
+                .filter { it.isNotEmpty() }
+                .joinToString(". ", postfix = "."),
+            listOf("学習履歴ウィジェット", period, streak, best, action)
+                .filter { it.isNotEmpty() }
+                .joinToString("。", postfix = "。"),
         )
     }
 

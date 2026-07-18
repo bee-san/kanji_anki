@@ -29,6 +29,7 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
     }
 
     @Test
@@ -42,6 +43,23 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+    }
+
+    @Test
+    fun everyUnavailableQuickStateOpensHomeWithoutStudyStatsOrSyncExtras() {
+        listOf(
+            KaniWidgetState.NOTHING_DUE,
+            KaniWidgetState.NOT_SET_UP,
+            KaniWidgetState.ERROR,
+        ).forEach { state ->
+            val intent = kaniWidgetLaunchIntent(context, KaniWidgetSnapshot(state))
+
+            assertEquals(MainActivity::class.java.name, intent.component?.className)
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+            assertTrue(intent.extras?.keySet().orEmpty().isEmpty())
+        }
     }
 
     @Test

@@ -54,6 +54,30 @@ class WidgetTextCopyTest {
             assertEquals("Theme", WidgetTextCopy.widgetThemeSectionTitle())
             assertEquals("Follow app", WidgetTextCopy.widgetThemeFollowAppLabel())
             assertEquals("Save", WidgetTextCopy.widgetSaveLabel())
+            assertEquals("Kani unavailable", WidgetTextCopy.errorTitle())
+            assertEquals(
+                "Open Kani to recover your local study data.",
+                WidgetTextCopy.errorBody(),
+            )
+            assertEquals("Due", WidgetTextCopy.quickDueStatus())
+            assertEquals("Caught up", WidgetTextCopy.quickCaughtUpStatus())
+            assertEquals("Set up", WidgetTextCopy.quickSetupStatus())
+            assertEquals("Unavailable", WidgetTextCopy.quickErrorStatus())
+            assertEquals("999+", WidgetTextCopy.visualCountLabel(1_204))
+            assertEquals("0", WidgetTextCopy.visualCountLabel(-2))
+            assertEquals("87 reviews", WidgetTextCopy.reviewCountLabel(87))
+            assertEquals("87 reviews in 35 days", WidgetTextCopy.activityPeriodLabel(87, 35))
+            assertEquals("No activity yet", WidgetTextCopy.noActivityTitle())
+            assertEquals("Reviews will appear here.", WidgetTextCopy.noActivityBody())
+            assertEquals("Open stats", WidgetTextCopy.openStatsLabel())
+            assertEquals(
+                "Activity widget. 87 reviews in 35 days. 5-day streak. Best: 21 days. Open stats.",
+                WidgetTextCopy.activityDescription(87, 35, 5, 21, "Open stats"),
+            )
+            assertEquals(
+                "Quick study widget. 3 reviews ready. Study now.",
+                WidgetTextCopy.quickStudyDescription("3 reviews ready", "Study now"),
+            )
         }
     }
 
@@ -90,6 +114,25 @@ class WidgetTextCopyTest {
             assertEquals("テーマ", WidgetTextCopy.widgetThemeSectionTitle())
             assertEquals("アプリに合わせる", WidgetTextCopy.widgetThemeFollowAppLabel())
             assertEquals("保存", WidgetTextCopy.widgetSaveLabel())
+            assertEquals("Kaniを利用できません", WidgetTextCopy.errorTitle())
+            assertEquals("Kaniを開いてローカル学習データを復旧します。", WidgetTextCopy.errorBody())
+            assertEquals("期限", WidgetTextCopy.quickDueStatus())
+            assertEquals("復習完了", WidgetTextCopy.quickCaughtUpStatus())
+            assertEquals("設定", WidgetTextCopy.quickSetupStatus())
+            assertEquals("利用不可", WidgetTextCopy.quickErrorStatus())
+            assertEquals("復習87件", WidgetTextCopy.reviewCountLabel(87))
+            assertEquals("35日間で復習87件", WidgetTextCopy.activityPeriodLabel(87, 35))
+            assertEquals("学習履歴はまだありません", WidgetTextCopy.noActivityTitle())
+            assertEquals("復習するとここに表示されます。", WidgetTextCopy.noActivityBody())
+            assertEquals("統計を開く", WidgetTextCopy.openStatsLabel())
+            assertEquals(
+                "学習履歴ウィジェット。35日間で復習87件。5日連続。最長21日。統計を開く。",
+                WidgetTextCopy.activityDescription(87, 35, 5, 21, "統計を開く"),
+            )
+            assertEquals(
+                "クイック学習ウィジェット。復習できるカード3件。今すぐ学習。",
+                WidgetTextCopy.quickStudyDescription("復習できるカード3件", "今すぐ学習"),
+            )
         }
     }
 

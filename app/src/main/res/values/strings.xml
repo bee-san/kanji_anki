@@ -6,9 +6,12 @@
     <string name="kani_widget_preview_count">12 reviews ready</string>
     <string name="kani_widget_preview_streak">5-day streak</string>
     <string name="study_overview_widget_label">Kani Study overview</string>
-    <string name="quick_study_widget_label">Kani Quick study</string>
-    <string name="quick_study_widget_description">Due reviews at a glance</string>
+    <string name="quick_study_widget_label">Quick Study</string>
+    <string name="quick_study_widget_description">Open due reviews with one tap</string>
     <string name="quick_study_widget_loading">Loading quick study…</string>
+    <string name="quick_study_widget_preview_count">12</string>
+    <string name="quick_study_widget_preview_status">Due</string>
+    <string name="quick_study_widget_preview_action">Study now</string>
     <string name="activity_widget_label">Kani Activity</string>
     <string name="activity_widget_description">Recent Kani review activity</string>
     <string name="activity_widget_loading">Loading activity…</string>

@@ -6,9 +6,12 @@
     <string name="kani_widget_preview_count">復習できるカード12件</string>
     <string name="kani_widget_preview_streak">5日連続</string>
     <string name="study_overview_widget_label">カニ 学習概要</string>
-    <string name="quick_study_widget_label">カニ クイック学習</string>
-    <string name="quick_study_widget_description">復習期限をひと目で確認</string>
+    <string name="quick_study_widget_label">クイック学習</string>
+    <string name="quick_study_widget_description">期限の復習をワンタップで開く</string>
     <string name="quick_study_widget_loading">クイック学習を読み込み中…</string>
+    <string name="quick_study_widget_preview_count">12</string>
+    <string name="quick_study_widget_preview_status">期限</string>
+    <string name="quick_study_widget_preview_action">今すぐ学習</string>
     <string name="activity_widget_label">カニ 学習記録</string>
     <string name="activity_widget_description">最近のカニ復習記録</string>
     <string name="activity_widget_loading">学習記録を読み込み中…</string>

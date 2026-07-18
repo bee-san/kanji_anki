@@ -3,21 +3,40 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FFF7FB"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="6dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/quick_study_widget_preview_count"
+            android:textColor="#2D1635"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/quick_study_widget_preview_status"
+            android:textColor="#B5225E"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/kani_widget_preview_count"
-        android:textColor="#2D1635"
-        android:textSize="18sp"
-        android:textStyle="bold" />
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/shortcut_study_long_label"
+        android:layout_width="56dp"
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:maxLines="2"
+        android:text="@string/quick_study_widget_preview_action"
         android:textColor="#B5225E"
         android:textSize="13sp"
         android:textStyle="bold" />

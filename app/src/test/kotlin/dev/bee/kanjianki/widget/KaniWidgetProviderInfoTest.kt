@@ -55,6 +55,41 @@ class KaniWidgetProviderInfoTest {
     }
 
     @Test
+    fun quickStudyProviderUsesTheApprovedTinyCompactAndWideSizeContract() {
+        val provider = providerInfo("@xml/quick_study_widget_info")
+
+        assertEquals("56dp", provider.androidAttribute("minWidth"))
+        assertEquals("56dp", provider.androidAttribute("minHeight"))
+        assertEquals("56dp", provider.androidAttribute("minResizeWidth"))
+        assertEquals("56dp", provider.androidAttribute("minResizeHeight"))
+        assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
+        assertEquals("1", provider.androidAttribute("targetCellWidth"))
+        assertEquals("1", provider.androidAttribute("targetCellHeight"))
+        assertEquals("@layout/quick_study_widget_preview", provider.androidAttribute("previewLayout"))
+        assertEquals("@layout/quick_study_widget_loading", provider.androidAttribute("initialLayout"))
+    }
+
+    @Test
+    fun quickStudyPreviewIsStaticLocalizedDemoAndLoadingLayoutHasNoDemoFactsOrActions() {
+        val preview = File("src/main/res/layout/quick_study_widget_preview.xml").readText()
+        val loading = File("src/main/res/layout/quick_study_widget_loading.xml").readText()
+        val english = File("src/main/res/values/strings.xml").readText()
+        val japanese = File("src/main/res/values-ja/strings.xml").readText()
+
+        assertTrue(preview.contains("@string/quick_study_widget_preview_count"))
+        assertTrue(preview.contains("@string/quick_study_widget_preview_status"))
+        assertTrue(preview.contains("@string/quick_study_widget_preview_action"))
+        assertTrue(english.contains("name=\"quick_study_widget_preview_count\">12</string>"))
+        assertTrue(english.contains("name=\"quick_study_widget_preview_status\">Due</string>"))
+        assertTrue(english.contains("name=\"quick_study_widget_preview_action\">Study now</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_preview_status\">期限</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_preview_action\">今すぐ学習</string>"))
+        assertFalse(loading.contains("quick_study_widget_preview_count"))
+        assertFalse(loading.contains("quick_study_widget_preview_action"))
+        assertFalse(loading.contains("widget_shortcut_study_now"))
+    }
+
+    @Test
     fun newProvidersNeverDeclareConfigurationState() {
         val newInfo = widgetReceivers()
             .filterKeys { it != ".widget.KaniWidgetReceiver" }
