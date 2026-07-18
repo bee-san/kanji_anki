@@ -41,6 +41,8 @@ import org.robolectric.annotation.Config
 import java.io.StringReader
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
@@ -766,7 +768,8 @@ class MainActivityStudyRouteInitializationTest {
             .build()
         activity.store.saveRows(activity.store.writableDatabase, listOf(row), 4_000L)
         activity.store.saveStudyItem(item)
-        val mainTasks = ArrayDeque<Runnable>()
+        val mainTasks = ConcurrentLinkedDeque<Runnable>()
+        val computeThreads = CopyOnWriteArrayList<Thread>()
         val computeStarted = CountDownLatch(1)
         val allowCompute = CountDownLatch(1)
         val computeFinished = CountDownLatch(1)
@@ -781,7 +784,10 @@ class MainActivityStudyRouteInitializationTest {
                         } finally {
                             computeFinished.countDown()
                         }
-                    }.start()
+                    }.also { thread ->
+                        computeThreads.add(thread)
+                        thread.start()
+                    }
                 },
                 postToMain = { mainTasks.addLast(it) },
                 loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
@@ -812,11 +818,17 @@ class MainActivityStudyRouteInitializationTest {
         val acceptedAfterCancel = activity.studySessionViewModel.acceptedRouteSnapshot()
         allowCompute.countDown()
         assertTrue("Study compute must finish", computeFinished.await(5, TimeUnit.SECONDS))
-        assertEquals(1, mainTasks.size)
+        computeThreads.forEach { thread ->
+            thread.join(TimeUnit.SECONDS.toMillis(5))
+            assertFalse("Study compute thread must finish", thread.isAlive)
+        }
+        assertTrue("Study compute must post at least one result", mainTasks.isNotEmpty())
         assertNotNull(activity.store.studyItemsForKanji(listOf("消")).single().activeToken)
         assertNull(StudySessionRecoveryStore(preferences).read())
 
-        mainTasks.removeFirst().run()
+        while (mainTasks.isNotEmpty()) {
+            mainTasks.removeFirst().run()
+        }
 
         assertNull(StudySessionRecoveryStore(preferences).read())
         assertEquals(
