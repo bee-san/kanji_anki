@@ -105,6 +105,26 @@ class StudyWidgetSnapshotLoaderTest {
     }
 
     @Test
+    fun retiredItemIsHiddenAndTheSameReopenedItemBecomesDue() {
+        LocalStore(context).use { store ->
+            store.saveRows(store.writableDatabase, listOf(dashboardRow("裂")), NOW)
+            store.saveStudyItem(studyItem("裂", NOW - 1L, state = "retired"))
+        }
+
+        val retiredSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        assertEquals(KaniWidgetState.NOTHING_DUE, retiredSnapshot.state)
+        assertEquals(0, retiredSnapshot.dueCount)
+
+        LocalStore(context).use { store ->
+            store.saveStudyItem(studyItem("裂", NOW - 1L, state = "review"))
+        }
+
+        val reopenedSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        assertEquals(KaniWidgetState.DUE_NOW, reopenedSnapshot.state)
+        assertEquals(1, reopenedSnapshot.dueCount)
+    }
+
+    @Test
     fun futureReviewBecomesDueWhenClockReachesDueTime() {
         val dueAt = NOW + 60_000L
         LocalStore(context).use { store ->
@@ -215,10 +235,11 @@ class StudyWidgetSnapshotLoaderTest {
         kanji: String,
         dueAtMillis: Long,
         totalReviews: Int = 1,
+        state: String = "review",
     ): RecordsStudyModels.StudyItem =
         RecordsStudyModels.StudyItem(
             kanji,
-            "review",
+            state,
             dueAtMillis,
             1.0,
             5.0,

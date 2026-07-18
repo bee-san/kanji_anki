@@ -750,12 +750,12 @@ private fun verifyDetailIdentityAndTimeline(activity: MainActivity, inventory: R
         var activeTimeline = RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), emptyList<RecordsImportModels.KanjiTimelineEvent>())
         var restingTimeline = RecordsStudyModels.KanjiRecoveryTimeline(inventory, row, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", System.currentTimeMillis() + 60_000L), emptyList<RecordsImportModels.KanjiTimelineEvent>())
         var retiredTimeline = RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "retired", 0L), emptyList<RecordsImportModels.KanjiTimelineEvent>())
-        var noRowTimeline = RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, null, emptyList<RecordsImportModels.KanjiTimelineEvent>())
+        var noRowTimeline = RecordsStudyModels.KanjiRecoveryTimeline(inventory, null, studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L), emptyList<RecordsImportModels.KanjiTimelineEvent>())
         var browseDetail = MainActivityHomeBrowseDetail(activity)
         assertEquals("Active repair", TimelineCopy.statusText(activeTimeline, System.currentTimeMillis()));
         assertEquals("Resting until review", TimelineCopy.statusText(restingTimeline, System.currentTimeMillis()));
         assertEquals("Retired by Anki support", TimelineCopy.statusText(retiredTimeline, System.currentTimeMillis()));
-        assertEquals("Retired by Anki support", TimelineCopy.statusText(noRowTimeline, System.currentTimeMillis()));
+        assertEquals("Active repair", TimelineCopy.statusText(noRowTimeline, System.currentTimeMillis()));
         assertEquals(MainActivityBase.TEAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(retiredTimeline, System.currentTimeMillis())));
         assertEquals(MainActivityBase.BLUE, browseDetail.timelineToneColor(TimelineCopy.statusTone(restingTimeline, System.currentTimeMillis())));
         assertEquals(MainActivityBase.CORAL, browseDetail.timelineToneColor(TimelineCopy.statusTone(activeTimeline, System.currentTimeMillis())));

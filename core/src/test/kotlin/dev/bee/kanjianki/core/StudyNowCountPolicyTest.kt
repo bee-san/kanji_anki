@@ -137,7 +137,7 @@ class StudyNowCountPolicyTest {
     }
 
     @Test
-    fun retiredFocusRowReopensAndCountsWhenRepairIsNeeded() {
+    fun retiredFutureReviewReopensWithoutBecomingDueImmediately() {
         val row = repairRow("戻")
         val retired = reviewItem(row, dueAtMillis = now + day)
             .copyBuilder()
@@ -146,7 +146,7 @@ class StudyNowCountPolicyTest {
             .build()
         val plan = focusPlan(listOf("戻"), remaining = 1, newAdmissionLimit = 1)
 
-        assertEquals(1, count(listOf(row), listOf(retired), plan))
+        assertEquals(0, count(listOf(row), listOf(retired), plan))
     }
 
     @Test

@@ -15,14 +15,14 @@ object TimelineCopy {
     @JvmStatic
     fun statusText(timeline: RecordsStudyModels.KanjiRecoveryTimeline, nowMillis: Long): String {
         val item = timeline.currentStudyItem
-        if (item != null && StudyLadderRules.STATE_RETIRED == item.state) {
+        if (item == null) {
+            return localizedText("No active repair", "修復なし")
+        }
+        if (StudyLadderRules.STATE_RETIRED == item.state) {
             return localizedText("Retired by Anki support", "Ankiの支えで修了")
         }
-        if (item != null && item.dueAtMillis > nowMillis) {
+        if (item.dueAtMillis > nowMillis) {
             return localizedText("Resting until review", "復習まで休止中")
-        }
-        if (timeline.currentRow == null) {
-            return localizedText("Retired by Anki support", "Ankiの支えで修了")
         }
         return localizedText("Active repair", "修復中")
     }
@@ -30,10 +30,13 @@ object TimelineCopy {
     @JvmStatic
     fun statusTone(timeline: RecordsStudyModels.KanjiRecoveryTimeline, nowMillis: Long): Tone {
         val item = timeline.currentStudyItem
-        if (item != null && StudyLadderRules.STATE_RETIRED == item.state) {
+        if (item == null) {
+            return Tone.NEUTRAL
+        }
+        if (StudyLadderRules.STATE_RETIRED == item.state) {
             return Tone.POSITIVE
         }
-        if (item != null && item.dueAtMillis > nowMillis) {
+        if (item.dueAtMillis > nowMillis) {
             return Tone.NEUTRAL
         }
         return Tone.WARNING

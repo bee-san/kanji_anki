@@ -93,6 +93,28 @@ class HomeDeckOverviewPolicyTest {
         assertEquals(listOf("New 1"), overview.rows())
     }
 
+    @Test
+    fun retiredItemsAreExcludedAndReopenedItemsAreIncluded() {
+        val row = row("語", "expr-active", "read-a", "mean-a")
+        val signature = StudyQueueSeeder.answerSignature(row)
+
+        val retired = HomeDeckOverviewPolicy.from(
+            listOf(studyItem("語", StudyLadderRules.STATE_RETIRED, 900L, signature)),
+            listOf(row),
+            1_000L,
+            emptySet(),
+        )
+        val reopened = HomeDeckOverviewPolicy.from(
+            listOf(studyItem("語", StudyLadderRules.STATE_REVIEW, 900L, signature)),
+            listOf(row),
+            1_000L,
+            emptySet(),
+        )
+
+        assertEquals(0, retired.dueCount)
+        assertEquals(1, reopened.dueCount)
+    }
+
     private fun studyItem(
         kanji: String,
         state: String,

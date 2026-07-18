@@ -584,7 +584,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun seedQueueKeepsUnreviewedItemsEvenWithEnoughMatureSupport() {
+    public fun seedQueueRetiresUnreviewedItemsWithEnoughMatureSupport() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var unreviewed: RecordsStudyModels.StudyItem = item("裂")
         var covered: RecordsImportModels.DashboardRow = RecordsImportModels.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, ArrayList<RecordsImportModels.Example>())
@@ -595,7 +595,7 @@ public class BridgeSchedulerTest {
                 1000L,
                 0L
         )
-        assertEquals("new", findItem(items, "裂").state)
+        assertEquals("retired", findItem(items, "裂").state)
     }
 
     @Test
@@ -619,19 +619,23 @@ public class BridgeSchedulerTest {
                 0L
         )
         var reopened: RecordsStudyModels.StudyItem = findItem(items, "裂")
-        assertEquals("new", reopened.state)
-        assertEquals(0, reopened.totalReviews)
-        assertEquals(1000L, reopened.createdAtMillis)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, reopened.rung)
+        assertEquals("review", reopened.state)
+        assertEquals(3, reopened.totalReviews)
+        assertEquals(retired.createdAtMillis, reopened.createdAtMillis)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, reopened.rung)
     }
 
     @Test
-    public fun retiredItemsStayRetiredWhenAdmissionRoomIsFull() {
+    public fun retiredItemsReopenWithoutConsumingAdmissionRoom() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var active: RecordsStudyModels.StudyItem = item("謎").copyBuilder()
                 .createdAtMillis(0L)
                 .build()
-        var retired: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
+        var retired: RecordsStudyModels.StudyItem = reviewItem(
+                "裂",
+                RecordsBase.LadderRung.KANJI_MEANING,
+                0L
+        ).copyBuilder()
                 .state("retired")
                 .totalReviews(3)
                 .build()
@@ -642,7 +646,9 @@ public class BridgeSchedulerTest {
                 1000L,
                 500L
         )
-        assertEquals("retired", findItem(items, "裂").state)
+        var reopened: RecordsStudyModels.StudyItem = findItem(items, "裂")
+        assertEquals("review", reopened.state)
+        assertEquals(3, reopened.totalReviews)
     }
 
     @Test
@@ -859,7 +865,7 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun adaptiveFocusIgnoresMissingRowsAndRetiresAmbiguousLegacyFamily() {
+    public fun adaptiveFocusCanonicalizesDuplicateRowsToOneKanjiItem() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var plan: RecordsSchedulerModels.AdaptiveLoadPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
                 20,
@@ -890,8 +896,9 @@ public class BridgeSchedulerTest {
                 0L,
                 plan
         )
-        assertEquals("retired", ambiguousLegacyState(items))
-        assertEquals(2, items.size)
+        assertEquals(1, items.size)
+        assertEquals("裂", items[0].kanji)
+        assertEquals(StudyQueueSeeder.answerSignature(secondFamily), items[0].answerSignature)
     }
 
     @Test
@@ -1476,12 +1483,12 @@ public class BridgeSchedulerTest {
     }
 
     @Test
-    public fun reseedRetiredItemOnlyUpdatesChangedAnswerSignature() {
+    public fun reseedRetiredItemPreservesProgressWhenExampleChangesWithoutMeaningChange() {
         var scheduler: BridgeScheduler = BridgeScheduler()
         var retired: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L)
                 .copyBuilder()
                 .state("retired")
-                .answerSignature("裂|old|old|old")
+                .answerSignature("裂|old|old|new")
                 .build()
         var changed: RecordsImportModels.DashboardRow = rowWithExamples(
                 "裂",
@@ -1495,9 +1502,9 @@ public class BridgeSchedulerTest {
                 2000L,
                 0L
         ), "裂")
-        assertEquals("new", updated.state)
+        assertEquals("review", updated.state)
         assertEquals("裂|新しい|あたらしい|new", updated.answerSignature)
-        assertEquals(0, updated.totalReviews)
+        assertEquals(retired.totalReviews, updated.totalReviews)
     }
 
     @Test
@@ -2302,15 +2309,6 @@ public class BridgeSchedulerTest {
             }
         }
         throw AssertionError("Missing study item for " + kanji)
-    }
-
-    private fun ambiguousLegacyState(items: List<RecordsStudyModels.StudyItem>): String {
-        for (item in items) {
-            if ("裂|stale|stale|stale".equals(item.answerSignature)) {
-                return item.state
-            }
-        }
-        throw AssertionError("Missing ambiguous legacy item")
     }
 
     private fun row(kanji: String, score: Int): RecordsImportModels.DashboardRow {

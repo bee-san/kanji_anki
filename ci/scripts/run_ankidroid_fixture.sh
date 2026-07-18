@@ -36,6 +36,13 @@ dump_logcat() {
   adb logcat -d > "${logcat_path}" 2>/dev/null || true
 }
 
+clear_logcat_best_effort() {
+  local clear_output
+  if ! clear_output="$(adb logcat -c 2>&1)"; then
+    echo "Unable to clear logcat; continuing: ${clear_output}" >&2
+  fi
+}
+
 reconnect_adb() {
   # `adb root` restarts adbd, and GitHub-hosted emulators can drop the client
   # connection mid-command with "Software caused connection abort" or "device
@@ -115,7 +122,7 @@ probe_ankidroid_provider() {
 }
 
 repair_ankidroid_dir_permissions() {
-  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; chown -R \"\$owner_uid\":ext_data_rw ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); owner_gid=\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ] && [ -n \"\$owner_gid\" ]; then chown -R \"\$owner_uid\":\"\$owner_gid\" ${ankidroid_dir}; chown -R \"\$owner_uid\":\"\$owner_gid\" ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
 }
 
 configure_ankidroid_collection_path() {
@@ -305,7 +312,7 @@ run_instrumentation_gate() {
 
     echo "Instrumentation appears to have hit a transient runner/process failure; resetting apps and retrying" >&2
     reset_apps_after_transient_instrumentation_failure
-    adb logcat -c
+    clear_logcat_best_effort
     attempt=$((attempt + 1))
   done
 }
@@ -342,5 +349,5 @@ adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABA
 wait_for_ankidroid_provider
 adb shell am force-stop com.ichi2.anki || true
 
-adb logcat -c
+clear_logcat_best_effort
 run_instrumentation_gate

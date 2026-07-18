@@ -15,6 +15,36 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 
 internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(context) {
+    /**
+     * Publish the provider mirror, derived dashboard/inventory, and seeded study
+     * queue behind one outer SQLite transaction. The existing save/finalize
+     * methods use nested transactions; Android defers their commits until this
+     * outer transaction succeeds, so a queue-build failure cannot expose a new
+     * mirror paired with stale scheduler state.
+     */
+    fun <T> publishSyncAtomically(block: () -> T): T {
+        return try {
+            writableDatabase.transaction { block() }
+        } finally {
+            // Nested save methods may invalidate while the outer transaction is
+            // still open. Clear once more after commit/rollback so no cache can
+            // retain data observed from the unpublished transaction.
+            clearDashboardRowsCache()
+            clearStudyItemsCache()
+            clearKanjiInventoryAllCache()
+        }
+    }
+
+    fun hasPersistedCollectionMirror(): Boolean {
+        val db = readableDatabase
+        return tableHasRows(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID) ||
+            tableHasRows(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID)
+    }
+
+    private fun tableHasRows(db: SQLiteDatabase, table: String, idColumn: String): Boolean {
+        return db.query(table, arrayOf(idColumn), null, null, null, null, null, "1").use { it.moveToFirst() }
+    }
+
     private fun syncRunRepository(): SyncRunRepository {
         return SyncRunRepository(SqliteSyncRunStorage(this))
     }
