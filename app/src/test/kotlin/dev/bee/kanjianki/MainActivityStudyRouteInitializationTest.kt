@@ -827,6 +827,53 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun trackerRevisionRejectionRetriesCurrentStudyLoad() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        val loadingTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, task ->
+                    loadingTasks.addLast(task)
+                    LoadingTaskHandle { }
+                },
+            ),
+        )
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionTracker.setTargetCount(1)
+        activity.studySessionTracker.startActiveTask(
+            "active-task",
+            session.item?.kanji,
+            session.taskType,
+            0L,
+            resumeImmediately = false,
+        )
+
+        activity.renderStudy()
+        loadingTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        assertEquals(StudySessionPhase.LOADING, activity.studySessionViewModel.acceptedRouteSnapshot().phase)
+        backgroundTasks.removeFirst().run()
+        assertEquals(1, mainTasks.size)
+
+        val routeBeforePause = activity.studySessionViewModel.acceptedRouteSnapshot()
+        activity.studySessionTracker.pauseActiveTask()
+        assertEquals(routeBeforePause, activity.studySessionViewModel.acceptedRouteSnapshot())
+        mainTasks.removeFirst().run()
+
+        assertEquals("a current route must retry a tracker-revision rejection", 1, backgroundTasks.size)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+        assertNotEquals(StudySessionPhase.LOADING, activity.studySessionViewModel.acceptedRouteSnapshot().phase)
+    }
+
+    @Test
     fun supersededStoredRecoveryCannotPublishWithoutCandidateAcceptance() {
         val restored = restoreActiveCardAfterProcessRestart(
             kanji = "裂",

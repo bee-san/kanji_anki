@@ -683,6 +683,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 study.recoveredStudyRunNeedsTargetReconciliation = false
             }
             render()
+        } else if (publishTracker &&
+            study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute) != null
+        ) {
+            study.renderStudy()
         }
     }
 
