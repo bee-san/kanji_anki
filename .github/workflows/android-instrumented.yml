@@ -16,9 +16,13 @@ concurrency:
 
 jobs:
   ankidroid-fixture:
-    name: AnkiDroid provider fixture
+    name: AnkiDroid provider fixture API ${{ matrix.api-level }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [26, 35]
     permissions:
       contents: read
 
@@ -83,8 +87,11 @@ jobs:
         run: |
           set -euo pipefail
           collection_path="${RUNNER_TEMP}/kiku-provider-fixture.anki2"
+          lifecycle_fixture_dir="${RUNNER_TEMP}/retired-lifecycle"
           python3 ci/scripts/create_ankidroid_kiku_fixture.py "${collection_path}"
+          python3 ci/scripts/create_ankidroid_retired_lifecycle_fixtures.py "${lifecycle_fixture_dir}"
           echo "collection_path=${collection_path}" >> "${GITHUB_OUTPUT}"
+          echo "lifecycle_fixture_dir=${lifecycle_fixture_dir}" >> "${GITHUB_OUTPUT}"
 
       - name: Enable KVM access
         run: |
@@ -97,9 +104,10 @@ jobs:
         env:
           ANKIDROID_APK_PATH: ${{ steps.ankidroid.outputs.apk_path }}
           FIXTURE_COLLECTION_PATH: ${{ steps.fixture.outputs.collection_path }}
+          RETIRED_LIFECYCLE_FIXTURE_DIR: ${{ steps.fixture.outputs.lifecycle_fixture_dir }}
         with:
-          api-level: 35
-          target: aosp_atd
+          api-level: ${{ matrix.api-level }}
+          target: google_apis
           arch: x86_64
           profile: pixel_2
           # Cold-boot the emulator every run (-no-snapshot) instead of loading a cached
@@ -114,17 +122,18 @@ jobs:
           disable-animations: true
           # Pass step outputs via env (not inline expression) for shell-injection
           # hygiene, matching the screenshot workflows.
-          script: bash ci/scripts/run_ankidroid_fixture.sh "$ANKIDROID_APK_PATH" "$FIXTURE_COLLECTION_PATH"
+          script: bash ci/scripts/run_ankidroid_fixture.sh "$ANKIDROID_APK_PATH" "$FIXTURE_COLLECTION_PATH" && bash ci/scripts/run_ankidroid_retired_lifecycle_fixture.sh "$RETIRED_LIFECYCLE_FIXTURE_DIR"
 
       - name: Upload instrumentation diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: ankidroid-fixture-diagnostics
+          name: ankidroid-fixture-diagnostics-api-${{ matrix.api-level }}
           if-no-files-found: ignore
           path: |
             ${{ runner.temp }}/ankidroid-fixture-logcat.txt
             ${{ runner.temp }}/ankidroid-fixture-provider-probe.txt
             ${{ runner.temp }}/ankidroid-fixture-instrumentation.txt
+            ${{ runner.temp }}/ankidroid-retired-lifecycle-*.txt
             app/build/reports/**
             app/build/outputs/androidTest-results/**

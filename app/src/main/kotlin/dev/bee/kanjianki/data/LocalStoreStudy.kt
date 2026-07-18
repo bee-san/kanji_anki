@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteConstraintException
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.AdaptiveCorePolicy
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -170,11 +171,18 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     }
     fun studySnapshots(db: SQLiteDatabase): Map<String, StudySnapshot> {
         val items = HashMap<String, StudySnapshot>()
-        db.query(TABLE_STUDY_ITEMS, arrayOf(COLUMN_KANJI, COLUMN_ANSWER_SIGNATURE, COLUMN_STATE), null, null, null, null, null).use { cursor ->
+        db.query(
+            TABLE_STUDY_ITEMS,
+            arrayOf(COLUMN_KANJI, COLUMN_STATE),
+            null,
+            null,
+            null,
+            null,
+            "$COLUMN_SCHEDULER_REVISION ASC, $COLUMN_CREATED_AT DESC",
+        ).use { cursor ->
             while (cursor.moveToNext()) {
                 val kanji = string(cursor, COLUMN_KANJI)
-                val answerSignature = string(cursor, COLUMN_ANSWER_SIGNATURE)
-                items[studyFamilyKey(kanji, answerSignature)] = StudySnapshot(string(cursor, COLUMN_STATE))
+                items[kanji] = StudySnapshot(string(cursor, COLUMN_STATE))
             }
         }
         return items
@@ -810,6 +818,10 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun kanjiRepairEvidence(): List<StudyStatsStore.KanjiRepairEvidence> {
         return StudyStatsStore(this as LocalStore).kanjiRepairEvidence()
+    }
+
+    internal fun kanjiRepairEvidenceInputs(): List<KanjiRepairEvidencePolicy.Input> {
+        return StudyStatsQueries(this as LocalStore).kanjiRepairEvidenceInputs()
     }
 
     fun retiredRepairsLast30Days(nowMillis: Long): Int {

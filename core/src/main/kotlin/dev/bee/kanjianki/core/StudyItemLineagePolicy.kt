@@ -23,7 +23,7 @@ object StudyItemLineagePolicy {
         var match: StudyItem? = null
         for (candidate in candidates) {
             if (candidate.kanji != target.kanji ||
-                !meaningCompatible(target.answerSignature, candidate.answerSignature)
+                !answerMeaningCompatible(target.answerSignature, candidate.answerSignature)
             ) {
                 continue
             }
@@ -35,10 +35,14 @@ object StudyItemLineagePolicy {
         return match
     }
 
+    @JvmStatic
+    fun meaningCompatible(left: StudyItem, right: StudyItem): Boolean =
+        left.kanji == right.kanji && answerMeaningCompatible(left.answerSignature, right.answerSignature)
+
     private fun sameKey(left: StudyItem, right: StudyItem): Boolean =
         left.kanji == right.kanji && left.answerSignature == right.answerSignature
 
-    private fun meaningCompatible(left: String, right: String): Boolean {
+    private fun answerMeaningCompatible(left: String, right: String): Boolean {
         if (left == right || left.isEmpty() || right.isEmpty()) {
             return true
         }

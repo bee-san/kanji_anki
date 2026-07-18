@@ -71,7 +71,7 @@ class StudyQueueSeeder {
         val state = reconcileExistingItems(request, rowIndex)
         var available = 0
         for (row in request.admissionRows) {
-            val rowKey = rowFamilyKey(row)
+            val rowKey = identityKey(row.kanji)
             val current = state.byFamily[rowKey]
             val eligible = if (current == null) {
                 !isAlreadyRepairedRow(request, row)
@@ -106,7 +106,7 @@ class StudyQueueSeeder {
         val admittedKanji = ArrayList<String>()
         var available = 0
         for (row in request.admissionRows) {
-            val rowKey = rowFamilyKey(row)
+            val rowKey = identityKey(row.kanji)
             val current = state.byFamily[rowKey]
             val eligible = if (current == null) {
                 !isAlreadyRepairedRow(request, row)
@@ -141,7 +141,11 @@ class StudyQueueSeeder {
         rowKey: String,
         current: RecordsStudyModels.StudyItem?,
     ) {
-        val admitted = newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
+        val admitted = if (current != null && StudyLadderRules.STATE_RETIRED == current.state) {
+            reopenedCopy(current)
+        } else {
+            newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
+        }
         if (current != null) {
             state.items.remove(current)
         }
@@ -190,13 +194,7 @@ class StudyQueueSeeder {
     private fun indexSeedRows(rows: List<RecordsImportModels.DashboardRow>): SeedRowIndex {
         val index = SeedRowIndex()
         for (row in rows) {
-            index.rowByFamily[rowFamilyKey(row)] = row
-            var familyRows = index.rowsByKanji[row.kanji]
-            if (familyRows == null) {
-                familyRows = ArrayList()
-                index.rowsByKanji[row.kanji] = familyRows
-            }
-            familyRows.add(row)
+            index.rowByFamily[identityKey(row.kanji)] = row
         }
         return index
     }
@@ -205,11 +203,35 @@ class StudyQueueSeeder {
         val state = SeedQueueState()
         for (item in request.existing) {
             val current = alignOrRetireSeedItem(request, rowIndex, item)
-            state.byFamily[familyKey(current)] = current
-            state.items.add(current)
+            val key = identityKey(current.kanji)
+            val previous = state.byFamily[key]
+            if (previous == null) {
+                state.byFamily[key] = current
+                state.items.add(current)
+            } else {
+                val canonical = canonicalStudyItem(previous, current)
+                if (canonical !== previous) {
+                    state.byFamily[key] = canonical
+                    state.items[state.items.indexOf(previous)] = canonical
+                }
+            }
+        }
+        for (current in state.items) {
             state.trackActiveItem(current, request)
         }
         return state
+    }
+
+    private fun canonicalStudyItem(
+        left: RecordsStudyModels.StudyItem,
+        right: RecordsStudyModels.StudyItem,
+    ): RecordsStudyModels.StudyItem {
+        return when {
+            right.schedulerRevision != left.schedulerRevision -> if (right.schedulerRevision > left.schedulerRevision) right else left
+            right.totalReviews != left.totalReviews -> if (right.totalReviews > left.totalReviews) right else left
+            right.createdAtMillis != left.createdAtMillis -> if (right.createdAtMillis < left.createdAtMillis) right else left
+            else -> left
+        }
     }
 
     private fun alignOrRetireSeedItem(
@@ -227,7 +249,7 @@ class StudyQueueSeeder {
         } else {
             alignAnswerSignature(item, row, request.nowMillis, request.ladder)
         }
-        if (shouldRetireSeedItem(request, row, item, current)) {
+        if (shouldRetireSeedItem(request, row, item)) {
             return retiredCopy(current)
         }
         return current
@@ -237,19 +259,13 @@ class StudyQueueSeeder {
         rowIndex: SeedRowIndex,
         item: RecordsStudyModels.StudyItem,
     ): RecordsImportModels.DashboardRow? {
-        val row = rowIndex.rowByFamily[familyKey(item)]
-        val familyRows: List<RecordsImportModels.DashboardRow>? = rowIndex.rowsByKanji[item.kanji]
-        if (row != null || familyRows == null || (item.answerSignature.isNotEmpty() && familyRows.size != 1)) {
-            return row
-        }
-        return familyRows[0]
+        return rowIndex.rowByFamily[identityKey(item.kanji)]
     }
 
     private fun shouldRetireSeedItem(
         request: SeedQueueRequest,
         row: RecordsImportModels.DashboardRow?,
         original: RecordsStudyModels.StudyItem,
-        current: RecordsStudyModels.StudyItem,
     ): Boolean {
         if (StudyLadderRules.STATE_RETIRED == original.state) {
             return false
@@ -258,12 +274,11 @@ class StudyQueueSeeder {
             return true
         }
         return row.matureSupportCount >= request.settings.matureSupportThreshold &&
-            current.totalReviews > 0 &&
             !hasRegressingEvidence(request, row.kanji)
     }
 
     private fun admitSeedRow(request: SeedQueueRequest, state: SeedQueueState, row: RecordsImportModels.DashboardRow) {
-        val rowKey = rowFamilyKey(row)
+        val rowKey = identityKey(row.kanji)
         val current = state.byFamily[rowKey]
         if (current == null) {
             // Do not admit (and then immediately force study of) a kanji whose
@@ -272,8 +287,8 @@ class StudyQueueSeeder {
             if (!isAlreadyRepairedRow(request, row)) {
                 addNewSeedItemIfRoom(request, state, row, rowKey)
             }
-        } else if (canReopenRetiredSeedItem(request, state, row, current)) {
-            reopenSeedItem(request, state, row, rowKey, current)
+        } else if (canReopenRetiredSeedItem(request, row, current)) {
+            reopenSeedItem(state, rowKey, current)
         }
     }
 
@@ -300,7 +315,6 @@ class StudyQueueSeeder {
 
     private fun canReopenRetiredSeedItem(
         request: SeedQueueRequest,
-        state: SeedQueueState,
         row: RecordsImportModels.DashboardRow,
         current: RecordsStudyModels.StudyItem,
     ): Boolean {
@@ -308,8 +322,7 @@ class StudyQueueSeeder {
             (
                 row.matureSupportCount < request.settings.matureSupportThreshold ||
                     hasRegressingEvidence(request, row.kanji)
-                ) &&
-            state.hasAdmissionRoom(request)
+                )
     }
 
     private fun hasRegressingEvidence(request: SeedQueueRequest, kanji: String): Boolean {
@@ -317,18 +330,33 @@ class StudyQueueSeeder {
     }
 
     private fun reopenSeedItem(
-        request: SeedQueueRequest,
         state: SeedQueueState,
-        row: RecordsImportModels.DashboardRow,
         rowKey: String,
         current: RecordsStudyModels.StudyItem,
     ) {
-        val reopened = newStudyItem(row, request.nowMillis, answerSignature(row), request.ladder, request.settings)
+        val reopened = reopenedCopy(current)
         state.items.remove(current)
         state.items.add(reopened)
         state.byFamily[rowKey] = reopened
         state.activeCount++
-        state.newToday++
+    }
+
+    private fun reopenedCopy(item: RecordsStudyModels.StudyItem): RecordsStudyModels.StudyItem {
+        val memoryState = item.memoryForRung(item.rung).state
+        val restoredState = when (item.phase) {
+            RecordsBase.SchedulerPhase.REVIEW -> StudyLadderRules.STATE_REVIEW
+            RecordsBase.SchedulerPhase.RELEARNING -> StudyLadderRules.STATE_LEARNING
+            RecordsBase.SchedulerPhase.NEW_LEARNING -> if (memoryState == StudyLadderRules.STATE_LEARNING) {
+                StudyLadderRules.STATE_LEARNING
+            } else {
+                StudyLadderRules.STATE_NEW
+            }
+        }
+        return item.copyBuilder()
+            .state(restoredState)
+            .activeToken(null)
+            .schedulerRevision(item.schedulerRevision + 1L)
+            .build()
     }
 
     private fun retiredCopy(item: RecordsStudyModels.StudyItem): RecordsStudyModels.StudyItem {
@@ -550,7 +578,6 @@ class StudyQueueSeeder {
 
     private class SeedRowIndex {
         val rowByFamily = HashMap<String, RecordsImportModels.DashboardRow>()
-        val rowsByKanji = HashMap<String, MutableList<RecordsImportModels.DashboardRow>>()
     }
 
     private class SeedQueueState {
@@ -609,6 +636,8 @@ class StudyQueueSeeder {
     companion object {
         private val MULTI_WHITESPACE: Pattern = Pattern.compile("\\s+")
 
+        private fun identityKey(kanji: String): String = kanji
+
         @JvmStatic
         fun sortedAdmissionRows(
             rows: List<RecordsImportModels.DashboardRow>,
@@ -663,6 +692,7 @@ class StudyQueueSeeder {
         private fun familyKey(kanji: String, answerSignature: String?): String {
             return kanji + "\u0000" + (answerSignature ?: "")
         }
+
 
         /**
          * Meaning component of an answer signature

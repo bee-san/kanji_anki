@@ -21,9 +21,6 @@ object TimelineCopy {
         if (item != null && item.dueAtMillis > nowMillis) {
             return localizedText("Resting until review", "復習まで休止中")
         }
-        if (timeline.currentRow == null) {
-            return localizedText("Retired by Anki support", "Ankiの支えで修了")
-        }
         return localizedText("Active repair", "修復中")
     }
 

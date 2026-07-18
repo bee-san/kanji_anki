@@ -139,6 +139,7 @@ internal class ManualSyncEngine {
         AppDebugLog.log("sync start model=${settings.modelName}")
         try {
             val snapshot = gateway.readCollection(settings, progress)
+            rejectTransientEmptySnapshot(snapshot)
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS))
             val ranks = loadRanks()
             val selectedImports = KanjiImportSelector(
@@ -148,7 +149,7 @@ internal class ManualSyncEngine {
             ).importFrom(snapshot, settings)
             val currentSuspendedImports = SuspendedImportPolicy.suspendedImportsOnly(selectedImports)
             val storedSuspendedImports = if (settings.importSuspendedCards) {
-                store.suspendedImports()
+                storedImportsWithCurrentProviderRoute(snapshot, store.suspendedImports())
             } else {
                 emptyList()
             }
@@ -190,7 +191,7 @@ internal class ManualSyncEngine {
             val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
             val activeItems = currentItems.filter { it.kanji in activeKanji }
             val plan = adaptivePlan(activeRows, activeItems, finished)
-            val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows)
+            val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows, started)
             var seeded = scheduler.seedQueue(
                 activeRows,
                 currentItems,
@@ -483,11 +484,22 @@ internal class ManualSyncEngine {
 
     internal fun repairEvidenceStatusByKanji(
         rows: List<RecordsImportModels.DashboardRow>,
+        currentSyncAtMillis: Long? = null,
     ): Map<String, KanjiRepairEvidencePolicy.Status> {
         if (rows.isEmpty()) {
             return emptyMap()
         }
         val activeKanji = rows.mapTo(HashSet()) { it.kanji }
+        if (currentSyncAtMillis != null) {
+            val rowsByKanji = rows.associateBy { it.kanji }
+            return store.kanjiRepairEvidenceInputs()
+                .asSequence()
+                .filter { it.kanji() in activeKanji }
+                .associate { input ->
+                    val row = rowsByKanji.getValue(input.kanji())
+                    input.kanji() to currentEvidenceStatus(input, row, currentSyncAtMillis)
+                }
+        }
         val statusByKanji = HashMap<String, KanjiRepairEvidencePolicy.Status>()
         for (evidence in store.kanjiRepairEvidence()) {
             if (evidence.kanji in activeKanji) {
@@ -495,6 +507,57 @@ internal class ManualSyncEngine {
             }
         }
         return statusByKanji
+    }
+
+    private fun currentEvidenceStatus(
+        input: KanjiRepairEvidencePolicy.Input,
+        row: RecordsImportModels.DashboardRow,
+        currentSyncAtMillis: Long,
+    ): KanjiRepairEvidencePolicy.Status {
+        val isPostReviewSample = currentSyncAtMillis > input.lastReviewAtMillis()
+        val currentSnapshot = KanjiRepairEvidencePolicy.Snapshot(
+            row.weaknessScore,
+            row.matureSupportCount,
+            currentSyncAtMillis,
+            row.activeExampleCount,
+            row.suspendedExampleCount,
+            row.reasonCode,
+        )
+        val updated = KanjiRepairEvidencePolicy.Input(
+            input.kanji(),
+            input.before(),
+            if (isPostReviewSample) currentSnapshot else input.after(),
+            input.kaniReviews(),
+            input.postReviewSamples() + if (isPostReviewSample) 1 else 0,
+            input.writingFailures(),
+            input.lastMistakeAtMillis(),
+            input.firstReviewAtMillis(),
+            input.lastReviewAtMillis(),
+            maxOf(input.lastSyncAtMillis(), currentSyncAtMillis),
+            input.ladder(),
+        )
+        return KanjiRepairEvidencePolicy.summarize(updated).status()
+    }
+
+    private fun storedImportsWithCurrentProviderRoute(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        imports: List<RecordsImportModels.SuspendedImport>,
+    ): List<RecordsImportModels.SuspendedImport> {
+        if (imports.isEmpty()) return emptyList()
+        val currentCardIds = snapshot.cards.mapTo(HashSet<Long>()) { it.cardId }
+        return imports.filter { imported ->
+            imported.sources.any { source -> source.cardId in currentCardIds }
+        }
+    }
+
+    private fun rejectTransientEmptySnapshot(snapshot: RecordsSyncModels.CollectionSnapshot) {
+        val incomplete = snapshot.notes.isEmpty() || snapshot.cards.isEmpty()
+        val hasDurableLocalState = store.studyItems().isNotEmpty() || store.hasPersistedCollectionMirror()
+        if (incomplete && hasDurableLocalState) {
+            throw AnkiDroidGateway.SyncFailure.retryable(
+                "AnkiDroid returned an incomplete collection; existing study progress was preserved.",
+            )
+        }
     }
 
     private fun adaptivePlan(

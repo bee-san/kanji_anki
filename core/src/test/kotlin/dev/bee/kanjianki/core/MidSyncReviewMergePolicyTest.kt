@@ -161,6 +161,30 @@ class MidSyncReviewMergePolicyTest {
     }
 
     @Test
+    fun duplicateLegacyFamilyReviewSurvivesCanonicalization() {
+        val canonicalSignature = "痛|痛む|いたむ|pain"
+        val legacySignature = ""
+        val baseline = listOf(
+            item("痛", 3, 100L, canonicalSignature, schedulerRevision = 7L),
+            item("痛", 2, 50L, legacySignature, schedulerRevision = 6L),
+        )
+        val persisted = listOf(
+            baseline[0],
+            item("痛", 4, 5_000L, legacySignature, dueAt = 7_000L, schedulerRevision = 8L),
+        )
+        val seeded = listOf(
+            item("痛", 3, 100L, canonicalSignature, dueAt = 200L, schedulerRevision = 7L),
+        )
+
+        val merged = MidSyncReviewMergePolicy.merge(seeded, baseline, persisted).single()
+
+        assertEquals(canonicalSignature, merged.answerSignature)
+        assertEquals(4, merged.totalReviews)
+        assertEquals(7_000L, merged.dueAtMillis)
+        assertEquals(8L, merged.schedulerRevision)
+    }
+
+    @Test
     fun meaningChangeDoesNotClaimReviewFromOldFamily() {
         val baseline = listOf(
             item("痛", 3, 100L, answerSignature = "痛|痛む|いたむ|pain", schedulerRevision = 7L),

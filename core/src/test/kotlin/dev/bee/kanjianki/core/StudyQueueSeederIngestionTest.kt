@@ -135,6 +135,37 @@ class StudyQueueSeederIngestionTest {
     }
 
     @Test
+    fun duplicateLegacySignaturesCollapseToTheHighestRevisionKanjiItem() {
+        val currentRow = exampleRow("裂", expression = "決裂", meaning = "split")
+        val olderRow = exampleRow("裂", expression = "裂ける", meaning = "split")
+        val strongest = matureReviewItem("裂", StudyQueueSeeder.answerSignature(olderRow))
+            .copyBuilder()
+            .schedulerRevision(4L)
+            .build()
+        val duplicate = matureReviewItem("裂", "")
+            .copyBuilder()
+            .totalReviews(1)
+            .schedulerRevision(9L)
+            .build()
+
+        val items = seeder.seedQueue(
+            listOf(currentRow),
+            listOf(duplicate, strongest),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            5_000L,
+            0L,
+            ladder = null,
+        )
+
+        assertEquals(1, items.count { it.kanji == "裂" })
+        val canonical = find(items, "裂")!!
+        assertEquals(9L, canonical.schedulerRevision)
+        assertEquals(1, canonical.totalReviews)
+        assertEquals(50.0, canonical.stability, 0.001)
+        assertEquals(StudyQueueSeeder.answerSignature(currentRow), canonical.answerSignature)
+    }
+
+    @Test
     fun meaningChangeStillResetsSchedulerState() {
         val oldRow = exampleRow("裂", expression = "裂ける", meaning = "split")
         val changedRow = exampleRow("裂", expression = "裂ける", meaning = "tear apart")

@@ -38,9 +38,12 @@ object MidSyncReviewMergePolicy {
         }
         val result = ArrayList<StudyItem>(seeded.size)
         for (item in seeded) {
-            val baselineItem = StudyItemLineagePolicy.counterpart(item, baseline)
-            val current = baselineItem?.let { StudyItemLineagePolicy.counterpart(it, persisted) }
-            if (current != null && reviewLandedMidSync(baselineItem, current)) {
+            val baselineItem = canonicalKanjiItem(item.kanji, baseline)
+            val current = canonicalKanjiItem(item.kanji, persisted)
+            if (current != null &&
+                StudyItemLineagePolicy.meaningCompatible(item, current) &&
+                reviewLandedMidSync(baselineItem, current)
+            ) {
                 // Preserve the post-review scheduler state, but move it to the
                 // identity selected by this sync. The persistence boundary will
                 // then bump the revision because the key change is material.
@@ -50,6 +53,29 @@ object MidSyncReviewMergePolicy {
             }
         }
         return result
+    }
+
+    private fun canonicalKanjiItem(kanji: String, candidates: List<StudyItem>): StudyItem? {
+        var canonical: StudyItem? = null
+        for (candidate in candidates) {
+            if (candidate.kanji != kanji) {
+                continue
+            }
+            val current = canonical
+            if (current == null || isNewer(candidate, current)) {
+                canonical = candidate
+            }
+        }
+        return canonical
+    }
+
+    private fun isNewer(candidate: StudyItem, current: StudyItem): Boolean {
+        return when {
+            candidate.schedulerRevision != current.schedulerRevision -> candidate.schedulerRevision > current.schedulerRevision
+            candidate.totalReviews != current.totalReviews -> candidate.totalReviews > current.totalReviews
+            candidate.createdAtMillis != current.createdAtMillis -> candidate.createdAtMillis < current.createdAtMillis
+            else -> false
+        }
     }
 
     /**

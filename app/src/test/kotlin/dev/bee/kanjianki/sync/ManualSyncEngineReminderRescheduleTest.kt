@@ -55,7 +55,7 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
-    fun emptyProviderSnapshotRetiresSchedulerStateWithoutDeletingIt() {
+    fun transientEmptyProviderSnapshotPreservesActiveSchedulerStateAndFailsRetryably() {
         val now = 1_725_000_000_000L
         val row = repairRow("痛")
         val memory = RecordsStudyModels.TaskMemory(
@@ -91,16 +91,62 @@ class ManualSyncEngineReminderRescheduleTest {
 
         val result = engine.run()
 
-        assertTrue(result.success)
-        val retired = store.studyItems().single()
-        assertEquals("痛", retired.kanji)
-        assertEquals(StudyLadderRules.STATE_RETIRED, retired.state)
-        assertEquals(original.totalReviews, retired.totalReviews)
-        assertEquals(original.stability, retired.stability, 0.0)
-        assertEquals(original.rung, retired.rung)
-        assertEquals(original.realPassStreak, retired.realPassStreak)
-        assertEquals(memory.encode(), retired.wordReadingMemory.encode())
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        val preserved = store.studyItems().single()
+        assertEquals("痛", preserved.kanji)
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+        assertEquals(original.stability, preserved.stability, 0.0)
+        assertEquals(original.rung, preserved.rung)
+        assertEquals(original.realPassStreak, preserved.realPassStreak)
+        assertEquals(memory.encode(), preserved.wordReadingMemory.encode())
         assertTrue(store.hasConsumedToken("surviving-review"))
+    }
+
+    @Test
+    fun transientEmptySnapshotPreservesPriorMirrorWithoutStudyItems() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val prior = completeSnapshot("痛")
+        store.saveSuccessfulSync(
+            prior,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            emptyList<RecordsImportModels.DashboardRow>(),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        assertTrue(store.studyItems().isEmpty())
+        assertTrue(store.hasPersistedCollectionMirror())
+
+        val result = ManualSyncEngine(context, store, EmptyGateway(), settings).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertTrue(store.hasPersistedCollectionMirror())
+    }
+
+    @Test
+    fun notesOnlySnapshotCannotReplacePriorCompleteMirror() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val prior = completeSnapshot("痛")
+        store.saveSuccessfulSync(
+            prior,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            emptyList<RecordsImportModels.DashboardRow>(),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        val notesOnly = RecordsSyncModels.CollectionSnapshot(prior.notes, emptyList())
+
+        val result = ManualSyncEngine(context, store, SnapshotGateway(notesOnly), settings).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertTrue(store.hasPersistedCollectionMirror())
     }
 
     @Test
@@ -429,6 +475,28 @@ class ManualSyncEngineReminderRescheduleTest {
                     3,
                     0,
                     true,
+                ),
+            ),
+        )
+    }
+
+    private fun completeSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+        val suspended = suspendedSnapshot(kanji)
+        return RecordsSyncModels.CollectionSnapshot(
+            suspended.notes,
+            listOf(
+                RecordsSyncModels.Card(
+                    10L,
+                    1L,
+                    0,
+                    "例文マイニング",
+                    2,
+                    0,
+                    30,
+                    0,
+                    3,
+                    0,
+                    false,
                 ),
             ),
         )

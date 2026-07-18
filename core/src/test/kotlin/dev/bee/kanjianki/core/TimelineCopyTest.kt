@@ -14,7 +14,7 @@ class TimelineCopyTest {
         assertEquals("Active repair", TimelineCopy.statusText(timeline(row(), studyItem("review", now)), now))
         assertEquals("Resting until review", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
         assertEquals("Retired by Anki support", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
-        assertEquals("Retired by Anki support", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+        assertEquals("Active repair", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
     }
 
     @Test
@@ -127,7 +127,7 @@ class TimelineCopyTest {
             assertEquals("修復中", TimelineCopy.statusText(timeline(row(), studyItem("review", now)), now))
             assertEquals("復習まで休止中", TimelineCopy.statusText(timeline(row(), studyItem("review", now + 1L)), now))
             assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(row(), studyItem("retired", now - 1L)), now))
-            assertEquals("Ankiの支えで修了", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
+            assertEquals("修復中", TimelineCopy.statusText(timeline(null, studyItem("review", now)), now))
 
             assertEquals("", TimelineCopy.sourceLine(event("", "")))
             assertEquals("出典: expr", TimelineCopy.sourceLine(event("expr", "")))

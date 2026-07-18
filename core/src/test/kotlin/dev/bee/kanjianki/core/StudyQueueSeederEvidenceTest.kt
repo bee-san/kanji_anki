@@ -47,6 +47,30 @@ class StudyQueueSeederEvidenceTest {
     }
 
     @Test
+    fun matureSupportRetiresAnUnreviewedPersistedItem() {
+        val original = newItem("裂").copyBuilder()
+            .dueAtMillis(777L)
+            .createdAtMillis(123L)
+            .answerSignature("裂||reading|meaning")
+            .build()
+
+        val items = StudyQueueSeeder().seedQueue(
+            listOf(coveredRow("裂")),
+            listOf(original),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1_000L,
+            0L,
+            ladder = null,
+        )
+
+        val retired = findItem(items, "裂")
+        assertEquals("retired", retired.state)
+        assertEquals(777L, retired.dueAtMillis)
+        assertEquals(123L, retired.createdAtMillis)
+        assertEquals(0, retired.totalReviews)
+    }
+
+    @Test
     fun missingRowRetirementStaysUnconditionalEvenWhenRegressing() {
         val seeder = StudyQueueSeeder()
         val items = seeder.seedQueue(
@@ -63,10 +87,16 @@ class StudyQueueSeederEvidenceTest {
 
     @Test
     fun regressingEvidenceReopensRetiredItemDespiteMatureSupport() {
+        val original = retiredItem("裂").copyBuilder()
+            .dueAtMillis(777L)
+            .createdAtMillis(123L)
+            .stability(9.5)
+            .schedulerRevision(4L)
+            .build()
         val seeder = StudyQueueSeeder()
         val items = seeder.seedQueue(
             listOf(coveredRow("裂")),
-            listOf(retiredItem("裂")),
+            listOf(original),
             RecordsSyncModels.Settings.kikuDefaults(),
             1000L,
             0L,
@@ -74,13 +104,42 @@ class StudyQueueSeederEvidenceTest {
             evidenceStatusByKanji = mapOf("裂" to KanjiRepairEvidencePolicy.Status.REGRESSING),
         )
         val reopened = findItem(items, "裂")
-        assertEquals("new", reopened.state)
-        assertEquals(0, reopened.totalReviews)
-        assertEquals(1000L, reopened.createdAtMillis)
+        assertEquals("review", reopened.state)
+        assertEquals(3, reopened.totalReviews)
+        assertEquals(777L, reopened.dueAtMillis)
+        assertEquals(123L, reopened.createdAtMillis)
+        assertEquals(9.5, reopened.stability, 0.001)
+        assertEquals(5L, reopened.schedulerRevision)
     }
 
     @Test
-    fun regressingReopenStillRequiresAdmissionRoom() {
+    fun supportDropReopensAnUnreviewedRetiredItemWithoutResettingItsIdentity() {
+        val original = newItem("裂").copyBuilder()
+            .state("retired")
+            .dueAtMillis(777L)
+            .createdAtMillis(123L)
+            .answerSignature("裂|裂ける|さける|split")
+            .schedulerRevision(4L)
+            .build()
+
+        val items = StudyQueueSeeder().seedQueue(
+            listOf(activeRow("裂")),
+            listOf(original),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            1_000L,
+            0L,
+            ladder = null,
+        )
+
+        val reopened = findItem(items, "裂")
+        assertEquals("new", reopened.state)
+        assertEquals(777L, reopened.dueAtMillis)
+        assertEquals(123L, reopened.createdAtMillis)
+        assertEquals(5L, reopened.schedulerRevision)
+    }
+
+    @Test
+    fun regressingReopenIgnoresAdmissionRoom() {
         val seeder = StudyQueueSeeder()
         val active = newItem("謎").copyBuilder().createdAtMillis(0L).build()
         val items = seeder.seedQueue(
@@ -92,7 +151,28 @@ class StudyQueueSeederEvidenceTest {
             ladder = null,
             evidenceStatusByKanji = mapOf("裂" to KanjiRepairEvidencePolicy.Status.REGRESSING),
         )
-        assertEquals("retired", findItem(items, "裂").state)
+        assertEquals("review", findItem(items, "裂").state)
+    }
+
+    @Test
+    fun reopeningDoesNotConsumeDailyNewAdmission() {
+        val seeder = StudyQueueSeeder()
+        val existing = listOf(
+            newItem("謎").copyBuilder().createdAtMillis(0L).build(),
+            retiredItem("裂"),
+        )
+        val items = seeder.seedQueue(
+            listOf(activeRow("裂"), activeRow("謎"), activeRow("新")),
+            existing,
+            settingsWithQueue(3, 1),
+            1_000L,
+            500L,
+            ladder = null,
+            evidenceStatusByKanji = mapOf("裂" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        )
+
+        assertEquals("review", findItem(items, "裂").state)
+        assertEquals("new", findItem(items, "新").state)
     }
 
     @Test
@@ -117,7 +197,7 @@ class StudyQueueSeederEvidenceTest {
             evidenceStatusByKanji = null,
         )
         assertEquals("retired", findItem(baseline, "裂").state)
-        assertEquals("new", findItem(baseline, "謎").state)
+        assertEquals("review", findItem(baseline, "謎").state)
         assertEquals(
             baseline.map { item -> item.kanji + ":" + item.state },
             withNullMap.map { item -> item.kanji + ":" + item.state },
@@ -152,7 +232,30 @@ class StudyQueueSeederEvidenceTest {
             RecordsBase.StudyLadderSettings.defaults(),
             mapOf("裂" to KanjiRepairEvidencePolicy.Status.REGRESSING),
         )
-        assertEquals("new", findItem(items, "裂").state)
+        assertEquals("review", findItem(items, "裂").state)
+    }
+
+    @Test
+    fun reopeningRelearningItemRestoresLearningState() {
+        val retired = reviewedItem("謎").copyBuilder()
+            .state(StudyLadderRules.STATE_RETIRED)
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .build()
+
+        val now = 1_000L
+        val reopened = StudyQueueSeeder().seedQueue(
+            listOf(activeRow("謎")),
+            listOf(retired),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            now,
+            now,
+            null,
+            RecordsBase.StudyLadderSettings.defaults(),
+            mapOf("謎" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        ).single()
+
+        assertEquals(StudyLadderRules.STATE_LEARNING, reopened.state)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, reopened.phase)
     }
 
     private fun newItem(kanji: String): RecordsStudyModels.StudyItem {
@@ -170,9 +273,8 @@ class StudyQueueSeederEvidenceTest {
     }
 
     private fun retiredItem(kanji: String): RecordsStudyModels.StudyItem {
-        return newItem(kanji).copyBuilder()
+        return reviewedItem(kanji).copyBuilder()
             .state("retired")
-            .totalReviews(3)
             .build()
     }
 

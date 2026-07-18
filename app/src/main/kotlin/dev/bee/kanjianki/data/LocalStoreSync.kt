@@ -15,6 +15,16 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 
 internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(context) {
+    fun hasPersistedCollectionMirror(): Boolean {
+        val db = readableDatabase
+        return tableHasRows(db, TABLE_SOURCE_NOTES, COLUMN_NOTE_ID) ||
+            tableHasRows(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID)
+    }
+
+    private fun tableHasRows(db: SQLiteDatabase, table: String, idColumn: String): Boolean {
+        return db.query(table, arrayOf(idColumn), null, null, null, null, null, "1").use { it.moveToFirst() }
+    }
+
     private fun syncRunRepository(): SyncRunRepository {
         return SyncRunRepository(SqliteSyncRunStorage(this))
     }

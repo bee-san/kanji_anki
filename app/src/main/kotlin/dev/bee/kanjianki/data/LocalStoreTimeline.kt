@@ -340,7 +340,7 @@ internal class LocalStoreTimeline(private val activity: LocalStoreHistory) {
     ) {
         val target = settings?.matureSupportThreshold ?: RecordsSyncModels.Settings.kikuDefaults().matureSupportThreshold
         for (item in currentItems) {
-            val previous = previousItems[LocalStoreBase.studyFamilyKey(item.kanji, item.answerSignature)]
+            val previous = previousItems[item.kanji]
             if (previous != null) {
                 appendStudyStateTimelineEvent(db, item, previous, syncId, occurredAt, target)
             }

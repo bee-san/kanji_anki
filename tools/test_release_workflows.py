@@ -414,20 +414,26 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
         self.assertRegex(self.workflow, r"find \"\$\{RUNNER_TEMP\}/ankidroid\" -name '\*universal\*\.apk'")
         self.assertIn("::error::No AnkiDroid APK was downloaded.", self.workflow)
 
-    def test_emulator_fixture_uses_atd_x86_64_and_real_runner_script(self) -> None:
+    def test_emulator_fixture_uses_minimum_and_current_api_x86_64_real_runner_scripts(self) -> None:
         self.assertIn("reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7", self.workflow)
-        self.assertIn("api-level: 35", self.workflow)
-        self.assertIn("target: aosp_atd", self.workflow)
+        self.assertIn("api-level: [26, 35]", self.workflow)
+        self.assertIn("api-level: ${{ matrix.api-level }}", self.workflow)
+        self.assertIn("target: google_apis", self.workflow)
         self.assertIn("arch: x86_64", self.workflow)
         self.assertIn("disable-animations: true", self.workflow)
         self.assertIn("script: bash ci/scripts/run_ankidroid_fixture.sh", self.workflow)
+        self.assertIn("run_ankidroid_retired_lifecycle_fixture.sh", self.workflow)
         self.assertIn("${{ steps.ankidroid.outputs.apk_path }}", self.workflow)
         self.assertIn("${{ steps.fixture.outputs.collection_path }}", self.workflow)
+        self.assertIn("${{ steps.fixture.outputs.lifecycle_fixture_dir }}", self.workflow)
 
     def test_sanitized_fixture_is_generated_in_runner_temp(self) -> None:
         self.assertIn("python3 ci/scripts/create_ankidroid_kiku_fixture.py", self.workflow)
+        self.assertIn("python3 ci/scripts/create_ankidroid_retired_lifecycle_fixtures.py", self.workflow)
         self.assertIn("${RUNNER_TEMP}/kiku-provider-fixture.anki2", self.workflow)
+        self.assertIn("${RUNNER_TEMP}/retired-lifecycle", self.workflow)
         self.assertIn("collection_path=${collection_path}", self.workflow)
+        self.assertIn("lifecycle_fixture_dir=${lifecycle_fixture_dir}", self.workflow)
 
     def test_failure_diagnostics_include_logcat_probe_instrumentation_and_reports(self) -> None:
         diagnostics = self.workflow.split("Upload instrumentation diagnostics", maxsplit=1)[1]
@@ -436,6 +442,7 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
             "${{ runner.temp }}/ankidroid-fixture-logcat.txt",
             "${{ runner.temp }}/ankidroid-fixture-provider-probe.txt",
             "${{ runner.temp }}/ankidroid-fixture-instrumentation.txt",
+            "${{ runner.temp }}/ankidroid-retired-lifecycle-*.txt",
             "app/build/reports/**",
             "app/build/outputs/androidTest-results/**",
         ):

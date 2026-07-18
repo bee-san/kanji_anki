@@ -69,6 +69,18 @@ class ManualSyncEngineEvidenceMapTest {
         assertTrue(engine.repairEvidenceStatusByKanji(emptyList()).isEmpty())
     }
 
+    @Test
+    fun evidenceMapUsesCurrentIncomingRowInsteadOfPreviousSuccessfulSnapshot() {
+        seedImprovingEvidence("弱")
+
+        val map = engine.repairEvidenceStatusByKanji(
+            listOf(row("弱", weakness = 90, matureSupport = 3)),
+            currentSyncAtMillis = 6_000L,
+        )
+
+        assertEquals(KanjiRepairEvidencePolicy.Status.REGRESSING, map["弱"])
+    }
+
     private fun seedImprovingEvidence(kanji: String) {
         insertStudyItem(kanji)
         insertReview(kanji, "good", 1_000L)
@@ -117,8 +129,12 @@ class ManualSyncEngineEvidenceMapTest {
     }
 
     private fun row(kanji: String): RecordsImportModels.DashboardRow {
+        return row(kanji, weakness = 30, matureSupport = 0)
+    }
+
+    private fun row(kanji: String, weakness: Int, matureSupport: Int): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
-            kanji, 900, "meaning", "reading", "search", 30, "reason", "reason text", 1, 0, 0,
+            kanji, 900, "meaning", "reading", "search", weakness, "reason", "reason text", 1, 0, matureSupport,
             ArrayList<RecordsImportModels.Example>(),
         )
     }
