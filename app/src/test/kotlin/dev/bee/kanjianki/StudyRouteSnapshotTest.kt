@@ -83,6 +83,16 @@ class StudyRouteSnapshotTest {
         assertEquals(StudySessionGeneration(4L), StudySessionGeneration(3L).next())
     }
 
+    @Test
+    fun versionTokensRejectOverflowAtTheLongBoundary() {
+        assertThrows(ArithmeticException::class.java) {
+            StudyRouteVersion(Long.MAX_VALUE).next()
+        }
+        assertThrows(ArithmeticException::class.java) {
+            StudySessionGeneration(Long.MAX_VALUE).next()
+        }
+    }
+
     private fun snapshot(
         completed: Int,
         target: Int,

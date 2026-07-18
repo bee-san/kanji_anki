@@ -82,7 +82,12 @@ class StudySessionProgressTracker {
     }
 
     fun includePendingTask(key: String?): Boolean = synchronized(lock) {
-        if (isEmpty(key) || seenTaskKeys.contains(key) || completedTaskKeys.contains(key)) {
+        if (
+            isEmpty(key) ||
+            targetCount == Int.MAX_VALUE ||
+            seenTaskKeys.contains(key) ||
+            completedTaskKeys.contains(key)
+        ) {
             return@synchronized false
         }
         seenTaskKeys.add(key!!)

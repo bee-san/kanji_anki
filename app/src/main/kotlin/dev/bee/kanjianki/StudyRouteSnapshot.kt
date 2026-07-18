@@ -5,12 +5,12 @@ import java.util.LinkedHashSet
 
 @JvmInline
 internal value class StudyRouteVersion(val value: Long) {
-    fun next(): StudyRouteVersion = StudyRouteVersion(value + 1L)
+    fun next(): StudyRouteVersion = StudyRouteVersion(Math.addExact(value, 1L))
 }
 
 @JvmInline
 internal value class StudySessionGeneration(val value: Long) {
-    fun next(): StudySessionGeneration = StudySessionGeneration(value + 1L)
+    fun next(): StudySessionGeneration = StudySessionGeneration(Math.addExact(value, 1L))
 }
 
 internal enum class StudyRouteCompletionReason {

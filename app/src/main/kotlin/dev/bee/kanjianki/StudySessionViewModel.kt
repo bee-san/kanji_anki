@@ -120,10 +120,14 @@ internal object StudySessionReducer {
         is StudySessionEvent.TargetReconciled -> reduceTargetReconciliation(state, event.progress)
         is StudySessionEvent.CompletionEvidenceAccepted -> reduceCompletionEvidence(state, event.reason)
         is StudySessionEvent.CompletionAccepted -> reduceCompletion(state, event.reason)
-        StudySessionEvent.RouteActionClaimed -> state.copy(
-            routeVersion = state.routeVersion.next(),
-            completionEvidenceReason = null,
-        )
+        StudySessionEvent.RouteActionClaimed -> if (state.phase == StudySessionPhase.COMPLETE) {
+            state
+        } else {
+            state.copy(
+                routeVersion = state.routeVersion.next(),
+                completionEvidenceReason = null,
+            )
+        }
         StudySessionEvent.Reset -> StudySessionUiState(
             routeVersion = state.routeVersion.next(),
             sessionGeneration = state.sessionGeneration.next(),
@@ -508,7 +512,9 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
 
     fun requestAutoContinue(sessionToken: String): Boolean = synchronized(routeStateLock) {
         val state = _uiState.value
-        if (sessionToken != state.currentSession?.token) return@synchronized false
+        if (state.phase == StudySessionPhase.COMPLETE || sessionToken != state.currentSession?.token) {
+            return@synchronized false
+        }
         effectChannel.trySend(
             StudySessionEffect.AutoContinue(
                 sessionToken,
@@ -523,7 +529,12 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         expectedGeneration: StudySessionGeneration,
         expectedVersion: StudyRouteVersion,
     ): Boolean = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(expectedGeneration, expectedVersion, sessionToken)) return@synchronized false
+        if (
+            _uiState.value.phase == StudySessionPhase.COMPLETE ||
+            !matchesRouteLocked(expectedGeneration, expectedVersion, sessionToken)
+        ) {
+            return@synchronized false
+        }
         effectChannel.trySend(
             StudySessionEffect.AutoContinue(
                 sessionToken,
@@ -550,14 +561,22 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         expectedGeneration: StudySessionGeneration,
         expectedVersion: StudyRouteVersion,
     ): StudyRouteActionClaim? = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(expectedGeneration, expectedVersion, sessionToken)) return@synchronized null
+        if (
+            _uiState.value.phase == StudySessionPhase.COMPLETE ||
+            !matchesRouteLocked(expectedGeneration, expectedVersion, sessionToken)
+        ) {
+            return@synchronized null
+        }
         dispatchLocked(StudySessionEvent.RouteActionClaimed)
         val claimed = _uiState.value
         StudyRouteActionClaim(sessionToken, claimed.sessionGeneration, claimed.routeVersion)
     }
 
     fun consumeRouteAction(claim: StudyRouteActionClaim): Boolean = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(claim.sessionGeneration, claim.routeVersion, claim.sessionToken)) {
+        if (
+            _uiState.value.phase == StudySessionPhase.COMPLETE ||
+            !matchesRouteLocked(claim.sessionGeneration, claim.routeVersion, claim.sessionToken)
+        ) {
             return@synchronized false
         }
         dispatchLocked(StudySessionEvent.RouteActionClaimed)

@@ -607,6 +607,65 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun terminalRouteRejectsEveryLateActionWithoutMutation() = runTest {
+        val viewModel = viewModelAt(completed = 1, target = 1)
+        val route = viewModel.acceptedRouteSnapshot()
+        val evidence = requireNotNull(
+            viewModel.acceptCompletionEvidence(
+                StudyRouteCompletionReason.HARD_CAP,
+                route.sessionGeneration,
+                route.version,
+                route.sessionToken,
+            ),
+        )
+        assertTrue(
+            viewModel.completeRoute(
+                StudyRouteCompletionReason.HARD_CAP,
+                evidence.sessionGeneration,
+                evidence.version,
+                evidence.sessionToken,
+            ),
+        )
+        val completeState = viewModel.uiState.value
+        val completeRoute = viewModel.acceptedRouteSnapshot()
+        val token = requireNotNull(completeRoute.sessionToken)
+
+        assertSame(
+            completeState,
+            StudySessionReducer.reduce(completeState, StudySessionEvent.RouteActionClaimed),
+        )
+        assertFalse(viewModel.requestAutoContinue(token))
+        assertFalse(
+            viewModel.requestAutoContinue(
+                token,
+                completeRoute.sessionGeneration,
+                completeRoute.version,
+            ),
+        )
+        assertNull(
+            viewModel.claimCurrentRouteAction(
+                token,
+                completeRoute.sessionGeneration,
+                completeRoute.version,
+            ),
+        )
+        assertFalse(
+            viewModel.consumeRouteAction(
+                StudyRouteActionClaim(
+                    token,
+                    completeRoute.sessionGeneration,
+                    completeRoute.version,
+                ),
+            ),
+        )
+
+        assertSame(completeState, viewModel.uiState.value)
+        assertEquals(completeRoute, viewModel.acceptedRouteSnapshot())
+        assertEquals(completeRoute.completionReason, completeRoute.completionEvidenceReason)
+        assertNull(withTimeoutOrNull(50L) { viewModel.effects.first() })
+    }
+
+    @Test
     fun seededTransitionTracesPreserveRouteInvariants() {
         val seeds = listOf(7, 19, 41, 73)
         for (seed in seeds) {

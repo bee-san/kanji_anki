@@ -70,6 +70,23 @@ class StudySessionProgressTrackerTest {
     }
 
     @Test
+    fun pendingTaskAtTargetLimitIsRejectedWithoutCorruptingProgress() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(Int.MAX_VALUE)
+
+        assertFalse(tracker.includePendingTask("overflow"))
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertEquals(0, tracker.completedCount())
+        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+
+        tracker.setTargetCount(Int.MAX_VALUE - 1)
+        assertTrue(tracker.includePendingTask("overflow"))
+        assertEquals(Int.MAX_VALUE, tracker.targetCount())
+        assertFalse(tracker.includePendingTask("beyond-limit"))
+        assertEquals(Int.MAX_VALUE, tracker.snapshot().targetCount)
+    }
+
+    @Test
     fun topBarProgressPreservesVisibleCountsAndFractions() {
         val tracker = StudySessionProgressTracker()
 
