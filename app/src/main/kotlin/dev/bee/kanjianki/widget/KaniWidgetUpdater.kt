@@ -8,6 +8,7 @@ import android.content.Intent
 internal object KaniWidgetUpdater {
     fun requestUpdate(context: Context?) {
         val appContext = context?.applicationContext ?: return
+        if (!KaniWidgetRegistry.DEFAULT.hasInstalledWidgets(appContext)) return
         appContext.sendBroadcast(refreshIntent(appContext))
     }
 
