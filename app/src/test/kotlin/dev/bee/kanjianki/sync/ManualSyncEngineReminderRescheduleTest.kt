@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -367,6 +368,54 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
+    fun localBrowseSuspensionDoesNotRetireRegressingMatureProviderRow() {
+        val now = 1_725_000_000_000L
+        val row = repairRow("痛")
+        val original = reviewItem(row, now + 86_400_000L, 8, now - 86_400_000L)
+        store.replaceStudyItems(listOf(original))
+        insertEvidenceSnapshot(90L, now - 10_000L, "痛", weakness = 0, mature = 2)
+        listOf("good", "hard", "again").forEachIndexed { index, rating ->
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest(
+                    "痛",
+                    "regressing-review-$index",
+                    rating,
+                    false,
+                    false,
+                    false,
+                    0,
+                ),
+                rating,
+                now - 9_000L + index * 1_000L,
+            )
+        }
+        store.setKanjiLocallySuspended("痛", true, now - 1_000L)
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(matureProviderSnapshot("痛")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        val currentRow = store.dashboardRows().single()
+        assertEquals(2, currentRow.matureSupportCount)
+        assertEquals(
+            KanjiRepairEvidencePolicy.Status.REGRESSING,
+            engine.repairEvidenceStatusByKanji(listOf(currentRow), now)["痛"],
+        )
+        assertEquals(StudyLadderRules.STATE_REVIEW, store.studyItems().single().state)
+        assertFalse(store.timelineForKanji("痛").events.any { it.eventType == StudyLadderRules.STATE_RETIRED })
+    }
+
+    @Test
     fun failedSyncDoesNotRearmReminder() {
         val engine = ManualSyncEngine(
             context,
@@ -525,6 +574,30 @@ class ManualSyncEngineReminderRescheduleTest {
         return expressions
     }
 
+    private fun insertEvidenceSnapshot(
+        syncId: Long,
+        finishedAt: Long,
+        kanji: String,
+        weakness: Int,
+        mature: Int,
+    ) {
+        store.writableDatabase.execSQL(
+            "INSERT INTO sync_runs " +
+                "(id, started_at, finished_at, status, active_notes_count, active_cards_count, " +
+                "suspended_cards_archived_count, suspended_kanji_imported_count, deleted_notes_count, deleted_cards_count, " +
+                "error_code, error_message, removal_message) VALUES (?, ?, ?, 'success', 0, 0, 0, 0, 0, 0, NULL, NULL, '')",
+            arrayOf<Any>(syncId, finishedAt - 1L, finishedAt),
+        )
+        store.writableDatabase.execSQL(
+            "INSERT INTO sync_kanji_snapshots " +
+                "(sync_id, finished_at, kanji, active_cards, suspended_cards, mature_support_count, average_interval_days, " +
+                "total_lapses, total_reps, fsrs_stability_avg, fsrs_difficulty_avg, fsrs_retrievability_avg, weakness_score, " +
+                "reason_code, active_example_count, suspended_example_count) " +
+                "VALUES (?, ?, ?, 1, 0, ?, 10.0, 0, 5, NULL, NULL, NULL, ?, '', 1, 0)",
+            arrayOf<Any>(syncId, finishedAt, kanji, mature, weakness),
+        )
+    }
+
     private fun repairRow(kanji: String): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
             kanji,
@@ -609,6 +682,17 @@ class ManualSyncEngineReminderRescheduleTest {
                     0,
                     true,
                 ),
+            ),
+        )
+    }
+
+    private fun matureProviderSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+        val suspended = suspendedSnapshot(kanji)
+        return RecordsSyncModels.CollectionSnapshot(
+            suspended.notes,
+            listOf(
+                RecordsSyncModels.Card(10L, 1L, 0, "例文マイニング", 2, 2, 0, 30, 3, 3, false),
+                RecordsSyncModels.Card(11L, 1L, 1, "例文マイニング", 2, 2, 0, 30, 3, 3, false),
             ),
         )
     }

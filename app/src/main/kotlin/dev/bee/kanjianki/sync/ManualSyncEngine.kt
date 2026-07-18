@@ -190,7 +190,7 @@ internal class ManualSyncEngine {
                 val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
                 val activeItems = currentItems.filter { it.kanji in activeKanji }
                 plan = adaptivePlan(activeRows, activeItems, finished)
-                val evidenceStatusByKanji = repairEvidenceStatusByKanji(activeRows, started)
+                val evidenceStatusByKanji = repairEvidenceStatusByKanji(rows, started)
                 var seeded = scheduler.seedQueue(
                     rows,
                     activeRows,
