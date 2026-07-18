@@ -9,11 +9,9 @@ package dev.bee.kanjianki.widget
  * mechanisms close that gap without any periodic worker (the refresh contract
  * in AGENTS.md):
  *
- * 1. System broadcasts: `TIME_SET` and `TIMEZONE_CHANGED` are exempt implicit
- *    broadcasts, so [KaniWidgetReceiver] can receive them from the manifest.
- *    `DATE_CHANGED` is declared for completeness but is NOT on the Android 8+
- *    implicit-broadcast exemption list, so natural midnight rollover is
- *    covered by the one-shot alarm below plus the hourly fallback instead.
+ * 1. System broadcasts are handled by [KaniWidgetRefreshReceiver], separate
+ *    from the four Glance provider receivers. Natural midnight rollover is
+ *    covered by the one-shot alarm plus the hourly fallback.
  * 2. A one-shot inexact alarm: when the snapshot's next useful time falls
  *    within the next hour (inside the fallback window), a single inexact
  *    alarm re-renders the widget at that moment so "More practice at 14:30"
@@ -25,14 +23,18 @@ internal object KaniWidgetRefreshPolicy {
 
     private const val ACTION_TIME_CHANGED = "android.intent.action.TIME_SET"
     private const val ACTION_TIMEZONE_CHANGED = "android.intent.action.TIMEZONE_CHANGED"
-    private const val ACTION_DATE_CHANGED = "android.intent.action.DATE_CHANGED"
+    private const val ACTION_BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED"
+    private const val ACTION_PACKAGE_REPLACED = "android.intent.action.MY_PACKAGE_REPLACED"
+    private const val ACTION_LOCALE_CHANGED = "android.intent.action.LOCALE_CHANGED"
 
     const val ONE_SHOT_WINDOW_MILLIS: Long = 60L * 60L * 1000L
 
     fun shouldRefreshOnBroadcast(action: String?): Boolean {
         return action == ACTION_TIME_CHANGED ||
             action == ACTION_TIMEZONE_CHANGED ||
-            action == ACTION_DATE_CHANGED ||
+            action == ACTION_BOOT_COMPLETED ||
+            action == ACTION_PACKAGE_REPLACED ||
+            action == ACTION_LOCALE_CHANGED ||
             action == ACTION_WIDGET_REFRESH
     }
 

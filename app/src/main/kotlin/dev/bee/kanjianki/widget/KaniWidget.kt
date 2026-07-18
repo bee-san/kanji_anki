@@ -91,7 +91,7 @@ internal class KaniWidget(
 }
 
 @Composable
-private fun KaniWidgetContent(
+internal fun KaniWidgetContent(
     snapshot: KaniWidgetSnapshot,
     options: KaniWidgetInstanceOptions = KaniWidgetInstanceOptions(),
 ) {
@@ -142,7 +142,7 @@ private fun KaniWidgetContent(
 }
 
 @Composable
-private fun LegacyActivityWidgetContent(
+internal fun LegacyActivityWidgetContent(
     snapshot: ActivityWidgetSnapshot,
     options: KaniWidgetInstanceOptions,
 ) {

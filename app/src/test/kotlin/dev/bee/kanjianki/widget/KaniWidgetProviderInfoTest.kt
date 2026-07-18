@@ -1,101 +1,145 @@
 package dev.bee.kanjianki.widget
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import org.w3c.dom.Element
 
 class KaniWidgetProviderInfoTest {
     @Test
-    fun providerRequestsHourlyFallbackUpdates() {
-        val provider = providerInfo()
+    fun manifestRegistersExactlyFourDistinctWidgetProviders() {
+        val providers = widgetReceivers()
 
-        assertEquals("appwidget-provider", provider.tagName)
         assertEquals(
-            HOURLY_UPDATE_MILLIS.toString(),
-            provider.getAttributeNS(ANDROID_NS, "updatePeriodMillis"),
+            setOf(
+                ".widget.KaniWidgetReceiver",
+                ".widget.QuickStudyWidgetReceiver",
+                ".widget.ActivityWidgetReceiver",
+                ".widget.FocusKanjiWidgetReceiver",
+            ),
+            providers.keys,
         )
+        assertEquals(4, providers.values.map { it.providerInfo }.toSet().size)
+        assertEquals(4, providers.values.map { it.label }.toSet().size)
     }
 
     @Test
-    fun providerDeclaresPickerPreviews() {
-        val provider = providerInfo()
+    fun everyProviderHasUniquePickerMetadataAndHourlyFallback() {
+        val info = widgetReceivers().values.map { providerInfo(it.providerInfo) }
 
-        assertEquals(
-            "@layout/kani_widget_preview",
-            provider.getAttributeNS(ANDROID_NS, "previewLayout"),
-        )
-        assertEquals(
-            "@drawable/kani_widget_preview_image",
-            provider.getAttributeNS(ANDROID_NS, "previewImage"),
-        )
-    }
-
-    @Test
-    fun providerDeclaresModernResizeMetadata() {
-        val provider = providerInfo()
-
-        assertEquals("horizontal|vertical", provider.getAttributeNS(ANDROID_NS, "resizeMode"))
-        assertEquals("180dp", provider.getAttributeNS(ANDROID_NS, "minResizeWidth"))
-        assertEquals("72dp", provider.getAttributeNS(ANDROID_NS, "minResizeHeight"))
-        assertEquals("4", provider.getAttributeNS(ANDROID_NS, "targetCellWidth"))
-        assertEquals("1", provider.getAttributeNS(ANDROID_NS, "targetCellHeight"))
-    }
-
-    @Test
-    fun providerConfigurationIsOptionalAndReconfigurable() {
-        val provider = providerInfo()
-
-        assertEquals(
-            "dev.bee.kanjianki.widget.KaniWidgetConfigActivity",
-            provider.getAttributeNS(ANDROID_NS, "configure"),
-        )
-        assertEquals(
-            "reconfigurable|configuration_optional",
-            provider.getAttributeNS(ANDROID_NS, "widgetFeatures"),
-        )
-    }
-
-    @Test
-    fun widgetReceiverListensForDayBoundaryBroadcasts() {
-        val manifest = DocumentBuilderFactory.newInstance()
-            .apply { isNamespaceAware = true }
-            .newDocumentBuilder()
-            .parse(File("src/main/AndroidManifest.xml"))
-            .documentElement
-        val receivers = manifest.getElementsByTagName("receiver")
-        var widgetReceiver: Element? = null
-        for (index in 0 until receivers.length) {
-            val receiver = receivers.item(index) as Element
-            if (receiver.getAttributeNS(ANDROID_NS, "name") == ".widget.KaniWidgetReceiver") {
-                widgetReceiver = receiver
-            }
+        assertEquals(4, info.map { it.getAttributeNS(ANDROID_NS, "previewLayout") }.toSet().size)
+        assertEquals(4, info.map { it.getAttributeNS(ANDROID_NS, "previewImage") }.toSet().size)
+        assertEquals(4, info.map { it.getAttributeNS(ANDROID_NS, "description") }.toSet().size)
+        info.forEach { provider ->
+            assertEquals("appwidget-provider", provider.tagName)
+            assertEquals(HOURLY_UPDATE_MILLIS.toString(), provider.androidAttribute("updatePeriodMillis"))
         }
-        requireNotNull(widgetReceiver)
-
-        val actions = mutableSetOf<String>()
-        val actionNodes = widgetReceiver.getElementsByTagName("action")
-        for (index in 0 until actionNodes.length) {
-            actions += (actionNodes.item(index) as Element).getAttributeNS(ANDROID_NS, "name")
-        }
-
-        assertTrue(actions.contains("android.appwidget.action.APPWIDGET_UPDATE"))
-        assertTrue(actions.contains("android.intent.action.TIME_SET"))
-        assertTrue(actions.contains("android.intent.action.TIMEZONE_CHANGED"))
-        assertTrue(actions.contains("android.intent.action.DATE_CHANGED"))
-        assertTrue(actions.contains("dev.bee.kanjianki.widget.action.REFRESH"))
     }
 
-    private fun providerInfo(): Element = DocumentBuilderFactory.newInstance()
+    @Test
+    fun canonicalProviderKeepsComponentXmlConfigurationAndSizeContract() {
+        val provider = providerInfo("@xml/kani_widget_info")
+
+        assertEquals("dev.bee.kanjianki.widget.KaniWidgetConfigActivity", provider.androidAttribute("configure"))
+        assertEquals("reconfigurable|configuration_optional", provider.androidAttribute("widgetFeatures"))
+        assertEquals("250dp", provider.androidAttribute("minWidth"))
+        assertEquals("72dp", provider.androidAttribute("minHeight"))
+        assertEquals("180dp", provider.androidAttribute("minResizeWidth"))
+        assertEquals("72dp", provider.androidAttribute("minResizeHeight"))
+        assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
+        assertEquals("4", provider.androidAttribute("targetCellWidth"))
+        assertEquals("1", provider.androidAttribute("targetCellHeight"))
+    }
+
+    @Test
+    fun newProvidersNeverDeclareConfigurationState() {
+        val newInfo = widgetReceivers()
+            .filterKeys { it != ".widget.KaniWidgetReceiver" }
+            .values
+            .map { providerInfo(it.providerInfo) }
+
+        newInfo.forEach { provider ->
+            assertFalse(provider.hasAttributeNS(ANDROID_NS, "configure"))
+            assertFalse(provider.hasAttributeNS(ANDROID_NS, "widgetFeatures"))
+        }
+    }
+
+    @Test
+    fun onlyPlainRefreshReceiverOwnsSystemRefreshEvents() {
+        val manifestReceivers = manifestReceivers()
+        val refresh = manifestReceivers.single { it.androidAttribute("name") == ".widget.KaniWidgetRefreshReceiver" }
+        val refreshActions = actions(refresh)
+
+        assertEquals(
+            setOf(
+                KaniWidgetRefreshPolicy.ACTION_WIDGET_REFRESH,
+                "android.intent.action.TIME_SET",
+                "android.intent.action.TIMEZONE_CHANGED",
+                "android.intent.action.BOOT_COMPLETED",
+                "android.intent.action.MY_PACKAGE_REPLACED",
+                "android.intent.action.LOCALE_CHANGED",
+            ),
+            refreshActions,
+        )
+        assertFalse(refreshActions.contains("android.intent.action.DATE_CHANGED"))
+        widgetReceivers().values.forEach { assertEquals(setOf(APPWIDGET_UPDATE), it.actions) }
+    }
+
+    private fun widgetReceivers(): Map<String, ReceiverMetadata> = manifestReceivers()
+        .mapNotNull { receiver ->
+            val receiverActions = actions(receiver)
+            if (!receiverActions.contains(APPWIDGET_UPDATE)) return@mapNotNull null
+            val metadata = receiver.getElementsByTagName("meta-data")
+            val providerInfo = (0 until metadata.length)
+                .map { metadata.item(it) as Element }
+                .single { it.androidAttribute("name") == "android.appwidget.provider" }
+                .androidAttribute("resource")
+            receiver.androidAttribute("name") to ReceiverMetadata(
+                label = receiver.androidAttribute("label"),
+                providerInfo = providerInfo,
+                actions = receiverActions,
+            )
+        }
+        .toMap()
+
+    private fun manifestReceivers(): List<Element> {
+        val manifest = parse(File("src/main/AndroidManifest.xml"))
+        val nodes = manifest.getElementsByTagName("receiver")
+        return (0 until nodes.length).map { nodes.item(it) as Element }
+    }
+
+    private fun providerInfo(resource: String): Element {
+        val name = resource.removePrefix("@xml/")
+        return parse(File("src/main/res/xml/$name.xml"))
+    }
+
+    private fun parse(file: File): Element = DocumentBuilderFactory.newInstance()
         .apply { isNamespaceAware = true }
         .newDocumentBuilder()
-        .parse(File("src/main/res/xml/kani_widget_info.xml"))
+        .parse(file)
         .documentElement
+
+    private fun actions(receiver: Element): Set<String> {
+        val nodes = receiver.getElementsByTagName("action")
+        return (0 until nodes.length)
+            .map { (nodes.item(it) as Element).androidAttribute("name") }
+            .toSet()
+    }
+
+    private fun Element.androidAttribute(name: String): String = getAttributeNS(ANDROID_NS, name)
+
+    private data class ReceiverMetadata(
+        val label: String,
+        val providerInfo: String,
+        val actions: Set<String>,
+    )
 
     private companion object {
         const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
+        const val APPWIDGET_UPDATE = "android.appwidget.action.APPWIDGET_UPDATE"
         const val HOURLY_UPDATE_MILLIS = 60L * 60L * 1_000L
     }
 }

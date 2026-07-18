@@ -9,23 +9,25 @@ import org.junit.Test
 class KaniWidgetRefreshPolicyTest {
 
     @Test
-    fun boundaryBroadcastsTriggerRefresh() {
+    fun supportedSystemAndExplicitBroadcastsTriggerRefresh() {
         assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_TIME_CHANGED))
         assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_TIMEZONE_CHANGED))
-        assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_DATE_CHANGED))
+        assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_BOOT_COMPLETED))
+        assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_MY_PACKAGE_REPLACED))
+        assertTrue(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_LOCALE_CHANGED))
         assertTrue(
             KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(KaniWidgetRefreshPolicy.ACTION_WIDGET_REFRESH),
         )
     }
 
     @Test
-    fun appWidgetAndUnknownActionsDoNotShortCircuitTheGlanceReceiver() {
+    fun dateAppWidgetAndUnknownActionsAreNotPlainRefreshReceiverEvents() {
         assertFalse(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(null))
         assertFalse(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(""))
         assertFalse(
             KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast("android.appwidget.action.APPWIDGET_UPDATE"),
         )
-        assertFalse(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_BOOT_COMPLETED))
+        assertFalse(KaniWidgetRefreshPolicy.shouldRefreshOnBroadcast(Intent.ACTION_DATE_CHANGED))
     }
 
     @Test
