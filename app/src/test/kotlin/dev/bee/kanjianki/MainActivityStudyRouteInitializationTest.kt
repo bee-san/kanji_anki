@@ -41,6 +41,7 @@ import org.robolectric.annotation.Config
 import java.io.StringReader
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 
@@ -743,26 +744,56 @@ class MainActivityStudyRouteInitializationTest {
             .build()
         activity.store.saveRows(activity.store.writableDatabase, listOf(row), 4_000L)
         activity.store.saveStudyItem(item)
-        val backgroundTasks = ArrayDeque<Runnable>()
         val mainTasks = ArrayDeque<Runnable>()
+        val computeStarted = CountDownLatch(1)
+        val allowCompute = CountDownLatch(1)
+        val computeFinished = CountDownLatch(1)
         replaceLazyDelegate(
             activity,
             "asyncHomeRouteLoader",
             AsyncHomeRouteLoader(
-                background = Executor { backgroundTasks.addLast(it) },
+                background = Executor { task ->
+                    Thread {
+                        try {
+                            task.run()
+                        } finally {
+                            computeFinished.countDown()
+                        }
+                    }.start()
+                },
                 postToMain = { mainTasks.addLast(it) },
                 loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+                onQueueWait = { _, _ ->
+                    computeStarted.countDown()
+                    allowCompute.await(5, TimeUnit.SECONDS)
+                },
             ),
         )
+        activity.studySessionTracker.setTargetCount(7)
+        repeat(5) { index ->
+            activity.studySessionTracker.markTaskCompleted("session:kanji_meaning:字$index:token-$index")
+        }
+        val acceptedBeforeCompute = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(5, acceptedBeforeCompute.progress.completedCount)
+        assertEquals(7, acceptedBeforeCompute.progress.targetCount)
+        assertFalse(acceptedBeforeCompute.progress.activeTask)
+
         activity.renderStudy()
         activity.recoveredStudyRunNeedsTargetReconciliation = true
-        backgroundTasks.removeFirst().run()
-        assertEquals(1, mainTasks.size)
-        assertNull(StudySessionRecoveryStore(preferences).read())
-        assertTrue(activity.recoveredStudyRunNeedsTargetReconciliation)
+        assertTrue("Study compute must start", computeStarted.await(5, TimeUnit.SECONDS))
+        val inFlight = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(5, inFlight.progress.completedCount)
+        assertEquals(7, inFlight.progress.targetCount)
+        assertFalse(inFlight.progress.activeTask)
 
         activity.renderHome()
         val acceptedAfterCancel = activity.studySessionViewModel.acceptedRouteSnapshot()
+        allowCompute.countDown()
+        assertTrue("Study compute must finish", computeFinished.await(5, TimeUnit.SECONDS))
+        assertEquals(1, mainTasks.size)
+        assertNotNull(activity.store.studyItemsForKanji(listOf("消")).single().activeToken)
+        assertNull(StudySessionRecoveryStore(preferences).read())
+
         mainTasks.removeFirst().run()
 
         assertNull(StudySessionRecoveryStore(preferences).read())
@@ -771,6 +802,57 @@ class MainActivityStudyRouteInitializationTest {
             acceptedAfterCancel,
             activity.studySessionViewModel.acceptedRouteSnapshot(),
         )
+    }
+
+    @Test
+    fun supersededStoredRecoveryCannotPublishWithoutCandidateAcceptance() {
+        val restored = restoreActiveCardAfterProcessRestart(
+            kanji = "裂",
+            taskType = StudyTaskTypes.TYPE_MEANING,
+            rung = RecordsBase.LadderRung.TYPE_MEANING,
+            typedDraft = "divide",
+            revealed = false,
+        )
+        try {
+            val activity = restored.activity
+            val routeOnlySession = requireNotNull(activity.activeSession)
+            activity.activeSession = null
+            activity.studySessionTracker.resetProgress()
+            activity.studySessionViewModel.mountSession(routeOnlySession)
+            val backgroundTasks = ArrayDeque<Runnable>()
+            val mainTasks = ArrayDeque<Runnable>()
+            replaceLazyDelegate(
+                activity,
+                "asyncHomeRouteLoader",
+                AsyncHomeRouteLoader(
+                    background = Executor { backgroundTasks.addLast(it) },
+                    postToMain = { mainTasks.addLast(it) },
+                    loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+                ),
+            )
+
+            activity.renderStudy()
+            backgroundTasks.removeFirst().run()
+            assertEquals(1, mainTasks.size)
+            assertSame(routeOnlySession, activity.activeSession)
+
+            val loading = activity.studySessionViewModel.acceptedRouteSnapshot()
+            assertNotNull(
+                activity.studySessionViewModel.claimCurrentRouteAction(
+                    requireNotNull(loading.sessionToken),
+                    loading.sessionGeneration,
+                    loading.version,
+                ),
+            )
+            val supersededRoute = activity.studySessionViewModel.acceptedRouteSnapshot()
+            mainTasks.removeFirst().run()
+
+            assertSame(routeOnlySession, activity.activeSession)
+            assertFalse(activity.studySessionTracker.hasActiveTask())
+            assertEquals(supersededRoute, activity.studySessionViewModel.acceptedRouteSnapshot())
+        } finally {
+            restored.close()
+        }
     }
 
     @Test

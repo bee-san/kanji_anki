@@ -116,6 +116,29 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun studyLoadTrackerCommitAcceptsOnlyTheSingleLoadingPresentationTransition() {
+        val viewModel = viewModelAt(completed = 5, target = 7)
+        val expected = viewModel.acceptedRouteSnapshot()
+        val staged = viewModel.tracker.copyForStaging()
+        staged.startActiveTask("stale-task", "裂", "kanji_meaning", 0L, false)
+
+        viewModel.showLoading()
+        val loading = viewModel.acceptedRouteSnapshot()
+        assertNotNull(
+            viewModel.claimCurrentRouteAction(
+                requireNotNull(loading.sessionToken),
+                loading.sessionGeneration,
+                loading.version,
+            ),
+        )
+        val supersededLoading = viewModel.acceptedRouteSnapshot()
+
+        assertNull(viewModel.acceptStudyLoadTracker(expected, staged))
+        assertFalse(viewModel.tracker.hasActiveTask())
+        assertEquals(supersededLoading, viewModel.acceptedRouteSnapshot())
+    }
+
+    @Test
     fun directFiveOfSevenCompletionIsRejectedWithoutAnyMutation() {
         val viewModel = viewModelAt(completed = 5, target = 7)
         val beforeState = viewModel.uiState.value
