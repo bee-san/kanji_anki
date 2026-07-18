@@ -84,6 +84,13 @@ fixture_for_phase() {
   esac
 }
 
+repair_collection_ownership() {
+  # `adb root` makes subsequent pushes root/shell-owned on hosted emulators.
+  # Restore AnkiDroid ownership before launching it so each lifecycle phase
+  # opens the newly staged collection instead of failing or serving old state.
+  adb shell "owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\${owner_uid}\" ]; then chown -R \"\${owner_uid}\":ext_data_rw '${app_private_dir}'; chown -R \"\${owner_uid}\":ext_data_rw '${legacy_dir}' 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX '${app_private_dir}' '${legacy_dir}'"
+}
+
 seed_stage() {
   local local_path="$1"
   adb shell am force-stop com.ichi2.anki || true
@@ -92,6 +99,7 @@ seed_stage() {
   adb shell "mkdir -p '${app_private_dir}/collection.media' '${legacy_dir}/collection.media'; rm -f '${app_private_collection}' '${app_private_collection}-wal' '${app_private_collection}-shm' '${app_private_collection}-journal' '${legacy_collection}' '${legacy_collection}-wal' '${legacy_collection}-shm' '${legacy_collection}-journal'"
   adb push "${local_path}" "${app_private_collection}" >/dev/null
   adb push "${local_path}" "${legacy_collection}" >/dev/null
+  repair_collection_ownership
   adb shell "prefs_dir=/data/user/0/com.ichi2.anki/shared_prefs; prefs=\${prefs_dir}/com.ichi2.anki_preferences.xml; mkdir -p \"\${prefs_dir}\"; printf '%s\n' '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>' '<map>' '    <string name=\"deckPath\">${app_private_dir}</string>' '</map>' > \"\${prefs}\"; owner_uid=\$(stat -c '%u' /data/user/0/com.ichi2.anki); owner_gid=\$(stat -c '%g' /data/user/0/com.ichi2.anki); chown \"\${owner_uid}\":\"\${owner_gid}\" \"\${prefs}\"; chmod 660 \"\${prefs}\"; chmod -R u+rwX,g+rwX '${app_private_dir}' '${legacy_dir}'"
   adb shell monkey -p com.ichi2.anki -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
   sleep "${KANJI_RETIRED_LIFECYCLE_SETTLE_SECONDS:-5}"

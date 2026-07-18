@@ -631,7 +631,11 @@ public class BridgeSchedulerTest {
         var active: RecordsStudyModels.StudyItem = item("謎").copyBuilder()
                 .createdAtMillis(0L)
                 .build()
-        var retired: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
+        var retired: RecordsStudyModels.StudyItem = reviewItem(
+                "裂",
+                RecordsBase.LadderRung.KANJI_MEANING,
+                0L
+        ).copyBuilder()
                 .state("retired")
                 .totalReviews(3)
                 .build()
