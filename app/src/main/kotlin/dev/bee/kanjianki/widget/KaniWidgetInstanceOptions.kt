@@ -26,6 +26,8 @@ internal data class KaniWidgetInstanceOptions(
 ) {
     fun resolveTheme(appTheme: KaniThemeChoice): KaniThemeChoice = themeOverride ?: appTheme
 
+    fun withStyle(style: KaniWidgetStyle): KaniWidgetInstanceOptions = copy(style = style)
+
     fun themeStorageValue(): String = themeOverride?.storageKey ?: THEME_FOLLOW_APP
 
     companion object {

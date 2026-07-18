@@ -62,4 +62,17 @@ class KaniWidgetInstanceOptionsTest {
             }
         }
     }
+
+    @Test
+    fun explicitLegacyStyleSwitchPreservesThemeValue() {
+        val legacy = KaniWidgetInstanceOptions(
+            style = KaniWidgetStyle.HEATMAP,
+            themeOverride = KaniThemeChoice.AUTUMN,
+        )
+
+        val switched = legacy.withStyle(KaniWidgetStyle.DUE_CARD)
+
+        assertEquals(KaniWidgetStyle.DUE_CARD, switched.style)
+        assertEquals(KaniThemeChoice.AUTUMN, switched.themeOverride)
+    }
 }

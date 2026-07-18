@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,13 +24,18 @@ class KaniWidgetConfigScreenComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun defaultSaveKeepsZeroConfigDueCardFollowingAppTheme() {
+    fun freshScreenHasNoLegacyHeatmapChoiceAndSavesDueFollowingAppTheme() {
         var saved: KaniWidgetInstanceOptions? = null
         composeRule.setContent {
-            KaniWidgetConfigScreen(onSave = { saved = it })
+            KaniWidgetConfigScreen(
+                initialOptions = KaniWidgetInstanceOptions(),
+                onSave = { saved = it },
+            )
         }
 
         composeRule.onNodeWithText(WidgetTextCopy.widgetConfigTitle()).assertIsDisplayed()
+        composeRule.onNodeWithTag("widget_style_heatmap").assertDoesNotExist()
+        composeRule.onNodeWithTag("widget_style_due_card").assertDoesNotExist()
         composeRule.onNodeWithTag("widget_config_save").performScrollTo().performClick()
 
         assertEquals(KaniWidgetStyle.DUE_CARD, saved?.style)
@@ -37,32 +43,61 @@ class KaniWidgetConfigScreenComposeTest {
     }
 
     @Test
-    fun selectingHeatmapAndThemeOverrideSavesThoseOptions() {
+    fun legacyHeatmapDefaultsToKeepAndRoundTripsTheme() {
+        val legacy = KaniWidgetInstanceOptions(KaniWidgetStyle.HEATMAP, KaniThemeChoice.AUTUMN)
         var saved: KaniWidgetInstanceOptions? = null
         composeRule.setContent {
-            KaniWidgetConfigScreen(onSave = { saved = it })
+            KaniWidgetConfigScreen(initialOptions = legacy, onSave = { saved = it })
         }
 
-        composeRule.onNodeWithTag("widget_style_heatmap").performScrollTo().performClick()
-        composeRule.onNodeWithTag("widget_theme_${KaniThemeChoice.DARK.storageKey}")
-            .performScrollTo()
-            .performClick()
+        composeRule.onNodeWithTag("widget_style_heatmap").performScrollTo().assertIsSelected()
         composeRule.onNodeWithTag("widget_config_save").performScrollTo().performClick()
 
-        assertEquals(KaniWidgetStyle.HEATMAP, saved?.style)
-        assertEquals(KaniThemeChoice.DARK, saved?.themeOverride)
+        assertEquals(legacy, saved)
+    }
+
+    @Test
+    fun explicitLegacySwitchChangesOnlyStyle() {
+        val legacy = KaniWidgetInstanceOptions(KaniWidgetStyle.HEATMAP, KaniThemeChoice.DARK)
+        var saved: KaniWidgetInstanceOptions? = null
+        composeRule.setContent {
+            KaniWidgetConfigScreen(initialOptions = legacy, onSave = { saved = it })
+        }
+
+        composeRule.onNodeWithTag("widget_style_due_card").performScrollTo().performClick()
+        composeRule.onNodeWithTag("widget_config_save").performScrollTo().performClick()
+
+        assertEquals(KaniWidgetInstanceOptions(KaniWidgetStyle.DUE_CARD, KaniThemeChoice.DARK), saved)
+    }
+
+    @Test
+    fun reconfigureDueLoadsAndPreservesSavedTheme() {
+        val stored = KaniWidgetInstanceOptions(KaniWidgetStyle.DUE_CARD, KaniThemeChoice.MIDNIGHT_ARCADE)
+        var saved: KaniWidgetInstanceOptions? = null
+        composeRule.setContent {
+            KaniWidgetConfigScreen(initialOptions = stored, onSave = { saved = it })
+        }
+
+        composeRule.onNodeWithTag("widget_theme_${KaniThemeChoice.MIDNIGHT_ARCADE.storageKey}")
+            .performScrollTo()
+            .assertIsSelected()
+        composeRule.onNodeWithTag("widget_config_save").performScrollTo().performClick()
+
+        assertEquals(stored, saved)
     }
 
     @Test
     fun returningToFollowAppClearsAThemeOverride() {
         var saved: KaniWidgetInstanceOptions? = null
         composeRule.setContent {
-            KaniWidgetConfigScreen(onSave = { saved = it })
+            KaniWidgetConfigScreen(
+                initialOptions = KaniWidgetInstanceOptions(
+                    themeOverride = KaniThemeChoice.AUTUMN,
+                ),
+                onSave = { saved = it },
+            )
         }
 
-        composeRule.onNodeWithTag("widget_theme_${KaniThemeChoice.AUTUMN.storageKey}")
-            .performScrollTo()
-            .performClick()
         composeRule.onNodeWithTag("widget_theme_follow_app").performScrollTo().performClick()
         composeRule.onNodeWithTag("widget_config_save").performScrollTo().performClick()
 
@@ -73,7 +108,7 @@ class KaniWidgetConfigScreenComposeTest {
     @Test
     fun everyThemeChoiceRendersASelectableRow() {
         composeRule.setContent {
-            KaniWidgetConfigScreen(onSave = {})
+            KaniWidgetConfigScreen(initialOptions = KaniWidgetInstanceOptions(), onSave = {})
         }
 
         for (choice in KaniThemeChoice.entries) {
