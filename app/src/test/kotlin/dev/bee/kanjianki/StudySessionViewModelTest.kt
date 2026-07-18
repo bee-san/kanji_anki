@@ -365,6 +365,37 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun loadingFramePreservesTerminalEvidenceForAcceptedReload() {
+        val viewModel = viewModelAt(completed = 1, target = 1)
+        val active = viewModel.acceptedRouteSnapshot()
+        val evidence = requireNotNull(
+            viewModel.acceptCompletionEvidence(
+                StudyRouteCompletionReason.HARD_CAP,
+                active.sessionGeneration,
+                active.version,
+                active.sessionToken,
+            ),
+        )
+        assertTrue(
+            viewModel.completeRoute(
+                StudyRouteCompletionReason.HARD_CAP,
+                evidence.sessionGeneration,
+                evidence.version,
+                evidence.sessionToken,
+            ),
+        )
+        val expected = viewModel.acceptedRouteSnapshot()
+        val staged = viewModel.tracker.copyForStaging()
+
+        viewModel.showLoading()
+        val loading = viewModel.acceptedRouteSnapshot()
+
+        assertEquals(StudySessionPhase.LOADING, loading.phase)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, loading.completionEvidenceReason)
+        assertNotNull(viewModel.acceptStudyLoadTracker(expected, staged))
+    }
+
+    @Test
     fun staleFeedbackTokenGenerationAndVersionAreExactNoOps() {
         val viewModel = StudySessionViewModel()
         val mounted = session("current-token")

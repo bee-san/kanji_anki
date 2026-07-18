@@ -197,7 +197,6 @@ internal object StudySessionReducer {
         return state.copy(
             phase = phase,
             routeVersion = state.routeVersion.next(),
-            completionEvidenceReason = null,
         )
     }
 
