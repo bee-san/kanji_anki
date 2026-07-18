@@ -84,6 +84,15 @@ class StudyRouteSnapshotTest {
     }
 
     @Test
+    fun versionTokensCanReachTheLongBoundaryWithoutWrapping() {
+        assertEquals(StudyRouteVersion(Long.MAX_VALUE), StudyRouteVersion(Long.MAX_VALUE - 1L).next())
+        assertEquals(
+            StudySessionGeneration(Long.MAX_VALUE),
+            StudySessionGeneration(Long.MAX_VALUE - 1L).next(),
+        )
+    }
+
+    @Test
     fun versionTokensRejectOverflowAtTheLongBoundary() {
         assertThrows(ArithmeticException::class.java) {
             StudyRouteVersion(Long.MAX_VALUE).next()
