@@ -50,6 +50,7 @@ class ActivityWidgetSnapshotLoaderTest {
         assertEquals(0, snapshot.reviewsToday)
         assertEquals(0, snapshot.last7DayTotal)
         assertEquals(0, snapshot.last35DayTotal)
+        assertEquals(0, snapshot.bestStreakDays)
     }
 
     @Test

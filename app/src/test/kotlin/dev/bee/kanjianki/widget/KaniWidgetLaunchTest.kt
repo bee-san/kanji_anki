@@ -95,4 +95,18 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
         assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
     }
+
+    @Test
+    fun activityHistoryAndEmptyHistoryOpenStatsButUnavailableStatesOpenHome() {
+        listOf(ActivityWidgetState.HISTORY, ActivityWidgetState.NO_HISTORY).forEach { state ->
+            val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
+            assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        }
+        listOf(ActivityWidgetState.NOT_SET_UP, ActivityWidgetState.ERROR).forEach { state ->
+            val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        }
+    }
 }

@@ -167,27 +167,45 @@ object WidgetTextCopy {
     fun openStatsLabel(): String = localizedText("Open stats", "統計を開く")
 
     @JvmStatic
+    fun statsLabel(): String = localizedText("Stats", "統計")
+
+    @JvmStatic
     fun quickStudyDescription(status: String, action: String): String = localizedText(
         "Quick study widget. $status. $action.",
         "クイック学習ウィジェット。$status。$action。",
     )
 
     @JvmStatic
+    fun activityStateDescription(title: String, body: String, action: String): String = localizedText(
+        "Activity widget. $title. $body. $action.",
+        "学習履歴ウィジェット。$title。$body。$action。",
+    )
+
+    @JvmStatic
     fun activityDescription(
         reviewCount: Int,
         days: Int,
+        reviewsToday: Int,
         streakDays: Int,
         bestStreakDays: Int,
         action: String,
     ): String {
         val period = activityPeriodLabel(reviewCount, days)
+        val today = localizedText(
+            "${reviewsToday.coerceAtLeast(0)} today",
+            "今日${reviewsToday.coerceAtLeast(0)}件",
+        )
+        val heading = localizedText(
+            "Activity widget. $period, $today",
+            "学習履歴ウィジェット。$period、$today",
+        )
         val streak = streakLabel(streakDays)
         val best = bestStreakLabel(bestStreakDays)
         return localizedText(
-            listOf("Activity widget", period, streak, best, action)
+            listOf(heading, streak, best, action)
                 .filter { it.isNotEmpty() }
                 .joinToString(". ", postfix = "."),
-            listOf("学習履歴ウィジェット", period, streak, best, action)
+            listOf(heading, streak, best, action)
                 .filter { it.isNotEmpty() }
                 .joinToString("。", postfix = "。"),
         )

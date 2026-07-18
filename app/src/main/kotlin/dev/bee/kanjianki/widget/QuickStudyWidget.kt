@@ -53,7 +53,9 @@ internal class QuickStudyWidget(
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val nowMillis = System.currentTimeMillis()
-        val snapshot = withContext(ioDispatcher) { StudyWidgetSnapshotLoader.load(context, nowMillis) }
+        val snapshot = withContext(ioDispatcher) {
+            StudyWidgetSnapshotLoader.load(context, nowMillis)
+        }
         KaniWidgetBoundaryAlarm.scheduleStudyBoundary(context, nowMillis, snapshot.nextUsefulAtMillis)
         provideContent { QuickStudyWidgetContent(snapshot) }
     }

@@ -18,6 +18,7 @@ internal data class ActivityWidgetSnapshot(
     val reviewsToday: Int = 0,
     val last7DayTotal: Int = 0,
     val last35DayTotal: Int = 0,
+    val bestStreakDays: Int = 0,
     val themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
 )
 
@@ -39,6 +40,7 @@ internal object ActivityWidgetSnapshotLoader {
                 reviewsToday = counts.lastOrNull() ?: 0,
                 last7DayTotal = counts.takeLast(RECENT_DAYS).sum(),
                 last35DayTotal = total,
+                bestStreakDays = streak.bestDays,
                 themeChoice = store.widgetThemeChoice(),
             )
         }) {

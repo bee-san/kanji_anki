@@ -6,17 +6,20 @@
     <string name="kani_widget_preview_count">12 reviews ready</string>
     <string name="kani_widget_preview_streak">5-day streak</string>
     <string name="study_overview_widget_label">Kani Study overview</string>
-    <string name="quick_study_widget_label">Quick Study</string>
-    <string name="quick_study_widget_description">Open due reviews with one tap</string>
+    <string name="quick_study_widget_label">Quick study</string>
+    <string name="quick_study_widget_description">See what is due and start in one tap.</string>
     <string name="quick_study_widget_loading">Loading quick study…</string>
     <string name="quick_study_widget_preview_count">12</string>
     <string name="quick_study_widget_preview_status">Due</string>
     <string name="quick_study_widget_preview_action">Study now</string>
-    <string name="activity_widget_label">Kani Activity</string>
-    <string name="activity_widget_description">Recent Kani review activity</string>
+    <string name="activity_widget_label">Activity</string>
+    <string name="activity_widget_description">Your streak and five weeks of review activity.</string>
     <string name="activity_widget_loading">Loading activity…</string>
-    <string name="preview_activity_total">87 reviews</string>
-    <string name="preview_activity_bars">▁▃▅▂▆▇▄</string>
+    <string name="activity_widget_preview_total">87 reviews</string>
+    <string name="activity_widget_preview_streak">5-day streak</string>
+    <string name="activity_widget_preview_best">Best: 21 days</string>
+    <string name="activity_widget_preview_stats">Stats</string>
+    <string name="activity_widget_preview_heatmap" translatable="false">· ▂ ▃ █ · ▂ ▃\n▂ ▃ · ▂ █ ▃ ·\n· · ▂ ▃ █ ▂ ▃\n▃ ▂ █ · ▃ ▂ █\n▂ █ ▃ ▂ · ▃ █</string>
     <string name="focus_kanji_widget_label">Kani Focus kanji</string>
     <string name="focus_kanji_widget_description">A kanji from your current study set</string>
     <string name="focus_kanji_widget_loading">Loading focus kanji…</string>

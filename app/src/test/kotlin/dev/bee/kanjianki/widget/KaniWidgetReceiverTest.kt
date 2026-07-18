@@ -25,13 +25,13 @@ class KaniWidgetReceiverTest {
     }
 
     @Test
-    fun heatCellRoleUsesTrackForEmptyDaysAndScaledPrimaryOtherwise() {
+    fun heatCellRoleUsesTheSharedFourLevelActivityPalette() {
         val palette = KaniWidgetPalette.forChoice(KaniThemeChoice.LIGHT)
 
         assertEquals(palette.track, heatCellRole(0, 10, palette))
-        assertEquals(palette.primary.withAlpha(1.0f), heatCellRole(10, 10, palette))
-        assertEquals(palette.primary.withAlpha(0.5f), heatCellRole(5, 10, palette))
-        assertEquals(palette.primary.withAlpha(0.15f), heatCellRole(1, 100, palette))
-        assertEquals(palette.primary.withAlpha(0.15f), heatCellRole(3, 0, palette))
+        assertEquals(palette.heatThree, heatCellRole(10, 10, palette))
+        assertEquals(palette.heatTwo, heatCellRole(5, 10, palette))
+        assertEquals(palette.heatOne, heatCellRole(1, 100, palette))
+        assertEquals(palette.heatOne, heatCellRole(3, 0, palette))
     }
 }

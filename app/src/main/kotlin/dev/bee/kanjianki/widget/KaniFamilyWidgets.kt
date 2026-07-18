@@ -11,19 +11,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class ActivityWidget(
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-) : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(DpSize(180.dp, 120.dp), DpSize(250.dp, 130.dp)))
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val nowMillis = System.currentTimeMillis()
-        val snapshot = withContext(ioDispatcher) { ActivityWidgetSnapshotLoader.load(context, nowMillis) }
-        KaniWidgetBoundaryAlarm.scheduleDailyBoundary(context, nowMillis)
-        provideContent { LegacyActivityWidgetContent(snapshot, KaniWidgetInstanceOptions()) }
-    }
-}
-
 internal class FocusKanjiWidget(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : GlanceAppWidget() {

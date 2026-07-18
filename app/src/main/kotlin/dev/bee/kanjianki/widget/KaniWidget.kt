@@ -257,16 +257,11 @@ private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
 }
 
 /**
- * Shared activity-cell color: empty days use the track color, active days use
- * the primary color scaled by relative intensity.
+ * Shared activity-cell color: empty days use the widget background and active
+ * days use the same three discrete semantic levels as the Activity widget.
  */
-internal fun heatCellRole(count: Int, maxCount: Int, palette: KaniWidgetPalette): KaniWidgetColorRole {
-    if (count == 0) {
-        return palette.track
-    }
-    val alpha = if (maxCount > 0) (count.toFloat() / maxCount).coerceIn(0.15f, 1.0f) else 0.15f
-    return palette.primary.withAlpha(alpha)
-}
+internal fun heatCellRole(count: Int, maxCount: Int, palette: KaniWidgetPalette): KaniWidgetColorRole =
+    palette.activityHeat(activityIntensity(count, maxCount))
 
 @Composable
 private fun HeatmapContent(

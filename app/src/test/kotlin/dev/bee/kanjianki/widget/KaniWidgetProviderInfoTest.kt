@@ -62,8 +62,10 @@ class KaniWidgetProviderInfoTest {
         assertEquals("56dp", provider.androidAttribute("minHeight"))
         assertEquals("56dp", provider.androidAttribute("minResizeWidth"))
         assertEquals("56dp", provider.androidAttribute("minResizeHeight"))
-        assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
-        assertEquals("1", provider.androidAttribute("targetCellWidth"))
+        assertEquals("180dp", provider.androidAttribute("maxResizeWidth"))
+        assertEquals("72dp", provider.androidAttribute("maxResizeHeight"))
+        assertEquals("horizontal", provider.androidAttribute("resizeMode"))
+        assertEquals("2", provider.androidAttribute("targetCellWidth"))
         assertEquals("1", provider.androidAttribute("targetCellHeight"))
         assertEquals("@layout/quick_study_widget_preview", provider.androidAttribute("previewLayout"))
         assertEquals("@layout/quick_study_widget_loading", provider.androidAttribute("initialLayout"))
@@ -87,6 +89,84 @@ class KaniWidgetProviderInfoTest {
         assertFalse(loading.contains("quick_study_widget_preview_count"))
         assertFalse(loading.contains("quick_study_widget_preview_action"))
         assertFalse(loading.contains("widget_shortcut_study_now"))
+    }
+
+    @Test
+    fun activityProviderUsesTheApprovedCompactRegularAndWideSizeContract() {
+        val provider = providerInfo("@xml/activity_widget_info")
+
+        assertEquals("120dp", provider.androidAttribute("minWidth"))
+        assertEquals("72dp", provider.androidAttribute("minHeight"))
+        assertEquals("120dp", provider.androidAttribute("minResizeWidth"))
+        assertEquals("72dp", provider.androidAttribute("minResizeHeight"))
+        assertEquals("340dp", provider.androidAttribute("maxResizeWidth"))
+        assertEquals("180dp", provider.androidAttribute("maxResizeHeight"))
+        assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
+        assertEquals("4", provider.androidAttribute("targetCellWidth"))
+        assertEquals("2", provider.androidAttribute("targetCellHeight"))
+        assertEquals("@layout/activity_widget_preview", provider.androidAttribute("previewLayout"))
+        assertEquals("@layout/activity_widget_loading", provider.androidAttribute("initialLayout"))
+    }
+
+    @Test
+    fun activityPreviewIsStaticLocalizedHistoryAndLoadingLayoutHasNoDemoFactsOrActions() {
+        val preview = File("src/main/res/layout/activity_widget_preview.xml").readText()
+        val loading = File("src/main/res/layout/activity_widget_loading.xml").readText()
+        val english = File("src/main/res/values/strings.xml").readText()
+        val japanese = File("src/main/res/values-ja/strings.xml").readText()
+
+        assertTrue(preview.contains("@string/activity_widget_preview_total"))
+        assertTrue(preview.contains("@string/activity_widget_preview_streak"))
+        assertTrue(preview.contains("@string/activity_widget_preview_best"))
+        assertTrue(preview.contains("@string/activity_widget_preview_stats"))
+        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 reviews</string>"))
+        assertTrue(english.contains("name=\"activity_widget_preview_streak\">5-day streak</string>"))
+        assertTrue(english.contains("name=\"activity_widget_preview_best\">Best: 21 days</string>"))
+        assertTrue(english.contains("name=\"activity_widget_preview_stats\">Stats</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_preview_streak\">5日連続</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_preview_best\">最長21日</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_preview_stats\">統計</string>"))
+        assertFalse(loading.contains("activity_widget_preview_total"))
+        assertFalse(loading.contains("activity_widget_preview_stats"))
+        assertFalse(loading.contains("preview_activity_bars"))
+    }
+
+    @Test
+    fun quickStudyAndActivityPickerCopyMatchesApprovedEnglishAndJapaneseText() {
+        val english = File("src/main/res/values/strings.xml").readText()
+        val japanese = File("src/main/res/values-ja/strings.xml").readText()
+
+        assertTrue(english.contains("name=\"quick_study_widget_label\">Quick study</string>"))
+        assertTrue(english.contains("name=\"quick_study_widget_description\">See what is due and start in one tap.</string>"))
+        assertTrue(english.contains("name=\"activity_widget_label\">Activity</string>"))
+        assertTrue(english.contains("name=\"activity_widget_description\">Your streak and five weeks of review activity.</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_label\">クイック学習</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_description\">復習件数を確認してワンタップで学習します。</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_label\">学習履歴</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_description\">連続学習と5週間の復習履歴を表示します。</string>"))
+    }
+
+    @Test
+    fun quickAndActivityStaticSurfacesUseSharedDayNightSemanticColors() {
+        val resourcePaths = listOf(
+            "src/main/res/layout/quick_study_widget_loading.xml",
+            "src/main/res/layout/quick_study_widget_preview.xml",
+            "src/main/res/layout/activity_widget_loading.xml",
+            "src/main/res/layout/activity_widget_preview.xml",
+            "src/main/res/drawable/quick_study_widget_preview_image.xml",
+            "src/main/res/drawable/activity_widget_preview_image.xml",
+        )
+        resourcePaths.forEach { path ->
+            val resource = File(path).readText()
+            assertFalse("$path must not hard-code colors", Regex("#[0-9A-Fa-f]{6,8}").containsMatchIn(resource))
+            assertTrue("$path must use semantic preview colors", resource.contains("@color/widget_preview_"))
+        }
+        val day = File("src/main/res/values/widget_preview_colors.xml").readText()
+        val night = File("src/main/res/values-night/widget_preview_colors.xml").readText()
+        listOf("background", "ink", "muted", "primary", "track", "heat_low", "heat_medium").forEach { role ->
+            assertTrue(day.contains("name=\"widget_preview_$role\""))
+            assertTrue(night.contains("name=\"widget_preview_$role\""))
+        }
     }
 
     @Test

@@ -70,9 +70,10 @@ class WidgetTextCopyTest {
             assertEquals("No activity yet", WidgetTextCopy.noActivityTitle())
             assertEquals("Reviews will appear here.", WidgetTextCopy.noActivityBody())
             assertEquals("Open stats", WidgetTextCopy.openStatsLabel())
+            assertEquals("Stats", WidgetTextCopy.statsLabel())
             assertEquals(
-                "Activity widget. 87 reviews in 35 days. 5-day streak. Best: 21 days. Open stats.",
-                WidgetTextCopy.activityDescription(87, 35, 5, 21, "Open stats"),
+                "Activity widget. 87 reviews in 35 days, 4 today. 5-day streak. Best: 21 days. Open stats.",
+                WidgetTextCopy.activityDescription(87, 35, 4, 5, 21, "Open stats"),
             )
             assertEquals(
                 "Quick study widget. 3 reviews ready. Study now.",
@@ -125,9 +126,10 @@ class WidgetTextCopyTest {
             assertEquals("学習履歴はまだありません", WidgetTextCopy.noActivityTitle())
             assertEquals("復習するとここに表示されます。", WidgetTextCopy.noActivityBody())
             assertEquals("統計を開く", WidgetTextCopy.openStatsLabel())
+            assertEquals("統計", WidgetTextCopy.statsLabel())
             assertEquals(
-                "学習履歴ウィジェット。35日間で復習87件。5日連続。最長21日。統計を開く。",
-                WidgetTextCopy.activityDescription(87, 35, 5, 21, "統計を開く"),
+                "学習履歴ウィジェット。35日間で復習87件、今日4件。5日連続。最長21日。統計を開く。",
+                WidgetTextCopy.activityDescription(87, 35, 4, 5, 21, "統計を開く"),
             )
             assertEquals(
                 "クイック学習ウィジェット。復習できるカード3件。今すぐ学習。",

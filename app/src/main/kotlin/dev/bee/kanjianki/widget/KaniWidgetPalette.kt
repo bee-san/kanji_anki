@@ -27,14 +27,20 @@ internal data class KaniWidgetColorRole(
 internal data class KaniWidgetPalette(
     /** Widget card background — `KaniColors.bg`. */
     val background: KaniWidgetColorRole,
-    /** Brand label, action row, and filled activity cells — `KaniColors.primary`. */
+    /** Brand label, action row, and current-day outline — `KaniColors.primary`. */
     val primary: KaniWidgetColorRole,
     /** Title text — `KaniColors.ink`. */
     val ink: KaniWidgetColorRole,
     /** Body/supporting text — `KaniColors.muted`. */
     val muted: KaniWidgetColorRole,
-    /** Empty activity-strip cells — `KaniColors.track`. */
+    /** Empty legacy activity-strip cells — `KaniColors.track`. */
     val track: KaniWidgetColorRole,
+    /** Low activity — `KaniColors.muted`. */
+    val heatOne: KaniWidgetColorRole,
+    /** Medium activity — `KaniColors.ink`. */
+    val heatTwo: KaniWidgetColorRole,
+    /** High activity — `KaniColors.primary`. */
+    val heatThree: KaniWidgetColorRole,
 ) {
     companion object {
         fun forChoice(choice: KaniThemeChoice): KaniWidgetPalette {
@@ -46,7 +52,20 @@ internal data class KaniWidgetPalette(
                 ink = KaniWidgetColorRole(day.ink, night.ink),
                 muted = KaniWidgetColorRole(day.muted, night.muted),
                 track = KaniWidgetColorRole(day.track, night.track),
+                heatOne = KaniWidgetColorRole(day.muted, night.muted),
+                heatTwo = KaniWidgetColorRole(day.ink, night.ink),
+                heatThree = KaniWidgetColorRole(day.primary, night.primary),
             )
         }
     }
 }
+
+internal fun KaniWidgetPalette.activityHeat(intensity: ActivityIntensity): KaniWidgetColorRole = when (intensity) {
+    ActivityIntensity.EMPTY -> track
+    ActivityIntensity.LOW -> heatOne
+    ActivityIntensity.MEDIUM -> heatTwo
+    ActivityIntensity.HIGH -> heatThree
+}
+
+internal val KaniWidgetPalette.todayOutline: KaniWidgetColorRole
+    get() = primary
