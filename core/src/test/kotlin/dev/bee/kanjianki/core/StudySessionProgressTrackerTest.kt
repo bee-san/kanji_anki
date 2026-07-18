@@ -50,6 +50,28 @@ class StudySessionProgressTrackerTest {
     }
 
     @Test
+    fun stagedCopyIsIsolatedUntilItsWholeProgressFrameIsCommitted() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(2)
+        tracker.markTaskCompleted("task-a")
+        tracker.recordRepairOutcome("裂", false)
+        val accepted = tracker.snapshot()
+
+        val staged = tracker.copyForStaging()
+        staged.markTaskCompleted("task-b")
+        staged.recordRepairOutcome("裂", true)
+
+        assertEquals(accepted, tracker.snapshot())
+
+        tracker.replaceStateFrom(staged)
+
+        assertEquals(staged.snapshot(), tracker.snapshot())
+        assertEquals(2, tracker.completedCount())
+        assertEquals(1, tracker.movedForwardCount())
+        assertEquals(0, tracker.missedCount())
+    }
+
+    @Test
     fun targetInitializationUsesRemainingThenTargetAndClampsManualValues() {
         val tracker = StudySessionProgressTracker()
 

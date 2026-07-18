@@ -88,6 +88,16 @@ internal class AsyncHomeRouteLoader(
         val enqueuedAtNanos = nanoClock()
 
         background.execute {
+            if (token != generation.get()) {
+                loadingHandle?.cancel()
+                finished.set(true)
+                postToMain(
+                    Runnable {
+                        runCatching { onStaleResult(token, generation.get(), traceLabel) }
+                    },
+                )
+                return@execute
+            }
             // Surface how long this load waited in the (single-threaded) executor queue before it
             // started running. withAsyncLoadTrace only measures on-thread execution, so without
             // this the debug log hides head-of-line blocking: each load looks fast even when the

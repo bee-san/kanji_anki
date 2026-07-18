@@ -545,6 +545,20 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         _uiState.value.routeSnapshot == expected
     }
 
+    fun acceptStudyLoadTracker(
+        expected: StudyRouteSnapshot,
+        staged: StudySessionTracker,
+    ): StudyRouteSnapshot? = synchronized(routeStateLock) {
+        val current = _uiState.value.routeSnapshot
+        val loadingOnlyChange = current.phase == StudySessionPhase.LOADING &&
+            current.copy(phase = expected.phase, version = expected.version) == expected
+        if (current != expected && !loadingOnlyChange) {
+            return@synchronized null
+        }
+        tracker.replaceStateFrom(staged)
+        _uiState.value.routeSnapshot
+    }
+
     fun claimCurrentRouteAction(
         sessionToken: String,
         expectedGeneration: StudySessionGeneration,

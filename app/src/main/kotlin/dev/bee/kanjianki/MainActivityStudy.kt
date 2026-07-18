@@ -842,6 +842,27 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return true
     }
 
+    internal fun clearAdvancingStudyRecoveryForTerminal(
+        expected: StoredPendingStudyRecovery,
+        terminalEvidence: StudyRouteSnapshot,
+    ): Boolean {
+        val activeToken = activeSession?.token
+        if (!terminalEvidence.canComplete) {
+            return false
+        }
+        if (terminalEvidence.sessionToken == null) {
+            if (activeToken != null) return false
+        } else if (
+            terminalEvidence.progress.targetCount <= 0 ||
+            activeToken.isNullOrEmpty() ||
+            terminalEvidence.sessionToken != activeToken ||
+            expected.snapshot.feedback.sessionToken != activeToken
+        ) {
+            return false
+        }
+        return clearAdvancingStudyRecovery(expected, activeSession)
+    }
+
     internal fun acceptRestoredActiveStudySession(
         stored: StoredActiveStudyRecovery,
         session: RecordsSchedulerModels.StudySession,
