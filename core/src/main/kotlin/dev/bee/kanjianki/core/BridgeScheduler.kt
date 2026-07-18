@@ -91,6 +91,30 @@ class BridgeScheduler {
         )
     }
 
+    fun seedQueue(
+        allRows: List<RecordsImportModels.DashboardRow>?,
+        eligibleRows: List<RecordsImportModels.DashboardRow>?,
+        existing: List<RecordsStudyModels.StudyItem>?,
+        settings: RecordsSyncModels.Settings?,
+        nowMillis: Long,
+        startOfDayMillis: Long,
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        ladder: RecordsBase.StudyLadderSettings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null,
+    ): List<RecordsStudyModels.StudyItem> {
+        return queueSeeder.seedQueue(
+            safeRows(allRows),
+            safeRows(eligibleRows),
+            safeItems(existing),
+            safeSettings(settings),
+            nowMillis,
+            startOfDayMillis,
+            plan,
+            ladder,
+            evidenceStatusByKanji,
+        )
+    }
+
     fun seedExtraNewCards(
         rows: List<RecordsImportModels.DashboardRow>?,
         existing: List<RecordsStudyModels.StudyItem>?,

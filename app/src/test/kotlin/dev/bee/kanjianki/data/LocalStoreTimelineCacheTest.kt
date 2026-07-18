@@ -204,6 +204,41 @@ class LocalStoreTimelineCacheTest {
         )
     }
 
+    @Test
+    fun signatureReshuffleKeepsRetirementOnTheExistingKanjiTimeline() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val syncId = store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList(),
+            listOf(dashboardRow(0)),
+            settings,
+            500L,
+            900L,
+            null,
+        )
+        store.replaceStudyItems(listOf(studyItem("字0", 1_000L, signature = "字0|old|reading|meaning")))
+
+        store.replaceStudyItems(
+            listOf(
+                studyItem(
+                    "字0",
+                    1_000L,
+                    state = LocalStoreBase.STATE_RETIRED,
+                    signature = "字0|new|reading|meaning",
+                ),
+            ),
+            syncId = syncId,
+            occurredAt = 2_000L,
+            settings = settings,
+        )
+
+        val events = store.timelineForKanji("字0").events
+        assertTrue(
+            "items=${store.studyItems().map { it.state to it.answerSignature }} events=${events.map { it.eventType }}",
+            events.any { it.eventType == LocalStoreBase.STATE_RETIRED },
+        )
+    }
+
     private fun dashboardRows(count: Int): List<RecordsImportModels.DashboardRow> {
         return List(count) { index -> dashboardRow(index) }
     }
@@ -281,6 +316,7 @@ class LocalStoreTimelineCacheTest {
         kanji: String,
         dueAtMillis: Long,
         state: String = "review",
+        signature: String = "",
     ): RecordsStudyModels.StudyItem {
         return RecordsStudyModels.StudyItem(
             kanji,
@@ -299,6 +335,7 @@ class LocalStoreTimelineCacheTest {
             .rung(RecordsBase.LadderRung.KANJI_MEANING)
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .activeToken("token-$kanji")
+            .answerSignature(signature)
             .build()
     }
 }

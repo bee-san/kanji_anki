@@ -718,7 +718,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
 
         @JvmStatic
         fun studyTimelineKey(item: RecordsStudyModels.StudyItem): String {
-            return item.kanji + ":" + Integer.toHexString(item.answerSignature.hashCode())
+            return item.kanji
         }
 
         @JvmStatic

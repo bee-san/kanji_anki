@@ -38,18 +38,48 @@ object MidSyncReviewMergePolicy {
         }
         val result = ArrayList<StudyItem>(seeded.size)
         for (item in seeded) {
-            val baselineItem = StudyItemLineagePolicy.counterpart(item, baseline)
-            val current = baselineItem?.let { StudyItemLineagePolicy.counterpart(it, persisted) }
-            if (current != null && reviewLandedMidSync(baselineItem, current)) {
+            val reviewed = reviewedCompatibleItem(item, baseline, persisted)
+            if (reviewed != null) {
                 // Preserve the post-review scheduler state, but move it to the
                 // identity selected by this sync. The persistence boundary will
                 // then bump the revision because the key change is material.
-                result.add(current.copyBuilder().answerSignature(item.answerSignature).build())
+                result.add(reviewed.copyBuilder().answerSignature(item.answerSignature).build())
             } else {
                 result.add(item)
             }
         }
         return result
+    }
+
+    private fun reviewedCompatibleItem(
+        target: StudyItem,
+        baseline: List<StudyItem>,
+        persisted: List<StudyItem>,
+    ): StudyItem? {
+        var reviewed: StudyItem? = null
+        for (current in persisted) {
+            if (!StudyItemLineagePolicy.meaningCompatible(target, current)) {
+                continue
+            }
+            val baselineItem = StudyItemLineagePolicy.counterpart(current, baseline) ?: continue
+            if (!reviewLandedMidSync(baselineItem, current)) {
+                continue
+            }
+            val selected = reviewed
+            if (selected == null || isNewer(current, selected)) {
+                reviewed = current
+            }
+        }
+        return reviewed
+    }
+
+    private fun isNewer(candidate: StudyItem, current: StudyItem): Boolean {
+        return when {
+            candidate.schedulerRevision != current.schedulerRevision -> candidate.schedulerRevision > current.schedulerRevision
+            candidate.totalReviews != current.totalReviews -> candidate.totalReviews > current.totalReviews
+            candidate.createdAtMillis != current.createdAtMillis -> candidate.createdAtMillis < current.createdAtMillis
+            else -> false
+        }
     }
 
     /**

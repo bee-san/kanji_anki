@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -11,7 +12,9 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
+import dev.bee.kanjianki.core.TimelineCopy
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -55,7 +58,7 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
-    fun emptyProviderSnapshotRetiresSchedulerStateWithoutDeletingIt() {
+    fun transientEmptyProviderSnapshotPreservesActiveSchedulerStateAndFailsRetryably() {
         val now = 1_725_000_000_000L
         val row = repairRow("痛")
         val memory = RecordsStudyModels.TaskMemory(
@@ -91,16 +94,148 @@ class ManualSyncEngineReminderRescheduleTest {
 
         val result = engine.run()
 
-        assertTrue(result.success)
-        val retired = store.studyItems().single()
-        assertEquals("痛", retired.kanji)
-        assertEquals(StudyLadderRules.STATE_RETIRED, retired.state)
-        assertEquals(original.totalReviews, retired.totalReviews)
-        assertEquals(original.stability, retired.stability, 0.0)
-        assertEquals(original.rung, retired.rung)
-        assertEquals(original.realPassStreak, retired.realPassStreak)
-        assertEquals(memory.encode(), retired.wordReadingMemory.encode())
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        val preserved = store.studyItems().single()
+        assertEquals("痛", preserved.kanji)
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+        assertEquals(original.stability, preserved.stability, 0.0)
+        assertEquals(original.rung, preserved.rung)
+        assertEquals(original.realPassStreak, preserved.realPassStreak)
+        assertEquals(memory.encode(), preserved.wordReadingMemory.encode())
         assertTrue(store.hasConsumedToken("surviving-review"))
+    }
+
+    @Test
+    fun transientEmptySnapshotPreservesPriorMirrorWithoutStudyItems() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val prior = completeSnapshot("痛")
+        store.saveSuccessfulSync(
+            prior,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            emptyList<RecordsImportModels.DashboardRow>(),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        assertTrue(store.studyItems().isEmpty())
+        assertTrue(store.hasPersistedCollectionMirror())
+
+        val result = ManualSyncEngine(context, store, EmptyGateway(), settings).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertTrue(store.hasPersistedCollectionMirror())
+    }
+
+    @Test
+    fun queueBuildFailureRollsBackMirrorDashboardInventoryAndStudyPublication() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val oldRow = repairRow("旧")
+        val oldSnapshot = completeSnapshot("旧")
+        val oldItem = reviewItem(oldRow, 9_000L, 6, 1_000L)
+        store.saveSuccessfulSync(
+            oldSnapshot,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            listOf(oldRow),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        store.replaceStudyItems(listOf(oldItem))
+        val progress = SyncProgress.Listener {
+            if (it.stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE) {
+                throw IllegalStateException("injected queue-build failure")
+            }
+        }
+
+        val result = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("新")),
+            settings,
+            progress,
+        ).run()
+
+        assertFalse(result.success)
+        assertEquals(listOf("旧"), store.dashboardRows().map { it.kanji })
+        assertEquals("旧", store.inventoryItemForKanji("旧")?.kanji)
+        assertEquals(null, store.inventoryItemForKanji("新"))
+        assertEquals(listOf("旧"), sourceNoteExpressions())
+        val preserved = store.studyItems().single()
+        assertEquals("旧", preserved.kanji)
+        assertEquals(oldItem.totalReviews, preserved.totalReviews)
+        assertEquals(listOf("success", "retryable_error"), syncStatuses())
+    }
+
+    @Test
+    fun failureAfterQueueFinalizationRollsBackTheWholeOuterPublication() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val oldRow = repairRow("旧")
+        val oldItem = reviewItem(oldRow, 9_000L, 6, 1_000L)
+        store.saveSuccessfulSync(
+            completeSnapshot("旧"),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            listOf(oldRow),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        store.replaceStudyItems(listOf(oldItem))
+        val newRow = repairRow("新")
+        val newItem = reviewItem(newRow, 10_000L, 2, 2_000L)
+
+        try {
+            store.publishSyncAtomically {
+                val syncId = store.saveSuccessfulSync(
+                    suspendedSnapshot("新"),
+                    emptyList<RecordsImportModels.SuspendedImport>(),
+                    listOf(newRow),
+                    settings,
+                    LocalStoreBase.SyncTiming(3_000L, 4_000L),
+                    null,
+                    null,
+                    emptyList<RecordsImportModels.SuspendedImport>(),
+                    LocalStoreBase.STATUS_PENDING,
+                    null,
+                )
+                store.commitPendingSyncStudyItems(listOf(newItem), syncId, 4_000L, settings, listOf(oldItem))
+                throw IllegalStateException("injected post-finalization failure")
+            }
+        } catch (expected: IllegalStateException) {
+            assertEquals("injected post-finalization failure", expected.message)
+        }
+
+        assertEquals(listOf("旧"), store.dashboardRows().map { it.kanji })
+        assertEquals(listOf("旧"), sourceNoteExpressions())
+        assertEquals("旧", store.studyItems().single().kanji)
+        assertEquals(listOf("success"), syncStatuses())
+    }
+
+    @Test
+    fun notesOnlySnapshotCannotReplacePriorCompleteMirror() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val prior = completeSnapshot("痛")
+        store.saveSuccessfulSync(
+            prior,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            emptyList<RecordsImportModels.DashboardRow>(),
+            settings,
+            1_000L,
+            2_000L,
+            null,
+        )
+        val notesOnly = RecordsSyncModels.CollectionSnapshot(prior.notes, emptyList())
+
+        val result = ManualSyncEngine(context, store, SnapshotGateway(notesOnly), settings).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertTrue(store.hasPersistedCollectionMirror())
     }
 
     @Test
@@ -195,6 +330,130 @@ class ManualSyncEngineReminderRescheduleTest {
         assertEquals(omitted.schedulerRevision + 1L, retired.schedulerRevision)
         assertTrue(store.hasConsumedToken("represented-review"))
         assertTrue(store.hasConsumedToken("omitted-review"))
+    }
+
+    @Test
+    fun archivedSuspendedImportRemainsAnalyzableWhenProviderHidesTaggedNote() {
+        val now = 1_725_000_000_000L
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val firstEngine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("痛")),
+            settings,
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+        assertTrue(firstEngine.run().success)
+        assertEquals("痛", store.suspendedImports().single().kanji)
+        val painRow = store.dashboardRows().single { it.kanji == "痛" }
+        val original = reviewItem(painRow, now + 86_400_000L, 8, now - 86_400_000L)
+        store.replaceStudyItems(listOf(original))
+        val currentProvider = completeSnapshot("別", noteId = 2L, cardId = 20L)
+        assertTrue(currentProvider.cards.none { it.cardId == 10L })
+        val secondEngine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(currentProvider),
+            settings,
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now + 1_000L },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        assertTrue(secondEngine.run().success)
+        assertTrue(store.dashboardRows().any { it.kanji == "痛" })
+        val preserved = store.studyItems().single { it.kanji == "痛" }
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+    }
+
+    @Test
+    fun localBrowseSuspensionDoesNotRetireSchedulerStateOrTimeline() {
+        val now = 1_725_000_000_000L
+        val row = repairRow("痛")
+        val original = reviewItem(row, now + 86_400_000L, 8, now - 86_400_000L)
+            .copyBuilder()
+            .schedulerRevision(7L)
+            .build()
+        store.replaceStudyItems(listOf(original))
+        store.setKanjiLocallySuspended("痛", true, now - 1_000L)
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("痛")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(listOf("痛"), store.dashboardRows().map { it.kanji })
+        assertTrue(store.activeDashboardRows().isEmpty())
+        val preserved = store.studyItems().single()
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+        val timeline = store.timelineForKanji("痛")
+        assertFalse(timeline.events.any { it.eventType == StudyLadderRules.STATE_RETIRED })
+        assertFalse(TimelineCopy.statusText(timeline, now).contains("Retired"))
+    }
+
+    @Test
+    fun localBrowseSuspensionDoesNotRetireRegressingMatureProviderRow() {
+        val now = 1_725_000_000_000L
+        val row = repairRow("痛")
+        val original = reviewItem(row, now + 86_400_000L, 8, now - 86_400_000L)
+        store.replaceStudyItems(listOf(original))
+        insertEvidenceSnapshot(90L, now - 10_000L, "痛", weakness = 0, mature = 2)
+        listOf("good", "hard", "again").forEachIndexed { index, rating ->
+            store.saveReview(
+                RecordsSchedulerModels.ReviewRequest(
+                    "痛",
+                    "regressing-review-$index",
+                    rating,
+                    false,
+                    false,
+                    false,
+                    0,
+                ),
+                rating,
+                now - 9_000L + index * 1_000L,
+            )
+        }
+        store.setKanjiLocallySuspended("痛", true, now - 1_000L)
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(matureProviderSnapshot("痛")),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        val currentRow = store.dashboardRows().single()
+        assertEquals(2, currentRow.matureSupportCount)
+        assertEquals(
+            KanjiRepairEvidencePolicy.Status.REGRESSING,
+            engine.repairEvidenceStatusByKanji(listOf(currentRow), now)["痛"],
+        )
+        assertEquals(StudyLadderRules.STATE_REVIEW, store.studyItems().single().state)
+        assertFalse(store.timelineForKanji("痛").events.any { it.eventType == StudyLadderRules.STATE_RETIRED })
     }
 
     @Test
@@ -346,6 +605,40 @@ class ManualSyncEngineReminderRescheduleTest {
         return statuses
     }
 
+    private fun sourceNoteExpressions(): List<String> {
+        val expressions = mutableListOf<String>()
+        store.readableDatabase.rawQuery("SELECT expression FROM source_notes ORDER BY note_id", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                expressions += cursor.getString(0)
+            }
+        }
+        return expressions
+    }
+
+    private fun insertEvidenceSnapshot(
+        syncId: Long,
+        finishedAt: Long,
+        kanji: String,
+        weakness: Int,
+        mature: Int,
+    ) {
+        store.writableDatabase.execSQL(
+            "INSERT INTO sync_runs " +
+                "(id, started_at, finished_at, status, active_notes_count, active_cards_count, " +
+                "suspended_cards_archived_count, suspended_kanji_imported_count, deleted_notes_count, deleted_cards_count, " +
+                "error_code, error_message, removal_message) VALUES (?, ?, ?, 'success', 0, 0, 0, 0, 0, 0, NULL, NULL, '')",
+            arrayOf<Any>(syncId, finishedAt - 1L, finishedAt),
+        )
+        store.writableDatabase.execSQL(
+            "INSERT INTO sync_kanji_snapshots " +
+                "(sync_id, finished_at, kanji, active_cards, suspended_cards, mature_support_count, average_interval_days, " +
+                "total_lapses, total_reps, fsrs_stability_avg, fsrs_difficulty_avg, fsrs_retrievability_avg, weakness_score, " +
+                "reason_code, active_example_count, suspended_example_count) " +
+                "VALUES (?, ?, ?, 1, 0, ?, 10.0, 0, 5, NULL, NULL, NULL, ?, '', 1, 0)",
+            arrayOf<Any>(syncId, finishedAt, kanji, mature, weakness),
+        )
+    }
+
     private fun repairRow(kanji: String): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
             kanji,
@@ -404,7 +697,11 @@ class ManualSyncEngineReminderRescheduleTest {
         )
     }
 
-    private fun suspendedSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+    private fun suspendedSnapshot(
+        kanji: String,
+        noteId: Long = 1L,
+        cardId: Long = 10L,
+    ): RecordsSyncModels.CollectionSnapshot {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val fields = linkedMapOf(
             settings.expressionField to kanji,
@@ -415,11 +712,11 @@ class ManualSyncEngineReminderRescheduleTest {
             settings.frequencySortField to "9999",
         )
         return RecordsSyncModels.CollectionSnapshot(
-            listOf(RecordsSyncModels.Note(1L, settings.modelName, fields, emptyList())),
+            listOf(RecordsSyncModels.Note(noteId, settings.modelName, fields, emptyList())),
             listOf(
                 RecordsSyncModels.Card(
-                    10L,
-                    1L,
+                    cardId,
+                    noteId,
                     0,
                     "例文マイニング",
                     -1,
@@ -429,6 +726,43 @@ class ManualSyncEngineReminderRescheduleTest {
                     3,
                     0,
                     true,
+                ),
+            ),
+        )
+    }
+
+    private fun matureProviderSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+        val suspended = suspendedSnapshot(kanji)
+        return RecordsSyncModels.CollectionSnapshot(
+            suspended.notes,
+            listOf(
+                RecordsSyncModels.Card(10L, 1L, 0, "例文マイニング", 2, 2, 0, 30, 3, 3, false),
+                RecordsSyncModels.Card(11L, 1L, 1, "例文マイニング", 2, 2, 0, 30, 3, 3, false),
+            ),
+        )
+    }
+
+    private fun completeSnapshot(
+        kanji: String,
+        noteId: Long = 1L,
+        cardId: Long = 10L,
+    ): RecordsSyncModels.CollectionSnapshot {
+        val suspended = suspendedSnapshot(kanji, noteId, cardId)
+        return RecordsSyncModels.CollectionSnapshot(
+            suspended.notes,
+            listOf(
+                RecordsSyncModels.Card(
+                    cardId,
+                    noteId,
+                    0,
+                    "例文マイニング",
+                    2,
+                    0,
+                    30,
+                    0,
+                    3,
+                    0,
+                    false,
                 ),
             ),
         )

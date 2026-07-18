@@ -1098,6 +1098,24 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         return out
     }
 
+    fun unrestoredSuspendedArchiveCardIds(): Set<Long> {
+        val cardIds = LinkedHashSet<Long>()
+        readableDatabase.query(
+            TABLE_SUSPENDED_ARCHIVE,
+            arrayOf(COLUMN_CARD_ID),
+            "restored_at IS NULL",
+            null,
+            null,
+            null,
+            "$COLUMN_CARD_ID ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                cardIds.add(cursor.getLong(0))
+            }
+        }
+        return cardIds
+    }
+
     private companion object {
         const val DASHBOARD_ROW_LIMIT = "120"
 
