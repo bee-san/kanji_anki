@@ -95,14 +95,18 @@ internal object StudyItemReconciliationPolicy {
         val donor = routes.maxWithOrNull(Comparator(::compareRoute))!!
         val recurringFailureDonor = routes.filter { it.recurringFailure != null }
             .maxWithOrNull(Comparator(::compareRoute))
+        val selectedRecurringFailure = recurringFailureDonor?.recurringFailure
+        val selectedRecurringFailureCount = selectedRecurringFailure?.let { failure ->
+            routes.filter { it.recurringFailure == failure }.maxOf { it.recurringFailureCount }
+        } ?: 0
         val answerEvidenceDonor = routes.filter { it.answerEvidence != null }
             .maxWithOrNull(Comparator(::compareRoute))
         return AdaptiveRouteStateCodec.encode(
             donor.copy(
                 recognitionReviewCount = routes.maxOf { it.recognitionReviewCount },
                 contextualReadingReviewCount = routes.maxOf { it.contextualReadingReviewCount },
-                recurringFailure = recurringFailureDonor?.recurringFailure,
-                recurringFailureCount = routes.maxOf { it.recurringFailureCount },
+                recurringFailure = selectedRecurringFailure,
+                recurringFailureCount = selectedRecurringFailureCount,
                 repairAttemptCount = routes.maxOf { it.repairAttemptCount },
                 answerEvidence = answerEvidenceDonor?.answerEvidence,
             ),

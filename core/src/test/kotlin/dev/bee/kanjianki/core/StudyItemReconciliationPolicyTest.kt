@@ -247,6 +247,33 @@ class StudyItemReconciliationPolicyTest {
     }
 
     @Test
+    fun routeMergeKeepsFailureCountWithSelectedFailureKind() {
+        val selectedFailure = AdaptiveRouteState(
+            activeRepairTasks = listOf(StudyTaskTypes.TYPE_READING),
+            recurringFailure = FailureKind.WRONG_READING,
+            recurringFailureCount = 2,
+        )
+        val otherFailure = AdaptiveRouteState(
+            recurringFailure = FailureKind.MEANING_UNKNOWN,
+            recurringFailureCount = 5,
+        )
+
+        val forward = mergedRoute(selectedFailure, otherFailure)
+        val reverse = mergedRoute(otherFailure, selectedFailure)
+
+        assertEquals(FailureKind.WRONG_READING, forward.recurringFailure)
+        assertEquals(2, forward.recurringFailureCount)
+        assertEquals(forward, reverse)
+
+        val sameKindWithHigherCount = mergedRoute(
+            selectedFailure.copy(recurringFailureCount = 1),
+            otherFailure.copy(recurringFailure = FailureKind.WRONG_READING),
+        )
+        assertEquals(FailureKind.WRONG_READING, sameKindWithHigherCount.recurringFailure)
+        assertEquals(5, sameKindWithHigherCount.recurringFailureCount)
+    }
+
+    @Test
     fun routeMergeStaysEmptyWithoutPersistedRouteState() {
         val merged = StudyItemReconciliationPolicy.merge(baseItem(), baseItem())
 
