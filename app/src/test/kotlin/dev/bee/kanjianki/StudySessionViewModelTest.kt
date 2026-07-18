@@ -139,6 +139,21 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun stagedStudyLoadTargetShrinkPublishesExplicitReconciliation() {
+        val viewModel = viewModelAt(completed = 5, target = 7)
+        val expected = viewModel.acceptedRouteSnapshot()
+        val staged = viewModel.tracker.copyForStaging()
+        staged.initializeSessionPlan(emptyList())
+
+        val accepted = requireNotNull(viewModel.acceptStudyLoadTracker(expected, staged))
+
+        assertEquals(5, accepted.progress.completedCount)
+        assertEquals(5, accepted.progress.targetCount)
+        assertEquals(StudyRouteCompletionReason.TARGET_RECONCILIATION, accepted.completionEvidenceReason)
+        assertFalse(accepted.isComplete)
+    }
+
+    @Test
     fun directFiveOfSevenCompletionIsRejectedWithoutAnyMutation() {
         val viewModel = viewModelAt(completed = 5, target = 7)
         val beforeState = viewModel.uiState.value
@@ -318,6 +333,32 @@ class StudySessionViewModelTest {
                 noSessionEvidence.sessionGeneration,
                 noSessionEvidence.version,
                 noSessionEvidence.sessionToken,
+            ),
+        )
+        assertTrue(viewModel.acceptedRouteSnapshot().isComplete)
+    }
+
+    @Test
+    fun hardCapCompletionAcceptsTheLoadingSnapshotPublishedByTheRouteLoader() {
+        val viewModel = viewModelAt(completed = 1, target = 1)
+        viewModel.showLoading()
+        val loading = viewModel.acceptedRouteSnapshot()
+
+        assertEquals(StudySessionPhase.LOADING, loading.phase)
+        val evidence = requireNotNull(
+            viewModel.acceptCompletionEvidence(
+                StudyRouteCompletionReason.HARD_CAP,
+                loading.sessionGeneration,
+                loading.version,
+                loading.sessionToken,
+            ),
+        )
+        assertTrue(
+            viewModel.completeRoute(
+                StudyRouteCompletionReason.HARD_CAP,
+                evidence.sessionGeneration,
+                evidence.version,
+                evidence.sessionToken,
             ),
         )
         assertTrue(viewModel.acceptedRouteSnapshot().isComplete)

@@ -144,11 +144,19 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         reason: StudyRouteCompletionReason,
         expectedRoute: StudyRouteSnapshot,
     ) {
+        val terminalRoute = if (
+            reason == StudyRouteCompletionReason.NO_SESSION ||
+            reason == StudyRouteCompletionReason.FOCUS_COMPLETE
+        ) {
+            home.acceptTerminalSessionAbsence(expectedRoute) ?: return
+        } else {
+            expectedRoute
+        }
         val completionEvidence = home.studySessionViewModel.acceptCompletionEvidence(
             reason,
-            expectedRoute.sessionGeneration,
-            expectedRoute.version,
-            expectedRoute.sessionToken,
+            terminalRoute.sessionGeneration,
+            terminalRoute.version,
+            terminalRoute.sessionToken,
         ) ?: return
         if (
             !home.studySessionViewModel.completeRoute(

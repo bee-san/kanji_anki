@@ -38,6 +38,15 @@ class StudyRouteSnapshotTest {
     }
 
     @Test
+    fun displayedTargetIncludesAnAcceptedActiveTaskBeyondTheOriginalPlan() {
+        val snapshot = snapshot(completed = 7, target = 7, activeTask = true)
+
+        assertEquals(7, snapshot.displayedCompletedCount)
+        assertEquals(8, snapshot.displayedTargetCount)
+        assertEquals(0, snapshot.remainingCount)
+    }
+
+    @Test
     fun snapshotsCannotSilentlyRewriteTheirDenominatorOrCompleteThemselves() {
         val methodNames = StudyRouteSnapshot::class.java.declaredMethods.map { it.name }.toSet()
 
@@ -107,6 +116,7 @@ class StudyRouteSnapshotTest {
         target: Int,
         phase: StudySessionPhase = StudySessionPhase.ACTIVE,
         pendingWork: StudyRoutePendingWork = StudyRoutePendingWork.NONE,
+        activeTask: Boolean = false,
     ): StudyRouteSnapshot = StudyRouteSnapshot(
         version = StudyRouteVersion(7L),
         sessionGeneration = StudySessionGeneration(3L),
@@ -115,6 +125,7 @@ class StudyRouteSnapshotTest {
         progress = StudySessionProgressUiState(
             targetCount = target,
             completedCount = completed,
+            activeTask = activeTask,
         ),
         pendingWork = pendingWork,
     )

@@ -277,8 +277,7 @@ internal object StudySessionReducer {
         StudyRouteCompletionReason.HARD_CAP ->
             state.currentSession != null &&
                 state.progress.targetCount > 0 &&
-                state.phase != StudySessionPhase.IDLE &&
-                state.phase != StudySessionPhase.LOADING
+                state.phase != StudySessionPhase.IDLE
         StudyRouteCompletionReason.FOCUS_COMPLETE -> state.currentSession == null
         StudyRouteCompletionReason.NO_SESSION -> state.currentSession == null
         StudyRouteCompletionReason.TARGET_RECONCILIATION ->
@@ -393,6 +392,16 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
     }
 
     fun acceptedRouteSnapshot(): StudyRouteSnapshot = _uiState.value.routeSnapshot
+
+    fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? =
+        synchronized(routeStateLock) {
+            val current = _uiState.value.routeSnapshot
+            if (current != expectedRoute || current.isComplete) return@synchronized null
+            if (_uiState.value.currentSession == null) return@synchronized current
+            clearFeedbackLocked()
+            dispatchLocked(StudySessionEvent.SessionMounted(null))
+            _uiState.value.routeSnapshot
+        }
 
     fun acceptPendingWork(
         pendingWork: StudyRoutePendingWork,
@@ -631,6 +640,7 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
                 progress.targetCount < current.targetCount &&
                 progress.targetCount == progress.completedCount
             ) {
+                dispatchLocked(StudySessionEvent.TargetReconciled(progress))
                 return@synchronized
             }
             dispatchLocked(StudySessionEvent.ProgressChanged(progress))
@@ -649,17 +659,6 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
     private fun dispatch(event: StudySessionEvent): Boolean =
         synchronized(routeStateLock) { dispatchLocked(event) }
 
-    private fun dispatchGuarded(
-        expectedGeneration: StudySessionGeneration,
-        expectedVersion: StudyRouteVersion,
-        expectedSessionToken: String? = null,
-        event: StudySessionEvent,
-    ): Boolean = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(expectedGeneration, expectedVersion, expectedSessionToken)) {
-            return@synchronized false
-        }
-        dispatchLocked(event)
-    }
 
     private fun matchesRouteLocked(
         expectedGeneration: StudySessionGeneration,

@@ -863,6 +863,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return clearAdvancingStudyRecovery(expected, activeSession)
     }
 
+    internal fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? {
+        val accepted = studySessionViewModel.acceptTerminalSessionAbsence(expectedRoute) ?: return null
+        activeSimilarWritingRepair = null
+        return accepted
+    }
+
     internal fun acceptRestoredActiveStudySession(
         stored: StoredActiveStudyRecovery,
         session: RecordsSchedulerModels.StudySession,

@@ -85,6 +85,26 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun noSessionTerminalUnmountsThePreviousSessionBeforeCompleting() {
+        val activity = createActivity()
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionViewModel.mountSession(session)
+        val active = activity.studySessionViewModel.acceptedRouteSnapshot()
+
+        activity.doneActions.renderStudyForKanjiNotAvailable(active)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertNull(activity.activeSession)
+        assertNull(activity.studySessionViewModel.acceptedRouteSnapshot().sessionToken)
+        assertEquals(
+            StudyRouteCompletionReason.NO_SESSION,
+            activity.studySessionViewModel.acceptedRouteSnapshot().completionReason,
+        )
+        assertTrue(activity.studySessionViewModel.acceptedRouteSnapshot().isComplete)
+    }
+
+    @Test
     fun answeredFlashcardRouteRestoresAppliedFeedbackAndTypedAnswer() {
         val activity = createActivity()
         val baseSession = flashcardSession()
@@ -440,7 +460,9 @@ class MainActivityStudyRouteInitializationTest {
 
         activity.studySessionTracker.setTargetCount(1)
         activity.studySessionTracker.markTaskCompleted(StudySessionTracker.sessionTaskKey(session))
+        activity.studySessionViewModel.showLoading()
         val terminalEvidence = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.LOADING, terminalEvidence.phase)
         assertEquals(session.token, terminalEvidence.sessionToken)
         assertTrue(terminalEvidence.canComplete)
         assertTrue(activity.clearAdvancingStudyRecoveryForTerminal(advancing, terminalEvidence))

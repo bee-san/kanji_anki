@@ -119,7 +119,15 @@ internal data class StudyRouteSnapshot(
         get() = progress.completedCount
 
     val displayedTargetCount: Int
-        get() = progress.targetCount
+        get() = if (
+            progress.activeTask &&
+            progress.completedCount == progress.targetCount &&
+            progress.targetCount < Int.MAX_VALUE
+        ) {
+            progress.targetCount + 1
+        } else {
+            progress.targetCount
+        }
 
     val remainingCount: Int
         get() = progress.targetCount - progress.completedCount
