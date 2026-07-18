@@ -25,7 +25,7 @@ Re-verified on 2026-07-18 before creating this plan:
 The parent design and architecture audits disagreed in two places. This plan resolves them explicitly:
 
 1. **Provider class names:** use the audited concise names `QuickStudyWidgetReceiver`, `ActivityWidgetReceiver`, and `FocusKanjiWidgetReceiver` (plus matching Glance classes), not the mock specification's `Kani...` alternatives.
-2. **Focus selection:** use the architecture audit's local-day deterministic inventory policy. Due state may annotate the selected glyph, but must not influence which glyph is selected. This gives the design's truthful optional Due/Study affordance without changing the focus item after each review.
+2. **Focus selection:** use the architecture audit's local-day deterministic inventory policy over committed inventory intersected with the canonical Study-eligible glyph set. Retired, off-dashboard, and locally suspended rows therefore cannot surface, but the UI never labels those distinct reasons interchangeably. Due state may annotate the selected glyph, but must not influence which glyph is selected. This gives the design's truthful optional Due/Study affordance without changing the focus item after each review.
 3. **Responsive geometry:** use the approved design specification's rendered tiers exactly. The architecture handoff's `110x72`/`110x130` table is provider-level shorthand, not a replacement for the approved Tiny/Compact/Regular/Wide variants. Target-cell metadata controls the recommended default while min/max resize bounds keep every approved tier reachable.
 4. **Picker names:** use the approved concise labels and EN/JA descriptions in the table below. Do not add the architecture handoff's provisional `Kani:` prefix; the app name and icon already establish family ownership in the picker.
 
@@ -39,12 +39,13 @@ These are release blockers, not preferences:
 4. A launcher render checks `context.getDatabasePath(LocalStoreSchema.DB_NAME).isFile` before constructing `LocalStore`. Missing, corrupt, and half-created databases return typed fallback states and never create/repair a database.
 5. Every snapshot read runs off the main thread. No widget path calls AnkiDroid, network, sync, provider write-back, `DictionaryAssets.load`, `DictionaryStore.open`, or any API that installs/copies reference data.
 6. Every due count or Due badge is derived from `ReminderEligibilityPolicy.eligibleReminderItems`; the widget must not advertise work Study rejects.
-7. Focus displays only a normalized local glyph, its stored cleaned `primaryMeaning`, and its stored `readings` when nonblank. It never generates, translates, infers, or substitutes facts.
-8. No sync button, headless sync, new periodic worker, exact-alarm permission, provider mutation, personal-data log, or fifth widget.
-9. All four providers refresh through `KaniWidgetRegistry`; removing one provider must not cancel work required by another.
-10. EN/JA live copy stays in `core/.../WidgetTextCopy.kt`; picker/loading/preview copy stays in localized resources and is tested against the same budgets.
-11. Real launcher picker and placed-widget PNGs on API 26 and API 35 are mandatory. XML previews, Compose previews, mockups, and cropped app-only images are not acceptance evidence.
-12. One implementation branch and one integrated PR only.
+7. A persisted scheduler item whose canonical state is `retired` is excluded from Study Overview, Quick Study, reminders, and Focus Kanji. Missing current rows and local Browse `SUSPENDED` are separate conditions and must never be presented as `Retired by Anki support`.
+8. Focus displays only a normalized local glyph, its stored cleaned `primaryMeaning`, and its stored `readings` when nonblank. It never generates, translates, infers, or substitutes facts.
+9. No sync button, headless sync, new periodic worker, exact-alarm permission, provider mutation, personal-data log, or fifth widget.
+10. All four providers refresh through `KaniWidgetRegistry`; removing one provider must not cancel work required by another.
+11. EN/JA live copy stays in `core/.../WidgetTextCopy.kt`; picker/loading/preview copy stays in localized resources and is tested against the same budgets.
+12. Real launcher picker and placed-widget PNGs on API 26 and API 35 are mandatory. XML previews, Compose previews, mockups, and cropped app-only images are not acceptance evidence.
+13. One implementation branch and one integrated PR only.
 
 ## 3. Provider and responsive contract
 
@@ -94,7 +95,7 @@ Under `core/src/main/kotlin/dev/bee/kanjianki/core/`:
 
 - `FocusKanjiSelectionPolicy.kt`
   - `FocusKanjiSelection` data class.
-  - pure `select(items, nowMillis, zoneId)` function.
+  - pure `select(items, allowedKanji, nowMillis, zoneId)` function; `allowedKanji` comes only from canonical Study eligibility.
 
 Provider resources:
 
@@ -212,15 +213,18 @@ Legacy `heatmap` Study Overview instances load this same Activity snapshot but r
 `FocusKanjiSelectionPolicy` receives committed `RecordsImportModels.KanjiInventoryItem` rows and:
 
 1. Normalizes with `TextUtil.normalizeSingleKanji`.
-2. Requires `sourceCount > 0`, `suspended == false`, and nonblank cleaned `primaryMeaning`.
-3. Keeps stored `readings` optional; blank means omit the reading line, not empty/fabricated fallback text.
-4. Sorts by normalized glyph, then stored meaning/readings as deterministic duplicate tie-breakers; deduplicates by glyph.
-5. Computes `localDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()`.
-6. Selects `floorMod(localDate.toEpochDay(), eligible.size)`.
+2. Requires the normalized glyph to be in `allowedKanji`, where the loader derives that set from `ReminderEligibilityPolicy.eligibleReminderItems(studyItems, dashboardRows, ladder)`.
+3. Requires `sourceCount > 0`, `suspended == false`, and nonblank cleaned `primaryMeaning`.
+4. Keeps stored `readings` optional; blank means omit the reading line, not empty/fabricated fallback text.
+5. Sorts by normalized glyph, then stored meaning/readings as deterministic duplicate tie-breakers; deduplicates by glyph.
+6. Computes `localDate = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()`.
+7. Selects `floorMod(localDate.toEpochDay(), eligible.size)`.
 
-The result is input-order independent and stable for the local calendar day, including year and DST boundaries. A committed sync may change the eligible inventory and thus the day's item; reviews do not rotate it.
+The result is input-order independent and stable for the local calendar day, including year and DST boundaries. A committed sync may change inventory or retire/reopen a scheduler family and thus change the day's item; ordinary reviews do not rotate it because canonical eligibility is not due-time based.
 
-`FocusKanjiWidgetSnapshotLoader` reads `store.allInventoryItems()`, theme, and the existing eligible study set. Selection uses inventory only. After selection, `isDueNow` is true only if the selected glyph appears in the `ReminderEligibilityPolicy` eligible set with `dueAtMillis <= nowMillis`; this annotation never changes selection order.
+`FocusKanjiWidgetSnapshotLoader` reads `store.allInventoryItems()`, dashboard rows, study items, ladder settings, and theme. It computes `eligibleItems = ReminderEligibilityPolicy.eligibleReminderItems(...)`, passes `eligibleItems.mapToSet { it.kanji }` into selection, and sets `isDueNow` only when the selected eligible item has `dueAtMillis <= nowMillis`. Quick and Study consume the same Study snapshot/eligible list, so no surface implements a second retirement rule.
+
+The widget never infers retirement from a missing dashboard row, missing current scheduler row, or `KanjiInventoryItem.suspended`. Those conditions may remove a candidate through canonical eligibility or the explicit inventory suspension filter, but live copy remains the neutral honest empty/setup/error copy; only the in-app lifecycle/timeline may say `Retired by Anki support` for a persisted canonical retired state.
 
 States:
 
@@ -362,7 +366,9 @@ If a later worker runs on a different host, use that workspace's `AGENTS.md` SDK
   - `ActivityWidgetSnapshotLoaderTest.kt`.
   - `FocusKanjiWidgetSnapshotLoaderTest.kt`.
   - `WidgetLocalStoreReaderTest.kt`.
+  - `KaniWidgetRetiredEligibilityTest.kt`.
 - RED cases: missing path remains absent; directory/invalid/half-created file returns typed fallback; corrupt read does not throw; Study due parity uses `ReminderEligibilityPolicy`; Activity emits exactly 35 local-day buckets; Focus reads only committed inventory and reports honest empty.
+- In `KaniWidgetRetiredEligibilityTest`, use one fixture containing active due, retired due, locally suspended, and missing-current-row families. Assert Study Overview and Quick expose the same active count as `ReminderEligibilityPolicy`, Focus receives only the canonical active glyph set, and no widget fallback copy calls missing/suspended data `Retired by Anki support`.
 
 **Production**
 
@@ -372,7 +378,7 @@ If a later worker runs on a different host, use that workspace's `AGENTS.md` SDK
 **Commands**
 
 ```bash
-./gradlew :app:testDebugUnitTest --tests 'dev.bee.kanjianki.widget.*SnapshotLoaderTest' --tests 'dev.bee.kanjianki.widget.WidgetLocalStoreReaderTest'
+./gradlew :app:testDebugUnitTest --tests 'dev.bee.kanjianki.widget.*SnapshotLoaderTest' --tests 'dev.bee.kanjianki.widget.WidgetLocalStoreReaderTest' --tests 'dev.bee.kanjianki.widget.KaniWidgetRetiredEligibilityTest'
 git add app/src/main/kotlin/dev/bee/kanjianki/widget app/src/test/kotlin/dev/bee/kanjianki/widget
 git commit -m "refactor(widget): split safe local snapshots"
 ```
@@ -481,7 +487,7 @@ git commit -m "feat(widget): add Activity picker entry"
 
 **Tests first**
 
-- Create `core/.../FocusKanjiSelectionPolicyTest.kt`: normalization, `sourceCount`, suspension, meaning requirement, optional reading, dedupe/ties, input-order independence, same-day stability, next-day rotation, negative epoch floor-mod, year/DST/zone behavior, exact stored text, empty set.
+- Create `core/.../FocusKanjiSelectionPolicyTest.kt`: normalization, canonical `allowedKanji`, retired/not-allowed exclusion, `sourceCount`, suspension, meaning requirement, optional reading, dedupe/ties, input-order independence, same-day stability, next-day rotation, negative epoch floor-mod, year/DST/zone behavior, exact stored text, empty set.
 - Extend `MainActivityStartupTest.kt` and `KaniWidgetLaunchTest.kt`: valid literal, invalid/multi-glyph/blank fallback, cold/warm route, duplicate-activity flags, no dictionary/sync action.
 
 **Production**
@@ -601,6 +607,7 @@ No design approval, final QA, or merge may proceed without the real picker and p
 - Task 03 fetches the same branch, verifies the handed-off SHA, and lands commits 5–6.
 - Task 04 fetches the same branch, verifies the handed-off SHA, lands commits 7–9, and opens the single integrated PR.
 - Screenshot, review, and polish tasks review or append to that same branch/PR as directed; they do not create competing feature PRs.
+- Task 10's QA/merge gate must remain dependent on retired-support finalizer `t_b51f99b4`; do not merge widgets while canonical retirement/reopen semantics or their released-APK proof are still unsettled.
 - At every handoff: push, compare local SHA with `git ls-remote origin refs/heads/feat/multi-widget-family`, and record exact SHA/tests.
 - If `origin/main` moves, do not silently rebase a child. The active implementation owner integrates current main once on this branch, reruns the focused and `ciFast` gates, and records the new base.
 - Stop rather than auto-resolve incoherent parent SHA/branch handoffs, risky red CI, privacy exposure, fabricated Focus data, secrets/signing, destructive data operations, or paid quota.
@@ -623,7 +630,8 @@ Tenant: `kani-multi-widget-family-20260718`
 - 08A final screenshots: `t_fe975a0f` <- 07
 - 08B final safety re-review: `t_7cc9a6be` <- 07
 - 09 final design signoff: `t_f5fae75a` <- 08A
-- 10 QA/CI/Sonar/merge: `t_48cdf775` <- 09 + 08B
+- External retired-support finalizer: `t_b51f99b4`
+- 10 QA/CI/Sonar/merge: `t_48cdf775` <- 09 + 08B + `t_b51f99b4`
 - 11 released APK verification: `t_367fbcb0` <- 10
 - 12 finalizer: `t_6b96a965` <- 11
 
@@ -644,6 +652,7 @@ flowchart TD
     S2 --> DS["09 final design signoff<br/>t_f5fae75a"]
     DS --> MERGE["10 QA/CI/Sonar/merge<br/>t_48cdf775"]
     R2 --> MERGE
+    RET["Retired-support finalizer<br/>t_b51f99b4"] --> MERGE
     MERGE --> APK["11 released APK verification<br/>t_367fbcb0"]
     APK --> FIN["12 finalizer<br/>t_6b96a965"]
 ```
@@ -657,9 +666,9 @@ Implementation is complete only when:
 - four and only four picker providers are discoverable on API 26 and API 35;
 - pre-upgrade Due and Heatmap IDs/state/theme survive in place;
 - no launcher path creates/repairs a DB or touches network/provider/dictionary installation;
-- Study/Quick due claims match `ReminderEligibilityPolicy` and all loaders are off main;
-- Focus selection is deterministic/local/truthful with honest missing/error/empty states;
+- Study/Quick/reminder due claims match `ReminderEligibilityPolicy`, retired rows are excluded, and all loaders are off main;
+- Focus selection is deterministic/local/truthful, intersects canonical Study eligibility, excludes retired rows, and uses honest missing/error/empty states without conflating missing or local suspension with retirement;
 - every event source reaches every installed provider through the tested registry;
 - EN/JA, contrast, font scale, semantics, resize, picker previews, and independent targets pass;
 - the full required real screenshot/sidecar matrix exists;
-- focused tests, `ciFast`, integrated PR CI, Sonar review, safety re-review, design signoff, upgrade smoke, and released-APK verification are green.
+- focused tests, `ciFast`, integrated PR CI, Sonar review, safety re-review, design signoff, upgrade smoke, and released-APK verification are green; QA/merge also waits for retired-support finalizer `t_b51f99b4`.
