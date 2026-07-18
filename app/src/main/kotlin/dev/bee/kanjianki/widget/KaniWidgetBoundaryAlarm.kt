@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.edit
 import java.time.ZoneId
 
 /** One durable inexact alarm shared by every installed Kani widget provider. */
@@ -25,10 +26,10 @@ internal object KaniWidgetBoundaryAlarm {
         val dueAt = KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(nowMillis, nextUsefulAtMillis)
         val midnightAt = KaniWidgetRefreshPolicy.nextLocalMidnightMillis(nowMillis, zoneId)
         val preferences = preferences(context)
-        preferences.edit()
-            .putOrRemove(KEY_DUE_AT, dueAt)
-            .putLong(KEY_MIDNIGHT_AT, midnightAt)
-            .commit()
+        preferences.edit(commit = true) {
+            putOrRemove(KEY_DUE_AT, dueAt)
+            putLong(KEY_MIDNIGHT_AT, midnightAt)
+        }
         reschedulePersisted(context, nowMillis)
     }
 
@@ -37,12 +38,12 @@ internal object KaniWidgetBoundaryAlarm {
         nowMillis: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
     ) {
-        preferences(context).edit()
-            .putLong(
+        preferences(context).edit(commit = true) {
+            putLong(
                 KEY_MIDNIGHT_AT,
                 KaniWidgetRefreshPolicy.nextLocalMidnightMillis(nowMillis, zoneId),
             )
-            .commit()
+        }
         reschedulePersisted(context, nowMillis)
     }
 
@@ -52,7 +53,7 @@ internal object KaniWidgetBoundaryAlarm {
 
     fun reset(context: Context) {
         cancelAlarm(context)
-        preferences(context).edit().clear().commit()
+        preferences(context).edit(commit = true) { clear() }
     }
 
     fun onProvidersChanged(context: Context, hasInstalledWidgets: Boolean) {
@@ -69,12 +70,12 @@ internal object KaniWidgetBoundaryAlarm {
         val triggerAt = listOf(dueAt, midnightAt).filter { it > 0L }.minOrNull() ?: 0L
         if (triggerAt <= 0L) {
             cancelAlarm(context)
-            preferences.edit().remove(KEY_SCHEDULED_AT).commit()
+            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
             return
         }
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         alarmManager.set(AlarmManager.RTC, triggerAt, pendingIntent(context))
-        preferences.edit().putLong(KEY_SCHEDULED_AT, triggerAt).commit()
+        preferences.edit(commit = true) { putLong(KEY_SCHEDULED_AT, triggerAt) }
     }
 
     private fun cancelAlarm(context: Context) {
