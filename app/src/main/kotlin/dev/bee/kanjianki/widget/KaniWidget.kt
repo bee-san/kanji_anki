@@ -62,6 +62,7 @@ internal class KaniWidget(
     override val sizeMode = SizeMode.Responsive(setOf(COMPACT_SIZE, EXPANDED_SIZE, WIDE_SIZE))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        val nowMillis = System.currentTimeMillis()
         val prefs = getAppWidgetState<Preferences>(context, id)
         val options = KaniWidgetInstanceOptions.fromStorageValues(
             prefs[stringPreferencesKey(KaniWidgetInstanceOptions.STYLE_PREF_KEY)],
@@ -69,18 +70,19 @@ internal class KaniWidget(
         )
         if (options.style == KaniWidgetStyle.HEATMAP) {
             val activitySnapshot = withContext(ioDispatcher) {
-                ActivityWidgetSnapshotLoader.load(context)
+                ActivityWidgetSnapshotLoader.load(context, nowMillis)
             }
+            KaniWidgetBoundaryAlarm.scheduleDailyBoundary(context, nowMillis)
             provideContent {
                 LegacyActivityWidgetContent(activitySnapshot, options)
             }
         } else {
             val snapshot = withContext(ioDispatcher) {
-                StudyWidgetSnapshotLoader.load(context)
+                StudyWidgetSnapshotLoader.load(context, nowMillis)
             }
-            KaniWidgetBoundaryAlarm.scheduleIfUseful(
+            KaniWidgetBoundaryAlarm.scheduleStudyBoundary(
                 context,
-                System.currentTimeMillis(),
+                nowMillis,
                 snapshot.nextUsefulAtMillis,
             )
             provideContent {

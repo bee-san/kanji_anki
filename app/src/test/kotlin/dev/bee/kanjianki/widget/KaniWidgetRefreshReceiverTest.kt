@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,5 +60,37 @@ class KaniWidgetRefreshReceiverTest {
         assertTrue(intent.component?.className == KaniWidgetRefreshReceiver::class.java.name)
         assertTrue(intent.action == KaniWidgetRefreshPolicy.ACTION_WIDGET_REFRESH)
         assertTrue(intent.`package` == context.packageName)
+    }
+
+    @Test
+    fun timeAndZoneChangesResetBoundaryBeforeRefreshing() = runTest {
+        val receiver = KaniWidgetRefreshReceiver()
+        val events = mutableListOf<String>()
+        receiver.coroutineScope = this
+        receiver.boundaryReset = { events += "reset" }
+        receiver.refreshInstalled = { events += "refresh" }
+
+        receiver.prepareBoundaryState(context, Intent(Intent.ACTION_TIMEZONE_CHANGED))
+        receiver.launchRefresh(context) {}
+        advanceUntilIdle()
+
+        assertTrue(events == listOf("reset", "refresh"))
+    }
+
+    @Test
+    fun alarmRefreshMarksPersistedBoundaryFiredBeforeRefreshing() = runTest {
+        val receiver = KaniWidgetRefreshReceiver()
+        val events = mutableListOf<String>()
+        receiver.coroutineScope = this
+        receiver.boundaryFired = { events += "fired" }
+        receiver.refreshInstalled = { events += "refresh" }
+        val intent = KaniWidgetUpdater.refreshIntent(context)
+            .putExtra(KaniWidgetBoundaryAlarm.EXTRA_BOUNDARY_TRIGGER, true)
+
+        receiver.prepareBoundaryState(context, intent)
+        receiver.launchRefresh(context) {}
+        advanceUntilIdle()
+
+        assertTrue(events == listOf("fired", "refresh"))
     }
 }

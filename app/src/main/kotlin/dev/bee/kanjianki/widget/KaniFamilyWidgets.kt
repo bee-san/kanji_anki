@@ -17,7 +17,9 @@ internal class QuickStudyWidget(
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(72.dp, 72.dp), DpSize(180.dp, 72.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = withContext(ioDispatcher) { StudyWidgetSnapshotLoader.load(context) }
+        val nowMillis = System.currentTimeMillis()
+        val snapshot = withContext(ioDispatcher) { StudyWidgetSnapshotLoader.load(context, nowMillis) }
+        KaniWidgetBoundaryAlarm.scheduleStudyBoundary(context, nowMillis, snapshot.nextUsefulAtMillis)
         provideContent { KaniWidgetContent(snapshot) }
     }
 }
@@ -28,7 +30,9 @@ internal class ActivityWidget(
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(180.dp, 120.dp), DpSize(250.dp, 130.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = withContext(ioDispatcher) { ActivityWidgetSnapshotLoader.load(context) }
+        val nowMillis = System.currentTimeMillis()
+        val snapshot = withContext(ioDispatcher) { ActivityWidgetSnapshotLoader.load(context, nowMillis) }
+        KaniWidgetBoundaryAlarm.scheduleDailyBoundary(context, nowMillis)
         provideContent { LegacyActivityWidgetContent(snapshot, KaniWidgetInstanceOptions()) }
     }
 }
@@ -39,7 +43,9 @@ internal class FocusKanjiWidget(
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 120.dp), DpSize(250.dp, 130.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val focus = withContext(ioDispatcher) { FocusKanjiWidgetSnapshotLoader.load(context) }
+        val nowMillis = System.currentTimeMillis()
+        val focus = withContext(ioDispatcher) { FocusKanjiWidgetSnapshotLoader.load(context, nowMillis) }
+        KaniWidgetBoundaryAlarm.scheduleDailyBoundary(context, nowMillis)
         val fallback = when (focus.state) {
             FocusKanjiWidgetState.NOT_SET_UP -> KaniWidgetSnapshot(KaniWidgetState.NOT_SET_UP)
             FocusKanjiWidgetState.ERROR -> KaniWidgetSnapshot(KaniWidgetState.ERROR)
