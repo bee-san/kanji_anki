@@ -333,6 +333,47 @@ class ManualSyncEngineReminderRescheduleTest {
     }
 
     @Test
+    fun archivedSuspendedImportRemainsAnalyzableWhenProviderHidesTaggedNote() {
+        val now = 1_725_000_000_000L
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val firstEngine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(suspendedSnapshot("痛")),
+            settings,
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+        assertTrue(firstEngine.run().success)
+        assertEquals("痛", store.suspendedImports().single().kanji)
+        val painRow = store.dashboardRows().single { it.kanji == "痛" }
+        val original = reviewItem(painRow, now + 86_400_000L, 8, now - 86_400_000L)
+        store.replaceStudyItems(listOf(original))
+        val currentProvider = completeSnapshot("別", noteId = 2L, cardId = 20L)
+        assertTrue(currentProvider.cards.none { it.cardId == 10L })
+        val secondEngine = ManualSyncEngine(
+            context,
+            store,
+            SnapshotGateway(currentProvider),
+            settings,
+            SyncProgress.NONE,
+            dev.bee.kanjianki.time.AppClock { now + 1_000L },
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        assertTrue(secondEngine.run().success)
+        assertTrue(store.dashboardRows().any { it.kanji == "痛" })
+        val preserved = store.studyItems().single { it.kanji == "痛" }
+        assertEquals(StudyLadderRules.STATE_REVIEW, preserved.state)
+        assertEquals(original.totalReviews, preserved.totalReviews)
+    }
+
+    @Test
     fun localBrowseSuspensionDoesNotRetireSchedulerStateOrTimeline() {
         val now = 1_725_000_000_000L
         val row = repairRow("痛")
@@ -656,7 +697,11 @@ class ManualSyncEngineReminderRescheduleTest {
         )
     }
 
-    private fun suspendedSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
+    private fun suspendedSnapshot(
+        kanji: String,
+        noteId: Long = 1L,
+        cardId: Long = 10L,
+    ): RecordsSyncModels.CollectionSnapshot {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val fields = linkedMapOf(
             settings.expressionField to kanji,
@@ -667,11 +712,11 @@ class ManualSyncEngineReminderRescheduleTest {
             settings.frequencySortField to "9999",
         )
         return RecordsSyncModels.CollectionSnapshot(
-            listOf(RecordsSyncModels.Note(1L, settings.modelName, fields, emptyList())),
+            listOf(RecordsSyncModels.Note(noteId, settings.modelName, fields, emptyList())),
             listOf(
                 RecordsSyncModels.Card(
-                    10L,
-                    1L,
+                    cardId,
+                    noteId,
                     0,
                     "例文マイニング",
                     -1,
@@ -697,14 +742,18 @@ class ManualSyncEngineReminderRescheduleTest {
         )
     }
 
-    private fun completeSnapshot(kanji: String): RecordsSyncModels.CollectionSnapshot {
-        val suspended = suspendedSnapshot(kanji)
+    private fun completeSnapshot(
+        kanji: String,
+        noteId: Long = 1L,
+        cardId: Long = 10L,
+    ): RecordsSyncModels.CollectionSnapshot {
+        val suspended = suspendedSnapshot(kanji, noteId, cardId)
         return RecordsSyncModels.CollectionSnapshot(
             suspended.notes,
             listOf(
                 RecordsSyncModels.Card(
-                    10L,
-                    1L,
+                    cardId,
+                    noteId,
                     0,
                     "例文マイニング",
                     2,

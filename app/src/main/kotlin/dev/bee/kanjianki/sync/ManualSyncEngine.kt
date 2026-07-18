@@ -149,7 +149,7 @@ internal class ManualSyncEngine {
             ).importFrom(snapshot, settings)
             val currentSuspendedImports = SuspendedImportPolicy.suspendedImportsOnly(selectedImports)
             val storedSuspendedImports = if (settings.importSuspendedCards) {
-                storedImportsWithCurrentProviderRoute(snapshot, store.suspendedImports())
+                storedImportsWithDurableProviderRoute(snapshot, store.suspendedImports())
             } else {
                 emptyList()
             }
@@ -539,14 +539,15 @@ internal class ManualSyncEngine {
         return KanjiRepairEvidencePolicy.summarize(updated).status()
     }
 
-    private fun storedImportsWithCurrentProviderRoute(
+    private fun storedImportsWithDurableProviderRoute(
         snapshot: RecordsSyncModels.CollectionSnapshot,
         imports: List<RecordsImportModels.SuspendedImport>,
     ): List<RecordsImportModels.SuspendedImport> {
         if (imports.isEmpty()) return emptyList()
-        val currentCardIds = snapshot.cards.mapTo(HashSet<Long>()) { it.cardId }
+        val durableCardIds = snapshot.cards.mapTo(HashSet<Long>()) { it.cardId }
+        durableCardIds.addAll(store.unrestoredSuspendedArchiveCardIds())
         return imports.filter { imported ->
-            imported.sources.any { source -> source.cardId in currentCardIds }
+            imported.sources.any { source -> source.cardId in durableCardIds }
         }
     }
 
