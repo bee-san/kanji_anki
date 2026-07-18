@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.ArrayDeque
@@ -22,6 +23,32 @@ class AsyncHomeRouteLoaderTest {
             next.run()
             return true
         }
+    }
+
+    @Test
+    fun supersededLoadDoesNotStartAfterANewerRequestIsQueued() {
+        val background = ManualExecutor()
+        val mainQueue = ArrayDeque<Runnable>()
+        val loader = AsyncHomeRouteLoader(background, { mainQueue.add(it) })
+        var staleLoadStarted = false
+
+        loader.load(
+            showLoading = {},
+            load = {
+                staleLoadStarted = true
+                "stale"
+            },
+            render = {},
+        )
+        loader.load(
+            showLoading = {},
+            load = { "fresh" },
+            render = {},
+        )
+
+        assertTrue(background.runNext())
+
+        assertFalse("superseded work must be rejected before its load lambda runs", staleLoadStarted)
     }
 
     @Test

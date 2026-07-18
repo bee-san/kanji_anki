@@ -56,6 +56,37 @@ internal class StudySessionTracker(
         )
     }
 
+    fun copyForStaging(): StudySessionTracker {
+        val state = synchronized(lock) { stateLocked() }
+        return StudySessionTracker(
+            elapsedRealtime = elapsedRealtime,
+        ).also { staged ->
+            synchronized(staged.lock) { staged.restoreStateLocked(state) }
+        }
+    }
+
+    fun replaceStateFrom(staged: StudySessionTracker) {
+        val state = synchronized(staged.lock) { staged.stateLocked() }
+        synchronized(lock) { restoreStateLocked(state) }
+        onChanged()
+    }
+
+    private fun stateLocked(): State = State(
+        progressTracker = progressTracker.copyForStaging(),
+        plannedSessionTaskKeys = ArrayList(plannedSessionTaskKeys),
+        completedPlannedSessionTaskKeys = HashSet(completedPlannedSessionTaskKeys),
+        activeTask = activeTask?.copy(),
+    )
+
+    private fun restoreStateLocked(state: State) {
+        progressTracker.replaceStateFrom(state.progressTracker)
+        plannedSessionTaskKeys.clear()
+        plannedSessionTaskKeys.addAll(state.plannedSessionTaskKeys)
+        completedPlannedSessionTaskKeys.clear()
+        completedPlannedSessionTaskKeys.addAll(state.completedPlannedSessionTaskKeys)
+        activeTask = state.activeTask?.copy()
+    }
+
     fun resetProgress() {
         synchronized(lock) {
             resetProgressLocked()
@@ -474,7 +505,19 @@ internal class StudySessionTracker(
                 nowElapsedMillis,
             )
         }
+
+        fun copy(): ActiveStudyTask = ActiveStudyTask(taskKey, kanji, taskType, startedAtMillis).also {
+            it.activeElapsedMillis = activeElapsedMillis
+            it.visibleSinceElapsedMillis = visibleSinceElapsedMillis
+        }
     }
+
+    private data class State(
+        val progressTracker: StudySessionProgressTracker,
+        val plannedSessionTaskKeys: List<String>,
+        val completedPlannedSessionTaskKeys: Set<String>,
+        val activeTask: ActiveStudyTask?,
+    )
 
     data class Snapshot(
         val targetCount: Int,

@@ -405,6 +405,57 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun terminalContinueHandoffPreservesHardCapEvidenceUntilDoneCommits() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val session = flashcardSession()
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = feedback.snapshot(),
+                    kanji = requireNotNull(session.item).kanji,
+                    taskType = session.taskType,
+                    writingRequired = session.writingRequired,
+                    prompt = session.prompt,
+                ),
+            ),
+        )
+        val advancing = applied.copy(
+            snapshot = applied.snapshot.copy(
+                feedback = applied.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.CONTINUED),
+            ),
+        )
+        assertTrue(feedback.tryContinue())
+
+        val incomplete = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertFalse(activity.clearAdvancingStudyRecoveryForTerminal(advancing, incomplete))
+        assertNotNull(recoveryStore.readPending())
+
+        activity.studySessionTracker.setTargetCount(1)
+        activity.studySessionTracker.markTaskCompleted(StudySessionTracker.sessionTaskKey(session))
+        val terminalEvidence = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(session.token, terminalEvidence.sessionToken)
+        assertTrue(terminalEvidence.canComplete)
+        assertTrue(activity.clearAdvancingStudyRecoveryForTerminal(advancing, terminalEvidence))
+        val terminal = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(session.token, terminal.sessionToken)
+        assertTrue(terminal.canComplete)
+
+        activity.doneActions.renderStudyRunDone(null, terminal)
+
+        val done = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertTrue(done.isComplete)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, done.completionReason)
+        preferences.edit().clear().commit()
+    }
+
+    @Test
     fun processRestartRejectsContinuedHandoffWithoutExactReviewEvidence() {
         val restored = restoreContinuedHandoffAfterProcessRestart(
             hasNextCard = true,
@@ -703,16 +754,23 @@ class MainActivityStudyRouteInitializationTest {
                 loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
             ),
         )
-
         activity.renderStudy()
+        activity.recoveredStudyRunNeedsTargetReconciliation = true
         backgroundTasks.removeFirst().run()
         assertEquals(1, mainTasks.size)
         assertNull(StudySessionRecoveryStore(preferences).read())
+        assertTrue(activity.recoveredStudyRunNeedsTargetReconciliation)
 
         activity.renderHome()
+        val acceptedAfterCancel = activity.studySessionViewModel.acceptedRouteSnapshot()
         mainTasks.removeFirst().run()
 
         assertNull(StudySessionRecoveryStore(preferences).read())
+        assertEquals(
+            "a canceled Study compute must not mutate the accepted tracker frame",
+            acceptedAfterCancel,
+            activity.studySessionViewModel.acceptedRouteSnapshot(),
+        )
     }
 
     @Test

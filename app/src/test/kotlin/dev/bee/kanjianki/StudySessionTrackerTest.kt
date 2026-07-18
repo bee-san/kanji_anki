@@ -16,6 +16,27 @@ import org.junit.Test
 
 class StudySessionTrackerTest {
     @Test
+    fun stagedCopyIsIsolatedUntilCommitted() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:裂"))
+
+        val staged = tracker.copyForStaging()
+        staged.setTargetCount(2)
+        staged.registerTaskShown("kanji_meaning:謎")
+        staged.startActiveTask("task", "謎", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+
+        assertEquals(1, tracker.targetCount())
+        assertEquals(listOf("kanji_meaning:裂"), tracker.pendingPlannedSessionTaskKeys())
+        assertFalse(tracker.hasActiveTask())
+
+        tracker.replaceStateFrom(staged)
+
+        assertEquals(2, tracker.targetCount())
+        assertEquals(listOf("kanji_meaning:裂"), tracker.pendingPlannedSessionTaskKeys())
+        assertTrue(tracker.hasActiveTask())
+    }
+
+    @Test
     fun activeTaskLifecycleIgnoresEmptyAndDuplicateKeys() {
         val tracker = StudySessionTracker()
 

@@ -93,6 +93,29 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun studyLoadTrackerCommitRejectsAStaleRouteBeforePublishingStagedProgress() {
+        val viewModel = viewModelAt(completed = 5, target = 7)
+        val staleRoute = viewModel.acceptedRouteSnapshot()
+        val staged = viewModel.tracker.copyForStaging()
+        staged.startActiveTask("stale-task", "裂", "kanji_meaning", 0L, false)
+
+        viewModel.mountSession(session("replacement-token"))
+        val replacementRoute = viewModel.acceptedRouteSnapshot()
+
+        assertNull(viewModel.acceptStudyLoadTracker(staleRoute, staged))
+        assertFalse(viewModel.tracker.hasActiveTask())
+        assertEquals(replacementRoute, viewModel.acceptedRouteSnapshot())
+
+        val acceptedStaging = viewModel.tracker.copyForStaging()
+        acceptedStaging.startActiveTask("current-task", "謎", "kanji_meaning", 0L, false)
+        val accepted = viewModel.acceptStudyLoadTracker(replacementRoute, acceptedStaging)
+
+        assertNotNull(accepted)
+        assertTrue(viewModel.tracker.hasActiveTask())
+        assertTrue(viewModel.acceptedRouteSnapshot().progress.activeTask)
+    }
+
+    @Test
     fun directFiveOfSevenCompletionIsRejectedWithoutAnyMutation() {
         val viewModel = viewModelAt(completed = 5, target = 7)
         val beforeState = viewModel.uiState.value
