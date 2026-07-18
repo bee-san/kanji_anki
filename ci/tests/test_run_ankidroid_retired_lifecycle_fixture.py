@@ -95,7 +95,12 @@ class RunAnkiDroidRetiredLifecycleFixtureTest(unittest.TestCase):
         self.assertIn("/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.anki2", source)
         self.assertIn("/storage/emulated/0/AnkiDroid/collection.anki2", source)
         self.assertIn("repair_collection_ownership", source)
-        self.assertIn('chown -R \\\"\\${owner_uid}\\\":ext_data_rw', source)
+        self.assertIn(
+            "owner_gid=\\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki",
+            source,
+        )
+        self.assertIn('chown -R \\"\\${owner_uid}\\":\\"\\${owner_gid}\\"', source)
+        self.assertNotIn("ext_data_rw", source)
         self.assertIn("FAILURES!!!", source)
         self.assertIn("^OK \\([0-9]+ tests?\\)", source)
 

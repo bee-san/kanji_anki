@@ -166,13 +166,18 @@ class AnkiDroidGatewayProviderInstrumentedTest {
                 Build.VERSION_CODES.S_V2,
             )
         )
-        assertTrue(
-            AnkiDroidGateway.providerInstalled(
-                context.packageManager,
-                FakeAnkiDroidProvider.AUTHORITY,
-                Build.VERSION_CODES.TIRAMISU,
+        // The API 33 overload links PackageManager.ComponentInfoFlags, which does
+        // not exist on older ART runtimes. Exercise it only where that platform
+        // type is available; the API 26 matrix job still covers the legacy path.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            assertTrue(
+                AnkiDroidGateway.providerInstalled(
+                    context.packageManager,
+                    FakeAnkiDroidProvider.AUTHORITY,
+                    Build.VERSION_CODES.TIRAMISU,
+                )
             )
-        )
+        }
         assertTrue(AnkiDroidGateway.providerInstalledBeforeTiramisu(context.packageManager, FakeAnkiDroidProvider.AUTHORITY))
         assertFalse(
             AnkiDroidGateway.providerInstalledBeforeTiramisu(

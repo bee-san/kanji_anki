@@ -420,6 +420,10 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
         self.assertIn("api-level: ${{ matrix.api-level }}", self.workflow)
         self.assertIn("target: google_apis", self.workflow)
         self.assertIn("arch: x86_64", self.workflow)
+        self.assertIn("if [ ! -e /dev/kvm ]", self.workflow)
+        self.assertIn("sudo chmod 0666 /dev/kvm", self.workflow)
+        self.assertIn("test -r /dev/kvm && test -w /dev/kvm", self.workflow)
+        self.assertIn("disable-linux-hw-accel: false", self.workflow)
         self.assertIn("disable-animations: true", self.workflow)
         self.assertIn("script: bash ci/scripts/run_ankidroid_fixture.sh", self.workflow)
         self.assertIn("run_ankidroid_retired_lifecycle_fixture.sh", self.workflow)
@@ -435,9 +439,9 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
         self.assertIn("collection_path=${collection_path}", self.workflow)
         self.assertIn("lifecycle_fixture_dir=${lifecycle_fixture_dir}", self.workflow)
 
-    def test_failure_diagnostics_include_logcat_probe_instrumentation_and_reports(self) -> None:
+    def test_evidence_upload_runs_on_success_and_failure(self) -> None:
         diagnostics = self.workflow.split("Upload instrumentation diagnostics", maxsplit=1)[1]
-        self.assertIn("if: failure()", diagnostics)
+        self.assertIn("if: always()", diagnostics)
         for path in (
             "${{ runner.temp }}/ankidroid-fixture-logcat.txt",
             "${{ runner.temp }}/ankidroid-fixture-provider-probe.txt",
