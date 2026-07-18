@@ -827,6 +827,35 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun emptyQueueReconcilesOutstandingTargetBeforeNoSessionCompletion() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+        activity.activeSession = flashcardSession()
+        activity.studySessionTracker.setTargetCount(5)
+        repeat(3) { index -> activity.studySessionTracker.markTaskCompleted("done-$index") }
+
+        activity.renderStudy()
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+
+        val accepted = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(3, accepted.progress.completedCount)
+        assertEquals(3, accepted.progress.targetCount)
+        assertEquals(StudySessionPhase.COMPLETE, accepted.phase)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, accepted.completionReason)
+    }
+
+    @Test
     fun trackerRevisionRejectionRetriesCurrentStudyLoad() {
         val activity = createActivity()
         val backgroundTasks = ArrayDeque<Runnable>()

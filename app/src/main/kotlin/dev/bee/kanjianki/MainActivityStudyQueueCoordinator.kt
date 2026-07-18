@@ -89,7 +89,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             }
         }
         if (rows.isEmpty()) {
-            initializeSessionTarget(0, candidate)
+            candidate.tracker.initializeSessionPlan(emptyList())
             refreshSessionBadgeCount(studyNowCount(0, dueRepairs))
             pendingRepairOrDoneRender(
                 plan,
