@@ -41,7 +41,7 @@ internal class ActivityWidget(
     companion object {
         internal val RESPONSIVE_SIZES = setOf(
             DpSize(120.dp, 72.dp),
-            DpSize(180.dp, 120.dp),
+            DpSize(120.dp, 120.dp),
             DpSize(250.dp, 130.dp),
         )
     }
@@ -90,6 +90,7 @@ internal data class ActivityWidgetPresentation(
 internal data class ActivityWidgetLayout(
     val showBestStreak: Boolean,
     val showStreak: Boolean,
+    val showAction: Boolean,
     val useCompactHero: Boolean,
     val titleFontSp: Float,
     val actionFontSp: Float,
@@ -107,6 +108,7 @@ internal fun activityWidgetLayout(
 ) = ActivityWidgetLayout(
     showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
     showStreak = fontScale < 1.8f,
+    showAction = tier == ActivityWidgetTier.WIDE,
     useCompactHero = fontScale >= 1.8f,
     titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
     actionFontSp = 13f,
@@ -114,7 +116,7 @@ internal fun activityWidgetLayout(
 )
 
 internal fun activityWidgetTier(widthDp: Float, heightDp: Float): ActivityWidgetTier = when {
-    widthDp < 160f || heightDp < 96f -> ActivityWidgetTier.COMPACT
+    heightDp < 96f -> ActivityWidgetTier.COMPACT
     widthDp < 230f -> ActivityWidgetTier.REGULAR
     else -> ActivityWidgetTier.WIDE
 }
@@ -182,7 +184,7 @@ internal fun activityWidgetPresentation(
                 ActivityWidgetSnapshotLoader.HISTORY_DAYS
             }
             ActivityWidgetPresentation(
-                title = WidgetTextCopy.reviewCountLabel(total),
+                title = WidgetTextCopy.activityPeriodLabel(total, days),
                 streak = WidgetTextCopy.streakLabel(snapshot.streakDays),
                 bestStreak = WidgetTextCopy.bestStreakLabel(snapshot.bestStreakDays),
                 action = action,
@@ -257,6 +259,14 @@ internal fun activityWidgetVisibleCopy(
             ActivityWidgetState.NOT_SET_UP -> "—"
             ActivityWidgetState.ERROR -> "!"
         }
+    } else if (snapshot.state == ActivityWidgetState.HISTORY) {
+        val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
+            COMPACT_HISTORY_DAYS
+        } else {
+            ActivityWidgetSnapshotLoader.HISTORY_DAYS
+        }
+        val total = if (days == COMPACT_HISTORY_DAYS) snapshot.last7DayTotal else snapshot.last35DayTotal
+        WidgetTextCopy.activityPeriodShortLabel(total, days)
     } else {
         presentation.title
     }
@@ -294,16 +304,18 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 ),
                 maxLines = 1,
             )
-            Spacer(modifier = GlanceModifier.width(8.dp))
-            Text(
-                text = visibleCopy.action,
-                style = TextStyle(
-                    color = palette.primaryText.toGlanceColor(),
-                    fontSize = layout.actionFontSp.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-                maxLines = 1,
-            )
+            if (layout.showAction) {
+                Spacer(modifier = GlanceModifier.width(8.dp))
+                Text(
+                    text = visibleCopy.action,
+                    style = TextStyle(
+                        color = palette.primaryText.toGlanceColor(),
+                        fontSize = layout.actionFontSp.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
         }
         ActivityWidgetBody(presentation, layout, tier, palette)
     }

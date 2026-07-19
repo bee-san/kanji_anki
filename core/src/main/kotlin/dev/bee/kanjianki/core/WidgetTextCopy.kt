@@ -158,6 +158,16 @@ object WidgetTextCopy {
     }
 
     @JvmStatic
+    fun activityPeriodShortLabel(count: Int, days: Int): String {
+        val safeCount = count.coerceAtLeast(0)
+        val safeDays = days.coerceAtLeast(0)
+        return localizedText(
+            "$safeCount · $safeDays days",
+            "$safeDays 日 · $safeCount 件",
+        )
+    }
+
+    @JvmStatic
     fun noActivityTitle(): String = localizedText("No activity yet", "学習履歴はまだありません")
 
     @JvmStatic
@@ -202,6 +212,7 @@ object WidgetTextCopy {
         primaryMeaning: String,
         readings: String,
         isDueNow: Boolean,
+        hasStudyAction: Boolean,
     ): String {
         val parts = listOfNotNull(
             localizedText("Focus kanji widget", "注目の漢字ウィジェット"),
@@ -212,7 +223,7 @@ object WidgetTextCopy {
             },
             focusDueStatus().takeIf { isDueNow },
             focusDetailsLabel(),
-            studyNowLabel().takeIf { isDueNow },
+            studyNowLabel().takeIf { hasStudyAction },
         )
         return localizedText(
             parts.joinToString(". ", postfix = "."),

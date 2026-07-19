@@ -27,7 +27,7 @@ class KaniWidgetProviderInfoTest {
     }
 
     @Test
-    fun everyProviderHasUniquePickerMetadataAndHourlyFallback() {
+    fun everyProviderHasUniquePickerMetadataAndUsesOnlyEventDrivenRefresh() {
         val info = widgetReceivers().values.map { providerInfo(it.providerInfo) }
 
         assertEquals(4, info.map { it.getAttributeNS(ANDROID_NS, "previewLayout") }.toSet().size)
@@ -35,7 +35,7 @@ class KaniWidgetProviderInfoTest {
         assertEquals(4, info.map { it.getAttributeNS(ANDROID_NS, "description") }.toSet().size)
         info.forEach { provider ->
             assertEquals("appwidget-provider", provider.tagName)
-            assertEquals(HOURLY_UPDATE_MILLIS.toString(), provider.androidAttribute("updatePeriodMillis"))
+            assertEquals("0", provider.androidAttribute("updatePeriodMillis"))
         }
     }
 
@@ -112,6 +112,7 @@ class KaniWidgetProviderInfoTest {
     fun activityPreviewIsStaticLocalizedHistoryAndLoadingLayoutHasNoDemoFactsOrActions() {
         val preview = File("src/main/res/layout/activity_widget_preview.xml").readText()
         val loading = File("src/main/res/layout/activity_widget_loading.xml").readText()
+        val legacyPreview = File("src/main/res/drawable/activity_widget_preview_image.xml").readText()
         val english = File("src/main/res/values/strings.xml").readText()
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
@@ -119,7 +120,7 @@ class KaniWidgetProviderInfoTest {
         assertTrue(preview.contains("@string/activity_widget_preview_streak"))
         assertTrue(preview.contains("@string/activity_widget_preview_best"))
         assertTrue(preview.contains("@string/activity_widget_preview_stats"))
-        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 reviews</string>"))
+        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 reviews in 35 days</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_streak\">5-day streak</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_best\">Best: 21 days</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_stats\">Stats</string>"))
@@ -129,6 +130,7 @@ class KaniWidgetProviderInfoTest {
         assertFalse(loading.contains("activity_widget_preview_total"))
         assertFalse(loading.contains("activity_widget_preview_stats"))
         assertFalse(loading.contains("preview_activity_bars"))
+        assertTrue(Regex("M\\d+,\\d+h10v10").findAll(legacyPreview).count() >= 35)
     }
 
     @Test
@@ -137,15 +139,17 @@ class KaniWidgetProviderInfoTest {
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
         assertTrue(english.contains("name=\"study_overview_widget_label\">Study overview</string>"))
+        assertTrue(english.contains("name=\"kani_widget_description\">See today’s study status at a glance.</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_label\">Quick study</string>"))
-        assertTrue(english.contains("name=\"quick_study_widget_description\">See what is due and start in one tap.</string>"))
+        assertTrue(english.contains("name=\"quick_study_widget_description\">One-tap access to your next study session.</string>"))
         assertTrue(english.contains("name=\"activity_widget_label\">Activity</string>"))
-        assertTrue(english.contains("name=\"activity_widget_description\">Your streak and five weeks of review activity.</string>"))
+        assertTrue(english.contains("name=\"activity_widget_description\">See your 35-day study streak and review history.</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_description\">Review one kanji with its meaning and reading.</string>"))
         assertTrue(japanese.contains("name=\"study_overview_widget_label\">学習概要</string>"))
         assertTrue(japanese.contains("name=\"quick_study_widget_label\">クイック学習</string>"))
-        assertTrue(japanese.contains("name=\"quick_study_widget_description\">復習件数を確認してワンタップで学習します。</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_description\">次の学習セッションをワンタップで開始します。</string>"))
         assertTrue(japanese.contains("name=\"activity_widget_label\">学習履歴</string>"))
-        assertTrue(japanese.contains("name=\"activity_widget_description\">連続学習と5週間の復習履歴を表示します。</string>"))
+        assertTrue(japanese.contains("name=\"activity_widget_description\">35日間の連続学習と復習履歴を確認します。</string>"))
     }
 
     @Test
@@ -198,6 +202,7 @@ class KaniWidgetProviderInfoTest {
     fun focusPreviewUsesOnlyLocalizedDemoFactsAndLoadingHasNoDemoFactsOrActions() {
         val preview = File("src/main/res/layout/focus_kanji_widget_preview.xml").readText()
         val loading = File("src/main/res/layout/focus_kanji_widget_loading.xml").readText()
+        val legacyPreview = File("src/main/res/drawable/focus_kanji_widget_preview_image.xml").readText()
         val english = File("src/main/res/values/strings.xml").readText()
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
@@ -212,6 +217,8 @@ class KaniWidgetProviderInfoTest {
         assertFalse(loading.contains("focus_kanji_widget_preview_meaning"))
         assertFalse(loading.contains("focus_kanji_widget_preview_reading"))
         assertFalse(loading.contains("widget_shortcut_study_now"))
+        assertTrue("API 26 preview must use an actual glyph outline", legacyPreview.count { it == 'C' } >= 10)
+        assertFalse(legacyPreview.contains("M34,16 L86,16 L86,70 L34,70 Z"))
     }
 
     @Test
@@ -220,9 +227,9 @@ class KaniWidgetProviderInfoTest {
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
         assertTrue(english.contains("name=\"focus_kanji_widget_label\">Focus kanji</string>"))
-        assertTrue(english.contains("name=\"focus_kanji_widget_description\">One local kanji to remember next.</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_description\">Review one kanji with its meaning and reading.</string>"))
         assertTrue(japanese.contains("name=\"focus_kanji_widget_label\">注目漢字</string>"))
-        assertTrue(japanese.contains("name=\"focus_kanji_widget_description\">次に覚えたい漢字を1字表示します。</string>"))
+        assertTrue(japanese.contains("name=\"focus_kanji_widget_description\">漢字1字を意味と読みと一緒に復習します。</string>"))
     }
 
 

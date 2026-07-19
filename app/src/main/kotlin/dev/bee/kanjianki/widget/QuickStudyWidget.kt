@@ -138,7 +138,11 @@ internal fun quickStudyPresentation(
     when (snapshot.state) {
         KaniWidgetState.DUE_NOW -> {
             hero = WidgetTextCopy.visualCountLabel(snapshot.dueCount)
-            status = WidgetTextCopy.quickDueStatus()
+            status = if (layout.tier == QuickStudyTier.TINY) {
+                WidgetTextCopy.studyLabel()
+            } else {
+                WidgetTextCopy.quickDueStatus()
+            }
             spokenStatus = WidgetTextCopy.dueCountLabel(snapshot.dueCount)
         }
         KaniWidgetState.NOTHING_DUE -> {
@@ -283,13 +287,15 @@ private fun QuickStudyAction(
         modifier = GlanceModifier
             .width(56.dp)
             .height(48.dp)
+            .background(palette.primary.toGlanceColor())
+            .cornerRadius(14.dp)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = TextStyle(
-                color = palette.primaryText.toGlanceColor(),
+                color = palette.onPrimary.toGlanceColor(),
                 fontSize = fontSizeSp.sp,
                 fontWeight = FontWeight.Bold,
             ),

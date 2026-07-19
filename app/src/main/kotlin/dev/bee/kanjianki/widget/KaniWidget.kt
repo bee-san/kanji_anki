@@ -31,6 +31,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.color.ColorProvider
@@ -255,6 +256,8 @@ private fun OverviewAction(
         modifier = GlanceModifier
             .width(64.dp)
             .height(56.dp)
+            .background(palette.primary.toProvider())
+            .cornerRadius(14.dp)
             .clickable(action)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -262,7 +265,7 @@ private fun OverviewAction(
         Text(
             text = label,
             style = TextStyle(
-                color = palette.primaryText.toProvider(),
+                color = palette.onPrimary.toProvider(),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
             ),
@@ -278,10 +281,10 @@ private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
         modifier = GlanceModifier.padding(vertical = 2.dp),
     ) {
         dayCounts.forEachIndexed { index, count ->
-            if (index > 0) Spacer(GlanceModifier.width(4.dp))
+            if (index > 0) Spacer(GlanceModifier.width(3.dp))
             Box(
                 modifier = GlanceModifier
-                    .size(16.dp)
+                    .size(12.dp)
                     .background(heatCellRole(count, maxCount, palette).toProvider()),
                 contentAlignment = Alignment.Center,
             ) {}

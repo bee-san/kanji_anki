@@ -54,7 +54,7 @@ class QuickStudyWidgetTest {
         assertEquals(KaniWidgetDestination.STUDY, presentation.destination)
         assertFalse(presentation.showSeparateAction)
         assertEquals("12", presentation.hero)
-        assertTrue(presentation.status.isNotBlank())
+        assertEquals(WidgetTextCopy.studyLabel(), presentation.status)
     }
 
     @Test
