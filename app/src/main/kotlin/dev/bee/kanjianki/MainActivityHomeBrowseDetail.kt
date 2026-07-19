@@ -421,7 +421,8 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             item = studyItem,
         )
         val reviewAction = if (reviewEligible) {
-            row?.let { reviewRow -> Runnable { home.renderStudyForKanji(reviewRow.kanji) } }
+            val reviewRow = requireNotNull(row)
+            Runnable { home.renderStudyForKanji(reviewRow.kanji) }
         } else {
             null
         }

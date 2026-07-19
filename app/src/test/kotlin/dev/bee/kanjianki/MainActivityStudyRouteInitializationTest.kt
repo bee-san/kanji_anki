@@ -981,7 +981,41 @@ class MainActivityStudyRouteInitializationTest {
             .schedulerRevision(11L)
             .activeToken(null)
             .build()
-        val retiredActions = MainActivityHomeBrowseDetail(activity).detailActionsModel(
+        val browseDetail = MainActivityHomeBrowseDetail(activity)
+        val unseededActions = browseDetail.detailActionsModel(
+            retiredRow,
+            null,
+            null,
+            retired.kanji,
+            true,
+            retired.kanji,
+            false,
+        )
+        assertNotNull(unseededActions.reviewLabel)
+        assertNotNull(unseededActions.onReview)
+        val missingRowActions = browseDetail.detailActionsModel(
+            null,
+            null,
+            null,
+            retired.kanji,
+            true,
+            retired.kanji,
+            false,
+        )
+        assertNull(missingRowActions.reviewLabel)
+        assertNull(missingRowActions.onReview)
+        val suspendedActions = browseDetail.detailActionsModel(
+            retiredRow,
+            null,
+            retired,
+            retired.kanji,
+            true,
+            retired.kanji,
+            true,
+        )
+        assertNull(suspendedActions.reviewLabel)
+        assertNull(suspendedActions.onReview)
+        val retiredActions = browseDetail.detailActionsModel(
             retiredRow,
             null,
             retired,
@@ -1074,7 +1108,7 @@ class MainActivityStudyRouteInitializationTest {
         assertEquals(7, reopened.totalReviews)
         assertEquals(3, reopened.lapses)
         assertEquals(1, activity.store.reviewStatsSince(0L).total)
-        val reopenedActions = MainActivityHomeBrowseDetail(activity).detailActionsModel(
+        val reopenedActions = browseDetail.detailActionsModel(
             reopenedRow,
             null,
             reopened,
