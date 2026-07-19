@@ -96,6 +96,11 @@ internal data class ActivityWidgetLayout(
     val supportFontSp: Float,
 )
 
+internal data class ActivityWidgetVisibleCopy(
+    val title: String,
+    val action: String,
+)
+
 internal fun activityWidgetLayout(
     tier: ActivityWidgetTier,
     fontScale: Float,
@@ -235,32 +240,17 @@ internal fun activityWidgetPresentation(
     }
 }
 
-@Composable
-internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
-    val context = LocalContext.current
-    val size = LocalSize.current
-    val tier = activityWidgetTier(size.width.value, size.height.value)
-    val layout = activityWidgetLayout(tier, context.resources.configuration.fontScale)
-    val presentation = activityWidgetPresentation(snapshot, tier)
-    val palette = KaniWidgetPalette.forChoice(snapshot.themeChoice)
-    val launchAction = actionStartActivity(
-        when (presentation.destination) {
-            KaniWidgetDestination.STATS -> kaniWidgetStatsIntent(context)
-            KaniWidgetDestination.HOME,
-            KaniWidgetDestination.STUDY,
-            -> kaniWidgetHomeIntent(context)
-        },
-    )
-    val visibleAction = if (
-        layout.useCompactHero && presentation.destination == KaniWidgetDestination.HOME
-    ) {
-        WidgetTextCopy.appName()
-    } else if (presentation.destination == KaniWidgetDestination.STATS) {
-        WidgetTextCopy.statsLabel()
-    } else {
-        presentation.action
+internal fun activityWidgetVisibleCopy(
+    snapshot: ActivityWidgetSnapshot,
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+): ActivityWidgetVisibleCopy {
+    val action = when {
+        layout.useCompactHero && presentation.destination == KaniWidgetDestination.HOME -> WidgetTextCopy.appName()
+        presentation.destination == KaniWidgetDestination.STATS -> WidgetTextCopy.statsLabel()
+        else -> presentation.action
     }
-    val visibleTitle = if (layout.useCompactHero) {
+    val title = if (layout.useCompactHero) {
         when (snapshot.state) {
             ActivityWidgetState.HISTORY -> WidgetTextCopy.visualCountLabel(snapshot.last35DayTotal)
             ActivityWidgetState.NO_HISTORY -> "0"
@@ -270,6 +260,19 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
     } else {
         presentation.title
     }
+    return ActivityWidgetVisibleCopy(title, action)
+}
+
+@Composable
+internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
+    val context = LocalContext.current
+    val size = LocalSize.current
+    val tier = activityWidgetTier(size.width.value, size.height.value)
+    val layout = activityWidgetLayout(tier, context.resources.configuration.fontScale)
+    val presentation = activityWidgetPresentation(snapshot, tier)
+    val palette = KaniWidgetPalette.forChoice(snapshot.themeChoice)
+    val launchAction = actionStartActivity(kaniActivityLaunchIntent(context, snapshot))
+    val visibleCopy = activityWidgetVisibleCopy(snapshot, presentation, layout)
 
     Column(
         modifier = GlanceModifier
@@ -282,7 +285,7 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = visibleTitle,
+                text = visibleCopy.title,
                 modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = palette.ink.toGlanceColor(),
@@ -293,7 +296,7 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             )
             Spacer(modifier = GlanceModifier.width(8.dp))
             Text(
-                text = visibleAction,
+                text = visibleCopy.action,
                 style = TextStyle(
                     color = palette.primaryText.toGlanceColor(),
                     fontSize = layout.actionFontSp.sp,
@@ -302,42 +305,52 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 maxLines = 1,
             )
         }
-        if (presentation.cells.isEmpty() && layout.showStreak) {
-            Text(
-                text = presentation.streak,
-                style = TextStyle(
-                    color = palette.muted.toGlanceColor(),
-                    fontSize = layout.supportFontSp.sp,
-                ),
-                maxLines = 2,
-            )
-        } else if (presentation.cells.isNotEmpty()) {
-            if (layout.showStreak) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+        ActivityWidgetBody(presentation, layout, tier, palette)
+    }
+}
+
+@Composable
+private fun ActivityWidgetBody(
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+    tier: ActivityWidgetTier,
+    palette: KaniWidgetPalette,
+) {
+    if (presentation.cells.isEmpty() && layout.showStreak) {
+        Text(
+            text = presentation.streak,
+            style = TextStyle(
+                color = palette.muted.toGlanceColor(),
+                fontSize = layout.supportFontSp.sp,
+            ),
+            maxLines = 2,
+        )
+    } else if (presentation.cells.isNotEmpty()) {
+        if (layout.showStreak) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = presentation.streak,
+                    modifier = GlanceModifier.defaultWeight(),
+                    style = TextStyle(
+                        color = palette.ink.toGlanceColor(),
+                        fontSize = layout.supportFontSp.sp,
+                    ),
+                    maxLines = 1,
+                )
+                if (layout.showBestStreak) {
                     Text(
-                        text = presentation.streak,
-                        modifier = GlanceModifier.defaultWeight(),
+                        text = presentation.bestStreak,
                         style = TextStyle(
-                            color = palette.ink.toGlanceColor(),
+                            color = palette.muted.toGlanceColor(),
                             fontSize = layout.supportFontSp.sp,
                         ),
                         maxLines = 1,
                     )
-                    if (layout.showBestStreak) {
-                        Text(
-                            text = presentation.bestStreak,
-                            style = TextStyle(
-                                color = palette.muted.toGlanceColor(),
-                                fontSize = layout.supportFontSp.sp,
-                            ),
-                            maxLines = 1,
-                        )
-                    }
                 }
-                Spacer(modifier = GlanceModifier.height(2.dp))
             }
-            ActivityGrid(presentation.cells, tier, palette)
+            Spacer(modifier = GlanceModifier.height(2.dp))
         }
+        ActivityGrid(presentation.cells, tier, palette)
     }
 }
 

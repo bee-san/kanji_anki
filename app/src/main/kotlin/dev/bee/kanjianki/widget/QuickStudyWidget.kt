@@ -9,7 +9,6 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
@@ -191,12 +190,12 @@ internal fun QuickStudyWidgetContent(snapshot: KaniWidgetSnapshot) {
         .background(palette.background.toGlanceColor())
         .cornerRadius(16.dp)
         .padding(if (layout.tier == QuickStudyTier.WIDE) 6.dp else 4.dp)
+        .clickable(launchAction)
+        .semantics { contentDescription = presentation.contentDescription }
 
     if (presentation.showSeparateAction) {
         Row(
-            modifier = cardModifier.semantics {
-                contentDescription = presentation.contentDescription
-            },
+            modifier = cardModifier,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             QuickStudyHero(
@@ -207,16 +206,13 @@ internal fun QuickStudyWidgetContent(snapshot: KaniWidgetSnapshot) {
             )
             QuickStudyAction(
                 label = presentation.action,
-                action = launchAction,
                 palette = palette,
                 fontSizeSp = layout.actionFontSp,
             )
         }
     } else {
         Box(
-            modifier = cardModifier
-                .clickable(launchAction)
-                .semantics { contentDescription = presentation.contentDescription },
+            modifier = cardModifier,
             contentAlignment = Alignment.Center,
         ) {
             QuickStudyHero(
@@ -280,7 +276,6 @@ private fun QuickStudyHero(
 @Composable
 private fun QuickStudyAction(
     label: String,
-    action: Action,
     palette: KaniWidgetPalette,
     fontSizeSp: Int,
 ) {
@@ -288,7 +283,6 @@ private fun QuickStudyAction(
         modifier = GlanceModifier
             .width(56.dp)
             .height(48.dp)
-            .clickable(action)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {

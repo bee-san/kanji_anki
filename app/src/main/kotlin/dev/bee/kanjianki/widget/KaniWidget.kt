@@ -105,25 +105,7 @@ internal fun KaniWidgetContent(
     val veryLargeFont = fontScale >= 1.8f
     val showTertiary = isExpanded && fontScale < 1.3f
     val copy = widgetCopy(snapshot, isExpanded)
-    val visibleTitle = if (veryLargeFont) {
-        when (snapshot.state) {
-            KaniWidgetState.DUE_NOW -> WidgetTextCopy.visualCountLabel(snapshot.dueCount)
-            KaniWidgetState.NOTHING_DUE -> "0"
-            KaniWidgetState.NOT_SET_UP -> "—"
-            KaniWidgetState.ERROR -> "!"
-        }
-    } else {
-        copy.title
-    }
-    val visibleAction = if (veryLargeFont) {
-        if (snapshot.state == KaniWidgetState.DUE_NOW) {
-            WidgetTextCopy.studyLabel()
-        } else {
-            WidgetTextCopy.appName()
-        }
-    } else {
-        copy.action
-    }
+    val visibleCopy = overviewVisibleCopy(snapshot, copy, veryLargeFont)
     val palette = KaniWidgetPalette.forChoice(options.resolveTheme(snapshot.themeChoice))
     val homeAction = actionStartActivity(kaniWidgetHomeIntent(context))
     val studyAction = actionStartActivity(kaniWidgetLaunchIntent(context, snapshot))
@@ -150,12 +132,14 @@ internal fun KaniWidgetContent(
             ) {
                 WidgetTextBlock(
                     copy = copy,
-                    title = visibleTitle,
+                    title = visibleCopy.title,
                     palette = palette,
-                    showBody = fontScale < 2f,
-                    showBrand = showTertiary,
-                    showExtra = showTertiary,
-                    showStrip = showTertiary && !isWide,
+                    visibility = WidgetTextBlockVisibility(
+                        showBody = fontScale < 2f,
+                        showBrand = showTertiary,
+                        showExtra = showTertiary,
+                        showStrip = showTertiary && !isWide,
+                    ),
                     dayCounts = snapshot.last7DayCounts,
                 )
             }
@@ -164,7 +148,7 @@ internal fun KaniWidgetContent(
                 ActivityStrip(snapshot.last7DayCounts, palette)
             }
         }
-        OverviewAction(visibleAction, studyAction, palette)
+        OverviewAction(visibleCopy.action, studyAction, palette)
     }
 }
 
@@ -206,13 +190,10 @@ private fun WidgetTextBlock(
     copy: KaniWidgetCopy,
     title: String,
     palette: KaniWidgetPalette,
-    showBody: Boolean,
-    showBrand: Boolean,
-    showExtra: Boolean,
-    showStrip: Boolean = false,
+    visibility: WidgetTextBlockVisibility,
     dayCounts: List<Int> = emptyList(),
 ) {
-    if (showBrand) {
+    if (visibility.showBrand) {
         Text(
             text = WidgetTextCopy.appName(),
             style = TextStyle(
@@ -231,7 +212,7 @@ private fun WidgetTextBlock(
             fontWeight = FontWeight.Bold,
         ),
     )
-    if (showBody) {
+    if (visibility.showBody) {
         Spacer(GlanceModifier.height(3.dp))
         Text(
             text = copy.body,
@@ -241,7 +222,7 @@ private fun WidgetTextBlock(
             ),
         )
     }
-    if (showExtra && copy.extraLine.isNotEmpty()) {
+    if (visibility.showExtra && copy.extraLine.isNotEmpty()) {
         Spacer(GlanceModifier.height(2.dp))
         Text(
             text = copy.extraLine,
@@ -251,11 +232,18 @@ private fun WidgetTextBlock(
             ),
         )
     }
-    if (showStrip && dayCounts.isNotEmpty()) {
+    if (visibility.showStrip && dayCounts.isNotEmpty()) {
         Spacer(GlanceModifier.height(8.dp))
         ActivityStrip(dayCounts, palette)
     }
 }
+
+private data class WidgetTextBlockVisibility(
+    val showBody: Boolean,
+    val showBrand: Boolean,
+    val showExtra: Boolean,
+    val showStrip: Boolean,
+)
 
 @Composable
 private fun OverviewAction(
@@ -422,18 +410,40 @@ internal data class KaniWidgetCopy(
     val extraLine: String = "",
 )
 
+internal data class KaniWidgetVisibleCopy(
+    val title: String,
+    val action: String,
+)
+
+internal fun overviewVisibleCopy(
+    snapshot: KaniWidgetSnapshot,
+    copy: KaniWidgetCopy,
+    veryLargeFont: Boolean,
+): KaniWidgetVisibleCopy {
+    if (!veryLargeFont) return KaniWidgetVisibleCopy(copy.title, copy.action)
+    val title = when (snapshot.state) {
+        KaniWidgetState.DUE_NOW -> WidgetTextCopy.visualCountLabel(snapshot.dueCount)
+        KaniWidgetState.NOTHING_DUE -> "0"
+        KaniWidgetState.NOT_SET_UP -> "—"
+        KaniWidgetState.ERROR -> "!"
+    }
+    val action = if (snapshot.state == KaniWidgetState.DUE_NOW) {
+        WidgetTextCopy.studyLabel()
+    } else {
+        WidgetTextCopy.appName()
+    }
+    return KaniWidgetVisibleCopy(title, action)
+}
+
 /**
  * Selects the widget's text per state and size tier. Kept as a pure function
  * so tier-dependent content (count split, due-later line, best streak) is
  * unit-testable without a Glance host.
  */
 internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
-    KaniWidgetState.NOT_SET_UP -> KaniWidgetCopy(
-        WidgetTextCopy.notSetUpTitle(),
-        WidgetTextCopy.notSetUpBody(),
-        WidgetTextCopy.openKaniLabel(),
-    )
-    KaniWidgetState.ERROR -> KaniWidgetCopy(
+    KaniWidgetState.NOT_SET_UP,
+    KaniWidgetState.ERROR,
+    -> KaniWidgetCopy(
         WidgetTextCopy.notSetUpTitle(),
         WidgetTextCopy.notSetUpBody(),
         WidgetTextCopy.openKaniLabel(),
