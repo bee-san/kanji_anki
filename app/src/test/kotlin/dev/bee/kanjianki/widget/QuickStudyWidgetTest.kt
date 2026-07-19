@@ -24,6 +24,8 @@ class QuickStudyWidgetTest {
         assertEquals(QuickStudyTier.TINY, quickStudyLayout(56f, 56f, 1f).tier)
         assertEquals(QuickStudyTier.COMPACT, quickStudyLayout(120f, 56f, 1f).tier)
         assertEquals(QuickStudyTier.WIDE, quickStudyLayout(180f, 72f, 1f).tier)
+        assertEquals(56, quickStudyLayout(120f, 56f, 1f).actionWidthDp)
+        assertEquals(72, quickStudyLayout(180f, 72f, 1f).actionWidthDp)
     }
 
     @Test
@@ -94,7 +96,7 @@ class QuickStudyWidgetTest {
             )
 
             assertEquals("期限", due.status)
-            assertEquals("今すぐ学習", due.action)
+            assertEquals("学習", due.action)
             assertTrue(due.contentDescription.contains("復習できるカード12件"))
             assertEquals("復習完了", caughtUp.status)
         }

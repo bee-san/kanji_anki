@@ -9,31 +9,13 @@
     android:padding="8dp"
     tools:ignore="Overdraw">
 
-    <LinearLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/activity_widget_preview_total"
-            android:textColor="@color/widget_preview_ink"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:gravity="center"
-            android:minWidth="48dp"
-            android:text="@string/activity_widget_preview_stats"
-            android:textColor="@color/widget_preview_primary"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+        android:text="@string/activity_widget_preview_total"
+        android:textColor="@color/widget_preview_ink"
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
     <LinearLayout
         android:layout_width="match_parent"

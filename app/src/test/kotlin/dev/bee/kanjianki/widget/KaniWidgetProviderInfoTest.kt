@@ -75,20 +75,24 @@ class KaniWidgetProviderInfoTest {
     fun quickStudyPreviewIsStaticLocalizedDemoAndLoadingLayoutHasNoDemoFactsOrActions() {
         val preview = File("src/main/res/layout/quick_study_widget_preview.xml").readText()
         val loading = File("src/main/res/layout/quick_study_widget_loading.xml").readText()
+        val legacyPreview = File("src/main/res/drawable/quick_study_widget_preview_image.xml").readText()
         val english = File("src/main/res/values/strings.xml").readText()
         val japanese = File("src/main/res/values-ja/strings.xml").readText()
 
         assertTrue(preview.contains("@string/quick_study_widget_preview_count"))
         assertTrue(preview.contains("@string/quick_study_widget_preview_status"))
         assertTrue(preview.contains("@string/quick_study_widget_preview_action"))
+        assertTrue(preview.contains("@drawable/widget_preview_primary_action"))
+        assertTrue(preview.contains("@color/widget_preview_on_primary"))
         assertTrue(english.contains("name=\"quick_study_widget_preview_count\">12</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_preview_status\">Due</string>"))
-        assertTrue(english.contains("name=\"quick_study_widget_preview_action\">Study now</string>"))
+        assertTrue(english.contains("name=\"quick_study_widget_preview_action\">Study</string>"))
         assertTrue(japanese.contains("name=\"quick_study_widget_preview_status\">期限</string>"))
-        assertTrue(japanese.contains("name=\"quick_study_widget_preview_action\">今すぐ学習</string>"))
+        assertTrue(japanese.contains("name=\"quick_study_widget_preview_action\">学習</string>"))
         assertFalse(loading.contains("quick_study_widget_preview_count"))
         assertFalse(loading.contains("quick_study_widget_preview_action"))
         assertFalse(loading.contains("widget_shortcut_study_now"))
+        assertTrue("API 26 preview must show a study/play mark", legacyPreview.contains("M44,30 L68,42 L44,54 Z"))
     }
 
     @Test
@@ -119,14 +123,14 @@ class KaniWidgetProviderInfoTest {
         assertTrue(preview.contains("@string/activity_widget_preview_total"))
         assertTrue(preview.contains("@string/activity_widget_preview_streak"))
         assertTrue(preview.contains("@string/activity_widget_preview_best"))
-        assertTrue(preview.contains("@string/activity_widget_preview_stats"))
-        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 reviews in 35 days</string>"))
+        assertFalse(preview.contains("@string/activity_widget_preview_stats"))
+        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 · 35 days</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_streak\">5-day streak</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_best\">Best: 21 days</string>"))
-        assertTrue(english.contains("name=\"activity_widget_preview_stats\">Stats</string>"))
+        assertFalse(english.contains("name=\"activity_widget_preview_stats\""))
         assertTrue(japanese.contains("name=\"activity_widget_preview_streak\">5日連続</string>"))
         assertTrue(japanese.contains("name=\"activity_widget_preview_best\">最長21日</string>"))
-        assertTrue(japanese.contains("name=\"activity_widget_preview_stats\">統計</string>"))
+        assertFalse(japanese.contains("name=\"activity_widget_preview_stats\""))
         assertFalse(loading.contains("activity_widget_preview_total"))
         assertFalse(loading.contains("activity_widget_preview_stats"))
         assertFalse(loading.contains("preview_activity_bars"))
@@ -167,6 +171,7 @@ class KaniWidgetProviderInfoTest {
             "src/main/res/drawable/quick_study_widget_preview_image.xml",
             "src/main/res/drawable/activity_widget_preview_image.xml",
             "src/main/res/drawable/focus_kanji_widget_preview_image.xml",
+            "src/main/res/drawable/widget_preview_primary_action.xml",
         )
         resourcePaths.forEach { path ->
             val resource = File(path).readText()
@@ -175,7 +180,7 @@ class KaniWidgetProviderInfoTest {
         }
         val day = File("src/main/res/values/widget_preview_colors.xml").readText()
         val night = File("src/main/res/values-night/widget_preview_colors.xml").readText()
-        listOf("background", "ink", "muted", "primary", "track", "heat_low", "heat_medium").forEach { role ->
+        listOf("background", "ink", "muted", "primary", "on_primary", "track", "heat_low", "heat_medium").forEach { role ->
             assertTrue(day.contains("name=\"widget_preview_$role\""))
             assertTrue(night.contains("name=\"widget_preview_$role\""))
         }
@@ -209,16 +214,24 @@ class KaniWidgetProviderInfoTest {
         assertTrue(preview.contains("@string/focus_kanji_widget_preview_kanji"))
         assertTrue(preview.contains("@string/focus_kanji_widget_preview_meaning"))
         assertTrue(preview.contains("@string/focus_kanji_widget_preview_reading"))
+        assertTrue(preview.contains("@string/focus_kanji_widget_preview_status"))
+        assertTrue(preview.contains("@string/focus_kanji_widget_preview_details"))
         assertTrue(english.contains("name=\"focus_kanji_widget_preview_kanji\">学</string>"))
         assertTrue(english.contains("name=\"focus_kanji_widget_preview_meaning\">learn</string>"))
         assertTrue(english.contains("name=\"focus_kanji_widget_preview_reading\">がく</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_preview_status\">Due</string>"))
+        assertTrue(english.contains("name=\"focus_kanji_widget_preview_details\">Details</string>"))
         assertTrue(japanese.contains("name=\"focus_kanji_widget_preview_meaning\">学ぶ</string>"))
         assertFalse(loading.contains("focus_kanji_widget_preview_kanji"))
         assertFalse(loading.contains("focus_kanji_widget_preview_meaning"))
         assertFalse(loading.contains("focus_kanji_widget_preview_reading"))
         assertFalse(loading.contains("widget_shortcut_study_now"))
-        assertTrue("API 26 preview must use an actual glyph outline", legacyPreview.count { it == 'C' } >= 10)
-        assertFalse(legacyPreview.contains("M34,16 L86,16 L86,70 L34,70 Z"))
+        assertTrue("API 26 preview must draw a legible glyph from open strokes", legacyPreview.contains("android:strokeColor=\"@color/widget_preview_ink\""))
+        assertTrue(Regex("M\\d+,\\d+").findAll(legacyPreview).count() >= 8)
+        assertFalse(
+            "Dense cubic glyph silhouettes render as a square in older pickers",
+            Regex("\\dC\\d").containsMatchIn(legacyPreview),
+        )
     }
 
     @Test

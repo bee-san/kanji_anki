@@ -5,6 +5,8 @@
     android:viewportWidth="104"
     android:viewportHeight="104">
     <path android:fillColor="@color/widget_preview_background" android:pathData="M14,0 L90,0 A14,14 0,0 1,104 14 L104,90 A14,14 0,0 1,90 104 L14,104 A14,14 0,0 1,0 90 L0,14 A14,14 0,0 1,14 0 Z" />
-    <path android:fillColor="@color/widget_preview_ink" android:pathData="M28,22 L76,22 L76,56 L28,56 Z" />
-    <path android:fillColor="@color/widget_preview_primary" android:pathData="M22,68 L82,68 L82,84 L22,84 Z" />
+    <path android:fillColor="@color/widget_preview_primary" android:pathData="M44,30 L68,42 L44,54 Z" />
+    <path android:fillColor="@color/widget_preview_muted" android:pathData="M35,59 L69,59 L69,65 L35,65 Z" />
+    <path android:fillColor="@color/widget_preview_primary" android:pathData="M20,72 L84,72 A8,8 0,0 1,92 80 L92,88 A8,8 0,0 1,84 96 L20,96 A8,8 0,0 1,12 88 L12,80 A8,8 0,0 1,20 72 Z" />
+    <path android:fillColor="@color/widget_preview_on_primary" android:pathData="M38,81 L66,81 L66,87 L38,87 Z" />
 </vector>

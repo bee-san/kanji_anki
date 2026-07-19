@@ -63,10 +63,14 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
         }
         runBlocking { KaniWidgetRegistry.DEFAULT.refreshInstalled(context) }
 
-        assertEquals(KaniWidgetState.DUE_NOW, StudyWidgetSnapshotLoader.load(context, now).state)
+        val overview = StudyWidgetSnapshotLoader.load(context, now)
+        assertEquals(KaniWidgetState.DUE_NOW, overview.state)
+        assertEquals(7, overview.last7DayCounts.size)
         val focus = FocusKanjiWidgetSnapshotLoader.load(context, now)
         assertEquals(FocusKanjiWidgetState.READY, focus.state)
         assertEquals("学", focus.kanji)
+        assertEquals("study", focus.primaryMeaning)
+        assertEquals("まなぶ", focus.readings)
         val activity = ActivityWidgetSnapshotLoader.load(context, now)
         assertEquals(ActivityWidgetState.HISTORY, activity.state)
         assertEquals(87, activity.last35DayTotal)
@@ -94,7 +98,7 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
         .build()
 
     companion object {
-        const val FIXTURE_ID = "sanitized-focus-due-history-v2"
+        const val FIXTURE_ID = "sanitized-focus-due-history-v3"
         const val FIXTURE_SETTING = "kani_widget_screenshot_fixture_id"
         private const val DAY_MILLIS = 86_400_000L
         private val FIXTURE_DAILY_COUNTS = listOf(
@@ -105,9 +109,9 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
             0, 4, 7, 3, 0, 8, 10,
         )
         private val ROWS = listOf(
-            row("学", "learn", "がく"),
-            row("裂", "", "れつ"),
-            row("包", "", "ほう"),
+            row("学", "study", "まなぶ"),
+            row("裂", "split", "れつ"),
+            row("包", "wrap", "つつむ"),
         )
 
         private fun row(

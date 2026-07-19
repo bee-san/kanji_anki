@@ -4,6 +4,7 @@
     <color name="widget_preview_ink">#F5EAF4</color>
     <color name="widget_preview_muted">#B59FBC</color>
     <color name="widget_preview_primary">#FF8AB6</color>
+    <color name="widget_preview_on_primary">#1C1220</color>
     <color name="widget_preview_track">#4A2C50</color>
     <color name="widget_preview_heat_low">#B59FBC</color>
     <color name="widget_preview_heat_medium">#F5EAF4</color>
