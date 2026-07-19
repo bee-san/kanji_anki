@@ -299,8 +299,36 @@ internal fun activityWidgetVisibleCells(
     layout: ActivityWidgetLayout,
 ): List<ActivityCell> = when {
     !layout.showGrid -> emptyList()
-    layout.useSevenDayGrid -> presentation.cells.takeLast(COMPACT_HISTORY_DAYS)
+    layout.useSevenDayGrid -> normalizeActivityCells(
+        presentation.cells.takeLast(COMPACT_HISTORY_DAYS),
+    )
     else -> presentation.cells
+}
+
+private fun normalizeActivityCells(cells: List<ActivityCell>): List<ActivityCell> {
+    val maximum = cells.maxOfOrNull { it.count } ?: 0
+    return cells.map { cell ->
+        cell.copy(intensity = activityIntensity(cell.count, maximum))
+    }
+}
+
+internal fun activityWidgetContentDescription(
+    snapshot: ActivityWidgetSnapshot,
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+): String {
+    if (snapshot.state != ActivityWidgetState.HISTORY) return presentation.contentDescription
+    val useSevenDayPeriod = layout.showGrid && layout.useSevenDayGrid
+    val total = if (useSevenDayPeriod) snapshot.last7DayTotal else snapshot.last35DayTotal
+    val days = if (useSevenDayPeriod) COMPACT_HISTORY_DAYS else ActivityWidgetSnapshotLoader.HISTORY_DAYS
+    return WidgetTextCopy.activityDescription(
+        reviewCount = total,
+        days = days,
+        reviewsToday = snapshot.reviewsToday,
+        streakDays = snapshot.streakDays,
+        bestStreakDays = snapshot.bestStreakDays,
+        action = presentation.action,
+    )
 }
 
 @Composable
@@ -320,7 +348,9 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             .background(palette.background.toGlanceColor())
             .cornerRadius(16.dp)
             .clickable(launchAction)
-            .semantics { contentDescription = presentation.contentDescription }
+            .semantics {
+                contentDescription = activityWidgetContentDescription(snapshot, presentation, layout)
+            }
             .padding(if (tier == ActivityWidgetTier.COMPACT) 6.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

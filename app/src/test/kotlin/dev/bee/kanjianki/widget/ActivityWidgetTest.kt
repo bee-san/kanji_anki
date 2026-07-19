@@ -118,6 +118,9 @@ class ActivityWidgetTest {
                 history.last35DayCounts.takeLast(7),
                 activityWidgetVisibleCells(presentation, layout).map { it.count },
             )
+            val contentDescription = activityWidgetContentDescription(history, presentation, layout)
+            assertTrue(contentDescription.contains("24 reviews in 7 days"))
+            assertFalse(contentDescription.contains("87 reviews in 35 days"))
             assertTrue(
                 activityWidgetVisibleCells(
                     presentation,
@@ -125,6 +128,24 @@ class ActivityWidgetTest {
                 ).isEmpty(),
             )
         }
+    }
+
+    @Test
+    fun sevenDayGridNormalizesIntensityAgainstItsVisibleCells() {
+        val hiddenSpike = history.copy(
+            last35DayCounts = listOf(100) + List(27) { 0 } + listOf(0, 1, 2, 3, 4, 5, 6),
+            last7DayTotal = 21,
+            last35DayTotal = 121,
+        )
+        val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
+        val visibleCells = activityWidgetVisibleCells(
+            activityWidgetPresentation(hiddenSpike, ActivityWidgetTier.REGULAR),
+            layout,
+        )
+
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6), visibleCells.map { it.count })
+        assertEquals(ActivityIntensity.MEDIUM, visibleCells[3].intensity)
+        assertEquals(ActivityIntensity.HIGH, visibleCells.last().intensity)
     }
 
     @Test
