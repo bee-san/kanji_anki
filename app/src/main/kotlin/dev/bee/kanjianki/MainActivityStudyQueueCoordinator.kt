@@ -485,6 +485,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             }
         }
         val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
+        val targetItem = BrowseManualReviewPolicy.selectSeededTarget(seeded, row.kanji)
+        if (targetItem == null) {
+            return terminalRender(null, candidate) { expectedRoute ->
+                study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
+            }
+        }
         val preSeedPlan = study.activeStudyPlan
         study.activeStudyPlan = if (preSeedPlan != null && StudyItemComparators.sameStudyQueue(currentItems, seeded)) {
             preSeedPlan
@@ -510,7 +516,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val dueRepairs = dueWritingRepairs(now, ladder)
         refreshSessionBadgeCount(studyNowCount(generalStudyItemCount, dueRepairs))
         val session = scheduler.targetedSession(
-            seeded,
+            listOf(targetItem),
             row,
             now,
             ladder

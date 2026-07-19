@@ -18,6 +18,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
@@ -966,6 +967,127 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun retiredDueRelearningTargetStaysUnavailableUntilSupportDropReopensIt() {
+        val activity = createActivity()
+        val retiredRow = dashboardRow("拉", matureSupportCount = 2)
+        val answerSignature = StudyQueueSeeder.answerSignature(retiredRow)
+        val retired = studyItem("拉", "").copyBuilder()
+            .state(StudyLadderRules.STATE_RETIRED)
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .dueAtMillis(0L)
+            .totalReviews(7)
+            .lapses(3)
+            .answerSignature(answerSignature)
+            .schedulerRevision(11L)
+            .activeToken(null)
+            .build()
+        val retiredActions = MainActivityHomeBrowseDetail(activity).detailActionsModel(
+            retiredRow,
+            null,
+            retired,
+            retired.kanji,
+            true,
+            retired.kanji,
+            false,
+        )
+        assertNull(retiredActions.reviewLabel)
+        assertNull(retiredActions.onReview)
+        activity.store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList(),
+            listOf(retiredRow),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            3_000L,
+            4_000L,
+            null,
+        )
+        activity.store.saveStudyItem(retired)
+        activity.store.saveReview(
+            RecordsSchedulerModels.ReviewRequest(
+                retired.kanji,
+                "retired-history",
+                StudyRatings.AGAIN,
+                false,
+                true,
+                false,
+                false,
+                0,
+                StudyTaskTypes.KANJI_MEANING,
+                answerSignature,
+                retiredRow.reasonText,
+            ),
+            StudyRatings.AGAIN,
+            3_000L,
+        )
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+
+        activity.renderStudyForKanji(retired.kanji)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+
+        assertNull(activity.activeSession)
+        assertEquals(
+            StudyRouteCompletionReason.NO_SESSION,
+            activity.studySessionViewModel.acceptedRouteSnapshot().completionReason,
+        )
+        val blocked = activity.store.studyItemsForKanji(listOf(retired.kanji)).single()
+        assertEquals(StudyLadderRules.STATE_RETIRED, blocked.state)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, blocked.phase)
+        assertEquals(0L, blocked.dueAtMillis)
+        assertEquals(7, blocked.totalReviews)
+        assertEquals(3, blocked.lapses)
+        assertEquals(11L, blocked.schedulerRevision)
+        assertTrue(blocked.activeToken.isNullOrEmpty())
+        assertEquals(1, activity.store.reviewStatsSince(0L).total)
+
+        val reopenedRow = dashboardRow("拉", matureSupportCount = 1)
+        activity.store.saveSuccessfulSync(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+            emptyList(),
+            listOf(reopenedRow),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            5_000L,
+            6_000L,
+            null,
+        )
+        assertEquals(1, activity.store.activeDashboardRows().single().matureSupportCount)
+        activity.renderStudyForKanji(retired.kanji)
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+
+        val reopenedPersisted = activity.store.studyItemsForKanji(listOf(retired.kanji)).single()
+        assertEquals(StudyLadderRules.STATE_LEARNING, reopenedPersisted.state)
+        val reopened = requireNotNull(activity.activeSession?.item)
+        assertEquals(StudyLadderRules.STATE_LEARNING, reopened.state)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, reopened.phase)
+        assertEquals(0L, reopened.dueAtMillis)
+        assertEquals(7, reopened.totalReviews)
+        assertEquals(3, reopened.lapses)
+        assertEquals(1, activity.store.reviewStatsSince(0L).total)
+        val reopenedActions = MainActivityHomeBrowseDetail(activity).detailActionsModel(
+            reopenedRow,
+            null,
+            reopened,
+            reopened.kanji,
+            true,
+            reopened.kanji,
+            false,
+        )
+        assertNotNull(reopenedActions.reviewLabel)
+        assertNotNull(reopenedActions.onReview)
+    }
+
+    @Test
     fun supersededStoredRecoveryCannotPublishWithoutCandidateAcceptance() {
         val restored = restoreActiveCardAfterProcessRestart(
             kanji = "裂",
@@ -1561,7 +1683,10 @@ class MainActivityStudyRouteInitializationTest {
         return RestoredActivity(activity, controller, preferences, ioTasks)
     }
 
-    private fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
+    private fun dashboardRow(
+        kanji: String,
+        matureSupportCount: Int = 0,
+    ): RecordsImportModels.DashboardRow {
         val example = RecordsImportModels.Example(
             "active",
             101L,
@@ -1584,7 +1709,7 @@ class MainActivityStudyRouteInitializationTest {
             "Needs support",
             1,
             0,
-            0,
+            matureSupportCount,
             listOf(example),
         )
     }
