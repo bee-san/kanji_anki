@@ -37,15 +37,24 @@ class ActivityWidgetTest {
 
     @Test
     fun fontScaleDropsTertiaryCopyBeforeShrinkingReadableText() {
+        val compact = activityWidgetLayout(ActivityWidgetTier.COMPACT, fontScale = 1f)
+        val enlargedCompact = activityWidgetLayout(ActivityWidgetTier.COMPACT, fontScale = 1.3f)
         val regular = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1f)
         val enlarged = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
         val accessibility = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 2f)
 
+        assertFalse(compact.showAction)
+        assertFalse(compact.useCompactHero)
+        assertTrue(compact.stackAction)
+        assertTrue(compact.showStreak)
+        assertTrue(enlargedCompact.showAction)
+        assertTrue(enlargedCompact.useCompactHero)
         assertTrue(regular.showBestStreak)
         assertTrue(regular.showStreak)
-        assertFalse(regular.showAction)
+        assertTrue(regular.showAction)
+        assertTrue(regular.stackAction)
         assertTrue(activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f).showAction)
-        assertFalse(regular.useCompactHero)
+        assertTrue(regular.useCompactHero)
         assertFalse(enlarged.showStreak)
         assertTrue(enlarged.showGrid)
         assertTrue(enlarged.useSevenDayGrid)
@@ -57,6 +66,23 @@ class ActivityWidgetTest {
         assertTrue(accessibility.useCompactHero)
         assertTrue(accessibility.actionFontSp >= 13f)
         assertTrue(accessibility.supportFontSp >= 12f)
+    }
+
+    @Test
+    fun regularSurfaceUsesACompactSummaryWithAVisibleStatsCue() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1f)
+            val copy = activityWidgetVisibleCopy(
+                history,
+                activityWidgetPresentation(history, ActivityWidgetTier.REGULAR),
+                layout,
+            )
+
+            assertTrue(layout.useCompactHero)
+            assertTrue(layout.showAction)
+            assertEquals("87 reviews", copy.title)
+            assertEquals(WidgetTextCopy.statsLabel(), copy.action)
+        }
     }
 
     @Test

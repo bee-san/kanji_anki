@@ -93,6 +93,7 @@ internal data class ActivityWidgetLayout(
     val showGrid: Boolean,
     val useSevenDayGrid: Boolean,
     val showAction: Boolean,
+    val stackAction: Boolean,
     val useCompactHero: Boolean,
     val titleFontSp: Float,
     val actionFontSp: Float,
@@ -111,9 +112,10 @@ internal fun activityWidgetLayout(
     showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
     showStreak = fontScale < 1.3f,
     showGrid = fontScale < 2f,
-    useSevenDayGrid = fontScale >= 1.3f,
-    showAction = tier == ActivityWidgetTier.WIDE,
-    useCompactHero = fontScale >= 1.3f,
+    useSevenDayGrid = tier == ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
+    showAction = tier != ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
+    stackAction = tier != ActivityWidgetTier.WIDE,
+    useCompactHero = tier == ActivityWidgetTier.REGULAR || fontScale >= 1.3f,
     titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
     actionFontSp = 13f,
     supportFontSp = 12f,
@@ -309,11 +311,11 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             .clickable(launchAction)
             .semantics { contentDescription = presentation.contentDescription }
             .padding(if (tier == ActivityWidgetTier.COMPACT) 6.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (layout.stackAction) {
             Text(
                 text = visibleCopy.title,
-                modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = palette.ink.toGlanceColor(),
                     fontSize = layout.titleFontSp.sp,
@@ -322,7 +324,6 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 maxLines = 1,
             )
             if (layout.showAction) {
-                Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
                     text = visibleCopy.action,
                     style = TextStyle(
@@ -332,6 +333,31 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                     ),
                     maxLines = 1,
                 )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = visibleCopy.title,
+                    modifier = GlanceModifier.defaultWeight(),
+                    style = TextStyle(
+                        color = palette.ink.toGlanceColor(),
+                        fontSize = layout.titleFontSp.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+                if (layout.showAction) {
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Text(
+                        text = visibleCopy.action,
+                        style = TextStyle(
+                            color = palette.primaryText.toGlanceColor(),
+                            fontSize = layout.actionFontSp.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                    )
+                }
             }
         }
         ActivityWidgetBody(presentation, layout, tier, palette)
