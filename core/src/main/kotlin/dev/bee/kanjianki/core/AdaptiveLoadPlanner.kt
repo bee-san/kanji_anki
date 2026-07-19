@@ -200,7 +200,8 @@ class AdaptiveLoadPlanner {
 
         init {
             val policy = request.workloadPolicy ?: WorkloadPolicy.manual(DEFAULT_WORKLOAD_PERCENT)
-            rows = request.rows() ?: emptyList()
+            val projection = StudyProjectionEligibilityPolicy.planningProjection(request.rows(), request.items())
+            rows = projection.rows
             stats = request.recentStats ?: RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0)
             studiedToday = request.studiedToday ?: emptySet()
             currentStreakDays = request.currentStreakDays
@@ -210,7 +211,7 @@ class AdaptiveLoadPlanner {
             nowMillis = request.nowMillis()
             settings = request.settings ?: RecordsSyncModels.Settings.kikuDefaults()
             readingExposure = request.readingExposure ?: ReadingExposureModels.ExposureIndex.EMPTY
-            itemByKanji = itemIndex(request.items())
+            itemByKanji = projection.itemByKanji
         }
 
         fun allKanjiMode(): Boolean = !autoMode && workloadPercent >= 100
@@ -227,14 +228,6 @@ class AdaptiveLoadPlanner {
                     0L
                 ).build()
                 return PlanInputs(safeRequest)
-            }
-
-            private fun itemIndex(items: List<RecordsStudyModels.StudyItem>?): Map<String, RecordsStudyModels.StudyItem> {
-                val itemByKanji = HashMap<String, RecordsStudyModels.StudyItem>()
-                for (item in items ?: emptyList()) {
-                    itemByKanji[item.kanji] = item
-                }
-                return itemByKanji
             }
         }
     }

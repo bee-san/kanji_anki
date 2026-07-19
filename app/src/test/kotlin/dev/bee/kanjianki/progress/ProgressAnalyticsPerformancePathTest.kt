@@ -16,11 +16,10 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ProgressAnalyticsPerformancePathTest {
     @Test
-    fun freshCachedSnapshotDoesNotUseLatestDirectOrLiveReviewQueries() {
+    fun freshCachedSnapshotDoesNotUseDirectOrLiveReviewQueries() {
         val now = 44_444L
         val source = GuardedProgressAnalyticsStatsSource(
             fresh = snapshot(sourceVersion = 7L, now = now),
-            latest = snapshot(sourceVersion = 8L, now = now),
             direct = snapshot(sourceVersion = 9L, now = now),
         )
         var scheduled = 0
@@ -34,7 +33,6 @@ class ProgressAnalyticsPerformancePathTest {
 
         assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
-        assertEquals(0, source.latestReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
@@ -42,11 +40,10 @@ class ProgressAnalyticsPerformancePathTest {
     }
 
     @Test
-    fun staleLatestCachedSnapshotSchedulesRefreshExactlyOnce() {
+    fun invalidatedCachedSnapshotRecomputesBeforeRendering() {
         val now = 55_555L
         val source = GuardedProgressAnalyticsStatsSource(
-            latest = snapshot(sourceVersion = 8L, now = now),
-            direct = snapshot(sourceVersion = 9L, now = now),
+            direct = snapshot(sourceVersion = 9L, now = now).copy(generatedAtMillis = 2_222L),
         )
         var scheduled = 0
 
@@ -57,11 +54,10 @@ class ProgressAnalyticsPerformancePathTest {
             ladderSettings = DEFAULT_LADDER,
         )
 
-        assertEquals(1_111L, state.generatedAtMillis)
+        assertEquals(2_222L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
-        assertEquals(1, source.latestReads)
-        assertEquals(0, source.directRecomputes)
-        assertEquals(1, scheduled)
+        assertEquals(1, source.directRecomputes)
+        assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
         assertEquals(listOf(1, 1, 1, 0, 0, 0, 1), state.reviewsAnalytics.reviewsPerDay.values)
     }
@@ -83,7 +79,6 @@ class ProgressAnalyticsPerformancePathTest {
 
         assertEquals(1_111L, state.generatedAtMillis)
         assertEquals(1, source.freshReads)
-        assertEquals(1, source.latestReads)
         assertEquals(1, source.directRecomputes)
         assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
@@ -147,21 +142,14 @@ class ProgressAnalyticsPerformancePathTest {
 
     private class GuardedProgressAnalyticsStatsSource(
         private val fresh: StatsCacheStore.Snapshot? = null,
-        private val latest: StatsCacheStore.Snapshot? = null,
         private val direct: StatsCacheStore.Snapshot,
     ) : ProgressAnalyticsStatsSource {
         var freshReads = 0
-        var latestReads = 0
         var directRecomputes = 0
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
             freshReads += 1
             return fresh
-        }
-
-        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            latestReads += 1
-            return latest
         }
 
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {

@@ -196,11 +196,24 @@ class StudyQueueSeeder {
     private fun seedQueueInternal(request: SeedQueueRequest): List<RecordsStudyModels.StudyItem> {
         val rowIndex = indexSeedRows(request.allRows)
         val state = reconcileExistingItems(request, rowIndex)
+        reopenEligibleRetiredItems(request, state)
         for (row in request.admissionRows) {
             admitSeedRow(request, state, row)
         }
         sortSeedItems(state.items)
         return state.items
+    }
+
+    /** Reopening is reconciliation, not admission, so a filtered focus plan must not suppress it. */
+    private fun reopenEligibleRetiredItems(request: SeedQueueRequest, state: SeedQueueState) {
+        for (row in request.allRows) {
+            if (!request.isEligibleFamily(row.kanji)) continue
+            val rowKey = identityKey(row.kanji)
+            val current = state.byFamily[rowKey] ?: continue
+            if (canReopenRetiredSeedItem(request, row, current)) {
+                reopenSeedItem(state, rowKey, current)
+            }
+        }
     }
 
     private fun sortSeedItems(items: MutableList<RecordsStudyModels.StudyItem>) {
