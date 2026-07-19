@@ -24,23 +24,27 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     private fun renderComposeWritingRoute(routeProvider: () -> WritingSessionRouteModel) {
-        val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
-        lateinit var route: WritingSessionRouteModel
+        lateinit var preparedRoute: PreparedStudyRoute<WritingSessionRouteModel>
         home.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
             studySessionActive = true,
-            beforeContent = { route = routeProvider() },
+            beforeContent = {
+                preparedRoute = prepareAcceptedStudyRoute(
+                    routeProvider,
+                    home.studySessionViewModel::acceptedRouteSnapshot,
+                )
+            },
             content = {
                 Column {
                     StudyTopBar(
-                        routeSnapshot = routeSnapshot,
+                        routeSnapshot = preparedRoute.routeSnapshot,
                         onClose = home::renderHome,
                         onSettings = home::renderSettings,
                     )
-                    ComposeWritingSessionCard(route)
+                    ComposeWritingSessionCard(preparedRoute.model)
                 }
             },
-            actionBar = { ComposeWritingActionBar(route) },
+            actionBar = { ComposeWritingActionBar(preparedRoute.model) },
         )
         home.updateResultActions()
         home.refreshWritingModelStatus()
