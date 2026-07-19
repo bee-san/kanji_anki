@@ -20,6 +20,7 @@ class WidgetTextCopyTest {
             assertEquals("1-day streak", WidgetTextCopy.streakLabel(1))
             assertEquals("4-day streak", WidgetTextCopy.streakLabel(4))
             assertEquals("Study now", WidgetTextCopy.studyNowLabel())
+            assertEquals("Study", WidgetTextCopy.studyLabel())
             assertEquals("All caught up", WidgetTextCopy.nothingDueTitle())
             assertEquals("2-day streak · Nothing due", WidgetTextCopy.nothingDueBody(2, 0L))
 
@@ -54,6 +55,57 @@ class WidgetTextCopyTest {
             assertEquals("Theme", WidgetTextCopy.widgetThemeSectionTitle())
             assertEquals("Follow app", WidgetTextCopy.widgetThemeFollowAppLabel())
             assertEquals("Save", WidgetTextCopy.widgetSaveLabel())
+            assertEquals("Kani unavailable", WidgetTextCopy.errorTitle())
+            assertEquals(
+                "Open Kani to recover your local study data.",
+                WidgetTextCopy.errorBody(),
+            )
+            assertEquals("Due", WidgetTextCopy.quickDueStatus())
+            assertEquals("Caught up", WidgetTextCopy.quickCaughtUpStatus())
+            assertEquals("Set up", WidgetTextCopy.quickSetupStatus())
+            assertEquals("Unavailable", WidgetTextCopy.quickErrorStatus())
+            assertEquals("999+", WidgetTextCopy.visualCountLabel(1_204))
+            assertEquals("0", WidgetTextCopy.visualCountLabel(-2))
+            assertEquals("87 reviews", WidgetTextCopy.reviewCountLabel(87))
+            assertEquals("87 reviews in 35 days", WidgetTextCopy.activityPeriodLabel(87, 35))
+            assertEquals("No activity yet", WidgetTextCopy.noActivityTitle())
+            assertEquals("Reviews will appear here.", WidgetTextCopy.noActivityBody())
+            assertEquals("Open stats", WidgetTextCopy.openStatsLabel())
+            assertEquals("Stats", WidgetTextCopy.statsLabel())
+            assertEquals(
+                "Activity widget. 87 reviews in 35 days, 4 today. 5-day streak. Best: 21 days. Open stats.",
+                WidgetTextCopy.activityDescription(87, 35, 4, 5, 21, "Open stats"),
+            )
+            assertEquals(
+                "Quick study widget. 3 reviews ready. Study now.",
+                WidgetTextCopy.quickStudyDescription("3 reviews ready", "Study now"),
+            )
+            assertEquals("Focus kanji", WidgetTextCopy.focusKanjiLabel())
+            assertEquals("Details", WidgetTextCopy.focusDetailsLabel())
+            assertEquals("Due now", WidgetTextCopy.focusDueStatus())
+            assertEquals("No focus kanji", WidgetTextCopy.focusEmptyTitle())
+            assertEquals(
+                "Open Kani to sync eligible study items.",
+                WidgetTextCopy.focusEmptyBody(),
+            )
+            assertEquals(
+                "Focus kanji widget. 学. learn. Reading: がく. Due now. Details. Study now.",
+                WidgetTextCopy.focusKanjiDescription(
+                    kanji = "学",
+                    primaryMeaning = "learn",
+                    readings = "がく",
+                    isDueNow = true,
+                ),
+            )
+            assertEquals(
+                "Focus kanji widget. 学. learn. Details.",
+                WidgetTextCopy.focusKanjiDescription(
+                    kanji = "学",
+                    primaryMeaning = "learn",
+                    readings = "",
+                    isDueNow = false,
+                ),
+            )
         }
     }
 
@@ -67,6 +119,7 @@ class WidgetTextCopyTest {
             assertEquals("復習できるカード1件", WidgetTextCopy.dueCountLabel(1))
             assertEquals("3日連続", WidgetTextCopy.streakLabel(3))
             assertEquals("今すぐ学習", WidgetTextCopy.studyNowLabel())
+            assertEquals("学習", WidgetTextCopy.studyLabel())
             assertEquals("復習完了", WidgetTextCopy.nothingDueTitle())
             assertEquals("3日連続 · 復習なし", WidgetTextCopy.nothingDueBody(3, 0L))
             assertEquals(
@@ -90,6 +143,43 @@ class WidgetTextCopyTest {
             assertEquals("テーマ", WidgetTextCopy.widgetThemeSectionTitle())
             assertEquals("アプリに合わせる", WidgetTextCopy.widgetThemeFollowAppLabel())
             assertEquals("保存", WidgetTextCopy.widgetSaveLabel())
+            assertEquals("Kaniを利用できません", WidgetTextCopy.errorTitle())
+            assertEquals("Kaniを開いてローカル学習データを復旧します。", WidgetTextCopy.errorBody())
+            assertEquals("期限", WidgetTextCopy.quickDueStatus())
+            assertEquals("復習完了", WidgetTextCopy.quickCaughtUpStatus())
+            assertEquals("設定", WidgetTextCopy.quickSetupStatus())
+            assertEquals("利用不可", WidgetTextCopy.quickErrorStatus())
+            assertEquals("復習87件", WidgetTextCopy.reviewCountLabel(87))
+            assertEquals("35日間で復習87件", WidgetTextCopy.activityPeriodLabel(87, 35))
+            assertEquals("学習履歴はまだありません", WidgetTextCopy.noActivityTitle())
+            assertEquals("復習するとここに表示されます。", WidgetTextCopy.noActivityBody())
+            assertEquals("統計を開く", WidgetTextCopy.openStatsLabel())
+            assertEquals("統計", WidgetTextCopy.statsLabel())
+            assertEquals(
+                "学習履歴ウィジェット。35日間で復習87件、今日4件。5日連続。最長21日。統計を開く。",
+                WidgetTextCopy.activityDescription(87, 35, 4, 5, 21, "統計を開く"),
+            )
+            assertEquals(
+                "クイック学習ウィジェット。復習できるカード3件。今すぐ学習。",
+                WidgetTextCopy.quickStudyDescription("復習できるカード3件", "今すぐ学習"),
+            )
+            assertEquals("注目の漢字", WidgetTextCopy.focusKanjiLabel())
+            assertEquals("詳細", WidgetTextCopy.focusDetailsLabel())
+            assertEquals("今すぐ復習", WidgetTextCopy.focusDueStatus())
+            assertEquals("注目の漢字なし", WidgetTextCopy.focusEmptyTitle())
+            assertEquals(
+                "Kaniを開いて学習対象を同期します。",
+                WidgetTextCopy.focusEmptyBody(),
+            )
+            assertEquals(
+                "注目の漢字ウィジェット。学。学ぶ。読み：がく。今すぐ復習。詳細。今すぐ学習。",
+                WidgetTextCopy.focusKanjiDescription(
+                    kanji = "学",
+                    primaryMeaning = "学ぶ",
+                    readings = "がく",
+                    isDueNow = true,
+                ),
+            )
         }
     }
 

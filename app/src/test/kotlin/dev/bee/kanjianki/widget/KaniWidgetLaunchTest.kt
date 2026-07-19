@@ -29,6 +29,7 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
     }
 
     @Test
@@ -42,6 +43,23 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+    }
+
+    @Test
+    fun everyUnavailableQuickStateOpensHomeWithoutStudyStatsOrSyncExtras() {
+        listOf(
+            KaniWidgetState.NOTHING_DUE,
+            KaniWidgetState.NOT_SET_UP,
+            KaniWidgetState.ERROR,
+        ).forEach { state ->
+            val intent = kaniWidgetLaunchIntent(context, KaniWidgetSnapshot(state))
+
+            assertEquals(MainActivity::class.java.name, intent.component?.className)
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+            assertTrue(intent.extras?.keySet().orEmpty().isEmpty())
+        }
     }
 
     @Test
@@ -68,6 +86,29 @@ class KaniWidgetLaunchTest {
     }
 
     @Test
+    fun focusDetailsTapCarriesOnlyExactGlyphAndTaskReuseFlags() {
+        val intent = kaniFocusDetailIntent(context, "学")
+
+        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertEquals("学", intent.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+    }
+
+    @Test
+    fun focusDueStudySiblingUsesGenericStudyRouteWithoutGlyph() {
+        val intent = kaniWidgetLaunchIntent(
+            context,
+            KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 1),
+        )
+
+        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+    }
+
+    @Test
     fun heatmapTapOpensStatsWithTaskReuseFlags() {
         val intent = kaniWidgetStatsIntent(context)
 
@@ -76,5 +117,19 @@ class KaniWidgetLaunchTest {
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
         assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
         assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+    }
+
+    @Test
+    fun activityHistoryAndEmptyHistoryOpenStatsButUnavailableStatesOpenHome() {
+        listOf(ActivityWidgetState.HISTORY, ActivityWidgetState.NO_HISTORY).forEach { state ->
+            val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
+            assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        }
+        listOf(ActivityWidgetState.NOT_SET_UP, ActivityWidgetState.ERROR).forEach { state ->
+            val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        }
     }
 }

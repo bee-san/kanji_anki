@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
-class KaniWidgetSnapshotLoaderTest {
+class StudyWidgetSnapshotLoaderTest {
     private lateinit var context: Context
 
     @Before
@@ -35,6 +35,7 @@ class KaniWidgetSnapshotLoaderTest {
     @After
     fun tearDown() {
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        context.getDatabasePath(LocalStoreSchema.DB_NAME).deleteRecursively()
     }
 
     @Test
@@ -42,11 +43,22 @@ class KaniWidgetSnapshotLoaderTest {
         val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
         assertFalse(databaseFile.exists())
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(KaniWidgetState.NOT_SET_UP, snapshot.state)
         assertFalse(databaseFile.exists())
         assertEquals(KaniThemeChoice.GIRLYPOP, snapshot.themeChoice)
+    }
+
+    @Test
+    fun corruptDatabaseReturnsErrorWithoutThrowing() {
+        val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
+        databaseFile.parentFile?.mkdirs()
+        databaseFile.writeText("not sqlite")
+
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
+
+        assertEquals(KaniWidgetState.ERROR, snapshot.state)
     }
 
     @Test
@@ -55,7 +67,7 @@ class KaniWidgetSnapshotLoaderTest {
             store.putStringSetting(KaniThemeChoice.SETTING_KEY, KaniThemeChoice.DARK.storageKey)
         }
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(KaniThemeChoice.DARK, snapshot.themeChoice)
     }
@@ -66,7 +78,7 @@ class KaniWidgetSnapshotLoaderTest {
             store.putStringSetting(KaniThemeChoice.SETTING_KEY, "no_such_theme")
         }
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(KaniThemeChoice.GIRLYPOP, snapshot.themeChoice)
     }
@@ -85,7 +97,7 @@ class KaniWidgetSnapshotLoaderTest {
             ).count { it.dueAtMillis <= NOW }
         }
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(1, expectedDueCount)
         assertEquals(KaniWidgetState.DUE_NOW, snapshot.state)
@@ -99,7 +111,7 @@ class KaniWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("裂", NOW - 1L, state = "retired"))
         }
 
-        val retiredSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val retiredSnapshot = StudyWidgetSnapshotLoader.load(context, NOW)
         assertEquals(KaniWidgetState.NOTHING_DUE, retiredSnapshot.state)
         assertEquals(0, retiredSnapshot.dueCount)
 
@@ -107,7 +119,7 @@ class KaniWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("裂", NOW - 1L, state = "review"))
         }
 
-        val reopenedSnapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val reopenedSnapshot = StudyWidgetSnapshotLoader.load(context, NOW)
         assertEquals(KaniWidgetState.DUE_NOW, reopenedSnapshot.state)
         assertEquals(1, reopenedSnapshot.dueCount)
     }
@@ -120,8 +132,8 @@ class KaniWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("岩", dueAt))
         }
 
-        val beforeDue = KaniWidgetSnapshotLoader.load(context, dueAt - 1L)
-        val atDue = KaniWidgetSnapshotLoader.load(context, dueAt)
+        val beforeDue = StudyWidgetSnapshotLoader.load(context, dueAt - 1L)
+        val atDue = StudyWidgetSnapshotLoader.load(context, dueAt)
 
         assertEquals(KaniWidgetState.NOTHING_DUE, beforeDue.state)
         assertEquals(0, beforeDue.dueCount)
@@ -143,29 +155,13 @@ class KaniWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("岩", dueLaterAt)) // Due later today.
         }
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(KaniWidgetState.DUE_NOW, snapshot.state)
         assertEquals(2, snapshot.dueCount)
         assertEquals(1, snapshot.newDueCount)
         assertEquals(1, snapshot.dueLaterCount)
         assertEquals(dueLaterAt, snapshot.dueLaterByMillis)
-    }
-
-    @Test
-    fun heatmapWindowLoadsThirtyFiveDaysAndStripUsesLastSeven() {
-        LocalStore(context).use { store ->
-            store.saveRows(store.writableDatabase, listOf(dashboardRow("裂")), NOW)
-            store.saveStudyItem(studyItem("裂", NOW - 1L))
-        }
-
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
-
-        assertEquals(KaniWidgetSnapshotLoader.HEATMAP_DAYS, snapshot.last35DayCounts.size)
-        assertEquals(
-            snapshot.last35DayCounts.takeLast(KaniWidgetSnapshotLoader.STRIP_DAYS),
-            snapshot.last7DayCounts,
-        )
     }
 
     /**
@@ -190,7 +186,7 @@ class KaniWidgetSnapshotLoaderTest {
             store.saveStudyItem(studyItem("岩", dueLaterAt))
         }
 
-        val snapshot = KaniWidgetSnapshotLoader.load(context, NOW)
+        val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         LocalStore(context).use { store ->
             val rows = store.activeDashboardRows()

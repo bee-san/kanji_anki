@@ -317,6 +317,16 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
 
     abstract fun renderHome()
+
+    internal open fun openFocusKanjiDetail(kanji: String): Boolean {
+        val home = this as? MainActivityHome ?: return false
+        home.activeBrowseQuery = ""
+        home.activeBrowseSimilarOnly = false
+        home.activeBrowseAllKanji = true
+        home.renderDetail(kanji, true, "")
+        return true
+    }
+
     abstract fun renderUpdate()
     abstract fun renderStats()
     abstract fun renderSettings()
@@ -696,6 +706,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_OPEN_STUDY = "dev.bee.kanjianki.extra.OPEN_STUDY"
         const val EXTRA_OPEN_STATS = "dev.bee.kanjianki.extra.OPEN_STATS"
+        const val EXTRA_OPEN_KANJI_DETAIL = "dev.bee.kanjianki.extra.OPEN_KANJI_DETAIL"
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"

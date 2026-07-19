@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.app.Application
 import androidx.work.Configuration
 import dev.bee.kanjianki.backup.StagedRestoreApplier
+import dev.bee.kanjianki.widget.KaniWidgetEventHooks
 
 class KaniApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
@@ -21,6 +22,7 @@ class KaniApplication : Application(), Configuration.Provider {
             // Stop before any initializer or Android component can open SQLite.
             "Restore cleanup must finish before Kani can start"
         }
+        KaniWidgetEventHooks.DEFAULT.restoreCompleted(this, restoreResult)
         // Debug-only: mirror study-load timing probes to a shareable file under
         // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
         StudyLoadDebugLog.init(this)

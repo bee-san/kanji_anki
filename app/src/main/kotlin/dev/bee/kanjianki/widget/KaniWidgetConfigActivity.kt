@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -30,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.lifecycle.lifecycleScope
 import dev.bee.kanjianki.KaniTheme
@@ -39,6 +42,23 @@ import dev.bee.kanjianki.SettingsThemeCopy
 import dev.bee.kanjianki.core.WidgetTextCopy
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import kotlinx.coroutines.launch
+
+internal fun ownsLegacyConfigurableWidget(context: Context, appWidgetId: Int): Boolean =
+    KaniWidgetRegistry.DEFAULT.descriptorForAppWidgetId(context, appWidgetId)?.receiverClass ==
+        KaniWidgetReceiver::class.java
+
+internal suspend fun loadKaniWidgetInstanceOptions(
+    context: Context,
+    appWidgetId: Int,
+): KaniWidgetInstanceOptions? {
+    if (!ownsLegacyConfigurableWidget(context, appWidgetId)) return null
+    val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
+    val prefs = KaniWidget().getAppWidgetState<Preferences>(context, glanceId)
+    return KaniWidgetInstanceOptions.fromStorageValues(
+        prefs[stringPreferencesKey(KaniWidgetInstanceOptions.STYLE_PREF_KEY)],
+        prefs[stringPreferencesKey(KaniWidgetInstanceOptions.THEME_OVERRIDE_PREF_KEY)],
+    )
+}
 
 /**
  * Standard `APPWIDGET_CONFIGURE` flow. Configuration is optional
@@ -59,18 +79,31 @@ class KaniWidgetConfigActivity : ComponentActivity() {
             finish()
             return
         }
-        setContent {
-            KaniTheme {
-                KaniWidgetConfigScreen(
-                    onSave = { options -> persistAndFinish(appWidgetId, options) },
-                )
+        lifecycleScope.launch {
+            val initialOptions = runCatching {
+                loadKaniWidgetInstanceOptions(this@KaniWidgetConfigActivity, appWidgetId)
+            }.getOrNull()
+            if (initialOptions == null) {
+                finish()
+                return@launch
+            }
+            setContent {
+                KaniTheme {
+                    KaniWidgetConfigScreen(
+                        initialOptions = initialOptions,
+                        onSave = { options -> persistAndFinish(appWidgetId, options) },
+                    )
+                }
             }
         }
     }
 
     private fun persistAndFinish(appWidgetId: Int, options: KaniWidgetInstanceOptions) {
         lifecycleScope.launch {
-            runCatching {
+            val saved = runCatching {
+                if (!ownsLegacyConfigurableWidget(this@KaniWidgetConfigActivity, appWidgetId)) {
+                    return@runCatching false
+                }
                 val glanceId = GlanceAppWidgetManager(this@KaniWidgetConfigActivity)
                     .getGlanceIdBy(appWidgetId)
                 updateAppWidgetState(this@KaniWidgetConfigActivity, glanceId) { prefs ->
@@ -80,8 +113,9 @@ class KaniWidgetConfigActivity : ComponentActivity() {
                         options.themeStorageValue()
                 }
                 KaniWidget().update(this@KaniWidgetConfigActivity, glanceId)
-            }
-            setResult(RESULT_OK, resultIntent(appWidgetId))
+                true
+            }.getOrDefault(false)
+            if (saved) setResult(RESULT_OK, resultIntent(appWidgetId))
             finish()
         }
     }
@@ -91,9 +125,13 @@ class KaniWidgetConfigActivity : ComponentActivity() {
 }
 
 @Composable
-internal fun KaniWidgetConfigScreen(onSave: (KaniWidgetInstanceOptions) -> Unit) {
-    var style by remember { mutableStateOf(KaniWidgetStyle.DUE_CARD) }
-    var themeOverride by remember { mutableStateOf<KaniThemeChoice?>(null) }
+internal fun KaniWidgetConfigScreen(
+    initialOptions: KaniWidgetInstanceOptions,
+    onSave: (KaniWidgetInstanceOptions) -> Unit,
+) {
+    var style by remember(initialOptions) { mutableStateOf(initialOptions.style) }
+    var themeOverride by remember(initialOptions) { mutableStateOf(initialOptions.themeOverride) }
+    val isLegacyHeatmap = initialOptions.style == KaniWidgetStyle.HEATMAP
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -104,19 +142,20 @@ internal fun KaniWidgetConfigScreen(onSave: (KaniWidgetInstanceOptions) -> Unit)
             Text(WidgetTextCopy.widgetConfigTitle(), style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(16.dp))
 
-            Text(WidgetTextCopy.widgetStyleSectionTitle(), style = MaterialTheme.typography.titleMedium)
-            ConfigChoiceRow(
-                label = WidgetTextCopy.widgetStyleDueCardLabel(),
-                selected = style == KaniWidgetStyle.DUE_CARD,
-                testTag = "widget_style_due_card",
-            ) { style = KaniWidgetStyle.DUE_CARD }
-            ConfigChoiceRow(
-                label = WidgetTextCopy.widgetStyleHeatmapLabel(),
-                selected = style == KaniWidgetStyle.HEATMAP,
-                testTag = "widget_style_heatmap",
-            ) { style = KaniWidgetStyle.HEATMAP }
-
-            Spacer(Modifier.height(16.dp))
+            if (isLegacyHeatmap) {
+                Text(WidgetTextCopy.widgetStyleSectionTitle(), style = MaterialTheme.typography.titleMedium)
+                ConfigChoiceRow(
+                    label = WidgetTextCopy.widgetStyleHeatmapLabel(),
+                    selected = style == KaniWidgetStyle.HEATMAP,
+                    testTag = "widget_style_heatmap",
+                ) { style = KaniWidgetStyle.HEATMAP }
+                ConfigChoiceRow(
+                    label = WidgetTextCopy.widgetStyleDueCardLabel(),
+                    selected = style == KaniWidgetStyle.DUE_CARD,
+                    testTag = "widget_style_due_card",
+                ) { style = KaniWidgetStyle.DUE_CARD }
+                Spacer(Modifier.height(16.dp))
+            }
             Text(WidgetTextCopy.widgetThemeSectionTitle(), style = MaterialTheme.typography.titleMedium)
             ConfigChoiceRow(
                 label = WidgetTextCopy.widgetThemeFollowAppLabel(),

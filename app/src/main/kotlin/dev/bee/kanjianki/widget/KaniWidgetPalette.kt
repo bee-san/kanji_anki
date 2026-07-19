@@ -1,8 +1,11 @@
 package dev.bee.kanjianki.widget
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import dev.bee.kanjianki.theme.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolvePalette
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * One widget color role with explicit day and night values. Fixed theme
@@ -27,14 +30,22 @@ internal data class KaniWidgetColorRole(
 internal data class KaniWidgetPalette(
     /** Widget card background — `KaniColors.bg`. */
     val background: KaniWidgetColorRole,
-    /** Brand label, action row, and filled activity cells — `KaniColors.primary`. */
+    /** Brand label, action row, and current-day outline — `KaniColors.primary`. */
     val primary: KaniWidgetColorRole,
+    /** Small accent text, falling back to ink when primary is below 4.5:1. */
+    val primaryText: KaniWidgetColorRole,
     /** Title text — `KaniColors.ink`. */
     val ink: KaniWidgetColorRole,
     /** Body/supporting text — `KaniColors.muted`. */
     val muted: KaniWidgetColorRole,
-    /** Empty activity-strip cells — `KaniColors.track`. */
+    /** Empty legacy activity-strip cells — `KaniColors.track`. */
     val track: KaniWidgetColorRole,
+    /** Low activity — `KaniColors.muted`. */
+    val heatOne: KaniWidgetColorRole,
+    /** Medium activity — `KaniColors.ink`. */
+    val heatTwo: KaniWidgetColorRole,
+    /** High activity — `KaniColors.primary`. */
+    val heatThree: KaniWidgetColorRole,
 ) {
     companion object {
         fun forChoice(choice: KaniThemeChoice): KaniWidgetPalette {
@@ -43,10 +54,36 @@ internal data class KaniWidgetPalette(
             return KaniWidgetPalette(
                 background = KaniWidgetColorRole(day.bg, night.bg),
                 primary = KaniWidgetColorRole(day.primary, night.primary),
+                primaryText = KaniWidgetColorRole(
+                    readableAccent(day.primary, day.bg, day.ink),
+                    readableAccent(night.primary, night.bg, night.ink),
+                ),
                 ink = KaniWidgetColorRole(day.ink, night.ink),
                 muted = KaniWidgetColorRole(day.muted, night.muted),
                 track = KaniWidgetColorRole(day.track, night.track),
+                heatOne = KaniWidgetColorRole(day.muted, night.muted),
+                heatTwo = KaniWidgetColorRole(day.ink, night.ink),
+                heatThree = KaniWidgetColorRole(day.primary, night.primary),
             )
+        }
+
+        private fun readableAccent(primary: Color, background: Color, ink: Color): Color =
+            primary.takeIf { contrastRatio(it, background) >= 4.5 } ?: ink
+
+        private fun contrastRatio(foreground: Color, background: Color): Double {
+            val lighter = max(foreground.luminance(), background.luminance()).toDouble()
+            val darker = min(foreground.luminance(), background.luminance()).toDouble()
+            return (lighter + 0.05) / (darker + 0.05)
         }
     }
 }
+
+internal fun KaniWidgetPalette.activityHeat(intensity: ActivityIntensity): KaniWidgetColorRole = when (intensity) {
+    ActivityIntensity.EMPTY -> track
+    ActivityIntensity.LOW -> heatOne
+    ActivityIntensity.MEDIUM -> heatTwo
+    ActivityIntensity.HIGH -> heatThree
+}
+
+internal val KaniWidgetPalette.todayOutline: KaniWidgetColorRole
+    get() = primary

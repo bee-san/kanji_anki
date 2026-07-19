@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bee-san/kanji_anki/screenshots/kani-widget-family/manifest.schema.json",
+  "title": "Kani widget screenshot evidence sidecar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "capture_id",
+    "captured_at_utc",
+    "commit",
+    "api",
+    "device",
+    "launcher",
+    "locale",
+    "font_scale",
+    "ui_mode",
+    "app_theme",
+    "app_widget_options_dp",
+    "fixture_id",
+    "provider_component",
+    "app_widget_id",
+    "png",
+    "uiautomator_xml",
+    "appwidget_dump",
+    "capture_command",
+    "operator"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "capture_id": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "captured_at_utc": { "type": "string", "format": "date-time" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "api": { "type": "integer", "minimum": 26 },
+    "device": { "type": "string", "minLength": 1 },
+    "launcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "version", "grid"],
+      "properties": {
+        "package": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "grid": { "type": "string", "minLength": 1 }
+      }
+    },
+    "locale": { "type": "string", "minLength": 1 },
+    "font_scale": { "type": "number", "exclusiveMinimum": 0 },
+    "ui_mode": { "type": "string", "minLength": 1 },
+    "app_theme": { "type": "string", "minLength": 1 },
+    "app_widget_options_dp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_width", "min_height", "max_width", "max_height"],
+      "properties": {
+        "min_width": { "type": "integer", "minimum": 0 },
+        "min_height": { "type": "integer", "minimum": 0 },
+        "max_width": { "type": "integer", "minimum": 0 },
+        "max_height": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fixture_id": { "type": "string", "minLength": 1 },
+    "provider_component": { "type": "string", "minLength": 1 },
+    "app_widget_id": { "type": "integer", "minimum": 1 },
+    "png": { "type": "string", "pattern": "\\.png$" },
+    "uiautomator_xml": { "type": "string", "pattern": "\\.uiautomator\\.xml$" },
+    "appwidget_dump": { "type": "string", "pattern": "\\.appwidget\\.txt$" },
+    "capture_command": { "type": "string", "minLength": 1 },
+    "operator": { "type": "string", "minLength": 1 }
+  }
+}

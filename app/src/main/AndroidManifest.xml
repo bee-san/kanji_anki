@@ -88,25 +88,59 @@
         </activity>
         <receiver
             android:name=".widget.KaniWidgetReceiver"
-            android:exported="false">
+            android:exported="false"
+            android:label="@string/study_overview_widget_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <!--
-                    Day-boundary freshness (event-driven, no periodic worker):
-                    TIME_SET and TIMEZONE_CHANGED are exempt implicit
-                    broadcasts; DATE_CHANGED is declared for completeness but
-                    not deliverable to manifest receivers on API 26+, so
-                    midnight rollover is covered by the one-shot boundary
-                    alarm (REFRESH) plus the hourly fallback.
-                -->
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <action android:name="android.intent.action.DATE_CHANGED" />
-                <action android:name="dev.bee.kanjianki.widget.action.REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/kani_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.QuickStudyWidgetReceiver"
+            android:exported="false"
+            android:label="@string/quick_study_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_study_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ActivityWidgetReceiver"
+            android:exported="false"
+            android:label="@string/activity_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/activity_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.FocusKanjiWidgetReceiver"
+            android:exported="false"
+            android:label="@string/focus_kanji_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focus_kanji_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.KaniWidgetRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.bee.kanjianki.widget.action.REFRESH" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
         </receiver>
         <receiver
             android:name=".update.PackageInstallStatusReceiver"

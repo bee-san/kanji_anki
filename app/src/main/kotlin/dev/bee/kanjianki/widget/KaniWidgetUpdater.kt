@@ -1,26 +1,23 @@
 package dev.bee.kanjianki.widget
 
-import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import androidx.glance.appwidget.updateAll
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import android.content.Intent
 
-/** Immediate event-driven refresh; provider metadata supplies an hourly fallback. */
+/** Routes every event source through one explicit, non-exported refresh receiver. */
 internal object KaniWidgetUpdater {
-    private val updateScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
+    // S5320 warns about implicit broadcasts. This intent is explicitly component-bound to
+    // an android:exported="false" receiver in this package and carries no caller-controlled data.
+    @Suppress("kotlin:S5320")
     fun requestUpdate(context: Context?) {
         val appContext = context?.applicationContext ?: return
-        val component = ComponentName(appContext, KaniWidgetReceiver::class.java)
-        if (AppWidgetManager.getInstance(appContext).getAppWidgetIds(component).isEmpty()) {
-            return
-        }
-        updateScope.launch {
-            KaniWidget().updateAll(appContext)
-        }
+        if (!KaniWidgetRegistry.DEFAULT.hasInstalledWidgets(appContext)) return
+        appContext.sendBroadcast(refreshIntent(appContext))
     }
+
+    fun refreshIntent(context: Context): Intent =
+        Intent(KaniWidgetRefreshPolicy.ACTION_WIDGET_REFRESH).apply {
+            component = ComponentName(context, KaniWidgetRefreshReceiver::class.java)
+            `package` = context.packageName
+        }
 }

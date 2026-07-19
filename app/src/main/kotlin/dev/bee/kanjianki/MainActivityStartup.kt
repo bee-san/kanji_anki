@@ -7,10 +7,15 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
+import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.fsrs.FsrsFitScheduler
+
+internal fun focusKanjiDetailFromIntent(intent: Intent?): String? = TextUtil.normalizeSingleKanji(
+    runCatching { intent?.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) }.getOrNull(),
+).takeIf(String::isNotEmpty)
 
 internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
@@ -102,6 +107,14 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         }
         val shortcutDestination = launcherShortcutDestination(intent?.action)
         when {
+            intent?.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) == true -> {
+                activity.disableStudyOrdinaryResume()
+                val kanji = focusKanjiDetailFromIntent(intent)
+                if (kanji == null || !activity.openFocusKanjiDetail(kanji)) {
+                    activity.renderHome()
+                }
+            }
+
             intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true -> {
                 activity.renderStudy()
             }
