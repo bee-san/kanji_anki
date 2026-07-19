@@ -32,24 +32,31 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     private fun renderComposeFlashcardRoute(routeProvider: () -> ComposeFlashcardRouteModel) {
-        val routeSnapshot = activity.studySessionViewModel.acceptedRouteSnapshot()
-        lateinit var route: ComposeFlashcardRouteModel
+        lateinit var preparedRoute: PreparedStudyRoute<ComposeFlashcardRouteModel>
         activity.composeRouteWithActionBar(
             selected = MainActivityBase.NAV_STUDY,
             studySessionActive = true,
-            beforeContent = { route = routeProvider() },
+            beforeContent = {
+                preparedRoute = prepareAcceptedStudyRoute(
+                    routeProvider,
+                    activity.studySessionViewModel::acceptedRouteSnapshot,
+                )
+            },
             content = {
                 Column {
                     StudyTopBar(
-                        routeSnapshot = routeSnapshot,
+                        routeSnapshot = preparedRoute.routeSnapshot,
                         onClose = activity::renderHome,
                         onSettings = activity::renderSettings,
                     )
-                    ComposeFlashcardCard(route)
+                    ComposeFlashcardCard(preparedRoute.model)
                 }
-                RecognitionFailureCauseDialog(route.failureCauseState, route.onFailureCause)
+                RecognitionFailureCauseDialog(
+                    preparedRoute.model.failureCauseState,
+                    preparedRoute.model.onFailureCause,
+                )
             },
-            actionBar = { ComposeFlashcardActionBar(route) },
+            actionBar = { ComposeFlashcardActionBar(preparedRoute.model) },
         )
     }
 
