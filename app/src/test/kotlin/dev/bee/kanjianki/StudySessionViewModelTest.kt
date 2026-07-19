@@ -774,8 +774,8 @@ class StudySessionViewModelTest {
     }
 
     @Test
-    fun seededTransitionTracesPreserveRouteInvariants() {
-        val seeds = listOf(7, 19, 41, 73)
+    fun adversarialReviewSeedsPreserveRouteInvariants() {
+        val seeds = listOf(0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144)
         for (seed in seeds) {
             val random = Random(seed)
             val viewModel = StudySessionViewModel()
