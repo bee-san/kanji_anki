@@ -13,8 +13,6 @@ internal object KaniWidgetRefreshPolicy {
     private const val ACTION_PACKAGE_REPLACED = "android.intent.action.MY_PACKAGE_REPLACED"
     private const val ACTION_LOCALE_CHANGED = "android.intent.action.LOCALE_CHANGED"
 
-    const val ONE_SHOT_WINDOW_MILLIS: Long = 60L * 60L * 1000L
-
     fun shouldRefreshOnBroadcast(action: String?): Boolean {
         return action == ACTION_TIME_CHANGED ||
             action == ACTION_TIMEZONE_CHANGED ||
@@ -26,7 +24,6 @@ internal object KaniWidgetRefreshPolicy {
 
     fun oneShotRefreshAtMillis(nowMillis: Long, nextUsefulAtMillis: Long): Long {
         if (nextUsefulAtMillis <= nowMillis) return 0L
-        if (nextUsefulAtMillis > nowMillis + ONE_SHOT_WINDOW_MILLIS) return 0L
         return nextUsefulAtMillis
     }
 
