@@ -93,6 +93,22 @@ internal class KaniWidget(
     }
 }
 
+internal data class OverviewActivityStripMetrics(
+    val cellSizeDp: Int,
+    val gapDp: Int,
+) {
+    fun widthDp(dayCount: Int): Int = if (dayCount <= 0) {
+        0
+    } else {
+        dayCount * cellSizeDp + (dayCount - 1) * gapDp
+    }
+}
+
+internal fun overviewActivityStripMetrics() = OverviewActivityStripMetrics(
+    cellSizeDp = 9,
+    gapDp = 2,
+)
+
 @Composable
 internal fun KaniWidgetContent(
     snapshot: KaniWidgetSnapshot,
@@ -277,14 +293,15 @@ private fun OverviewAction(
 @Composable
 private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
     val maxCount = dayCounts.maxOrNull() ?: 1
+    val metrics = overviewActivityStripMetrics()
     Row(
         modifier = GlanceModifier.padding(vertical = 2.dp),
     ) {
         dayCounts.forEachIndexed { index, count ->
-            if (index > 0) Spacer(GlanceModifier.width(3.dp))
+            if (index > 0) Spacer(GlanceModifier.width(metrics.gapDp.dp))
             Box(
                 modifier = GlanceModifier
-                    .size(12.dp)
+                    .size(metrics.cellSizeDp.dp)
                     .background(heatCellRole(count, maxCount, palette).toProvider()),
                 contentAlignment = Alignment.Center,
             ) {}
