@@ -33,34 +33,22 @@ class KaniWidgetRefreshPolicyTest {
     }
 
     @Test
-    fun oneShotFiresOnlyForFutureTimesInsideTheHourlyFallbackWindow() {
+    fun oneShotFiresForAnyFutureUsefulBoundary() {
         val now = 1_800_000_000_000L
         val inWindow = now + 30 * 60 * 1000L
+        val laterToday = now + 3 * 60 * 60 * 1000L
 
         assertEquals(inWindow, KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(now, inWindow))
-        assertEquals(
-            now + KaniWidgetRefreshPolicy.ONE_SHOT_WINDOW_MILLIS,
-            KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(
-                now,
-                now + KaniWidgetRefreshPolicy.ONE_SHOT_WINDOW_MILLIS,
-            ),
-        )
+        assertEquals(laterToday, KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(now, laterToday))
     }
 
     @Test
-    fun oneShotSkipsPastPresentAndBeyondWindowTimes() {
+    fun oneShotSkipsPastAndPresentTimes() {
         val now = 1_800_000_000_000L
 
         assertEquals(0L, KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(now, 0L))
         assertEquals(0L, KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(now, now - 1L))
         assertEquals(0L, KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(now, now))
-        assertEquals(
-            0L,
-            KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(
-                now,
-                now + KaniWidgetRefreshPolicy.ONE_SHOT_WINDOW_MILLIS + 1L,
-            ),
-        )
     }
 
     @Test
@@ -80,7 +68,11 @@ class KaniWidgetRefreshPolicyTest {
         val midnight = Instant.parse("2026-07-19T00:00:00Z").toEpochMilli()
 
         assertEquals(dueSoon, KaniWidgetRefreshPolicy.earliestBoundaryAtMillis(now, dueSoon, midnight))
-        assertEquals(midnight, KaniWidgetRefreshPolicy.earliestBoundaryAtMillis(now, dueLater, midnight))
+        assertEquals(dueLater, KaniWidgetRefreshPolicy.earliestBoundaryAtMillis(now, dueLater, midnight))
+        assertEquals(
+            midnight,
+            KaniWidgetRefreshPolicy.earliestBoundaryAtMillis(now, midnight + 60_000L, midnight),
+        )
         assertEquals(0L, KaniWidgetRefreshPolicy.earliestBoundaryAtMillis(now, 0L, now))
     }
 }

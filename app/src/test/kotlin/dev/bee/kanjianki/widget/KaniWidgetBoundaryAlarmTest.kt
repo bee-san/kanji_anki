@@ -47,18 +47,16 @@ class KaniWidgetBoundaryAlarmTest {
     }
 
     @Test
-    fun dailyBoundarySchedulesMidnightWhenDueIsOutsideHourlyWindow() {
+    fun futureDueBoundarySchedulesBeforeMidnightWithoutPeriodicFallback() {
+        val due = NOW + 3 * 60 * 60 * 1000L
         KaniWidgetBoundaryAlarm.scheduleStudyBoundary(
             context,
             NOW,
-            NOW + KaniWidgetRefreshPolicy.ONE_SHOT_WINDOW_MILLIS + 1L,
+            due,
             ZoneId.of("UTC"),
         )
 
-        assertEquals(
-            KaniWidgetRefreshPolicy.nextLocalMidnightMillis(NOW, ZoneId.of("UTC")),
-            shadowOf(alarmManager).nextScheduledAlarm!!.triggerAtTime,
-        )
+        assertEquals(due, shadowOf(alarmManager).nextScheduledAlarm!!.triggerAtTime)
     }
 
     @Test

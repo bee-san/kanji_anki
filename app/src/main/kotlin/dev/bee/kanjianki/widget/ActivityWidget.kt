@@ -90,7 +90,10 @@ internal data class ActivityWidgetPresentation(
 internal data class ActivityWidgetLayout(
     val showBestStreak: Boolean,
     val showStreak: Boolean,
+    val showGrid: Boolean,
+    val useSevenDayGrid: Boolean,
     val showAction: Boolean,
+    val stackAction: Boolean,
     val useCompactHero: Boolean,
     val titleFontSp: Float,
     val actionFontSp: Float,
@@ -107,9 +110,12 @@ internal fun activityWidgetLayout(
     fontScale: Float,
 ) = ActivityWidgetLayout(
     showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
-    showStreak = fontScale < 1.8f,
-    showAction = tier == ActivityWidgetTier.WIDE,
-    useCompactHero = fontScale >= 1.8f,
+    showStreak = fontScale < 1.3f,
+    showGrid = fontScale < 2f,
+    useSevenDayGrid = tier == ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
+    showAction = tier != ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
+    stackAction = tier != ActivityWidgetTier.WIDE,
+    useCompactHero = tier == ActivityWidgetTier.REGULAR || fontScale >= 1.3f,
     titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
     actionFontSp = 13f,
     supportFontSp = 12f,
@@ -253,24 +259,76 @@ internal fun activityWidgetVisibleCopy(
         else -> presentation.action
     }
     val title = if (layout.useCompactHero) {
-        when (snapshot.state) {
-            ActivityWidgetState.HISTORY -> WidgetTextCopy.visualCountLabel(snapshot.last35DayTotal)
-            ActivityWidgetState.NO_HISTORY -> "0"
-            ActivityWidgetState.NOT_SET_UP -> "—"
-            ActivityWidgetState.ERROR -> "!"
-        }
-    } else if (snapshot.state == ActivityWidgetState.HISTORY) {
-        val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
-            COMPACT_HISTORY_DAYS
-        } else {
-            ActivityWidgetSnapshotLoader.HISTORY_DAYS
-        }
-        val total = if (days == COMPACT_HISTORY_DAYS) snapshot.last7DayTotal else snapshot.last35DayTotal
-        WidgetTextCopy.activityPeriodShortLabel(total, days)
+        compactActivityTitle(snapshot, layout)
     } else {
-        presentation.title
+        standardActivityTitle(snapshot, presentation)
     }
     return ActivityWidgetVisibleCopy(title, action)
+}
+
+private fun compactActivityTitle(
+    snapshot: ActivityWidgetSnapshot,
+    layout: ActivityWidgetLayout,
+): String = when (snapshot.state) {
+    ActivityWidgetState.HISTORY -> if (layout.useSevenDayGrid && layout.showGrid) {
+        WidgetTextCopy.reviewCountLabel(snapshot.last7DayTotal)
+    } else {
+        WidgetTextCopy.reviewCountLabel(snapshot.last35DayTotal)
+    }
+    ActivityWidgetState.NO_HISTORY -> WidgetTextCopy.reviewCountLabel(0)
+    ActivityWidgetState.NOT_SET_UP -> "—"
+    ActivityWidgetState.ERROR -> "!"
+}
+
+private fun standardActivityTitle(
+    snapshot: ActivityWidgetSnapshot,
+    presentation: ActivityWidgetPresentation,
+): String {
+    if (snapshot.state != ActivityWidgetState.HISTORY) return presentation.title
+    val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
+        COMPACT_HISTORY_DAYS
+    } else {
+        ActivityWidgetSnapshotLoader.HISTORY_DAYS
+    }
+    val total = if (days == COMPACT_HISTORY_DAYS) snapshot.last7DayTotal else snapshot.last35DayTotal
+    return WidgetTextCopy.activityPeriodShortLabel(total, days)
+}
+
+internal fun activityWidgetVisibleCells(
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+): List<ActivityCell> = when {
+    !layout.showGrid -> emptyList()
+    layout.useSevenDayGrid -> normalizeActivityCells(
+        presentation.cells.takeLast(COMPACT_HISTORY_DAYS),
+    )
+    else -> presentation.cells
+}
+
+private fun normalizeActivityCells(cells: List<ActivityCell>): List<ActivityCell> {
+    val maximum = cells.maxOfOrNull { it.count } ?: 0
+    return cells.map { cell ->
+        cell.copy(intensity = activityIntensity(cell.count, maximum))
+    }
+}
+
+internal fun activityWidgetContentDescription(
+    snapshot: ActivityWidgetSnapshot,
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+): String {
+    if (snapshot.state != ActivityWidgetState.HISTORY) return presentation.contentDescription
+    val useSevenDayPeriod = layout.showGrid && layout.useSevenDayGrid
+    val total = if (useSevenDayPeriod) snapshot.last7DayTotal else snapshot.last35DayTotal
+    val days = if (useSevenDayPeriod) COMPACT_HISTORY_DAYS else ActivityWidgetSnapshotLoader.HISTORY_DAYS
+    return WidgetTextCopy.activityDescription(
+        reviewCount = total,
+        days = days,
+        reviewsToday = snapshot.reviewsToday,
+        streakDays = snapshot.streakDays,
+        bestStreakDays = snapshot.bestStreakDays,
+        action = presentation.action,
+    )
 }
 
 @Composable
@@ -290,13 +348,15 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             .background(palette.background.toGlanceColor())
             .cornerRadius(16.dp)
             .clickable(launchAction)
-            .semantics { contentDescription = presentation.contentDescription }
+            .semantics {
+                contentDescription = activityWidgetContentDescription(snapshot, presentation, layout)
+            }
             .padding(if (tier == ActivityWidgetTier.COMPACT) 6.dp else 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (layout.stackAction) {
             Text(
                 text = visibleCopy.title,
-                modifier = GlanceModifier.defaultWeight(),
                 style = TextStyle(
                     color = palette.ink.toGlanceColor(),
                     fontSize = layout.titleFontSp.sp,
@@ -305,7 +365,6 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 maxLines = 1,
             )
             if (layout.showAction) {
-                Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
                     text = visibleCopy.action,
                     style = TextStyle(
@@ -315,6 +374,31 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                     ),
                     maxLines = 1,
                 )
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = visibleCopy.title,
+                    modifier = GlanceModifier.defaultWeight(),
+                    style = TextStyle(
+                        color = palette.ink.toGlanceColor(),
+                        fontSize = layout.titleFontSp.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+                if (layout.showAction) {
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Text(
+                        text = visibleCopy.action,
+                        style = TextStyle(
+                            color = palette.primaryText.toGlanceColor(),
+                            fontSize = layout.actionFontSp.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                    )
+                }
             }
         }
         ActivityWidgetBody(presentation, layout, tier, palette)
@@ -328,6 +412,7 @@ private fun ActivityWidgetBody(
     tier: ActivityWidgetTier,
     palette: KaniWidgetPalette,
 ) {
+    val visibleCells = activityWidgetVisibleCells(presentation, layout)
     if (presentation.cells.isEmpty() && layout.showStreak) {
         Text(
             text = presentation.streak,
@@ -337,7 +422,7 @@ private fun ActivityWidgetBody(
             ),
             maxLines = 2,
         )
-    } else if (presentation.cells.isNotEmpty()) {
+    } else if (visibleCells.isNotEmpty()) {
         if (layout.showStreak) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -350,6 +435,7 @@ private fun ActivityWidgetBody(
                     maxLines = 1,
                 )
                 if (layout.showBestStreak) {
+                    Spacer(modifier = GlanceModifier.width(ACTIVITY_METADATA_GAP_DP.dp))
                     Text(
                         text = presentation.bestStreak,
                         style = TextStyle(
@@ -362,7 +448,11 @@ private fun ActivityWidgetBody(
             }
             Spacer(modifier = GlanceModifier.height(2.dp))
         }
-        ActivityGrid(presentation.cells, tier, palette)
+        ActivityGrid(
+            cells = visibleCells,
+            tier = if (layout.useSevenDayGrid) ActivityWidgetTier.COMPACT else tier,
+            palette = palette,
+        )
     }
 }
 
@@ -426,3 +516,4 @@ internal fun kaniActivityLaunchIntent(
 
 private const val COMPACT_HISTORY_DAYS = 7
 private const val GRID_COLUMNS = 7
+internal const val ACTIVITY_METADATA_GAP_DP = 8

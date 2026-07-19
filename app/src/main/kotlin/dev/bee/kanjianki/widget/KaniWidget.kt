@@ -54,8 +54,8 @@ internal class KaniWidget(
         private val EXPANDED_SIZE = DpSize(250.dp, 130.dp)
 
         /**
-         * Very wide placements (tablet/foldable rows) lay the text and the
-         * 7-day activity strip side by side instead of stacking them.
+         * Very wide placements keep the same stable stacked text-and-strip
+         * composition while giving the summary additional horizontal room.
          */
         internal val WIDE_SIZE = DpSize(340.dp, 130.dp)
     }
@@ -117,7 +117,6 @@ internal fun KaniWidgetContent(
     val context = LocalContext.current
     val size = LocalSize.current
     val isExpanded = size.height >= 120.dp
-    val isWide = isExpanded && size.width >= KaniWidget.WIDE_SIZE.width
     val fontScale = context.resources.configuration.fontScale
     val veryLargeFont = fontScale >= 1.8f
     val showTertiary = isExpanded && fontScale < 1.3f
@@ -135,7 +134,7 @@ internal fun KaniWidgetContent(
         modifier = cardModifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Column(
             modifier = GlanceModifier
                 .defaultWeight()
                 .fillMaxHeight()
@@ -143,27 +142,18 @@ internal fun KaniWidgetContent(
                 .semantics { contentDescription = description },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
-                modifier = GlanceModifier.defaultWeight().fillMaxHeight(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WidgetTextBlock(
-                    copy = copy,
-                    title = visibleCopy.title,
-                    palette = palette,
-                    visibility = WidgetTextBlockVisibility(
-                        showBody = fontScale < 2f,
-                        showBrand = showTertiary,
-                        showExtra = showTertiary,
-                        showStrip = showTertiary && !isWide,
-                    ),
-                    dayCounts = snapshot.last7DayCounts,
-                )
-            }
-            if (showTertiary && isWide && snapshot.last7DayCounts.isNotEmpty()) {
-                Spacer(GlanceModifier.width(16.dp))
-                ActivityStrip(snapshot.last7DayCounts, palette)
-            }
+            WidgetTextBlock(
+                copy = copy,
+                title = visibleCopy.title,
+                palette = palette,
+                visibility = WidgetTextBlockVisibility(
+                    showBody = fontScale < 2f,
+                    showBrand = showTertiary,
+                    showExtra = showTertiary,
+                    showStrip = showTertiary,
+                ),
+                dayCounts = snapshot.last7DayCounts,
+            )
         }
         OverviewAction(visibleCopy.action, studyAction, palette)
     }

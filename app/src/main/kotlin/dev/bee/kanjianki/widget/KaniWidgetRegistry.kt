@@ -10,6 +10,7 @@ import androidx.annotation.XmlRes
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.updateAll
 import dev.bee.kanjianki.R
+import kotlinx.coroutines.CancellationException
 
 internal data class KaniWidgetDescriptor(
     val receiverClass: Class<out BroadcastReceiver>,
@@ -35,10 +36,13 @@ internal class KaniWidgetRegistry(
 
     suspend fun refreshInstalled(context: Context) {
         installedDescriptors(context).forEach { descriptor ->
-            runCatching { widgetUpdater(descriptor.widgetFactory(), context) }
-                .onFailure { failure ->
-                    Log.w(TAG, "Unable to refresh ${descriptor.receiverClass.simpleName}", failure)
-                }
+            try {
+                widgetUpdater(descriptor.widgetFactory(), context)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (failure: Exception) {
+                Log.w(TAG, "Unable to refresh ${descriptor.receiverClass.simpleName}", failure)
+            }
         }
     }
 

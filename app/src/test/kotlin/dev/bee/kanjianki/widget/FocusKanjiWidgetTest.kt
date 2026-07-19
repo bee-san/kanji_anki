@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.testing.unit.assertHasStartActivityClickAction
@@ -34,17 +35,20 @@ import org.robolectric.annotation.Config
 class FocusKanjiWidgetTest {
     private lateinit var context: Context
     private lateinit var originalLocale: Locale
+    private var originalFontScale: Float = 1f
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         originalLocale = Locale.getDefault()
+        originalFontScale = context.resources.configuration.fontScale
         Locale.setDefault(Locale.ENGLISH)
     }
 
     @After
     fun tearDown() {
         Locale.setDefault(originalLocale)
+        setFontScale(originalFontScale)
     }
 
     @Test
@@ -57,6 +61,7 @@ class FocusKanjiWidgetTest {
             "123456",
             focusVisibleMeaning("123456👩‍🔬suffix", FocusKanjiLayoutTier.COMPACT),
         )
+        assertNull(focusVisibleMeaning("immature", FocusKanjiLayoutTier.COMPACT))
     }
 
     @Test
@@ -104,6 +109,28 @@ class FocusKanjiWidgetTest {
             .assertHasStartActivityClickAction(kaniFocusDetailIntent(context, "学"))
         onAllNodes(hasClickAction()).assertCountEquals(1)
     }
+
+    @Test
+    @Config(sdk = [26])
+    fun api26CompactFocusAtEnlargedFontDropsMeaningBeforeClippingEssentialCopy() =
+        runGlanceAppWidgetUnitTest(30.seconds) {
+            setFontScale(1.3f)
+            setContext(context)
+            setAppWidgetSize(DpSize(120.dp, 120.dp))
+            provideComposable {
+                FocusKanjiWidgetContent(readySnapshot(isDueNow = true))
+            }
+
+            onNode(hasTextEqualTo("学")).assertExists()
+            onNode(hasTextEqualTo("learn")).assertDoesNotExist()
+            onNode(hasTextEqualTo("がく")).assertDoesNotExist()
+            onNode(hasTextEqualTo(WidgetTextCopy.focusDueStatus())).assertExists()
+            onNode(hasTextEqualTo(WidgetTextCopy.focusDetailsLabel())).assertExists()
+            val layout = focusKanjiLayout(120f, 120f, 1.3f)
+            assertFalse(layout.showMeaning)
+            assertFalse(layout.showReading)
+            assertEquals(40, layout.glyphFontSp)
+        }
 
     @Test
     fun wideDueFocusShowsEvidenceBackedFactsAndSeparateActions() = runGlanceAppWidgetUnitTest(30.seconds) {
@@ -177,6 +204,14 @@ class FocusKanjiWidgetTest {
         assertTrue(moderate.isWide)
         assertFalse(largeFont.isWide)
         assertTrue(largeFont.glyphFontSp < normal.glyphFontSp)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun setFontScale(fontScale: Float) {
+        val configuration = Configuration(context.resources.configuration).apply {
+            this.fontScale = fontScale
+        }
+        context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
     }
 
     private fun readySnapshot(isDueNow: Boolean) = FocusKanjiWidgetSnapshot(
