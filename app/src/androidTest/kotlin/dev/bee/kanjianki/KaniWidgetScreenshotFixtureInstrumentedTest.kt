@@ -13,8 +13,10 @@ import dev.bee.kanjianki.widget.ActivityWidgetSnapshotLoader
 import dev.bee.kanjianki.widget.ActivityWidgetState
 import dev.bee.kanjianki.widget.FocusKanjiWidgetSnapshotLoader
 import dev.bee.kanjianki.widget.FocusKanjiWidgetState
+import dev.bee.kanjianki.widget.KaniWidgetRegistry
 import dev.bee.kanjianki.widget.KaniWidgetState
 import dev.bee.kanjianki.widget.StudyWidgetSnapshotLoader
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +61,7 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
             }
             store.putStringSetting(FIXTURE_SETTING, FIXTURE_ID)
         }
+        runBlocking { KaniWidgetRegistry.DEFAULT.refreshInstalled(context) }
 
         assertEquals(KaniWidgetState.DUE_NOW, StudyWidgetSnapshotLoader.load(context, now).state)
         val focus = FocusKanjiWidgetSnapshotLoader.load(context, now)
