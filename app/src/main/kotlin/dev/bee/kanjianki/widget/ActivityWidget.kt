@@ -259,28 +259,39 @@ internal fun activityWidgetVisibleCopy(
         else -> presentation.action
     }
     val title = if (layout.useCompactHero) {
-        when (snapshot.state) {
-            ActivityWidgetState.HISTORY -> if (layout.useSevenDayGrid && layout.showGrid) {
-                WidgetTextCopy.reviewCountLabel(snapshot.last7DayTotal)
-            } else {
-                WidgetTextCopy.reviewCountLabel(snapshot.last35DayTotal)
-            }
-            ActivityWidgetState.NO_HISTORY -> WidgetTextCopy.reviewCountLabel(0)
-            ActivityWidgetState.NOT_SET_UP -> "—"
-            ActivityWidgetState.ERROR -> "!"
-        }
-    } else if (snapshot.state == ActivityWidgetState.HISTORY) {
-        val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
-            COMPACT_HISTORY_DAYS
-        } else {
-            ActivityWidgetSnapshotLoader.HISTORY_DAYS
-        }
-        val total = if (days == COMPACT_HISTORY_DAYS) snapshot.last7DayTotal else snapshot.last35DayTotal
-        WidgetTextCopy.activityPeriodShortLabel(total, days)
+        compactActivityTitle(snapshot, layout)
     } else {
-        presentation.title
+        standardActivityTitle(snapshot, presentation)
     }
     return ActivityWidgetVisibleCopy(title, action)
+}
+
+private fun compactActivityTitle(
+    snapshot: ActivityWidgetSnapshot,
+    layout: ActivityWidgetLayout,
+): String = when (snapshot.state) {
+    ActivityWidgetState.HISTORY -> if (layout.useSevenDayGrid && layout.showGrid) {
+        WidgetTextCopy.reviewCountLabel(snapshot.last7DayTotal)
+    } else {
+        WidgetTextCopy.reviewCountLabel(snapshot.last35DayTotal)
+    }
+    ActivityWidgetState.NO_HISTORY -> WidgetTextCopy.reviewCountLabel(0)
+    ActivityWidgetState.NOT_SET_UP -> "—"
+    ActivityWidgetState.ERROR -> "!"
+}
+
+private fun standardActivityTitle(
+    snapshot: ActivityWidgetSnapshot,
+    presentation: ActivityWidgetPresentation,
+): String {
+    if (snapshot.state != ActivityWidgetState.HISTORY) return presentation.title
+    val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
+        COMPACT_HISTORY_DAYS
+    } else {
+        ActivityWidgetSnapshotLoader.HISTORY_DAYS
+    }
+    val total = if (days == COMPACT_HISTORY_DAYS) snapshot.last7DayTotal else snapshot.last35DayTotal
+    return WidgetTextCopy.activityPeriodShortLabel(total, days)
 }
 
 internal fun activityWidgetVisibleCells(
