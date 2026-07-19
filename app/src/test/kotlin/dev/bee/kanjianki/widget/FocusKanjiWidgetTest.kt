@@ -69,7 +69,7 @@ class FocusKanjiWidgetTest {
     @Test
     fun narrowReadyFocusCentersGlyphAndKeepsHiddenFactsAccessible() = runGlanceAppWidgetUnitTest(30.seconds) {
         val snapshot = readySnapshot(isDueNow = true)
-        val description = WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true)
+        val description = WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true, false)
         setContext(context)
         setAppWidgetSize(DpSize(110.dp, 120.dp))
         provideComposable { FocusKanjiWidgetContent(snapshot) }
@@ -96,9 +96,11 @@ class FocusKanjiWidgetTest {
         onNode(hasTextEqualTo("learn")).assertExists()
         onNode(hasTextEqualTo("がく")).assertExists()
         onNode(hasTextEqualTo("Due now")).assertExists()
-        onNode(hasTextEqualTo("Details")).assertDoesNotExist()
+        onNode(hasTextEqualTo("Details")).assertExists()
         onNode(hasTextEqualTo("Study now")).assertDoesNotExist()
-        onNode(hasContentDescriptionEqualTo(WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true)))
+        val compactDescription = WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true, false)
+        assertFalse(compactDescription.contains(WidgetTextCopy.studyNowLabel()))
+        onNode(hasContentDescriptionEqualTo(compactDescription))
             .assertHasStartActivityClickAction(kaniFocusDetailIntent(context, "学"))
         onAllNodes(hasClickAction()).assertCountEquals(1)
     }
@@ -106,7 +108,7 @@ class FocusKanjiWidgetTest {
     @Test
     fun wideDueFocusShowsEvidenceBackedFactsAndSeparateActions() = runGlanceAppWidgetUnitTest(30.seconds) {
         val snapshot = readySnapshot(isDueNow = true)
-        val description = WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true)
+        val description = WidgetTextCopy.focusKanjiDescription("学", "learn", "がく", true, true)
         setContext(context)
         setAppWidgetSize(DpSize(250.dp, 130.dp))
         provideComposable { FocusKanjiWidgetContent(snapshot) }

@@ -5,7 +5,14 @@
     android:viewportWidth="120"
     android:viewportHeight="120">
     <path android:fillColor="@color/widget_preview_background" android:pathData="M14,0 L106,0 A14,14 0,0 1,120 14 L120,106 A14,14 0,0 1,106 120 L14,120 A14,14 0,0 1,0 106 L0,14 A14,14 0,0 1,14 0 Z" />
-    <path android:fillColor="@color/widget_preview_ink" android:pathData="M34,16 L86,16 L86,70 L34,70 Z" />
-    <path android:fillColor="@color/widget_preview_ink" android:pathData="M29,80 L91,80 L91,90 L29,90 Z" />
-    <path android:fillColor="@color/widget_preview_muted" android:pathData="M39,98 L81,98 L81,106 L39,106 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M60,10 L60,24 M38,15 L46,26 M82,15 L74,26 M28,33 L92,33 M32,33 L32,45 M88,33 L88,45 M40,50 L80,50 M80,50 L60,64 L48,64 M60,64 L60,86 M42,74 L60,82 L78,74"
+        android:strokeColor="@color/widget_preview_ink"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="5" />
+    <path android:fillColor="@color/widget_preview_ink" android:pathData="M28,91 L92,91 L92,98 L28,98 Z" />
+    <path android:fillColor="@color/widget_preview_muted" android:pathData="M38,103 L82,103 L82,109 L38,109 Z" />
+    <path android:fillColor="@color/widget_preview_primary" android:pathData="M92,14 L108,14 L108,22 L92,22 Z" />
 </vector>

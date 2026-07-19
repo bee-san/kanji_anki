@@ -169,6 +169,7 @@ private fun FocusKanjiReadyContent(
         snapshot.primaryMeaning,
         snapshot.readings,
         snapshot.isDueNow,
+        layout.isWide && snapshot.isDueNow,
     )
     val cardModifier = GlanceModifier
         .fillMaxSize()
@@ -309,6 +310,15 @@ private fun FocusKanjiCompactContent(
                 maxLines = 1,
             )
         }
+        Text(
+            text = WidgetTextCopy.focusDetailsLabel(),
+            style = TextStyle(
+                color = palette.primaryText.toGlanceColor(),
+                fontSize = FOCUS_ACTION_FONT_SP.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 1,
+        )
     }
 }
 

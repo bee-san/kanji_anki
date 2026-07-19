@@ -25,13 +25,13 @@ class ActivityWidgetTest {
         assertEquals(
             setOf(
                 DpSize(120.dp, 72.dp),
-                DpSize(180.dp, 120.dp),
+                DpSize(120.dp, 120.dp),
                 DpSize(250.dp, 130.dp),
             ),
             ActivityWidget.RESPONSIVE_SIZES,
         )
         assertEquals(ActivityWidgetTier.COMPACT, activityWidgetTier(120f, 72f))
-        assertEquals(ActivityWidgetTier.REGULAR, activityWidgetTier(180f, 120f))
+        assertEquals(ActivityWidgetTier.REGULAR, activityWidgetTier(120f, 120f))
         assertEquals(ActivityWidgetTier.WIDE, activityWidgetTier(250f, 130f))
     }
 
@@ -43,6 +43,8 @@ class ActivityWidgetTest {
 
         assertTrue(regular.showBestStreak)
         assertTrue(regular.showStreak)
+        assertFalse(regular.showAction)
+        assertTrue(activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f).showAction)
         assertFalse(regular.useCompactHero)
         assertFalse(enlarged.showBestStreak)
         assertFalse(accessibility.showBestStreak)
@@ -82,7 +84,7 @@ class ActivityWidgetTest {
             val presentation = activityWidgetPresentation(history, ActivityWidgetTier.WIDE)
 
             assertEquals(KaniWidgetDestination.STATS, presentation.destination)
-            assertEquals("87 reviews", presentation.title)
+            assertEquals("87 reviews in 35 days", presentation.title)
             assertEquals("5-day streak", presentation.streak)
             assertEquals("Best: 21 days", presentation.bestStreak)
             assertEquals(WidgetTextCopy.openStatsLabel(), presentation.action)
@@ -142,7 +144,7 @@ class ActivityWidgetTest {
         withLocale(Locale.JAPANESE) {
             val presentation = activityWidgetPresentation(history, ActivityWidgetTier.WIDE)
 
-            assertEquals("復習87件", presentation.title)
+            assertEquals("35日間で復習87件", presentation.title)
             assertEquals("5日連続", presentation.streak)
             assertEquals("最長21日", presentation.bestStreak)
             assertEquals("統計を開く", presentation.action)

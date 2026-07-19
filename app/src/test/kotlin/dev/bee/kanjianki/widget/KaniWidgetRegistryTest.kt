@@ -54,6 +54,30 @@ class KaniWidgetRegistryTest {
     }
 
     @Test
+    fun refreshFailureInOneInstalledFamilyDoesNotBlockTheOthers() = runTest {
+        val attempted = mutableListOf<Class<out GlanceAppWidget>>()
+        val registry = registry(
+            installedIds = { intArrayOf(1) },
+            updateWidget = { widget ->
+                attempted += widget::class.java
+                if (widget is QuickStudyWidget) error("quick refresh failed")
+            },
+        )
+
+        registry.refreshInstalled(context)
+
+        assertEquals(
+            listOf(
+                KaniWidget::class.java,
+                QuickStudyWidget::class.java,
+                ActivityWidget::class.java,
+                FocusKanjiWidget::class.java,
+            ),
+            attempted,
+        )
+    }
+
+    @Test
     fun zeroInstalledWidgetsIsARefreshNoOp() = runTest {
         var updates = 0
         val registry = registry(updateWidget = { updates++ })
@@ -83,6 +107,20 @@ class KaniWidgetRegistryTest {
         assertSame(ActivityWidgetReceiver::class.java, known?.receiverClass)
         assertNull(registry.descriptorForAppWidgetId(context, 42))
         assertNull(registry.descriptorForAppWidgetId(context, 43))
+    }
+
+    @Test
+    @Config(sdk = [26])
+    fun api26WidgetIdLookupUsesProviderComponentIdsWithoutProviderInfoApi() {
+        val registry = registry(
+            installedIds = { receiver ->
+                if (receiver == KaniWidgetReceiver::class.java) intArrayOf(41) else intArrayOf()
+            },
+            providerForId = { error("provider-info lookup is not available on API 26") },
+        )
+
+        assertSame(KaniWidgetReceiver::class.java, registry.descriptorForAppWidgetId(context, 41)?.receiverClass)
+        assertNull(registry.descriptorForAppWidgetId(context, 42))
     }
 
     @Test

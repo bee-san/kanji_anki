@@ -32,6 +32,8 @@ internal data class KaniWidgetPalette(
     val background: KaniWidgetColorRole,
     /** Brand label, action row, and current-day outline — `KaniColors.primary`. */
     val primary: KaniWidgetColorRole,
+    /** Accessible text on a filled [primary] action surface. */
+    val onPrimary: KaniWidgetColorRole,
     /** Small accent text, falling back to ink when primary is below 4.5:1. */
     val primaryText: KaniWidgetColorRole,
     /** Title text — `KaniColors.ink`. */
@@ -54,6 +56,10 @@ internal data class KaniWidgetPalette(
             return KaniWidgetPalette(
                 background = KaniWidgetColorRole(day.bg, night.bg),
                 primary = KaniWidgetColorRole(day.primary, night.primary),
+                onPrimary = KaniWidgetColorRole(
+                    readableForeground(day.primary),
+                    readableForeground(night.primary),
+                ),
                 primaryText = KaniWidgetColorRole(
                     readableAccent(day.primary, day.bg, day.ink),
                     readableAccent(night.primary, night.bg, night.ink),
@@ -69,6 +75,9 @@ internal data class KaniWidgetPalette(
 
         private fun readableAccent(primary: Color, background: Color, ink: Color): Color =
             primary.takeIf { contrastRatio(it, background) >= 4.5 } ?: ink
+
+        private fun readableForeground(background: Color): Color =
+            listOf(Color.Black, Color.White).maxBy { contrastRatio(it, background) }
 
         private fun contrastRatio(foreground: Color, background: Color): Double {
             val lighter = max(foreground.luminance(), background.luminance()).toDouble()

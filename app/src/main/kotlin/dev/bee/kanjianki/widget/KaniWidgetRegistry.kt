@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.os.Build
+import android.util.Log
 import androidx.annotation.XmlRes
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.updateAll
@@ -33,20 +35,30 @@ internal class KaniWidgetRegistry(
 
     suspend fun refreshInstalled(context: Context) {
         installedDescriptors(context).forEach { descriptor ->
-            widgetUpdater(descriptor.widgetFactory(), context)
+            runCatching { widgetUpdater(descriptor.widgetFactory(), context) }
+                .onFailure { failure ->
+                    Log.w(TAG, "Unable to refresh ${descriptor.receiverClass.simpleName}", failure)
+                }
         }
     }
 
     fun descriptorForAppWidgetId(context: Context, appWidgetId: Int): KaniWidgetDescriptor? {
-        val provider = providerForAppWidgetId(context, appWidgetId) ?: return null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val provider = providerForAppWidgetId(context, appWidgetId) ?: return null
+            return descriptors.firstOrNull { descriptor ->
+                provider == ComponentName(context, descriptor.receiverClass)
+            }
+        }
         return descriptors.firstOrNull { descriptor ->
-            provider == ComponentName(context, descriptor.receiverClass)
+            appWidgetIds(context, descriptor.receiverClass).contains(appWidgetId)
         }
     }
 
     fun hasInstalledWidgets(context: Context): Boolean = installedDescriptors(context).isNotEmpty()
 
     companion object {
+        private const val TAG = "KaniWidgetRegistry"
+
         val DESCRIPTORS: List<KaniWidgetDescriptor> = listOf(
             KaniWidgetDescriptor(KaniWidgetReceiver::class.java, ::KaniWidget, R.xml.kani_widget_info),
             KaniWidgetDescriptor(

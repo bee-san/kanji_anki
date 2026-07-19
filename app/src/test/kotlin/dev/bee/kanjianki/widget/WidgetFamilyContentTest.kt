@@ -82,12 +82,12 @@ class WidgetFamilyContentTest {
 
         onNode(hasContentDescriptionEqualTo(presentation.contentDescription))
             .assertHasStartActivityClickAction(kaniWidgetStatsIntent(context))
-        onNode(hasTextEqualTo(presentation.title)).assertExists()
         val visibleCopy = activityWidgetVisibleCopy(
             snapshot,
             presentation,
             activityWidgetLayout(ActivityWidgetTier.WIDE, 1f),
         )
+        onNode(hasTextEqualTo(visibleCopy.title)).assertExists()
         onNode(hasTextEqualTo(visibleCopy.action)).assertExists()
         onAllNodes(hasClickAction()).assertCountEquals(1)
     }
@@ -104,7 +104,7 @@ class WidgetFamilyContentTest {
             onNode(hasContentDescriptionEqualTo(presentation.contentDescription))
                 .assertHasStartActivityClickAction(kaniWidgetHomeIntent(context))
             onNode(hasTextEqualTo(presentation.title)).assertExists()
-            onNode(hasTextEqualTo(presentation.action)).assertExists()
+            onNode(hasTextEqualTo(presentation.action)).assertDoesNotExist()
             onAllNodes(hasClickAction()).assertCountEquals(1)
         }
 }

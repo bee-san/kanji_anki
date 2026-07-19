@@ -31,6 +31,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.color.ColorProvider
@@ -91,6 +92,22 @@ internal class KaniWidget(
         }
     }
 }
+
+internal data class OverviewActivityStripMetrics(
+    val cellSizeDp: Int,
+    val gapDp: Int,
+) {
+    fun widthDp(dayCount: Int): Int = if (dayCount <= 0) {
+        0
+    } else {
+        dayCount * cellSizeDp + (dayCount - 1) * gapDp
+    }
+}
+
+internal fun overviewActivityStripMetrics() = OverviewActivityStripMetrics(
+    cellSizeDp = 9,
+    gapDp = 2,
+)
 
 @Composable
 internal fun KaniWidgetContent(
@@ -255,6 +272,8 @@ private fun OverviewAction(
         modifier = GlanceModifier
             .width(64.dp)
             .height(56.dp)
+            .background(palette.primary.toProvider())
+            .cornerRadius(14.dp)
             .clickable(action)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -262,7 +281,7 @@ private fun OverviewAction(
         Text(
             text = label,
             style = TextStyle(
-                color = palette.primaryText.toProvider(),
+                color = palette.onPrimary.toProvider(),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
             ),
@@ -274,14 +293,15 @@ private fun OverviewAction(
 @Composable
 private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
     val maxCount = dayCounts.maxOrNull() ?: 1
+    val metrics = overviewActivityStripMetrics()
     Row(
         modifier = GlanceModifier.padding(vertical = 2.dp),
     ) {
         dayCounts.forEachIndexed { index, count ->
-            if (index > 0) Spacer(GlanceModifier.width(4.dp))
+            if (index > 0) Spacer(GlanceModifier.width(metrics.gapDp.dp))
             Box(
                 modifier = GlanceModifier
-                    .size(16.dp)
+                    .size(metrics.cellSizeDp.dp)
                     .background(heatCellRole(count, maxCount, palette).toProvider()),
                 contentAlignment = Alignment.Center,
             ) {}

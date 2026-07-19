@@ -68,6 +68,7 @@ class WidgetTextCopyTest {
             assertEquals("0", WidgetTextCopy.visualCountLabel(-2))
             assertEquals("87 reviews", WidgetTextCopy.reviewCountLabel(87))
             assertEquals("87 reviews in 35 days", WidgetTextCopy.activityPeriodLabel(87, 35))
+            assertEquals("87 · 35 days", WidgetTextCopy.activityPeriodShortLabel(87, 35))
             assertEquals("No activity yet", WidgetTextCopy.noActivityTitle())
             assertEquals("Reviews will appear here.", WidgetTextCopy.noActivityBody())
             assertEquals("Open stats", WidgetTextCopy.openStatsLabel())
@@ -95,6 +96,7 @@ class WidgetTextCopyTest {
                     primaryMeaning = "learn",
                     readings = "がく",
                     isDueNow = true,
+                    hasStudyAction = true,
                 ),
             )
             assertEquals(
@@ -104,6 +106,7 @@ class WidgetTextCopyTest {
                     primaryMeaning = "learn",
                     readings = "",
                     isDueNow = false,
+                    hasStudyAction = false,
                 ),
             )
         }
@@ -178,6 +181,7 @@ class WidgetTextCopyTest {
                     primaryMeaning = "学ぶ",
                     readings = "がく",
                     isDueNow = true,
+                    hasStudyAction = true,
                 ),
             )
         }

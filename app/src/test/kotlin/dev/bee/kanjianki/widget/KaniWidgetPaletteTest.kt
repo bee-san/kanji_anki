@@ -143,6 +143,21 @@ class KaniWidgetPaletteTest {
         }
     }
 
+    @Test
+    fun filledActionLabelsKeepNormalTextContrastAgainstPrimary() {
+        for (choice in KaniThemeChoice.entries) {
+            val palette = KaniWidgetPalette.forChoice(choice)
+            assertTrue(
+                "$choice day filled-action contrast",
+                contrastRatio(palette.onPrimary.day, palette.primary.day) >= 4.5,
+            )
+            assertTrue(
+                "$choice night filled-action contrast",
+                contrastRatio(palette.onPrimary.night, palette.primary.night) >= 4.5,
+            )
+        }
+    }
+
     private fun contrastRatio(foreground: Color, background: Color): Double {
         val foregroundLuminance = foreground.luminance().toDouble()
         val backgroundLuminance = background.luminance().toDouble()

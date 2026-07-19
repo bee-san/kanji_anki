@@ -21,6 +21,8 @@ import dev.bee.kanjianki.core.WidgetTextCopy
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -93,6 +95,16 @@ class KaniWidgetContentTest {
             onNode(hasTextEqualTo(copy.body)).assertDoesNotExist()
             onNode(hasTextEqualTo(copy.extraLine)).assertDoesNotExist()
         }
+
+    @Test
+    fun sevenDayActivityStripFitsTheNarrowExpandedOverviewColumn() {
+        val metrics = overviewActivityStripMetrics()
+
+        assertEquals(9, metrics.cellSizeDp)
+        assertEquals(2, metrics.gapDp)
+        assertEquals(75, metrics.widthDp(dayCount = 7))
+        assertTrue(metrics.widthDp(dayCount = 7) <= 80)
+    }
 
     @Suppress("DEPRECATION")
     private fun setFontScale(fontScale: Float) {
