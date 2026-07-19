@@ -296,6 +296,10 @@ class StudyQueueSeederEvidenceTest {
         val retired = reviewedItem("謎").copyBuilder()
             .state(StudyLadderRules.STATE_RETIRED)
             .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .dueAtMillis(0L)
+            .totalReviews(7)
+            .lapses(3)
+            .schedulerRevision(11L)
             .build()
 
         val now = 1_000L
@@ -307,11 +311,14 @@ class StudyQueueSeederEvidenceTest {
             now,
             null,
             RecordsBase.StudyLadderSettings.defaults(),
-            mapOf("謎" to KanjiRepairEvidencePolicy.Status.REGRESSING),
         ).single()
 
         assertEquals(StudyLadderRules.STATE_LEARNING, reopened.state)
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, reopened.phase)
+        assertEquals(0L, reopened.dueAtMillis)
+        assertEquals(7, reopened.totalReviews)
+        assertEquals(3, reopened.lapses)
+        assertEquals(12L, reopened.schedulerRevision)
     }
 
     @Test

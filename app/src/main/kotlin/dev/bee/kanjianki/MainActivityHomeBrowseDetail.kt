@@ -238,7 +238,15 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             neighborsModel(displayKanji),
             inventory?.let(::localInventoryPanelModel),
             mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
-            detailActionsModel(row, inventory, displayKanji, fromBrowse, browseQuery ?: "", suspended),
+            detailActionsModel(
+                row,
+                inventory,
+                timeline.currentStudyItem,
+                displayKanji,
+                fromBrowse,
+                browseQuery ?: "",
+                suspended,
+            ),
             recoveryTimelineModel(timeline),
             HomeTextCopy.examplesTitle(),
             row?.examples?.let(::exampleModels).orEmpty()
@@ -400,15 +408,27 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     fun detailActionsModel(
         row: RecordsImportModels.DashboardRow?,
         inventory: RecordsImportModels.KanjiInventoryItem?,
+        studyItem: RecordsStudyModels.StudyItem?,
         displayKanji: String,
         fromBrowse: Boolean,
         browseQuery: String?,
         suspended: Boolean,
     ): BrowseDetailActionsModel {
         val browserSearch = HomeTextCopy.detailBrowserSearch(row, inventory)
+        val reviewEligible = BrowseManualReviewPolicy.shouldOfferReview(
+            hasDashboardRow = row != null,
+            suspended = suspended,
+            item = studyItem,
+        )
+        val reviewAction = if (reviewEligible) {
+            val reviewRow = requireNotNull(row)
+            Runnable { home.renderStudyForKanji(reviewRow.kanji) }
+        } else {
+            null
+        }
         return BrowseDetailActionsModel(
-            if (row != null && !suspended) HomeTextCopy.reviewNowLabel() else null,
-            if (row != null && !suspended) Runnable { home.renderStudyForKanji(row.kanji) } else null,
+            if (reviewAction != null) HomeTextCopy.reviewNowLabel() else null,
+            reviewAction,
             if (browserSearch.isEmpty()) null else HomeTextCopy.copyAnkiSearchLabel(),
             home.getString(R.string.copied_anki_search),
             if (browserSearch.isEmpty()) null else Runnable { copyAnkiSearch(browserSearch) },
