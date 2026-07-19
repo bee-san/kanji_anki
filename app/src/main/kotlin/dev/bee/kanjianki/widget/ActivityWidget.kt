@@ -90,6 +90,8 @@ internal data class ActivityWidgetPresentation(
 internal data class ActivityWidgetLayout(
     val showBestStreak: Boolean,
     val showStreak: Boolean,
+    val showGrid: Boolean,
+    val useSevenDayGrid: Boolean,
     val showAction: Boolean,
     val useCompactHero: Boolean,
     val titleFontSp: Float,
@@ -107,9 +109,11 @@ internal fun activityWidgetLayout(
     fontScale: Float,
 ) = ActivityWidgetLayout(
     showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
-    showStreak = fontScale < 1.8f,
+    showStreak = fontScale < 1.3f,
+    showGrid = fontScale < 2f,
+    useSevenDayGrid = fontScale >= 1.3f,
     showAction = tier == ActivityWidgetTier.WIDE,
-    useCompactHero = fontScale >= 1.8f,
+    useCompactHero = fontScale >= 1.3f,
     titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
     actionFontSp = 13f,
     supportFontSp = 12f,
@@ -254,8 +258,12 @@ internal fun activityWidgetVisibleCopy(
     }
     val title = if (layout.useCompactHero) {
         when (snapshot.state) {
-            ActivityWidgetState.HISTORY -> WidgetTextCopy.visualCountLabel(snapshot.last35DayTotal)
-            ActivityWidgetState.NO_HISTORY -> "0"
+            ActivityWidgetState.HISTORY -> if (layout.useSevenDayGrid && layout.showGrid) {
+                WidgetTextCopy.reviewCountLabel(snapshot.last7DayTotal)
+            } else {
+                WidgetTextCopy.reviewCountLabel(snapshot.last35DayTotal)
+            }
+            ActivityWidgetState.NO_HISTORY -> WidgetTextCopy.reviewCountLabel(0)
             ActivityWidgetState.NOT_SET_UP -> "—"
             ActivityWidgetState.ERROR -> "!"
         }
@@ -271,6 +279,15 @@ internal fun activityWidgetVisibleCopy(
         presentation.title
     }
     return ActivityWidgetVisibleCopy(title, action)
+}
+
+internal fun activityWidgetVisibleCells(
+    presentation: ActivityWidgetPresentation,
+    layout: ActivityWidgetLayout,
+): List<ActivityCell> = when {
+    !layout.showGrid -> emptyList()
+    layout.useSevenDayGrid -> presentation.cells.takeLast(COMPACT_HISTORY_DAYS)
+    else -> presentation.cells
 }
 
 @Composable
@@ -328,6 +345,7 @@ private fun ActivityWidgetBody(
     tier: ActivityWidgetTier,
     palette: KaniWidgetPalette,
 ) {
+    val visibleCells = activityWidgetVisibleCells(presentation, layout)
     if (presentation.cells.isEmpty() && layout.showStreak) {
         Text(
             text = presentation.streak,
@@ -337,7 +355,7 @@ private fun ActivityWidgetBody(
             ),
             maxLines = 2,
         )
-    } else if (presentation.cells.isNotEmpty()) {
+    } else if (visibleCells.isNotEmpty()) {
         if (layout.showStreak) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -350,6 +368,7 @@ private fun ActivityWidgetBody(
                     maxLines = 1,
                 )
                 if (layout.showBestStreak) {
+                    Spacer(modifier = GlanceModifier.width(ACTIVITY_METADATA_GAP_DP.dp))
                     Text(
                         text = presentation.bestStreak,
                         style = TextStyle(
@@ -362,7 +381,11 @@ private fun ActivityWidgetBody(
             }
             Spacer(modifier = GlanceModifier.height(2.dp))
         }
-        ActivityGrid(presentation.cells, tier, palette)
+        ActivityGrid(
+            cells = visibleCells,
+            tier = if (layout.useSevenDayGrid) ActivityWidgetTier.COMPACT else tier,
+            palette = palette,
+        )
     }
 }
 
@@ -426,3 +449,4 @@ internal fun kaniActivityLaunchIntent(
 
 private const val COMPACT_HISTORY_DAYS = 7
 private const val GRID_COLUMNS = 7
+internal const val ACTIVITY_METADATA_GAP_DP = 8

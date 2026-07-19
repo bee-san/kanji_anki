@@ -46,12 +46,59 @@ class ActivityWidgetTest {
         assertFalse(regular.showAction)
         assertTrue(activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f).showAction)
         assertFalse(regular.useCompactHero)
+        assertFalse(enlarged.showStreak)
+        assertTrue(enlarged.showGrid)
+        assertTrue(enlarged.useSevenDayGrid)
+        assertTrue(enlarged.useCompactHero)
         assertFalse(enlarged.showBestStreak)
         assertFalse(accessibility.showBestStreak)
         assertFalse(accessibility.showStreak)
+        assertFalse(accessibility.showGrid)
         assertTrue(accessibility.useCompactHero)
         assertTrue(accessibility.actionFontSp >= 13f)
         assertTrue(accessibility.supportFontSp >= 12f)
+    }
+
+    @Test
+    fun historyMetadataKeepsAReadableGapBetweenCurrentAndBestStreaks() {
+        assertTrue(ACTIVITY_METADATA_GAP_DP >= 8)
+    }
+
+    @Test
+    fun enlargedFontUsesWholeReviewCopyAndACompactGrid() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
+            val presentation = activityWidgetPresentation(history, ActivityWidgetTier.REGULAR)
+            val historyCopy = activityWidgetVisibleCopy(
+                history,
+                presentation,
+                layout,
+            )
+            val empty = ActivityWidgetSnapshot(
+                state = ActivityWidgetState.NO_HISTORY,
+                last35DayCounts = List(35) { 0 },
+            )
+            val emptyCopy = activityWidgetVisibleCopy(
+                empty,
+                activityWidgetPresentation(empty, ActivityWidgetTier.REGULAR),
+                layout,
+            )
+
+            assertEquals("24 reviews", historyCopy.title)
+            assertEquals("0 reviews", emptyCopy.title)
+            assertTrue(layout.showGrid)
+            assertTrue(layout.useSevenDayGrid)
+            assertEquals(
+                history.last35DayCounts.takeLast(7),
+                activityWidgetVisibleCells(presentation, layout).map { it.count },
+            )
+            assertTrue(
+                activityWidgetVisibleCells(
+                    presentation,
+                    activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 2f),
+                ).isEmpty(),
+            )
+        }
     }
 
     @Test
