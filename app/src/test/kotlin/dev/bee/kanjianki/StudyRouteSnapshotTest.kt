@@ -56,34 +56,10 @@ class StudyRouteSnapshotTest {
     }
 
     @Test
-    fun pendingWorkNormalizesDuplicateAndBlankKeysWithoutLosingTheirKinds() {
-        val work = StudyRoutePendingWork.of(
-            pendingTaskKeys = listOf("shared", "pending", "pending", ""),
-            requeuedTaskKeys = listOf("shared", "wrong", "wrong", " "),
-            learnAheadRepeatTaskKeys = listOf("shared", "repeat", "repeat"),
-            repairTaskKeys = listOf("shared", "repair", "repair"),
-        )
+    fun acceptedRouteHasNoDetachedPendingWorkAuthority() {
+        val methodNames = StudyRouteSnapshot::class.java.declaredMethods.map { it.name }.toSet()
 
-        assertEquals(setOf("shared", "pending"), work.pendingTaskKeys)
-        assertEquals(setOf("shared", "wrong"), work.requeuedTaskKeys)
-        assertEquals(setOf("shared", "repeat"), work.learnAheadRepeatTaskKeys)
-        assertEquals(setOf("shared", "repair"), work.repairTaskKeys)
-        assertEquals(setOf("shared", "pending", "wrong", "repeat", "repair"), work.taskKeys)
-        assertEquals(5, work.blockerCount)
-        assertTrue(work.hasBlockers)
-    }
-
-    @Test
-    fun terminalCountsWithRepresentedWorkAreNotComplete() {
-        val snapshot = snapshot(
-            completed = 5,
-            target = 5,
-            phase = StudySessionPhase.COMPLETE,
-            pendingWork = StudyRoutePendingWork.of(repairTaskKeys = listOf("repair")),
-        )
-
-        assertFalse(snapshot.canComplete)
-        assertFalse(snapshot.isComplete)
+        assertFalse("canonical progress owns completion blockers", "getPendingWork" in methodNames)
     }
 
     @Test
@@ -115,7 +91,6 @@ class StudyRouteSnapshotTest {
         completed: Int,
         target: Int,
         phase: StudySessionPhase = StudySessionPhase.ACTIVE,
-        pendingWork: StudyRoutePendingWork = StudyRoutePendingWork.NONE,
         activeTask: Boolean = false,
     ): StudyRouteSnapshot = StudyRouteSnapshot(
         version = StudyRouteVersion(7L),
@@ -127,6 +102,5 @@ class StudyRouteSnapshotTest {
             completedCount = completed,
             activeTask = activeTask,
         ),
-        pendingWork = pendingWork,
     )
 }

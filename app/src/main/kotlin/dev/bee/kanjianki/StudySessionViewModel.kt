@@ -41,7 +41,6 @@ internal data class StudySessionUiState(
     val progress: StudySessionProgressUiState = StudySessionProgressUiState(),
     val routeVersion: StudyRouteVersion = StudyRouteVersion(0L),
     val sessionGeneration: StudySessionGeneration = StudySessionGeneration(0L),
-    val pendingWork: StudyRoutePendingWork = StudyRoutePendingWork.NONE,
     val completionEvidenceReason: StudyRouteCompletionReason? = null,
     val completionReason: StudyRouteCompletionReason? = null,
 ) {
@@ -56,7 +55,6 @@ internal data class StudySessionUiState(
             phase = phase,
             feedback = feedback,
             progress = progress,
-            pendingWork = pendingWork,
             completionEvidenceReason = completionEvidenceReason,
             completionReason = completionReason,
         )
@@ -88,11 +86,6 @@ internal sealed interface StudySessionEvent {
         val phase: StudySessionPhase,
     ) : StudySessionEvent
 
-    data class PendingWorkChanged(
-        val pendingWork: StudyRoutePendingWork,
-        val reason: StudyRouteCompletionReason?,
-    ) : StudySessionEvent
-
     data class TargetReconciled(
         val progress: StudySessionProgressUiState,
     ) : StudySessionEvent
@@ -116,7 +109,6 @@ internal object StudySessionReducer {
         is StudySessionEvent.FeedbackChanged -> reduceFeedback(state, event.feedback)
         is StudySessionEvent.ProgressChanged -> reduceProgress(state, event.progress)
         is StudySessionEvent.PresentationChanged -> reducePresentation(state, event.phase)
-        is StudySessionEvent.PendingWorkChanged -> reducePendingWork(state, event)
         is StudySessionEvent.TargetReconciled -> reduceTargetReconciliation(state, event.progress)
         is StudySessionEvent.CompletionEvidenceAccepted -> reduceCompletionEvidence(state, event.reason)
         is StudySessionEvent.CompletionAccepted -> reduceCompletion(state, event.reason)
@@ -151,7 +143,6 @@ internal object StudySessionReducer {
             feedback = null,
             routeVersion = state.routeVersion.next(),
             sessionGeneration = state.sessionGeneration.next(),
-            pendingWork = StudyRoutePendingWork.NONE,
             completionEvidenceReason = null,
             completionReason = null,
         )
@@ -197,29 +188,6 @@ internal object StudySessionReducer {
         return state.copy(
             phase = phase,
             routeVersion = state.routeVersion.next(),
-        )
-    }
-
-    private fun reducePendingWork(
-        state: StudySessionUiState,
-        event: StudySessionEvent.PendingWorkChanged,
-    ): StudySessionUiState {
-        if (state.phase == StudySessionPhase.COMPLETE) return state
-        if (
-            event.reason != null &&
-            event.reason != StudyRouteCompletionReason.LEARN_AHEAD_REPEAT &&
-            event.reason != StudyRouteCompletionReason.REPAIR &&
-            event.reason != StudyRouteCompletionReason.UNDO &&
-            event.reason != StudyRouteCompletionReason.RESTORE
-        ) {
-            return state
-        }
-        if (event.pendingWork == state.pendingWork && event.reason == state.completionReason) return state
-        return state.copy(
-            pendingWork = event.pendingWork,
-            routeVersion = state.routeVersion.next(),
-            completionEvidenceReason = null,
-            completionReason = event.reason,
         )
     }
 
@@ -395,48 +363,13 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
     fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? =
         synchronized(routeStateLock) {
             val current = _uiState.value.routeSnapshot
-            if (current != expectedRoute || current.isComplete) return@synchronized null
+            if (current != expectedRoute) return@synchronized null
+            if (current.isComplete) return@synchronized current
             if (_uiState.value.currentSession == null) return@synchronized current
             clearFeedbackLocked()
             dispatchLocked(StudySessionEvent.SessionMounted(null))
             _uiState.value.routeSnapshot
         }
-
-    fun acceptPendingWork(
-        pendingWork: StudyRoutePendingWork,
-        reason: StudyRouteCompletionReason?,
-        expectedGeneration: StudySessionGeneration,
-        expectedVersion: StudyRouteVersion,
-    ): Boolean = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(expectedGeneration, expectedVersion)) return@synchronized false
-        val state = _uiState.value
-        if (state.phase == StudySessionPhase.COMPLETE || !pendingWork.hasBlockers) return@synchronized false
-        dispatchLocked(
-            StudySessionEvent.PendingWorkChanged(
-                state.pendingWork.mergedWith(pendingWork),
-                reason,
-            ),
-        )
-    }
-
-    fun resolvePendingWork(
-        resolvedTaskKeys: Set<String>,
-        expectedGeneration: StudySessionGeneration,
-        expectedVersion: StudyRouteVersion,
-    ): Boolean = synchronized(routeStateLock) {
-        if (!matchesRouteLocked(expectedGeneration, expectedVersion)) return@synchronized false
-        val state = _uiState.value
-        if (state.phase == StudySessionPhase.COMPLETE) return@synchronized false
-        val acceptedKeys = resolvedTaskKeys intersect state.pendingWork.taskKeys
-        if (acceptedKeys.isEmpty()) return@synchronized false
-        val remaining = state.pendingWork.resolving(acceptedKeys)
-        dispatchLocked(
-            StudySessionEvent.PendingWorkChanged(
-                remaining,
-                state.completionReason.takeIf { remaining.hasBlockers },
-            ),
-        )
-    }
 
     fun reconcileRouteTarget(
         reconciledTarget: Int,
@@ -657,7 +590,6 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
 
     private fun dispatch(event: StudySessionEvent): Boolean =
         synchronized(routeStateLock) { dispatchLocked(event) }
-
 
     private fun matchesRouteLocked(
         expectedGeneration: StudySessionGeneration,

@@ -339,6 +339,36 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun repeatedNoSessionTerminalAcceptanceReusesTheAcceptedDoneRoute() {
+        val viewModel = StudySessionViewModel()
+        viewModel.mountSession(session("terminal"))
+        val active = viewModel.acceptedRouteSnapshot()
+        val absent = requireNotNull(viewModel.acceptTerminalSessionAbsence(active))
+        val evidence = requireNotNull(
+            viewModel.acceptCompletionEvidence(
+                StudyRouteCompletionReason.NO_SESSION,
+                absent.sessionGeneration,
+                absent.version,
+                absent.sessionToken,
+            ),
+        )
+        assertTrue(
+            viewModel.completeRoute(
+                StudyRouteCompletionReason.NO_SESSION,
+                evidence.sessionGeneration,
+                evidence.version,
+                evidence.sessionToken,
+            ),
+        )
+        val done = viewModel.acceptedRouteSnapshot()
+
+        val repeated = viewModel.acceptTerminalSessionAbsence(done)
+
+        assertEquals(done, repeated)
+        assertEquals(done, viewModel.acceptedRouteSnapshot())
+    }
+
+    @Test
     fun hardCapCompletionAcceptsTheLoadingSnapshotPublishedByTheRouteLoader() {
         val viewModel = viewModelAt(completed = 1, target = 1)
         viewModel.showLoading()
@@ -485,35 +515,50 @@ class StudySessionViewModelTest {
     }
 
     @Test
-    fun repeatedWrongLearnAheadAndRepairWorkEachBlockCompletion() {
-        val workCases = listOf(
-            StudyRouteCompletionReason.LEARN_AHEAD_REPEAT to StudyRoutePendingWork.of(
-                requeuedTaskKeys = listOf("wrong", "wrong"),
-            ),
-            StudyRouteCompletionReason.LEARN_AHEAD_REPEAT to StudyRoutePendingWork.of(
-                learnAheadRepeatTaskKeys = listOf("repeat"),
-            ),
-            StudyRouteCompletionReason.REPAIR to StudyRoutePendingWork.of(
-                repairTaskKeys = listOf("repair"),
-            ),
+    fun postFeedbackRoutePreparationCapturesTheAcceptedFeedbackSnapshot() {
+        val viewModel = StudySessionViewModel()
+        val mounted = session("feedback-render")
+        viewModel.mountSession(mounted)
+        val before = viewModel.acceptedRouteSnapshot()
+
+        val prepared = prepareAcceptedStudyRoute(
+            routeProvider = {
+                val feedback = viewModel.feedbackFor(mounted.token)
+                assertTrue(feedback.begin(StudyAnswerOutcome.INCORRECT, "again"))
+                assertTrue(feedback.markApplied(mounted.token))
+                "render model"
+            },
+            routeSnapshotProvider = viewModel::acceptedRouteSnapshot,
         )
 
-        for ((reason, work) in workCases) {
-            val viewModel = viewModelAt(completed = 1, target = 1)
-            val terminal = viewModel.acceptedRouteSnapshot()
-            assertTrue(
-                viewModel.acceptPendingWork(
-                    work,
-                    reason,
-                    terminal.sessionGeneration,
-                    terminal.version,
-                ),
-            )
-            val blocked = viewModel.acceptedRouteSnapshot()
-            val beforeCompletionAttempt = viewModel.uiState.value
+        assertEquals("render model", prepared.model)
+        assertEquals(StudySessionPhase.FEEDBACK, prepared.routeSnapshot.phase)
+        assertEquals(StudyAnswerFeedbackPhase.APPLIED, prepared.routeSnapshot.feedback?.phase)
+        assertTrue(prepared.routeSnapshot.version.value > before.version.value)
+    }
 
-            assertTrue(blocked.pendingWork.hasBlockers)
+    @Test
+    fun canonicalTrackerProgressBlocksEveryOutstandingWorkCategory() {
+        val workCases = listOf<Pair<String, (StudySessionViewModel) -> Unit>>(
+            "pending plan" to { it.tracker.initializeSessionPlan(listOf("pending")) },
+            "requeued wrong answer" to {
+                it.tracker.admitPendingTask("wrong")
+                it.tracker.admitPendingTask("wrong")
+            },
+            "learn-ahead repeat" to { it.tracker.initializeSessionPlan(emptyList(), listOf("repeat")) },
+            "repair" to { it.tracker.admitPendingTask("repair") },
+        )
+
+        for ((category, publishWork) in workCases) {
+            val viewModel = viewModelAt(completed = 1, target = 1)
+            publishWork(viewModel)
+            val blocked = viewModel.acceptedRouteSnapshot()
+
+            assertEquals(category, 1, blocked.progress.completedCount)
+            assertEquals(category, 2, blocked.progress.targetCount)
+            assertFalse(category, blocked.canComplete)
             assertFalse(
+                category,
                 viewModel.completeRoute(
                     StudyRouteCompletionReason.HARD_CAP,
                     blocked.sessionGeneration,
@@ -521,83 +566,7 @@ class StudySessionViewModelTest {
                     blocked.sessionToken,
                 ),
             )
-            assertSame(beforeCompletionAttempt, viewModel.uiState.value)
         }
-    }
-
-    @Test
-    fun pendingWorkCannotForgeTargetReconciliationProvenance() {
-        val viewModel = viewModelAt(completed = 1, target = 1)
-        val route = viewModel.acceptedRouteSnapshot()
-
-        assertFalse(
-            viewModel.acceptPendingWork(
-                StudyRoutePendingWork.of(pendingTaskKeys = listOf("forged")),
-                StudyRouteCompletionReason.TARGET_RECONCILIATION,
-                route.sessionGeneration,
-                route.version,
-            ),
-        )
-        assertEquals(route, viewModel.acceptedRouteSnapshot())
-    }
-
-    @Test
-    fun pendingWorkMergesAndCannotRewriteCompletedRouteProvenance() {
-        val viewModel = viewModelAt(completed = 1, target = 1)
-        var route = viewModel.acceptedRouteSnapshot()
-        assertTrue(
-            viewModel.acceptPendingWork(
-                StudyRoutePendingWork.of(requeuedTaskKeys = listOf("wrong")),
-                StudyRouteCompletionReason.LEARN_AHEAD_REPEAT,
-                route.sessionGeneration,
-                route.version,
-            ),
-        )
-        route = viewModel.acceptedRouteSnapshot()
-        assertTrue(
-            viewModel.acceptPendingWork(
-                StudyRoutePendingWork.of(repairTaskKeys = listOf("repair")),
-                StudyRouteCompletionReason.REPAIR,
-                route.sessionGeneration,
-                route.version,
-            ),
-        )
-        route = viewModel.acceptedRouteSnapshot()
-        assertEquals(setOf("wrong", "repair"), route.pendingWork.taskKeys)
-        assertTrue(
-            viewModel.resolvePendingWork(
-                route.pendingWork.taskKeys,
-                route.sessionGeneration,
-                route.version,
-            ),
-        )
-        route = viewModel.acceptedRouteSnapshot()
-        val hardCapEvidence = requireNotNull(
-            viewModel.acceptCompletionEvidence(
-                StudyRouteCompletionReason.HARD_CAP,
-                route.sessionGeneration,
-                route.version,
-                route.sessionToken,
-            ),
-        )
-        assertTrue(
-            viewModel.completeRoute(
-                StudyRouteCompletionReason.HARD_CAP,
-                hardCapEvidence.sessionGeneration,
-                hardCapEvidence.version,
-                hardCapEvidence.sessionToken,
-            ),
-        )
-        val done = viewModel.acceptedRouteSnapshot()
-        assertFalse(
-            viewModel.acceptPendingWork(
-                StudyRoutePendingWork.NONE,
-                StudyRouteCompletionReason.RESTORE,
-                done.sessionGeneration,
-                done.version,
-            ),
-        )
-        assertEquals(done, viewModel.acceptedRouteSnapshot())
     }
 
     @Test
@@ -626,7 +595,6 @@ class StudySessionViewModelTest {
         assertEquals(StudySessionPhase.IDLE, reset.phase)
         assertEquals(StudySessionProgressUiState(), reset.progress)
         assertEquals(viewModel.tracker.snapshot().targetCount, reset.progress.targetCount)
-        assertEquals(StudyRoutePendingWork.NONE, reset.pendingWork)
         assertNull(viewModel.feedbackState())
     }
 
@@ -822,17 +790,8 @@ class StudySessionViewModelTest {
                     0 -> if (route.progress.completedCount < route.progress.targetCount) {
                         viewModel.tracker.markTaskCompleted("seed-$seed-task-${nextTask++}")
                     }
-                    1 -> viewModel.acceptPendingWork(
-                        StudyRoutePendingWork.of(requeuedTaskKeys = listOf("wrong-${random.nextInt(3)}")),
-                        StudyRouteCompletionReason.LEARN_AHEAD_REPEAT,
-                        route.sessionGeneration,
-                        route.version,
-                    )
-                    2 -> viewModel.resolvePendingWork(
-                        route.pendingWork.taskKeys,
-                        route.sessionGeneration,
-                        route.version,
-                    )
+                    1 -> viewModel.tracker.includePendingTask("pending-$seed-$step")
+                    2 -> viewModel.tracker.includePendingTask("requeued-${random.nextInt(3)}")
                     3 -> if (route.progress.completedCount > 0) {
                         viewModel.reconcileRouteTarget(
                             route.progress.completedCount,
