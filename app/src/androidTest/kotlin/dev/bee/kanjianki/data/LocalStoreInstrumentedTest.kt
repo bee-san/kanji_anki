@@ -636,6 +636,15 @@ class LocalStoreInstrumentedTest {
 
     @Test
     fun testRecentMistakesClampLimitAndKeepNewestHardAgainOnly() {
+        store.saveSuccessfulSync(
+                RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                emptyList(),
+                listOf(row("拉", 0), row("提", 0)),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                500L,
+                900L,
+                null
+        );
         store.saveReview(RecordsSchedulerModels.ReviewRequest("古", "old-good", "good", false, false, false, 0), "good", 1000L);
         store.saveReview(RecordsSchedulerModels.ReviewRequest("拉", "old-again", "again", false, false, false, 0), "again", 2000L);
         store.saveReview(RecordsSchedulerModels.ReviewRequest("提", "new-hard", "hard", false, false, false, 0), "hard", 3000L);

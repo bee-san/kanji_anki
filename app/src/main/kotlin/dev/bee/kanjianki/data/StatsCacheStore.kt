@@ -8,7 +8,7 @@ import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import org.json.JSONObject
 
-internal const val STATS_CACHE_FORMAT_VERSION: Int = 10
+internal const val STATS_CACHE_FORMAT_VERSION: Int = 11
 internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 366
 internal const val STATS_RECENT_MISTAKE_LIMIT: Int = 12
 

@@ -652,7 +652,7 @@ Consequences:
   (`LocalStoreStudy.insertReview`, `:120-147`).
 
 DB31 replaces the ladder-health surface with adaptive health in stats cache
-format 10: core progress, repair task/cause, revalidation, escalation risk, and
+format 11: core progress, repair task/cause, revalidation, escalation risk, and
 stuck repair state. Legacy ladder health is a fallback only while items remain
 unconverted.
 

@@ -2,10 +2,11 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
-import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
@@ -18,24 +19,29 @@ internal data class RecentMistakesRouteData(
 
 internal interface RecentMistakesRouteDataSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
-    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
+    fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem>
     fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow>
 }
 
 internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): RecentMistakesRouteData {
-    val snapshot = source.cachedStatsSnapshotOrNull() ?: source.latestStatsSnapshotOrNull()
-    val mistakes = if (snapshot != null && snapshot.cacheFormatVersion >= STATS_CACHE_FORMAT_VERSION) {
+    val snapshot = source.cachedStatsSnapshotOrNull()
+    val historicalMistakes = if (snapshot != null && snapshot.cacheFormatVersion >= STATS_CACHE_FORMAT_VERSION) {
         snapshot.recentMistakes
     } else {
         source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
     }
-    val rowsByKanji = if (mistakes.isEmpty()) {
-        emptyMap()
-    } else {
-        source.activeDashboardRowsByKanji()
+    if (historicalMistakes.isEmpty()) {
+        return RecentMistakesRouteData(emptyList(), emptyMap())
     }
-    return RecentMistakesRouteData(mistakes, rowsByKanji)
+    val rowsByKanji = source.activeDashboardRowsByKanji()
+    val items = source.studyItemsForKanji(rowsByKanji.keys)
+    val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(
+        rowsByKanji.values.toList(),
+        items,
+    )
+    val mistakes = historicalMistakes.filter { eligibleKanji.contains(it.kanji) }
+    return RecentMistakesRouteData(mistakes, if (mistakes.isEmpty()) emptyMap() else rowsByKanji)
 }
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
@@ -91,12 +97,14 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                             return home.store.cachedStatsSnapshotOrNull()
                         }
 
-                        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-                            return home.store.latestStatsSnapshotOrNull()
-                        }
-
                         override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
                             return home.store.recentMistakes(limit)
+                        }
+
+                        override fun studyItemsForKanji(
+                            kanji: Collection<String>,
+                        ): List<RecordsStudyModels.StudyItem> {
+                            return home.store.studyItemsForKanji(kanji)
                         }
 
                         override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {

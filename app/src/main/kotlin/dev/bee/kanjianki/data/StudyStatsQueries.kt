@@ -10,10 +10,15 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyImpactPolicy
+import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 import dev.bee.kanjianki.sync.SyncSettings
+import java.util.Calendar
+import java.util.Locale
 import kotlin.math.max
+
+private const val RECENT_MISTAKE_QUERY_KANJI_BATCH_SIZE = 900
 
 internal class StudyStatsQueries(
     private val store: LocalStore,
@@ -44,30 +49,57 @@ internal class StudyStatsQueries(
     }
 
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
-        val cursor = db().query(
-            TABLE_REVIEW_LOG,
-            arrayOf(COLUMN_KANJI, COLUMN_RATING, COLUMN_REVIEWED_AT),
-            "rating IN (?, ?)",
-            RecentMistakePolicy.mistakeRatings(),
-            null,
-            null,
-            "reviewed_at DESC, id DESC",
-            RecentMistakePolicy.boundedLimit(limit).toString()
-        )
-        val mistakes = ArrayList<StudyStatsStore.RecentMistake>()
-        cursor.use {
-            while (it.moveToNext()) {
-                mistakes.add(
-                    StudyStatsStore.RecentMistake(
-                        string(it, COLUMN_KANJI),
-                        string(it, COLUMN_RATING),
-                        longValue(it, COLUMN_REVIEWED_AT)
+        val rows = store.activeDashboardRows()
+        if (rows.isEmpty()) {
+            return emptyList()
+        }
+        val items = store.studyItemsForKanji(rows.map { it.kanji })
+        val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(rows, items)
+        if (eligibleKanji.isEmpty()) {
+            return emptyList()
+        }
+        val boundedLimit = RecentMistakePolicy.boundedLimit(limit)
+        val candidates = ArrayList<RecentMistakeCandidate>()
+        for (chunk in eligibleKanji.chunked(RECENT_MISTAKE_QUERY_KANJI_BATCH_SIZE)) {
+            val placeholders = chunk.joinToString(",") { "?" }
+            val cursor = db().query(
+                TABLE_REVIEW_LOG,
+                arrayOf("id", COLUMN_KANJI, COLUMN_RATING, COLUMN_REVIEWED_AT),
+                "rating IN (?, ?) AND $COLUMN_KANJI IN ($placeholders)",
+                RecentMistakePolicy.mistakeRatings() + chunk,
+                null,
+                null,
+                "reviewed_at DESC, id DESC",
+                boundedLimit.toString(),
+            )
+            cursor.use {
+                while (it.moveToNext()) {
+                    candidates.add(
+                        RecentMistakeCandidate(
+                            longValue(it, "id"),
+                            StudyStatsStore.RecentMistake(
+                                string(it, COLUMN_KANJI),
+                                string(it, COLUMN_RATING),
+                                longValue(it, COLUMN_REVIEWED_AT),
+                            ),
+                        ),
                     )
-                )
+                }
             }
         }
-        return mistakes
+        return candidates
+            .sortedWith(
+                compareByDescending<RecentMistakeCandidate> { it.mistake.reviewedAtMillis }
+                    .thenByDescending { it.reviewId },
+            )
+            .take(boundedLimit)
+            .map { it.mistake }
     }
+
+    private data class RecentMistakeCandidate(
+        val reviewId: Long,
+        val mistake: StudyStatsStore.RecentMistake,
+    )
 
     fun studyStreak(nowMillis: Long): StudyStatsStore.StudyStreak {
         val today = localDayStart(nowMillis)

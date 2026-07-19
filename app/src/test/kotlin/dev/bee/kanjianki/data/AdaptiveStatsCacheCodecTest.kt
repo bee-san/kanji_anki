@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class AdaptiveStatsCacheCodecTest {
     @Test
-    fun cacheFormatTenRoundTripsAdaptiveHealthAndLegacyJsonDefaultsEmpty() {
+    fun cacheFormatElevenRoundTripsAdaptiveHealthAndLegacyJsonDefaultsEmpty() {
         val metric = StudyStatsStore.AdaptiveHealthMetric(
             coreCounts = mapOf(CoreSkill.RECOGNITION to 2, CoreSkill.CONTEXTUAL_READING to 3),
             activeRepairsByTask = mapOf(StudyTaskTypes.TYPE_READING to 2),
@@ -37,7 +37,7 @@ class AdaptiveStatsCacheCodecTest {
         val encoded = StatsCacheCodec.outcomeToJson(stats)
         val decoded = StatsCacheCodec.outcomeFromJson(encoded).adaptiveHealth
 
-        assertEquals(10, STATS_CACHE_FORMAT_VERSION)
+        assertEquals(11, STATS_CACHE_FORMAT_VERSION)
         assertEquals(5, decoded.totalAdaptiveItems)
         assertEquals(2, decoded.countFor(CoreSkill.RECOGNITION))
         assertEquals(3, decoded.countFor(CoreSkill.CONTEXTUAL_READING))
