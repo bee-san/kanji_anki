@@ -435,6 +435,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
         clearLocallySuspendedCache()
         clearKanjiInventoryAllCache()
+        StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty()
     }
 
     fun setKanjiLocallySuspendedForKanji(kanji: Collection<String?>?, suspended: Boolean, nowMillis: Long) {
@@ -453,6 +454,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         }
         clearLocallySuspendedCache()
         clearKanjiInventoryAllCache()
+        StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty()
     }
 
     private fun setKanjiLocallySuspendedInTransaction(

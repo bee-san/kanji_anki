@@ -152,7 +152,7 @@ new ladder and do not define adaptive repair order. Restoring defaults resets
 the adaptive repair list as well as the compatibility values. The legacy
 demotion threshold is reused only as the same-cause escalation threshold.
 
-Stats cache format 10 reports the two cores, active repairs by task/cause,
+Stats cache format 11 reports the two cores, active repairs by task/cause,
 revalidation, escalation risk, and stuck repairs. Completion and parking mean a
 contextual core in review with no repair/revalidation and at least one
 contextual due-review pass. Legacy items continue to use the old fallback until

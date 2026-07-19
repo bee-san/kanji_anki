@@ -150,7 +150,7 @@ as optional variants, and repair tools as a separate enabled/priority list.
 `study_ladder_order` and `study_ladder_enabled` remain compatibility state;
 adaptive repair ordering and enablement live in `adaptive_repair_order` and
 `adaptive_repair_enabled`. Do not derive adaptive repair priority from the old
-ladder order. Stats cache format 10 is the live analytics contract: it reports
+ladder order. Stats cache format 11 is the live analytics contract: it reports
 core progress, inline repair task/cause, revalidation, escalation risk, and
 stuck repair state, with a legacy fallback only for unconverted items.
 

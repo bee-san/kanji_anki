@@ -30,6 +30,14 @@ object StudyProjectionEligibilityPolicy {
     }
 
     @JvmStatic
+    fun eligibleDashboardKanji(
+        rows: List<RecordsImportModels.DashboardRow>?,
+        items: List<RecordsStudyModels.StudyItem>?,
+    ): Set<String> {
+        return planningProjection(rows, items).rows.mapTo(LinkedHashSet()) { it.kanji }
+    }
+
+    @JvmStatic
     internal fun planningProjection(
         rows: List<RecordsImportModels.DashboardRow>?,
         items: List<RecordsStudyModels.StudyItem>?,

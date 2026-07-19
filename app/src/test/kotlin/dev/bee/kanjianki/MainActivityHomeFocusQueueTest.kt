@@ -1,11 +1,13 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
-import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -23,7 +25,6 @@ class MainActivityHomeFocusQueueTest {
         val data = recentMistakesRouteData(source)
 
         assertEquals(1, source.cachedReads)
-        assertEquals(0, source.latestReads)
         assertEquals(0, source.liveReads)
         assertEquals(0, source.activeRowsByKanjiReads)
         assertTrue(data.mistakes.isEmpty())
@@ -31,22 +32,22 @@ class MainActivityHomeFocusQueueTest {
     }
 
     @Test
-    fun recentMistakesRouteDataUsesLatestSnapshotWhenFreshCacheMissing() {
+    fun recentMistakesRouteDataUsesLiveQueryWhenFreshCacheMissing() {
         val source = CountingRecentMistakesRouteDataSource(
-            latestSnapshot = snapshot(
-                mistakes = listOf(StudyStatsStore.RecentMistake("痛", "again", 1_000L)),
-                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
-            ),
+            liveMistakes = listOf(StudyStatsStore.RecentMistake("落", "again", 2_000L)),
+            studyItems = listOf(studyItem("落")),
+            dashboardRowsByKanji = mapOf("落" to dashboardRow("落")),
         )
 
         val data = recentMistakesRouteData(source)
 
         assertEquals(1, source.cachedReads)
-        assertEquals(1, source.latestReads)
-        assertEquals(0, source.liveReads)
+        assertEquals(listOf(STATS_RECENT_MISTAKE_LIMIT), source.liveMistakeLimits)
+        assertEquals(1, source.liveReads)
+        assertEquals(1, source.studyItemReads)
         assertEquals(1, source.activeRowsByKanjiReads)
-        assertEquals("痛", data.mistakes.single().kanji)
-        assertTrue(data.rowsByKanji.isEmpty())
+        assertEquals("落", data.mistakes.single().kanji)
+        assertEquals(setOf("落"), data.rowsByKanji.keys)
     }
 
     @Test
@@ -57,47 +58,47 @@ class MainActivityHomeFocusQueueTest {
                 cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1,
             ),
             liveMistakes = listOf(StudyStatsStore.RecentMistake("落", "good", 3_000L)),
+            studyItems = listOf(studyItem("落")),
+            dashboardRowsByKanji = mapOf("落" to dashboardRow("落")),
         )
 
         val data = recentMistakesRouteData(source)
 
         assertEquals(1, source.cachedReads)
-        assertEquals(0, source.latestReads)
         assertEquals(listOf(STATS_RECENT_MISTAKE_LIMIT), source.liveMistakeLimits)
         assertEquals(1, source.liveReads)
+        assertEquals(1, source.studyItemReads)
         assertEquals(1, source.activeRowsByKanjiReads)
         assertEquals("落", data.mistakes.single().kanji)
-        assertTrue(data.rowsByKanji.isEmpty())
+        assertEquals(setOf("落"), data.rowsByKanji.keys)
     }
 
     private class CountingRecentMistakesRouteDataSource : RecentMistakesRouteDataSource {
         var cachedSnapshot: StatsCacheStore.Snapshot? = null
-        var latestSnapshot: StatsCacheStore.Snapshot? = null
         var liveMistakes: List<StudyStatsStore.RecentMistake> = emptyList()
+        var studyItems: List<RecordsStudyModels.StudyItem> = emptyList()
+        var dashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow> = emptyMap()
         var cachedReads = 0
-        var latestReads = 0
         var liveReads = 0
+        var studyItemReads = 0
         var activeRowsByKanjiReads = 0
         val liveMistakeLimits = mutableListOf<Int>()
 
         constructor(
             cachedSnapshot: StatsCacheStore.Snapshot? = null,
-            latestSnapshot: StatsCacheStore.Snapshot? = null,
             liveMistakes: List<StudyStatsStore.RecentMistake> = emptyList(),
+            studyItems: List<RecordsStudyModels.StudyItem> = emptyList(),
+            dashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow> = emptyMap(),
         ) {
             this.cachedSnapshot = cachedSnapshot
-            this.latestSnapshot = latestSnapshot
             this.liveMistakes = liveMistakes
+            this.studyItems = studyItems
+            this.dashboardRowsByKanji = dashboardRowsByKanji
         }
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
             cachedReads += 1
             return cachedSnapshot
-        }
-
-        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            latestReads += 1
-            return latestSnapshot
         }
 
         override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
@@ -106,13 +107,51 @@ class MainActivityHomeFocusQueueTest {
             return liveMistakes
         }
 
+        override fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem> {
+            studyItemReads += 1
+            return studyItems.filter { kanji.contains(it.kanji) }
+        }
+
         override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
             activeRowsByKanjiReads += 1
-            return emptyMap()
+            return dashboardRowsByKanji
         }
     }
 
     private companion object {
+        fun studyItem(kanji: String): RecordsStudyModels.StudyItem {
+            return RecordsStudyModels.StudyItem(
+                kanji,
+                StudyLadderRules.STATE_REVIEW,
+                0L,
+                1.0,
+                1.0,
+                0,
+                0,
+                0,
+                0,
+                "",
+                0L,
+            )
+        }
+
+        fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
+            return RecordsImportModels.DashboardRow(
+                kanji,
+                1,
+                "meaning-$kanji",
+                "reading-$kanji",
+                "",
+                0,
+                "weak_support",
+                "",
+                0,
+                0,
+                0,
+                emptyList<RecordsImportModels.Example>(),
+            )
+        }
+
         fun snapshot(
             mistakes: List<StudyStatsStore.RecentMistake>,
             cacheFormatVersion: Int,
