@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -73,6 +74,32 @@ class KaniWidgetRegistryTest {
                 ActivityWidget::class.java,
                 FocusKanjiWidget::class.java,
             ),
+            attempted,
+        )
+    }
+
+    @Test
+    fun refreshCancellationStopsWithoutAttemptingLaterFamilies() = runTest {
+        val attempted = mutableListOf<Class<out GlanceAppWidget>>()
+        val cancellation = CancellationException("refresh cancelled")
+        val registry = registry(
+            installedIds = { intArrayOf(1) },
+            updateWidget = { widget ->
+                attempted += widget::class.java
+                if (widget is QuickStudyWidget) throw cancellation
+            },
+        )
+
+        var thrown: CancellationException? = null
+        try {
+            registry.refreshInstalled(context)
+        } catch (failure: CancellationException) {
+            thrown = failure
+        }
+
+        assertSame(cancellation, thrown)
+        assertEquals(
+            listOf(KaniWidget::class.java, QuickStudyWidget::class.java),
             attempted,
         )
     }

@@ -64,6 +64,8 @@ internal class FocusKanjiWidget(
 internal data class FocusKanjiLayout(
     val tier: FocusKanjiLayoutTier,
     val glyphFontSp: Int,
+    val showMeaning: Boolean,
+    val showReading: Boolean,
 ) {
     val isWide: Boolean
         get() = tier == FocusKanjiLayoutTier.WIDE
@@ -92,7 +94,17 @@ internal fun focusKanjiLayout(
         widthDp >= 120f && heightDp >= 110f -> FocusKanjiLayoutTier.COMPACT
         else -> FocusKanjiLayoutTier.GLYPH_ONLY
     }
-    return FocusKanjiLayout(tier, if (tier == FocusKanjiLayoutTier.WIDE) 52 else 44)
+    val showSecondaryFacts = tier == FocusKanjiLayoutTier.WIDE || fontScale < 1.3f
+    return FocusKanjiLayout(
+        tier = tier,
+        glyphFontSp = when {
+            tier == FocusKanjiLayoutTier.WIDE -> 52
+            fontScale >= 1.3f -> 40
+            else -> 44
+        },
+        showMeaning = showSecondaryFacts,
+        showReading = showSecondaryFacts,
+    )
 }
 
 internal fun focusVisibleReading(
@@ -132,6 +144,8 @@ internal fun focusVisibleMeaning(
     val wordBoundary = clipped.lastIndexOf(' ')
     return if (wordBoundary >= maximum / 2) {
         clipped.substring(0, wordBoundary).trimEnd()
+    } else if (normalized.all(Char::isLetterOrDigit)) {
+        null
     } else {
         clipped
     }
@@ -190,7 +204,7 @@ private fun FocusKanjiReadyContent(
     }
 
     if (layout.tier == FocusKanjiLayoutTier.COMPACT) {
-        FocusKanjiCompactContent(snapshot, description, detailsAction, palette, cardModifier)
+        FocusKanjiCompactContent(snapshot, layout, description, detailsAction, palette, cardModifier)
         return
     }
 
@@ -268,6 +282,7 @@ private fun FocusKanjiReadyContent(
 @Composable
 private fun FocusKanjiCompactContent(
     snapshot: FocusKanjiWidgetSnapshot,
+    layout: FocusKanjiLayout,
     description: String,
     detailsAction: Action,
     palette: KaniWidgetPalette,
@@ -280,24 +295,28 @@ private fun FocusKanjiCompactContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FocusKanjiGlyph(snapshot.kanji, 44, palette)
-        focusVisibleMeaning(snapshot.primaryMeaning, FocusKanjiLayoutTier.COMPACT)?.let { meaning ->
-            Text(
-                text = meaning,
-                style = TextStyle(
-                    color = palette.ink.toGlanceColor(),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-                maxLines = 1,
-            )
+        FocusKanjiGlyph(snapshot.kanji, layout.glyphFontSp, palette)
+        if (layout.showMeaning) {
+            focusVisibleMeaning(snapshot.primaryMeaning, FocusKanjiLayoutTier.COMPACT)?.let { meaning ->
+                Text(
+                    text = meaning,
+                    style = TextStyle(
+                        color = palette.ink.toGlanceColor(),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+            }
         }
-        focusVisibleReading(snapshot.readings, FocusKanjiLayoutTier.COMPACT)?.let { reading ->
-            Text(
-                text = reading,
-                style = TextStyle(color = palette.muted.toGlanceColor(), fontSize = 12.sp),
-                maxLines = 1,
-            )
+        if (layout.showReading) {
+            focusVisibleReading(snapshot.readings, FocusKanjiLayoutTier.COMPACT)?.let { reading ->
+                Text(
+                    text = reading,
+                    style = TextStyle(color = palette.muted.toGlanceColor(), fontSize = 12.sp),
+                    maxLines = 1,
+                )
+            }
         }
         if (snapshot.isDueNow) {
             Text(

@@ -106,6 +106,30 @@ class KaniWidgetContentTest {
         assertTrue(metrics.widthDp(dayCount = 7) <= 80)
     }
 
+    @Test
+    fun widenedOverviewKeepsItsTextAndActivityContent() = runGlanceAppWidgetUnitTest(30.seconds) {
+        val snapshot = KaniWidgetSnapshot(
+            state = KaniWidgetState.DUE_NOW,
+            dueCount = 3,
+            streakDays = 2,
+            dueLaterCount = 4,
+            dueLaterByMillis = 1_800_000L,
+            last7DayCounts = listOf(1, 0, 2, 0, 3, 1, 4),
+        )
+        val copy = widgetCopy(snapshot, isExpanded = true)
+        setContext(context)
+        setAppWidgetSize(KaniWidget.WIDE_SIZE)
+        provideComposable { KaniWidgetContent(snapshot) }
+
+        onNode(hasTextEqualTo(copy.title)).assertExists()
+        onNode(hasTextEqualTo(copy.body)).assertExists()
+        onNode(hasTextEqualTo(copy.extraLine)).assertExists()
+        onNode(hasTextEqualTo(WidgetTextCopy.appName())).assertExists()
+        onNode(hasTextEqualTo(copy.action)).assertExists()
+        val stripMetrics = overviewActivityStripMetrics()
+        onAllNodes(hasExactSize(stripMetrics.cellSizeDp.dp)).assertCountEquals(7)
+    }
+
     @Suppress("DEPRECATION")
     private fun setFontScale(fontScale: Float) {
         val configuration = Configuration(context.resources.configuration).apply {
@@ -113,6 +137,19 @@ class KaniWidgetContentTest {
         }
         context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
     }
+
+    private fun hasExactSize(size: Dp) =
+        GlanceNodeMatcher<MappedNode>("has exact ${size.value}dp size") { node ->
+            var width: Dp? = null
+            var height: Dp? = null
+            node.value.emittable.modifier.foldIn(Unit) { _, element ->
+                when (element) {
+                    is WidthModifier -> width = (element.width as? Dimension.Dp)?.dp
+                    is HeightModifier -> height = (element.height as? Dimension.Dp)?.dp
+                }
+            }
+            width == size && height == size
+        }
 
     private fun hasMinimumTapTarget(minimum: Dp) =
         GlanceNodeMatcher<MappedNode>("has minimum ${minimum.value}dp tap target") { node ->

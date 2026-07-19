@@ -37,21 +37,115 @@ class ActivityWidgetTest {
 
     @Test
     fun fontScaleDropsTertiaryCopyBeforeShrinkingReadableText() {
+        val compact = activityWidgetLayout(ActivityWidgetTier.COMPACT, fontScale = 1f)
+        val enlargedCompact = activityWidgetLayout(ActivityWidgetTier.COMPACT, fontScale = 1.3f)
         val regular = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1f)
         val enlarged = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
         val accessibility = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 2f)
 
+        assertFalse(compact.showAction)
+        assertFalse(compact.useCompactHero)
+        assertTrue(compact.stackAction)
+        assertTrue(compact.showStreak)
+        assertTrue(enlargedCompact.showAction)
+        assertTrue(enlargedCompact.useCompactHero)
         assertTrue(regular.showBestStreak)
         assertTrue(regular.showStreak)
-        assertFalse(regular.showAction)
+        assertTrue(regular.showAction)
+        assertTrue(regular.stackAction)
         assertTrue(activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f).showAction)
-        assertFalse(regular.useCompactHero)
+        assertTrue(regular.useCompactHero)
+        assertFalse(enlarged.showStreak)
+        assertTrue(enlarged.showGrid)
+        assertTrue(enlarged.useSevenDayGrid)
+        assertTrue(enlarged.useCompactHero)
         assertFalse(enlarged.showBestStreak)
         assertFalse(accessibility.showBestStreak)
         assertFalse(accessibility.showStreak)
+        assertFalse(accessibility.showGrid)
         assertTrue(accessibility.useCompactHero)
         assertTrue(accessibility.actionFontSp >= 13f)
         assertTrue(accessibility.supportFontSp >= 12f)
+    }
+
+    @Test
+    fun regularSurfaceUsesACompactSummaryWithAVisibleStatsCue() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1f)
+            val copy = activityWidgetVisibleCopy(
+                history,
+                activityWidgetPresentation(history, ActivityWidgetTier.REGULAR),
+                layout,
+            )
+
+            assertTrue(layout.useCompactHero)
+            assertTrue(layout.showAction)
+            assertEquals("87 reviews", copy.title)
+            assertEquals(WidgetTextCopy.statsLabel(), copy.action)
+        }
+    }
+
+    @Test
+    fun historyMetadataKeepsAReadableGapBetweenCurrentAndBestStreaks() {
+        assertTrue(ACTIVITY_METADATA_GAP_DP >= 8)
+    }
+
+    @Test
+    fun enlargedFontUsesWholeReviewCopyAndACompactGrid() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
+            val presentation = activityWidgetPresentation(history, ActivityWidgetTier.REGULAR)
+            val historyCopy = activityWidgetVisibleCopy(
+                history,
+                presentation,
+                layout,
+            )
+            val empty = ActivityWidgetSnapshot(
+                state = ActivityWidgetState.NO_HISTORY,
+                last35DayCounts = List(35) { 0 },
+            )
+            val emptyCopy = activityWidgetVisibleCopy(
+                empty,
+                activityWidgetPresentation(empty, ActivityWidgetTier.REGULAR),
+                layout,
+            )
+
+            assertEquals("24 reviews", historyCopy.title)
+            assertEquals("0 reviews", emptyCopy.title)
+            assertTrue(layout.showGrid)
+            assertTrue(layout.useSevenDayGrid)
+            assertEquals(
+                history.last35DayCounts.takeLast(7),
+                activityWidgetVisibleCells(presentation, layout).map { it.count },
+            )
+            val contentDescription = activityWidgetContentDescription(history, presentation, layout)
+            assertTrue(contentDescription.contains("24 reviews in 7 days"))
+            assertFalse(contentDescription.contains("87 reviews in 35 days"))
+            assertTrue(
+                activityWidgetVisibleCells(
+                    presentation,
+                    activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 2f),
+                ).isEmpty(),
+            )
+        }
+    }
+
+    @Test
+    fun sevenDayGridNormalizesIntensityAgainstItsVisibleCells() {
+        val hiddenSpike = history.copy(
+            last35DayCounts = listOf(100) + List(27) { 0 } + listOf(0, 1, 2, 3, 4, 5, 6),
+            last7DayTotal = 21,
+            last35DayTotal = 121,
+        )
+        val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)
+        val visibleCells = activityWidgetVisibleCells(
+            activityWidgetPresentation(hiddenSpike, ActivityWidgetTier.REGULAR),
+            layout,
+        )
+
+        assertEquals(listOf(0, 1, 2, 3, 4, 5, 6), visibleCells.map { it.count })
+        assertEquals(ActivityIntensity.MEDIUM, visibleCells[3].intensity)
+        assertEquals(ActivityIntensity.HIGH, visibleCells.last().intensity)
     }
 
     @Test
