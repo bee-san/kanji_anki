@@ -28,12 +28,9 @@ object ReminderEligibilityPolicy {
         rows: List<RecordsImportModels.DashboardRow>,
         ladder: RecordsBase.StudyLadderSettings?,
     ): List<RecordsStudyModels.StudyItem> {
-        return StudySessionSelector().activeQueueItems(
+        return StudyProjectionEligibilityPolicy.eligibleStudyItems(
             items,
             rows,
-            0L,
-            0L,
-            null,
             ladder,
         )
     }

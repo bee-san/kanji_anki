@@ -108,6 +108,7 @@ class ProgressAnalyticsLiveDataSourceTest {
             0,
             0,
         )
+        localStore!!.saveStudyLadderSettings(configured)
         writeFreshStatsSnapshot(
             now,
             cachedReviewDaySummaries(now),
@@ -117,7 +118,6 @@ class ProgressAnalyticsLiveDataSourceTest {
                 ladderHealth,
             ),
         )
-        localStore!!.saveStudyLadderSettings(configured)
         var refreshesScheduled = 0
 
         val rows = progressAnalyticsSnapshot(
@@ -127,7 +127,7 @@ class ProgressAnalyticsLiveDataSourceTest {
         ).progressByLevel.levelRows
         val copy = StatsDashboardCopy.forLocale()
 
-        assertEquals(1, refreshesScheduled)
+        assertEquals(0, refreshesScheduled)
         assertEquals(
             configured.orderedRungs.map { copy.rung(it.wireName()) },
             rows.map { it.level },
@@ -139,14 +139,9 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
-    fun legacyLatestSnapshotRecomputesSynchronouslyInsteadOfRenderingMissingExtras() {
+    fun invalidatedSnapshotRecomputesSynchronouslyInsteadOfRenderingStaleStats() {
         val now = System.currentTimeMillis()
         val source = CountingProgressStatsSource(
-            latest = progressSnapshot(
-                now = now,
-                totalReviews = 0,
-                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION - 1,
-            ),
             recomputed = progressSnapshot(
                 now = now,
                 totalReviews = 17,
@@ -161,7 +156,6 @@ class ProgressAnalyticsLiveDataSourceTest {
         )
 
         assertEquals(1, source.cachedReads)
-        assertEquals(1, source.latestReads)
         assertEquals(listOf(now), source.recomputeReads)
         assertEquals(17, snapshot.overview.totalReviews.value)
         assertEquals("17", snapshot.overview.totalReviews.valueLabel)
@@ -309,21 +303,14 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     private class CountingProgressStatsSource(
-        private val latest: StatsCacheStore.Snapshot?,
         private val recomputed: StatsCacheStore.Snapshot,
     ) : ProgressAnalyticsStatsSource {
         var cachedReads = 0
-        var latestReads = 0
         val recomputeReads = mutableListOf<Long>()
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
             cachedReads += 1
             return null
-        }
-
-        override fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            latestReads += 1
-            return latest
         }
 
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {

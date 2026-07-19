@@ -236,6 +236,44 @@ class StudyQueueSeederEvidenceTest {
     }
 
     @Test
+    fun adaptivePlanFilteringDoesNotBlockAutomaticReopening() {
+        val emptyFocus = RecordsSchedulerModels.AdaptiveLoadPlan(
+            20,
+            0,
+            0,
+            emptyList(),
+            0,
+            false,
+            "retired items excluded from active projection",
+        )
+        val scheduler = BridgeScheduler()
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+
+        val supportDrop = scheduler.seedQueue(
+            listOf(activeRow("落")),
+            listOf(retiredItem("落")),
+            settings,
+            1_000L,
+            0L,
+            emptyFocus,
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+        val regressing = scheduler.seedQueue(
+            listOf(coveredRow("裂")),
+            listOf(retiredItem("裂")),
+            settings,
+            1_000L,
+            0L,
+            emptyFocus,
+            RecordsBase.StudyLadderSettings.defaults(),
+            mapOf("裂" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        )
+
+        assertEquals("review", findItem(supportDrop, "落").state)
+        assertEquals("review", findItem(regressing, "裂").state)
+    }
+
+    @Test
     fun bridgeSchedulerKeepsLocallyIneligibleProviderRowOutOfRetirement() {
         val scheduler = BridgeScheduler()
         val items = scheduler.seedQueue(

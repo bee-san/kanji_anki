@@ -215,6 +215,49 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    fun retiredRelearningItemLeavesFocusAndReopeningRestoresIt() {
+        val now = 1_000L;
+        val retired = item("済", StudyLadderRules.STATE_RETIRED, now - 1L, 3, 1)
+                .copyBuilder()
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build();
+        val active = item("学", StudyLadderRules.STATE_LEARNING, now - 1L, 1, 1)
+                .copyBuilder()
+                .phase(RecordsBase.SchedulerPhase.RELEARNING)
+                .build();
+        val rows = listOf(
+                row("済", 10, null, null, null, 3, 1),
+                row("学", 9, null, null, null, 3, 1)
+        );
+
+        val afterRetirement = plan(
+                rows,
+                listOf(retired, active),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                100,
+                now
+        );
+        val afterReopening = plan(
+                rows,
+                listOf(retired.copyBuilder().state(StudyLadderRules.STATE_LEARNING).build(), active),
+                RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0),
+                0,
+                emptySet(),
+                100,
+                now
+        );
+
+        assertEquals(listOf("学"), afterRetirement.focusKanji);
+        assertEquals(1, afterRetirement.target);
+        assertEquals(1, afterRetirement.remaining);
+        assertTrue(afterReopening.focusKanji.containsAll(listOf("済", "学")));
+        assertEquals(2, afterReopening.target);
+        assertEquals(2, afterReopening.remaining);
+    }
+
+    @Test
     fun fsrsLowRetrievabilityOutranksOtherwiseSimilarKanji() {
         val weakFsrs = row("弱", 10, 0.30, 7.0, 3.0, 10, 2);
         val ordinary = row("普", 10, 0.95, 4.0, 30.0, 10, 2);

@@ -13,7 +13,6 @@ import dev.bee.kanjianki.core.StatsValueFormatter
 import dev.bee.kanjianki.core.StatsDashboardCopy
 import dev.bee.kanjianki.core.TaskTypeAccuracyPolicy
 import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import java.util.Locale
@@ -22,7 +21,6 @@ import kotlin.math.roundToInt
 
 internal interface ProgressAnalyticsStatsSource {
     fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
-    fun latestStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
     fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
 }
@@ -34,7 +32,6 @@ internal fun progressAnalyticsSnapshot(
 ): ProgressAnalyticsState = progressAnalyticsSnapshot(
     source = object : ProgressAnalyticsStatsSource {
         override fun cachedStatsSnapshotOrNull() = store.cachedStatsSnapshotOrNull()
-        override fun latestStatsSnapshotOrNull() = store.latestStatsSnapshotOrNull()
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long) = store.recomputeStatsSnapshotSynchronously(nowMillis)
         override fun reviewDaySummaries(nowMillis: Long, days: Int) =
             dev.bee.kanjianki.data.StudyStatsQueries(store).reviewDaySummaries(nowMillis, days).map { it.toReviewDaySummary() }
@@ -51,12 +48,16 @@ internal fun progressAnalyticsSnapshot(
     ladderSettings: RecordsBase.StudyLadderSettings,
 ): ProgressAnalyticsState {
     val fresh = source.cachedStatsSnapshotOrNull()
-    val latest = if (fresh == null) source.latestStatsSnapshotOrNull() else null
-    val currentLatest = latest?.takeIf { it.cacheFormatVersion == STATS_CACHE_FORMAT_VERSION }
-    val snapshot = fresh ?: currentLatest ?: source.recomputeStatsSnapshotSynchronously(nowMillis)
+    val snapshot = if (fresh != null) {
+        fresh
+    } else {
+        // A current-format cache can still be stale after sync or study mutations. Rendering
+        // it would leave Stats disagreeing with live Home/Focus state until another refresh.
+        source.recomputeStatsSnapshotSynchronously(nowMillis)
+    }
     val locale = Locale.getDefault()
     val copy = StatsDashboardCopy.forLocale(locale)
-    if (currentLatest != null || (fresh != null && snapshot.reviewDaySummaries.isEmpty())) scheduleRefresh?.invoke()
+    if (fresh != null && snapshot.reviewDaySummaries.isEmpty()) scheduleRefresh?.invoke()
 
     val reviewDaysYear = if (snapshot.reviewDaySummaries.isNotEmpty()) {
         snapshot.reviewDaySummaries.map { it.toReviewDaySummary() }.takeLast(366)

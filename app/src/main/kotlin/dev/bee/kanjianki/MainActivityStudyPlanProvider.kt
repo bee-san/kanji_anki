@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanRequest
+import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -101,10 +102,15 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         streak: StudyStatsStore.StudyStreak,
         lastSuccessfulSyncAtMillis: Long?,
     ): DailyStudyPlan {
+        val eligibleItems = StudyProjectionEligibilityPolicy.eligibleStudyItems(
+            items,
+            rows,
+            activity.studyLadderSettings(),
+        )
         return DailyStudyPlanPolicy.plan(
             DailyStudyPlanRequest(
                 nowMillis = now,
-                dueAtMillis = items.map { it.dueAtMillis },
+                dueAtMillis = eligibleItems.map { it.dueAtMillis },
                 studiedToday = streak.studiedToday,
                 streak = StudyStreakPolicy.Streak(
                     currentDays = streak.currentDays,
@@ -113,7 +119,7 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                     reviewsToday = streak.reviewsToday,
                     lastStudyAtMillis = streak.lastStudyAtMillis,
                 ),
-                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else items.count { it.totalReviews == 0 },
+                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else eligibleItems.count { it.totalReviews == 0 },
                 lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
             ),
         )
