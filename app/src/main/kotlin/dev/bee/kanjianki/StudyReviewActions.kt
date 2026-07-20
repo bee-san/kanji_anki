@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.ReviewChoiceLog
@@ -122,12 +123,6 @@ internal object StudyReviewActions {
             currentItem.routingVersion == afterReview.routingVersion &&
             currentItem.adaptiveRouteStateJson == afterReview.adaptiveRouteStateJson
     }
-
-    class AppliedReviewSnapshot(
-        @JvmField val token: String,
-        @JvmField val beforeReview: RecordsStudyModels.StudyItem,
-        @JvmField val afterReview: RecordsStudyModels.StudyItem,
-    )
 
     fun interface ReviewWriter {
         /**

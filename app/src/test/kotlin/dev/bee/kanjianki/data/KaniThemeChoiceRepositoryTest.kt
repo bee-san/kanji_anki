@@ -1,7 +1,6 @@
-package dev.bee.kanjianki.theme
+package dev.bee.kanjianki.data
 
-import dev.bee.kanjianki.data.SettingsRepository
-import dev.bee.kanjianki.data.SettingsStorage
+import dev.bee.kanjianki.core.KaniThemeChoice
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Test

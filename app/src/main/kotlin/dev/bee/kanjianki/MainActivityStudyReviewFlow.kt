@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.AnswerEvidence
 import dev.bee.kanjianki.core.CoreSkill
@@ -674,7 +675,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         )
         if (commit.disposition == ReviewCommitDisposition.APPLIED && commit.item != null) {
             activity.studyUndoState.capture(
-                StudyReviewActions.AppliedReviewSnapshot(request.token, item, commit.item),
+                AppliedReviewSnapshot(request.token, item, commit.item),
                 result.appliedRating,
                 now,
             )

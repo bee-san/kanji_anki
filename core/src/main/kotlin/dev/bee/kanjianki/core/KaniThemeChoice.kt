@@ -1,6 +1,6 @@
-package dev.bee.kanjianki.theme
+package dev.bee.kanjianki.core
 
-internal enum class KaniThemeChoice(val storageKey: String) {
+enum class KaniThemeChoice(val storageKey: String) {
     GIRLYPOP("girlypop"),
     LIGHT("light"),
     DARK("dark"),

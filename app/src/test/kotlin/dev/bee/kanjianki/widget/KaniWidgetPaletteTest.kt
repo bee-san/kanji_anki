@@ -2,7 +2,7 @@ package dev.bee.kanjianki.widget
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolvePalette
 import kotlin.math.max
 import kotlin.math.min

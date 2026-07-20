@@ -31,7 +31,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 private val ThemePanelShape = RoundedCornerShape(24.dp)
 private val ThemeChoiceShape = RoundedCornerShape(20.dp)

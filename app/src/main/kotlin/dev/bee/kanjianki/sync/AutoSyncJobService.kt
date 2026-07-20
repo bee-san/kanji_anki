@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.sync
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.app.job.JobParameters
 import android.app.job.JobService
 import android.content.Context
@@ -261,7 +263,7 @@ class AutoSyncJobService : JobService {
             completionGate: CompletionGate,
             finisher: JobFinisher,
         ) {
-            val store = LocalStore(context)
+            val store = AppLocalStoreFactory.create(context)
             var result: AutoSyncRunner.Result? = null
             try {
                 result = AutoSyncRunner(context, store, AnkiDroidGateway(context, cancellation)).run()

@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 
 /** Dry-runs the same seed, annotate, replan, and select pipeline as the Study route. */

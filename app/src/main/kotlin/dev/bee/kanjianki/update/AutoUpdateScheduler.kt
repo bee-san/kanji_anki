@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.update
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -14,7 +16,7 @@ object AutoUpdateScheduler {
     @JvmStatic
     fun schedule(context: Context) {
         val appContext = context.applicationContext
-        LocalStore(appContext).use { store ->
+        AppLocalStoreFactory.create(appContext).use { store ->
             schedule(store.autoUpdateStatus().enabled, WorkManagerSchedulerBackend(appContext))
         }
     }

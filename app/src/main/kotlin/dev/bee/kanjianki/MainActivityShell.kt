@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal val NoOpRouteScrollY: (Int) -> Unit = {}
 

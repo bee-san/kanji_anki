@@ -13,7 +13,7 @@ import dev.bee.kanjianki.core.StudyImpactPolicy
 import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.max

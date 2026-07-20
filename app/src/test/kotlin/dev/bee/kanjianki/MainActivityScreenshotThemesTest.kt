@@ -1,6 +1,6 @@
 package dev.bee.kanjianki
 
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

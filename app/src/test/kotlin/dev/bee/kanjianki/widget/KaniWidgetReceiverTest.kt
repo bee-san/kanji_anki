@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.widget
 
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

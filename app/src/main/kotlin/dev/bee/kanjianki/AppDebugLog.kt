@@ -160,7 +160,7 @@ internal object AppDebugLog {
         if (!context.getDatabasePath(LocalStoreSchema.DB_NAME).exists()) {
             return false
         }
-        return LocalStore(context).use { it.debugLogEnabled() }
+        return AppLocalStoreFactory.create(context).use { it.debugLogEnabled() }
     }
 
     /** Captures wall + uptime clocks on the caller thread; formatting happens on the writer. */

@@ -4,15 +4,14 @@ import android.util.Log
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.FsrsPersonalization
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
 import dev.bee.kanjianki.core.SettingsInputRules
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
-import dev.bee.kanjianki.sync.SyncSettings
-import dev.bee.kanjianki.theme.KaniThemeChoice
-import dev.bee.kanjianki.theme.KaniThemeChoiceRepository
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {

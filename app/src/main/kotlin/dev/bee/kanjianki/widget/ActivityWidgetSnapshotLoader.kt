@@ -2,7 +2,7 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import dev.bee.kanjianki.data.StudyStatsQueries
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal enum class ActivityWidgetState {
     NOT_SET_UP,

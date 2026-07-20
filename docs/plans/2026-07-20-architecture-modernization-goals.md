@@ -182,6 +182,36 @@ Activity, backup, or sync implementation classes.
   modules, and its own contracts.
 - Existing schema, migration, review, sync, and backup tests pass unchanged.
 
+**Completion evidence (2026-07-20):**
+
+- Work started from `origin/main` at `1fba0aad` on
+  `architecture/goal-146-persistence-boundaries`.
+- Persisted review snapshots, study-item comparators, the stored theme model,
+  and sync-settings mapping now live in `:core`. `SyncSettings` depends on the
+  narrow `SyncSettingsStore` port rather than `LocalStore`.
+- Persistence logging now uses the injected `DiagnosticLogger` contract. Every
+  production `LocalStore` construction flows through `AppLocalStoreFactory`,
+  whose adapter retains the existing `AppDebugLog` and study-load traces.
+- WAL-safe snapshot execution and its unchanged fail-closed tests moved into
+  `data`; `LocalStore` implements the data-owned `DatabaseSnapshotter`
+  contract and no persistence source imports backup implementation code.
+- The source-boundary test scans Kotlin and Java sources in both the current
+  app data package and the future `:data` source tree. It fails closed for
+  imports and fully qualified references to root-app, feature, automation,
+  widget, backup/theme, and sync implementations while allowing only data and
+  the existing pure-module package prefixes.
+- `:core:test`, `:app:testDebugUnitTest`, and Android instrumentation-source
+  compilation passed in one 66-task build. The standard
+  `./gradlew ciFast ciQuality` gate then passed all 110 tasks, including lint,
+  coverage verification, app/core tests, Android test compilation, 60
+  repository tool tests (including 11 architecture-boundary tests), 91 script
+  tests, and 70 CI tests. No local Android emulator or system image was
+  installed, so device-only backup instrumentation was not rerun.
+- Decisions are unchanged. Rollback is a source-only revert of the moved
+  models, ports, logger/snapshot adapters, imports, and boundary test; no
+  schema, stored value, backup format, provider behavior, or user data changes
+  are involved.
+
 ---
 
 ## Part B: Persistence ownership and manual injection

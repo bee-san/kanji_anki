@@ -53,7 +53,7 @@ import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
-import dev.bee.kanjianki.sync.SyncSettings;
+import dev.bee.kanjianki.core.SyncSettings;
 
 import org.junit.After;
 import org.junit.Assume;

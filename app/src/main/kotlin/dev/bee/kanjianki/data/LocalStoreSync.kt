@@ -4,17 +4,20 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
-import dev.bee.kanjianki.StudyItemComparators
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.StudyItemLineagePolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 
-internal abstract class LocalStoreSync(context: Context?) : LocalStoreInventory(context) {
+internal abstract class LocalStoreSync(
+    context: Context?,
+    diagnosticLogger: DiagnosticLogger,
+) : LocalStoreInventory(context, diagnosticLogger) {
     /**
      * Publish the provider mirror, derived dashboard/inventory, and seeded study
      * queue behind one outer SQLite transaction. The existing save/finalize

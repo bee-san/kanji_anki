@@ -2,7 +2,7 @@ package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

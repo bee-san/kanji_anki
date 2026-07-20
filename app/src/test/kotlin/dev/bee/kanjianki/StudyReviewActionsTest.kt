@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.ReviewCommitCommand
@@ -112,7 +113,7 @@ class StudyReviewActionsTest {
         val writer = RecordingUndoWriter()
 
         val undone = StudyReviewActions.undoLastAppliedReview(
-            StudyReviewActions.AppliedReviewSnapshot("token-1", before, after),
+            AppliedReviewSnapshot("token-1", before, after),
             after,
             writer,
         )
@@ -137,7 +138,7 @@ class StudyReviewActionsTest {
         val writer = RecordingUndoWriter()
 
         val undone = StudyReviewActions.undoLastAppliedReview(
-            StudyReviewActions.AppliedReviewSnapshot("token-1", before, after),
+            AppliedReviewSnapshot("token-1", before, after),
             reviewedAgain,
             writer,
         )

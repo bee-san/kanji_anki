@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import org.junit.After
 import org.junit.Assert.assertEquals

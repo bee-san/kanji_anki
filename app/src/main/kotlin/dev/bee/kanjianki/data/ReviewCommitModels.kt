@@ -30,7 +30,7 @@ internal class ReviewCommitResult(
     }
 }
 
-/** Immutable timing snapshot prepared by [dev.bee.kanjianki.StudySessionTracker]. */
+/** Immutable timing snapshot prepared by the study session tracker. */
 internal class ReviewTaskTiming(
     @JvmField val taskKey: String,
     @JvmField val kanji: String,

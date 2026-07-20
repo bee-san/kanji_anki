@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.update
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -157,7 +159,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
     fun installCachedPendingUpdate(source: UpdateSource): UpdateResult {
         val checkedAt = System.currentTimeMillis()
-        val status = LocalStore(context).use { store -> store.autoUpdateStatus() }
+        val status = AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus() }
         return try {
             if (!status.hasPendingUpdate()) {
                 return recordResult(
@@ -265,7 +267,7 @@ class GitHubUpdater @JvmOverloads constructor(
         pendingApkName: String,
         pendingMessage: String,
     ): UpdateResult {
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage)
             if (!result.success && result.retryable) {
                 store.recordUpdateCheckFailed(checkedAt)
@@ -282,7 +284,7 @@ class GitHubUpdater @JvmOverloads constructor(
     }
 
     private fun currentPendingApkName(): String {
-        return LocalStore(context).use { store -> store.autoUpdateStatus().pendingApkName }
+        return AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus().pendingApkName }
     }
 
     private fun cleanupStaleCachedApks(pendingApkName: String): Int {

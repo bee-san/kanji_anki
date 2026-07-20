@@ -260,7 +260,7 @@ class LocalStoreReviewOutcomeTest {
 
         assertTrue(
             store.undoLastAppliedReview(
-                dev.bee.kanjianki.StudyReviewActions.AppliedReviewSnapshot("token-undo", before, after)
+                dev.bee.kanjianki.core.AppliedReviewSnapshot("token-undo", before, after)
             )
         )
 

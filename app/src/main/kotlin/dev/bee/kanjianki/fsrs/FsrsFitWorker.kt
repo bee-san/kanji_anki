@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.fsrs
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
@@ -28,7 +30,7 @@ class FsrsFitWorker(
     override fun doWork(): Result {
         if (!FsrsFitExecutionGate.tryAcquire()) return Result.retry()
         return try {
-            LocalStore(applicationContext).use { store ->
+            AppLocalStoreFactory.create(applicationContext).use { store ->
                 if (!store.fsrsPersonalizationEnabled()) {
                     Result.success()
                 } else try {

@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.sync
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.Worker
@@ -14,7 +16,7 @@ class AutoSyncRetryWorker(
 ) : Worker(context, workerParams) {
     override fun doWork(): Result {
         val appContext = applicationContext
-        LocalStore(appContext).use { store ->
+        AppLocalStoreFactory.create(appContext).use { store ->
             val sync = AutoSyncRunner(
                 appContext,
                 store,

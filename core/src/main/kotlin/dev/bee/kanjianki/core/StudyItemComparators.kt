@@ -1,13 +1,11 @@
-package dev.bee.kanjianki
-
-import dev.bee.kanjianki.core.RecordsStudyModels
+package dev.bee.kanjianki.core
 
 /**
  * Field-by-field study item/queue equivalence, shared by the queue seeding path
  * (skip the persistence write when nothing changed) and the LocalStore diff writer
  * (upsert only the rows that actually changed instead of delete-all + reinsert).
  */
-internal object StudyItemComparators {
+object StudyItemComparators {
     private data class StudyItemKey(val kanji: String, val answerSignature: String)
 
     @JvmStatic

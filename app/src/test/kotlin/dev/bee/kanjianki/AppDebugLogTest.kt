@@ -143,7 +143,7 @@ class AppDebugLogTest {
     @Test
     fun settingsSnapshotLogsStorageLoadAndFirstCacheHit() {
         AppDebugLog.setEnabled(context, true)
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             store.getIntSetting("snapshot-log-missing", 1)
             store.getIntSetting("snapshot-log-missing", 1)
         }

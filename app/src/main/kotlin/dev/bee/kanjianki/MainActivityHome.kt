@@ -30,7 +30,7 @@ import dev.bee.kanjianki.data.pendingRepairedHandoffKanji
 import dev.bee.kanjianki.data.repairedWriteBackPreview
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import java.util.Locale
 import java.util.concurrent.RejectedExecutionException
 
@@ -66,12 +66,12 @@ internal abstract class MainActivityHome : MainActivityBase() {
             // the route store. Give stats work its own helper so an interrupted refresh never
             // races that close and crashes the process with an already-closed database.
             isFresh = {
-                LocalStore(applicationContext).use { statsStore ->
+                AppLocalStoreFactory.create(applicationContext).use { statsStore ->
                     StatsCacheStore(statsStore).hasFreshSnapshot()
                 }
             },
             refresh = { generatedAt ->
-                LocalStore(applicationContext).use { statsStore ->
+                AppLocalStoreFactory.create(applicationContext).use { statsStore ->
                     StatsPrecomputeStore(statsStore).refresh(generatedAtMillis = generatedAt)
                 }
             },

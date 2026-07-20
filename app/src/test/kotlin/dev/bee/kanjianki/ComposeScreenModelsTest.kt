@@ -10,7 +10,7 @@ import dev.bee.kanjianki.core.SimilarKanjiExplanation
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyWritingCopy
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color as ComposeColor
 import org.junit.Assert.assertEquals

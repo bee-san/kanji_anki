@@ -16,7 +16,10 @@ import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SimilarKanjiStorageKeys
 import dev.bee.kanjianki.core.TextUtil
 
-internal abstract class LocalStoreHistory(context: Context?) : LocalStoreBase(context) {
+internal abstract class LocalStoreHistory(
+    context: Context?,
+    diagnosticLogger: DiagnosticLogger,
+) : LocalStoreBase(context, diagnosticLogger) {
     private val historicalSyncStore = HistoricalSyncStore(this)
 
     internal open fun clearKanjiInventoryAllCache() {}

@@ -10,6 +10,7 @@ import dev.bee.kanjianki.GrapeSodaKaniColors
 import dev.bee.kanjianki.MatchaMilkKaniColors
 import dev.bee.kanjianki.MidnightArcadeKaniColors
 import dev.bee.kanjianki.NeutralLightKaniColors
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.OceanStudyKaniColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

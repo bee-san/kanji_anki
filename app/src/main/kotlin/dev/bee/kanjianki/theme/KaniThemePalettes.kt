@@ -2,6 +2,7 @@ package dev.bee.kanjianki.theme
 
 import androidx.compose.ui.graphics.Color
 import dev.bee.kanjianki.KaniColors
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal data class KaniSystemBars(
     val backgroundColor: Color,

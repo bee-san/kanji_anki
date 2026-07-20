@@ -7,7 +7,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.updatecore.AutoUpdateSettingsTogglePolicy
 import java.util.LinkedHashMap
 import java.util.Locale

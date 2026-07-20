@@ -7,6 +7,7 @@ import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.anki.RepairedTagSummary
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After

@@ -6,7 +6,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SettingsImportPreset
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.core.WorkloadSettingsPolicy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 
 internal object SettingsWriteActions {
     @JvmStatic

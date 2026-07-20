@@ -38,8 +38,8 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
-import dev.bee.kanjianki.sync.SyncSettings
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.SyncSettings
+import dev.bee.kanjianki.core.KaniThemeChoice
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 

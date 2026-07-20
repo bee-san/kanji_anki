@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.data
 
 import android.os.SystemClock
-import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.core.SettingValuePolicy
 import java.util.Collections
 import java.util.Locale
@@ -9,6 +8,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 internal class SettingsRepository(
     private val storage: SettingsStorage,
+    private val diagnosticLogger: DiagnosticLogger = NoOpDiagnosticLogger,
 ) {
     private val cacheLock = Any()
 
@@ -89,7 +89,7 @@ internal class SettingsRepository(
                 return it.values
             }
 
-            val captureTiming = AppDebugLog.isCapturing()
+            val captureTiming = diagnosticLogger.isCapturing()
             val startedAtNanos = if (captureTiming) monotonicNanos() else 0L
             // The query may block on SQLite and therefore deliberately runs outside cacheLock.
             val loaded = storage.getAll() ?: return null
@@ -113,7 +113,7 @@ internal class SettingsRepository(
                 continue
             }
             if (captureTiming && publishedFromStorage) {
-                AppDebugLog.log(
+                diagnosticLogger.log(
                     String.format(
                         Locale.US,
                         "settings snapshot source=storage rows=%d duration_ms=%.2f",
@@ -129,14 +129,14 @@ internal class SettingsRepository(
     }
 
     private fun logCacheHitOnce(values: CachedValues) {
-        if (!AppDebugLog.isCapturing()) {
+        if (!diagnosticLogger.isCapturing()) {
             return
         }
         val previous = lastLoggedHitGeneration.get()
         if (previous == values.generation || !lastLoggedHitGeneration.compareAndSet(previous, values.generation)) {
             return
         }
-        AppDebugLog.log("settings snapshot source=cache rows=${values.values.size} duration_ms=0.00")
+        diagnosticLogger.log("settings snapshot source=cache rows=${values.values.size} duration_ms=0.00")
     }
 
     private data class CachedValues(

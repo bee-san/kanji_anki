@@ -4,7 +4,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
-import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
 import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
@@ -17,7 +16,10 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimilarKanji(context) {
+internal abstract class LocalStoreInventory(
+    context: Context?,
+    diagnosticLogger: DiagnosticLogger,
+) : LocalStoreSimilarKanji(context, diagnosticLogger) {
     // These caches are populated/read from the UI thread and cleared/repopulated from
     // sync/background threads. Each reference is @Volatile so a reader sees either the
     // fully-built snapshot or null (never a partially-published one); the map-valued
@@ -129,7 +131,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
         cachedDashboardRows?.let {
-            dev.bee.kanjianki.studyLoadDebug("dashboardRows cache hit size=${it.size}")
+            diagnosticLogger.traceStudyLoad("dashboardRows cache hit size=${it.size}")
             return it
         }
 
@@ -236,9 +238,9 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
     private fun logDashboardPhase(phase: String, counts: String, durationMillis: Long) {
         val message = "dashboard phase=$phase $counts duration_ms=$durationMillis"
-        dev.bee.kanjianki.studyLoadDebug(message)
-        if (AppDebugLog.isCapturing()) {
-            AppDebugLog.log(message)
+        diagnosticLogger.traceStudyLoad(message)
+        if (diagnosticLogger.isCapturing()) {
+            diagnosticLogger.log(message)
         }
     }
 
@@ -520,7 +522,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         ensureStudyItemsCacheFresh()
         cachedStudyItems?.let { return it }
 
-        val traceEnabled = AppDebugLog.isCapturing()
+        val traceEnabled = diagnosticLogger.isCapturing()
         val totalStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
         val queryStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
         val db = readableDatabase
@@ -561,11 +563,13 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
 
         val cacheKey = distinctKanji.joinToString("\u0000")
         cachedStudyItemsByKanji?.get(cacheKey)?.let {
-            dev.bee.kanjianki.studyLoadDebug("studyItemsForKanji cache hit size=${it.size} keys=${distinctKanji.size}")
+            diagnosticLogger.traceStudyLoad(
+                "studyItemsForKanji cache hit size=${it.size} keys=${distinctKanji.size}",
+            )
             return it
         }
 
-        val traceEnabled = AppDebugLog.isCapturing()
+        val traceEnabled = diagnosticLogger.isCapturing()
         val totalStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
         val queryStart = elapsedRealtimeNanos()
         val db = readableDatabase
@@ -584,7 +588,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
                 items.add(readStudyItem(cursor))
             }
         }
-        dev.bee.kanjianki.studyLoadDebug(
+        diagnosticLogger.traceStudyLoad(
             "studyItemsForKanji LOADED size=${items.size} keys=${distinctKanji.size} " +
                 "duration_ms=${nanosToMillis(elapsedRealtimeNanos() - queryStart)}"
         )
@@ -880,7 +884,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         val availability = conditionalRungAvailability(
             db,
             items.map { it.kanji },
-            AppDebugLog.isCapturing(),
+            diagnosticLogger.isCapturing(),
             "annotate",
         )
         val out = ArrayList<RecordsStudyModels.StudyItem>(items.size)
@@ -1006,7 +1010,7 @@ internal abstract class LocalStoreInventory(context: Context?) : LocalStoreSimil
         if (!enabled) {
             return
         }
-        AppDebugLog.log(
+        diagnosticLogger.log(
             String.format(
                 Locale.US,
                 "study-items mode=%s phase=%s requested_kanji=%d queried_kanji=%d " +

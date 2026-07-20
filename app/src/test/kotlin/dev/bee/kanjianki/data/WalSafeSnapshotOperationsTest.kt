@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.backup
+package dev.bee.kanjianki.data
 
 import java.io.File
 import java.io.IOException

@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.backup
+package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import java.io.File

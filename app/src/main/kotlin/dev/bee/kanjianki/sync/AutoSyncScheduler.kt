@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.sync
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
@@ -17,7 +19,7 @@ internal object AutoSyncScheduler {
 
     @JvmStatic
     fun schedule(context: Context) {
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             schedule(context, store, store.autoSyncSettings())
         }
     }
@@ -130,7 +132,7 @@ internal object AutoSyncScheduler {
         val backend: SchedulerBackend = AndroidSchedulerBackend(context, PRIMARY_JOB_ID)
         backend.cancel()
         AutoSyncRetryScheduler.cancel(context)
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             store.markAutoSyncScheduled(0L)
         }
     }

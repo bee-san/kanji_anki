@@ -21,7 +21,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         val launchIntent = activity.intent
 
-        activity.store = LocalStore(activity)
+        activity.store = AppLocalStoreFactory.create(activity)
         activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
 
         val runBackgroundTasks = shouldRunBackgroundStartupTasks(launchIntent)

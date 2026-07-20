@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.fsrs
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -19,7 +21,7 @@ object FsrsFitScheduler {
     @JvmStatic
     fun schedule(context: Context) {
         val appContext = context.applicationContext
-        LocalStore(appContext).use { store ->
+        AppLocalStoreFactory.create(appContext).use { store ->
             schedule(store.fsrsPersonalizationEnabled(), WorkManagerBackend(appContext))
         }
     }
