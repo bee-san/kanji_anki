@@ -53,6 +53,10 @@ private fun HomeSecondaryPanels(model: HomeScreenModel) {
         HomeRepairedHandoffCard(it)
         Spacer(modifier = Modifier.height(12.dp))
     }
+    model.updateCheckFailedLine?.let { line ->
+        HomeUpdateCheckFailedBanner(line = line, onRetry = model.onRetryUpdateCheck)
+        Spacer(modifier = Modifier.height(12.dp))
+    }
     HomeMetricRow(metrics = model.metrics)
     if (model.todayPlan.summary.isNotBlank() || model.todayPlan.details.isNotEmpty() || model.todayPlan.actionLabel != null) {
         Spacer(modifier = Modifier.height(12.dp))

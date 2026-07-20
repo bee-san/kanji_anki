@@ -181,6 +181,39 @@ class HomeScreenComposeTest {
         assertTrue(cardClicked)
     }
 
+    @Test
+    fun rendersOfflineUpdateCheckFailedBannerWithRetry() {
+        var retried = false
+
+        setHomeContent(
+            baseModel(
+                showSyncCta = false,
+                updateCheckFailedLine = HomeTextCopy.updateCheckFailedLine(),
+                onRetryUpdateCheck = { retried = true },
+            )
+        )
+
+        composeRule.onNodeWithTag(homeUpdateCheckFailedBannerTestTag())
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.updateCheckFailedLine())
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.retryLabel())
+            .performScrollTo()
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        assertTrue(retried)
+    }
+
+    @Test
+    fun healthyHomeHidesOfflineUpdateCheckFailedBanner() {
+        setHomeContent(baseModel(showSyncCta = false))
+
+        composeRule.onAllNodesWithText(HomeTextCopy.updateCheckFailedLine()).assertCountEquals(0)
+    }
+
     private fun baseModel(
         showSyncCta: Boolean,
         onSync: () -> Unit = {},
@@ -194,6 +227,8 @@ class HomeScreenComposeTest {
         previewCards: List<HomeFocusQueueCardModel> = emptyList(),
         syncMetricBody: String = "Ready",
         studyRemainingCount: Int = 0,
+        updateCheckFailedLine: String? = null,
+        onRetryUpdateCheck: (() -> Unit)? = null,
         todayPlan: HomeTodayPlanModel = HomeTodayPlanModel(
             title = HomeTextCopy.todayPlanTitle(),
             summary = "Nothing useful now",
@@ -223,6 +258,8 @@ class HomeScreenComposeTest {
             emptyBody = emptyBody,
             previewCards = previewCards,
             studyRemainingCount = studyRemainingCount,
+            updateCheckFailedLine = updateCheckFailedLine,
+            onRetryUpdateCheck = onRetryUpdateCheck,
         )
     }
 }

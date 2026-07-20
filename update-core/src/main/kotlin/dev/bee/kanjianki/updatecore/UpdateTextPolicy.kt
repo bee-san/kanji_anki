@@ -25,6 +25,12 @@ object UpdateTextPolicy {
     )
 
     @JvmStatic
+    fun noUsableReleaseMetadataReason(): String = localizedText(
+        "no network connection",
+        "ネットワークに接続されていません",
+    )
+
+    @JvmStatic
     fun updateCheckFailedMessage(reason: String?): String = localizedErrorMessage(
         "Update check failed",
         "更新の確認に失敗しました",
