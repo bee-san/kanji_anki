@@ -171,11 +171,10 @@ PROJECT_DEPENDENCY = re.compile(
 )
 TYPE_SAFE_PROJECT_ACCESSOR = re.compile(r"\bprojects\.[A-Za-z0-9_.]+")
 ANDROID_IMPORT = re.compile(r"^import\s+(android|androidx)\.", re.MULTILINE)
-KANI_IMPORT = re.compile(
-    r"^import\s+(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
-    re.MULTILINE,
+KANI_REFERENCE = re.compile(
+    r"\b(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
 )
-PERSISTENCE_ALLOWED_IMPORT_PREFIXES = (
+PERSISTENCE_ALLOWED_REFERENCE_PREFIXES = (
     "dev.bee.kanjianki.core",
     "dev.bee.kanjianki.data",
     "dev.bee.kanjianki.syncdomain",
@@ -208,10 +207,10 @@ def project_dependencies(module: str) -> set[str]:
     return parse_project_dependencies(build_script, module)
 
 
-def persistence_import_allowed(imported: str) -> bool:
+def persistence_reference_allowed(reference: str) -> bool:
     return any(
-        imported == prefix or imported.startswith(f"{prefix}.")
-        for prefix in PERSISTENCE_ALLOWED_IMPORT_PREFIXES
+        reference == prefix or reference.startswith(f"{prefix}.")
+        for prefix in PERSISTENCE_ALLOWED_REFERENCE_PREFIXES
     )
 
 
@@ -308,7 +307,7 @@ class ModuleBoundaryTest(unittest.TestCase):
                     violations.append(source.relative_to(ROOT).as_posix())
         self.assertEqual([], violations, "pure JVM modules must not import Android APIs")
 
-    def test_persistence_import_policy_rejects_application_layers(self) -> None:
+    def test_persistence_reference_policy_rejects_application_layers(self) -> None:
         for forbidden in (
             "dev.bee.kanjianki.MainActivity",
             "dev.bee.kanjianki.feature.home.HomeScreen",
@@ -319,7 +318,11 @@ class ModuleBoundaryTest(unittest.TestCase):
             "dev.bee.kanjianki.theme.KaniThemePalettes",
         ):
             with self.subTest(forbidden=forbidden):
-                self.assertFalse(persistence_import_allowed(forbidden))
+                self.assertFalse(persistence_reference_allowed(forbidden))
+                self.assertIn(
+                    forbidden,
+                    KANI_REFERENCE.findall(f"val dependency = {forbidden}()"),
+                )
 
     def test_persistence_sources_import_only_data_and_pure_modules(self) -> None:
         violations = []
@@ -334,8 +337,8 @@ class ModuleBoundaryTest(unittest.TestCase):
             sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
             for source in sources:
                 content = source.read_text(encoding="utf-8")
-                for imported in KANI_IMPORT.findall(content):
-                    if not persistence_import_allowed(imported):
+                for imported in KANI_REFERENCE.findall(content):
+                    if not persistence_reference_allowed(imported):
                         violations.append(
                             f"{source.relative_to(ROOT).as_posix()}: {imported}",
                         )

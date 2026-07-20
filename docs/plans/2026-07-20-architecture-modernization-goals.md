@@ -195,10 +195,11 @@ Activity, backup, or sync implementation classes.
 - WAL-safe snapshot execution and its unchanged fail-closed tests moved into
   `data`; `LocalStore` implements the data-owned `DatabaseSnapshotter`
   contract and no persistence source imports backup implementation code.
-- The source-boundary test scans both the current app data package and the
-  future `:data` source tree. It fails closed for root-app, feature,
-  automation, widget, backup/theme, and sync implementation imports while
-  allowing only data and the existing pure-module package prefixes.
+- The source-boundary test scans Kotlin and Java sources in both the current
+  app data package and the future `:data` source tree. It fails closed for
+  imports and fully qualified references to root-app, feature, automation,
+  widget, backup/theme, and sync implementations while allowing only data and
+  the existing pure-module package prefixes.
 - `:core:test`, `:app:testDebugUnitTest`, and Android instrumentation-source
   compilation passed in one 66-task build. The standard
   `./gradlew ciFast ciQuality` gate then passed all 110 tasks, including lint,
