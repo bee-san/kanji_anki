@@ -20,7 +20,10 @@ import java.util.LinkedHashSet
  * implement the AutoCloseable interface exposed by the compile SDK. This keeps
  * Kotlin's `use` blocks binary-compatible with the app's minimum API level.
  */
-abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOpenHelper(
+abstract class LocalStoreBase internal constructor(
+    context: Context?,
+    protected val diagnosticLogger: DiagnosticLogger,
+) : SQLiteOpenHelper(
     context!!.applicationContext,
     DB_NAME,
     null,
@@ -33,7 +36,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
         setWriteAheadLoggingEnabled(true)
     }
 
-    private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this))
+    private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this), diagnosticLogger)
     private var settingsInvalidationPending = false
 
     internal fun settingsRepository(): SettingsRepository = settingsRepository

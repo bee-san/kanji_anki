@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.withFrameNanos
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolveSystemBars
 import java.util.Locale
 
@@ -292,7 +293,7 @@ internal class MainActivityShellHost(
         val initialScrollY: Int,
         val onScrollY: (Int) -> Unit,
         val navActions: KaniNavActions,
-        val themeChoice: dev.bee.kanjianki.theme.KaniThemeChoice,
+        val themeChoice: KaniThemeChoice,
         val isSystemDarkTheme: Boolean,
         val content: @Composable () -> Unit,
         val actionBar: (@Composable () -> Unit)?,

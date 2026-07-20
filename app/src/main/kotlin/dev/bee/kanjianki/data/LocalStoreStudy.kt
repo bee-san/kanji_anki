@@ -5,10 +5,12 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteConstraintException
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.AdaptiveCorePolicy
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.DurableStudyItemRetentionPolicy
 import dev.bee.kanjianki.core.MidSyncReviewMergePolicy
@@ -18,13 +20,17 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyItemLineagePolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyItemComparators
+import dev.bee.kanjianki.core.SyncSettingsStore
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
-import dev.bee.kanjianki.StudyReviewActions
-import dev.bee.kanjianki.StudyItemComparators
-import dev.bee.kanjianki.theme.KaniThemeChoice
 
-internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(context) {
+internal abstract class LocalStoreStudy(
+    context: Context?,
+    diagnosticLogger: DiagnosticLogger,
+) :
+    LocalStoreHistory(context, diagnosticLogger),
+    SyncSettingsStore {
     private fun studySettings(): LocalStoreStudySettings = LocalStoreStudySettings(this)
 
     private fun studyLog(): LocalStoreStudyLog = LocalStoreStudyLog(this)
@@ -71,7 +77,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
             StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
         }
         clearStudyItemsCache()
-        dev.bee.kanjianki.studyLoadDebug(
+        diagnosticLogger.traceStudyLoad(
             "replaceStudyItems WROTE count=${items.size} writes=$writes " +
                 "duration_ms=${android.os.SystemClock.elapsedRealtime() - start}"
         )
@@ -334,7 +340,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
         }
     }
 
-    fun undoLastAppliedReview(snapshot: StudyReviewActions.AppliedReviewSnapshot): Boolean {
+    fun undoLastAppliedReview(snapshot: AppliedReviewSnapshot): Boolean {
         val restored = snapshot.beforeReview.copyBuilder()
             .schedulerRevision(snapshot.afterReview.schedulerRevision + 1L)
             .build()
@@ -539,15 +545,16 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
 
     fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean = studyStatus().hasSuccessfulSyncSince(finishedAtMillis)
 
-    fun getIntSetting(key: String, fallback: Int): Int = studySettings().getIntSetting(key, fallback)
+    override fun getIntSetting(key: String, fallback: Int): Int = studySettings().getIntSetting(key, fallback)
 
     fun getLongSetting(key: String, fallback: Long): Long = studySettings().getLongSetting(key, fallback)
 
-    fun getStringSetting(key: String, fallback: String?): String? {
+    override fun getStringSetting(key: String, fallback: String?): String? {
         return settingsRepository().getString(key, fallback)
     }
 
-    fun getDoubleSetting(key: String, fallback: Double): Double = studySettings().getDoubleSetting(key, fallback)
+    override fun getDoubleSetting(key: String, fallback: Double): Double =
+        studySettings().getDoubleSetting(key, fallback)
 
     fun reviewReminderNotificationsToday(nowMillis: Long): Int = studySettings().reviewReminderNotificationsToday(nowMillis)
 
@@ -570,7 +577,7 @@ internal abstract class LocalStoreStudy(context: Context?) : LocalStoreHistory(c
     fun recordReminderDismissed(nowMillis: Long, family: String?) =
         studySettings().recordReminderDismissed(nowMillis, family)
 
-    fun putIntSetting(key: String, value: Int) {
+    override fun putIntSetting(key: String, value: Int) {
         studySettings().putIntSetting(key, value)
     }
 

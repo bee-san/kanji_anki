@@ -5,7 +5,7 @@ import dev.bee.kanjianki.core.FocusKanjiSelectionPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.TextUtil
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import java.time.ZoneId
 
 internal enum class FocusKanjiWidgetState {

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.os.Bundle
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsStudyModels
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -37,10 +38,10 @@ class MainActivityShellHostUndoStateTest {
         method.invoke(host, selected)
     }
 
-    private fun snapshot(kanji: String, beforeReviews: Int, afterReviews: Int): StudyReviewActions.AppliedReviewSnapshot {
+    private fun snapshot(kanji: String, beforeReviews: Int, afterReviews: Int): AppliedReviewSnapshot {
         val beforeReview = item(kanji, beforeReviews)
         val afterReview = item(kanji, afterReviews)
-        return StudyReviewActions.AppliedReviewSnapshot(
+        return AppliedReviewSnapshot(
             "token-$kanji",
             beforeReview,
             afterReview,

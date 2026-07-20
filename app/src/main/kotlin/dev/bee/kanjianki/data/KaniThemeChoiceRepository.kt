@@ -1,6 +1,6 @@
-package dev.bee.kanjianki.theme
+package dev.bee.kanjianki.data
 
-import dev.bee.kanjianki.data.SettingsRepository
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal class KaniThemeChoiceRepository(
     private val settingsRepository: SettingsRepository,

@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.widget
 
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 /** Which layout a widget instance renders. */
 internal enum class KaniWidgetStyle(val storageKey: String) {

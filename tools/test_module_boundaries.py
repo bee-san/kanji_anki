@@ -171,6 +171,16 @@ PROJECT_DEPENDENCY = re.compile(
 )
 TYPE_SAFE_PROJECT_ACCESSOR = re.compile(r"\bprojects\.[A-Za-z0-9_.]+")
 ANDROID_IMPORT = re.compile(r"^import\s+(android|androidx)\.", re.MULTILINE)
+KANI_IMPORT = re.compile(
+    r"^import\s+(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
+    re.MULTILINE,
+)
+PERSISTENCE_ALLOWED_IMPORT_PREFIXES = (
+    "dev.bee.kanjianki.core",
+    "dev.bee.kanjianki.data",
+    "dev.bee.kanjianki.syncdomain",
+    "dev.bee.kanjianki.updatecore",
+)
 AMBIGUOUS_RECORD_CONSTRUCTION = re.compile(
     r"\b(?:(?:RecordsSchedulerModels\.)?ReviewRequest|"
     r"(?:RecordsStudyModels\.)?TaskMemory)\s*\(|"
@@ -196,6 +206,13 @@ def parse_project_dependencies(build_script: str, module: str) -> set[str]:
 def project_dependencies(module: str) -> set[str]:
     build_script = (ROOT / module / "build.gradle.kts").read_text(encoding="utf-8")
     return parse_project_dependencies(build_script, module)
+
+
+def persistence_import_allowed(imported: str) -> bool:
+    return any(
+        imported == prefix or imported.startswith(f"{prefix}.")
+        for prefix in PERSISTENCE_ALLOWED_IMPORT_PREFIXES
+    )
 
 
 class ModuleBoundaryTest(unittest.TestCase):
@@ -290,6 +307,42 @@ class ModuleBoundaryTest(unittest.TestCase):
                 if ANDROID_IMPORT.search(source.read_text(encoding="utf-8")):
                     violations.append(source.relative_to(ROOT).as_posix())
         self.assertEqual([], violations, "pure JVM modules must not import Android APIs")
+
+    def test_persistence_import_policy_rejects_application_layers(self) -> None:
+        for forbidden in (
+            "dev.bee.kanjianki.MainActivity",
+            "dev.bee.kanjianki.feature.home.HomeScreen",
+            "dev.bee.kanjianki.automation.ReminderWorker",
+            "dev.bee.kanjianki.widget.KaniWidget",
+            "dev.bee.kanjianki.sync.ManualSyncEngine",
+            "dev.bee.kanjianki.backup.DatabaseBackupWorker",
+            "dev.bee.kanjianki.theme.KaniThemePalettes",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertFalse(persistence_import_allowed(forbidden))
+
+    def test_persistence_sources_import_only_data_and_pure_modules(self) -> None:
+        violations = []
+        source_roots = (
+            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data",
+            ROOT / "data/src/main",
+        )
+        for source_root in source_roots:
+            if not source_root.exists():
+                continue
+            sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
+            for source in sources:
+                content = source.read_text(encoding="utf-8")
+                for imported in KANI_IMPORT.findall(content):
+                    if not persistence_import_allowed(imported):
+                        violations.append(
+                            f"{source.relative_to(ROOT).as_posix()}: {imported}",
+                        )
+        self.assertEqual(
+            [],
+            violations,
+            "persistence must not import app, feature, platform, or UI implementations",
+        )
 
     def test_production_sources_use_typed_record_factories(self) -> None:
         violations = []

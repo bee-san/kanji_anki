@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -63,7 +64,7 @@ class MainActivityStudyReviewFlowUndoTest {
                 store.saveReview(request, "good", 2_000L, afterReview, afterReview)
                 activity.store = store
                 activity.studyUndoState.capture(
-                    StudyReviewActions.AppliedReviewSnapshot("undo-token", afterReview, afterReview),
+                    AppliedReviewSnapshot("undo-token", afterReview, afterReview),
                     "good",
                     2_000L,
                 )

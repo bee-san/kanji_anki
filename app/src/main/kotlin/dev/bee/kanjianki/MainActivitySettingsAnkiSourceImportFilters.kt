@@ -5,7 +5,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsImportPreset
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import java.util.Locale
 
 internal class MainActivitySettingsAnkiSourceImportFilters(

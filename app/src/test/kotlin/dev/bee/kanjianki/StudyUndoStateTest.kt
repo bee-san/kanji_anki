@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -12,12 +13,12 @@ class StudyUndoStateTest {
     @Test
     fun captureReplacesPendingSnapshotAndClearResetsState() {
         val state = StudyUndoState()
-        val firstSnapshot = StudyReviewActions.AppliedReviewSnapshot(
+        val firstSnapshot = AppliedReviewSnapshot(
             "token-1",
             item("語", 1),
             item("語", 2),
         )
-        val secondSnapshot = StudyReviewActions.AppliedReviewSnapshot(
+        val secondSnapshot = AppliedReviewSnapshot(
             "token-2",
             item("字", 3),
             item("字", 4),
@@ -43,7 +44,7 @@ class StudyUndoStateTest {
 
         assertNull(state.undoMessageOrNull())
 
-        val snapshot = StudyReviewActions.AppliedReviewSnapshot(
+        val snapshot = AppliedReviewSnapshot(
             "token-3",
             item("語", 5),
             item("語", 6),

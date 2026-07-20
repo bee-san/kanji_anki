@@ -10,7 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.ui.graphics.toArgb
 import dev.bee.kanjianki.theme.KaniSystemBars
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolveSystemBars
 import androidx.core.view.isEmpty
 import androidx.core.view.isGone

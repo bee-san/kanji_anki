@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.update
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
@@ -51,7 +53,7 @@ class AutoUpdateWorker(
         @JvmStatic
         fun runFromStore(context: Context, checkerFactory: UpdateCheckerFactory): Result {
             val appContext = context.applicationContext
-            LocalStore(appContext).use { store ->
+            AppLocalStoreFactory.create(appContext).use { store ->
                 val status = store.autoUpdateStatus()
                 if (!AutoUpdateRunPolicy.shouldRun(status.enabled, status.hasPendingUpdate())) {
                     return Result.success()

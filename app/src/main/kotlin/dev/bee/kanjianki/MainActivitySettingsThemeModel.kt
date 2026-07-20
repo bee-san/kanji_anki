@@ -1,7 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal data class SettingsThemeChoiceModel(
     val choice: KaniThemeChoice,

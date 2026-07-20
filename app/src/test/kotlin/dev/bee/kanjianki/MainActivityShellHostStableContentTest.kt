@@ -1,7 +1,7 @@
 package dev.bee.kanjianki
 
 import android.os.Bundle
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith

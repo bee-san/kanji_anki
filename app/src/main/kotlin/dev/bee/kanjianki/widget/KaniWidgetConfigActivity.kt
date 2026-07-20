@@ -41,7 +41,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.bee.kanjianki.KaniTheme
 import dev.bee.kanjianki.SettingsThemeCopy
 import dev.bee.kanjianki.core.WidgetTextCopy
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import kotlinx.coroutines.launch
 
 internal fun ownsLegacyConfigurableWidget(context: Context, appWidgetId: Int): Boolean =

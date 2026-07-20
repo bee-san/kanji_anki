@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker

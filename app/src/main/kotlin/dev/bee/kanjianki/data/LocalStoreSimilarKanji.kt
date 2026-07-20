@@ -12,7 +12,10 @@ import dev.bee.kanjianki.core.SimilarKanjiChoiceReviewPolicy
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SimilarKanjiRepairPolicy
 
-internal abstract class LocalStoreSimilarKanji(context: Context?) : LocalStoreStudy(context) {
+internal abstract class LocalStoreSimilarKanji(
+    context: Context?,
+    diagnosticLogger: DiagnosticLogger,
+) : LocalStoreStudy(context, diagnosticLogger) {
     fun rebuildSimilarKanjiPairs(similarIndex: SimilarKanjiIndex?, nowMillis: Long) {
         if (similarIndex == null) {
             return

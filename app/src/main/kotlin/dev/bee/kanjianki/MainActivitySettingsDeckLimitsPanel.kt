@@ -3,7 +3,7 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 
 internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainActivitySettings) {
     fun deckLimitsSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsDeckLimitsPanelModel {

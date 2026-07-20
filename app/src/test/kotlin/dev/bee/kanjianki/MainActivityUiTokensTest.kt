@@ -1,7 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.Color as ComposeColor
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolvePalette
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

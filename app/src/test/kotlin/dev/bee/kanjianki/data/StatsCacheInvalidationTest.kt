@@ -2,12 +2,12 @@ package dev.bee.kanjianki.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.StudyReviewActions
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -76,7 +76,7 @@ class StatsCacheInvalidationTest {
         val versionBeforeUndo = sourceVersion()
 
         val undone = store.undoLastAppliedReview(
-            StudyReviewActions.AppliedReviewSnapshot("token-review", before, after),
+            AppliedReviewSnapshot("token-review", before, after),
         )
 
         assertTrue(undone)

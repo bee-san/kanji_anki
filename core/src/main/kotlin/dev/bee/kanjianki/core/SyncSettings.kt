@@ -1,12 +1,18 @@
-package dev.bee.kanjianki.sync
+package dev.bee.kanjianki.core
 
-import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
-import dev.bee.kanjianki.core.RecordsBase
-import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.syncdomain.ImportSettingsRepairPolicy
 
-internal object SyncSettings {
+interface SyncSettingsStore {
+    fun getIntSetting(key: String, fallback: Int): Int
+
+    fun getStringSetting(key: String, fallback: String?): String?
+
+    fun getDoubleSetting(key: String, fallback: Double): Double
+
+    fun putIntSetting(key: String, value: Int)
+}
+
+object SyncSettings {
     const val NOTE_TYPE_SETTING_KEY = "note_type_name"
     const val EXPRESSION_FIELD_SETTING_KEY = "expression_field"
     const val READING_FIELD_SETTING_KEY = "reading_field"
@@ -39,7 +45,7 @@ internal object SyncSettings {
     private val ABSENT_DOUBLE_SETTING = Double.NaN
 
     @JvmStatic
-    fun fromStore(store: LocalStore?): RecordsSyncModels.Settings {
+    fun fromStore(store: SyncSettingsStore?): RecordsSyncModels.Settings {
         val defaults = RecordsSyncModels.Settings.kikuDefaults()
         repairOldDefaultImportSettings(store)
         val modelName = if (store == null) {
@@ -158,10 +164,10 @@ internal object SyncSettings {
     }
 
     @JvmStatic
-    fun tagRepairedCards(store: LocalStore?): Boolean =
+    fun tagRepairedCards(store: SyncSettingsStore?): Boolean =
         boolSetting(store, TAG_REPAIRED_CARDS_SETTING_KEY, false)
 
-    private fun repairOldDefaultImportSettings(store: LocalStore?) {
+    private fun repairOldDefaultImportSettings(store: SyncSettingsStore?) {
         if (store == null) {
             return
         }
@@ -177,7 +183,7 @@ internal object SyncSettings {
         }
     }
 
-    private fun storedImportSettings(store: LocalStore): ImportSettingsRepairPolicy.StoredImportSettings {
+    private fun storedImportSettings(store: SyncSettingsStore): ImportSettingsRepairPolicy.StoredImportSettings {
         return ImportSettingsRepairPolicy.StoredImportSettings()
             .importActiveCards(nullableIntSetting(store, IMPORT_ACTIVE_CARDS_SETTING_KEY))
             .importSuspendedCards(nullableIntSetting(store, IMPORT_SUSPENDED_CARDS_SETTING_KEY))
@@ -190,19 +196,19 @@ internal object SyncSettings {
     }
 
     @JvmStatic
-    private fun nullableIntSetting(store: LocalStore, key: String): Int? {
+    private fun nullableIntSetting(store: SyncSettingsStore, key: String): Int? {
         val value = store.getIntSetting(key, ABSENT_INT_SETTING)
         return if (value == ABSENT_INT_SETTING) null else value
     }
 
     @JvmStatic
-    private fun nullableDoubleSetting(store: LocalStore, key: String): Double? {
+    private fun nullableDoubleSetting(store: SyncSettingsStore, key: String): Double? {
         val value = store.getDoubleSetting(key, ABSENT_DOUBLE_SETTING)
         return if (value.isNaN()) null else value
     }
 
     @JvmStatic
-    private fun boolSetting(store: LocalStore?, key: String, fallback: Boolean): Boolean {
+    private fun boolSetting(store: SyncSettingsStore?, key: String, fallback: Boolean): Boolean {
         if (store == null) {
             return fallback
         }
@@ -210,7 +216,7 @@ internal object SyncSettings {
     }
 
     @JvmStatic
-    private fun fieldSetting(store: LocalStore?, key: String, fallback: String, required: Boolean): String {
+    private fun fieldSetting(store: SyncSettingsStore?, key: String, fallback: String, required: Boolean): String {
         if (store == null) {
             return fallback
         }

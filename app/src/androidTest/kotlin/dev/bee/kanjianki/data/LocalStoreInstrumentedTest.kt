@@ -23,7 +23,7 @@ import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.TimelineCopy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.testing.DeviceRisk
 
 import org.junit.After

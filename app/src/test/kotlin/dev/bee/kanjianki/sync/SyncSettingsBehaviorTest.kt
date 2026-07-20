@@ -3,6 +3,8 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.SyncSettings
+import dev.bee.kanjianki.core.SyncSettingsStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
@@ -150,7 +152,7 @@ class SyncSettingsBehaviorTest {
             invokePrivateStatic(
                 "fieldSetting",
                 arrayOf(
-                    LocalStore::class.java,
+                    SyncSettingsStore::class.java,
                     String::class.java,
                     String::class.java,
                     Boolean::class.javaPrimitiveType!!,

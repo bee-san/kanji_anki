@@ -16,6 +16,7 @@ import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels

@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.reminders
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
@@ -54,7 +56,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             schedule(context, store.reminderSettings())
         }
     }
@@ -102,7 +104,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             schedule(settings, store, services, nowMillis)
         }
     }
@@ -262,7 +264,7 @@ object ReminderScheduler {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
-        LocalStore(context).use { store ->
+        AppLocalStoreFactory.create(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
             val plan = evaluate(store, now) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.

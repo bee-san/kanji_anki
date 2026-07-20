@@ -4,7 +4,7 @@ import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.ConfusionPairMiner
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
-import dev.bee.kanjianki.sync.SyncSettings
+import dev.bee.kanjianki.core.SyncSettings
 
 internal class StatsPrecomputeStore(
     private val store: LocalStore,

@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.backup
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -68,7 +70,7 @@ class DatabaseBackupWorker(
         }
 
         override fun snapshot(dbFile: File, dest: File) {
-            LocalStore(context).use { store ->
+            AppLocalStoreFactory.create(context).use { store ->
                 store.snapshotInto(dest)
             }
         }

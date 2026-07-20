@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.reminders
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -43,7 +45,7 @@ class ReminderReceiver : BroadcastReceiver() {
         }
 
         override fun handleDailyReminder() {
-            LocalStore(context).use { store ->
+            AppLocalStoreFactory.create(context).use { store ->
                 handleDailyReminder(
                     store.reminderSettings(),
                     ReminderReceiverDailyActions(context),
@@ -53,7 +55,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         override fun handleReminderDismissed(family: String) {
             val safeContext = context ?: return
-            LocalStore(safeContext).use { store ->
+            AppLocalStoreFactory.create(safeContext).use { store ->
                 // Swipe-dismiss is the user's strongest anti-spam signal: suppress
                 // this family for the rest of the local day, then re-arm from fresh
                 // state so the next eligible time reflects the dismissal.

@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.backup
 
+import dev.bee.kanjianki.AppLocalStoreFactory
+
 import android.content.Context
 import android.os.Build
 import android.util.Log
@@ -57,7 +59,7 @@ internal object StagedRestoreApplier {
                 databaseFile = appContext.getDatabasePath(DatabaseBackupPolicy.DB_NAME),
                 nowMillis = System.currentTimeMillis(),
                 snapshotter = DatabaseBackupWorker.Snapshotter { _, destination ->
-                    LocalStore(appContext).use { store -> store.snapshotInto(destination) }
+                    AppLocalStoreFactory.create(appContext).use { store -> store.snapshotInto(destination) }
                 },
                 operations = Operations(apiLevel = Build.VERSION.SDK_INT),
             )

@@ -1,7 +1,7 @@
 package dev.bee.kanjianki
 
 import androidx.compose.ui.graphics.toArgb
-import dev.bee.kanjianki.theme.KaniThemeChoice
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.theme.resolvePalette
 import java.util.Locale
 
