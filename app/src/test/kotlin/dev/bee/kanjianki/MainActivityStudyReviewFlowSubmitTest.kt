@@ -603,6 +603,161 @@ class MainActivityStudyReviewFlowSubmitTest {
         }
     }
 
+    /**
+     * RED regression for the reported Study feedback freeze (card t_89db57a1).
+     *
+     * Reproduces the exact user symptom: a self-graded recognition card is graded
+     * Fail, the review commits ("Fail saved" / "Incorrect."), the answered card
+     * stays mounted, and Continue looks tappable — but it never advances.
+     *
+     * Root cause under test: [MainActivityStudy.markStudyAnswerApplied] hops to the
+     * main thread through [MainActivityBase.postToMainIfActive], which silently drops
+     * the runnable when the Activity is finishing/destroyed (the window between a
+     * review commit and the applied callback during a config change / teardown). The
+     * scheduler token is consumed and the row advances, but the in-memory feedback
+     * gate is left in SUBMITTING. On the retained-holder re-render path
+     * ([MainActivityStudyQueueCoordinator.renderStudy] lines that re-render an active
+     * SUBMITTING/APPLIED card in place) nothing reconciles SUBMITTING against the
+     * consumed token, so [StudyAnswerFeedbackState.continueEnabled] stays false and
+     * [continueAfterStudyAnswer] returns false forever.
+     *
+     * This test FAILS today because the feedback stays stuck at SUBMITTING with the
+     * token already consumed. It should PASS once the applied transition is made
+     * durable across the dropped callback (e.g. reconciling a consumed-token
+     * SUBMITTING card to APPLIED on the retained re-render path).
+     */
+    @Test
+    fun appliedCallbackDroppedByFinishingActivityLeavesConsumedCardStuckAtSubmitting() {
+        withReviewActivity("脱") { activity, store, reviewIo, session ->
+            ShadowToast.reset()
+
+            // 1) Grade Fail. The answer gate enters SUBMITTING and the review is
+            //    queued to the (controllable) background executor.
+            assertTrue(activity.submitReview(MainActivityBase.RATING_AGAIN, false, interactionSource = "card"))
+            val feedback = requireNotNull(activity.studyAnswerFeedbackState)
+            assertEquals(StudyAnswerOutcome.INCORRECT, feedback.outcome)
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, feedback.snapshot().phase)
+            assertEquals(1, reviewIo.pendingCount())
+
+            // 2) The Activity begins finishing (config change / teardown) BEFORE the
+            //    review commit posts its applied callback. postToMainIfActive will
+            //    drop that runnable.
+            activity.finish()
+
+            // 3) The background review commit runs to completion: the token is
+            //    consumed and "Fail saved" is durable. Then drain the main looper so
+            //    the dropped markStudyAnswerApplied runnable would have run if it were
+            //    ever delivered.
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            // The review really committed — this is the "Fail saved" the user saw.
+            assertTrue(store.hasConsumedToken(session.token))
+
+            // 4) The answered card is still mounted with Incorrect feedback, but the
+            //    gate never reached APPLIED, so Continue cannot advance. This is the
+            //    freeze. The regression contract: a consumed-token answered card must
+            //    be continuable.
+            assertTrue(feedback.feedbackVisible)
+            assertEquals(
+                "Consumed-token answered card must reach APPLIED, not stay stuck at SUBMITTING",
+                StudyAnswerFeedbackPhase.APPLIED,
+                feedback.snapshot().phase,
+            )
+            assertTrue(
+                "Continue must be enabled once the review is committed",
+                feedback.continueEnabled,
+            )
+            assertTrue(
+                "Continue must actually advance the answered card",
+                activity.continueAfterStudyAnswer(),
+            )
+        }
+    }
+
+    /**
+     * RED regression, retained-holder path (config change with a surviving
+     * session/ViewModel, no process death). The in-memory SUBMITTING feedback whose
+     * review token was consumed must be reconciled to a continuable state, so the
+     * mounted Continue button the user is staring at is not permanently dead.
+     *
+     * FAILED before the fix: markStudyAnswerApplied delivered the APPLIED transition
+     * only through postToMainIfActive, which drops the runnable on a finishing
+     * activity, so the retained gate stayed at SUBMITTING with the token consumed and
+     * [continueAfterStudyAnswer] returned false forever. The fix posts the APPLIED
+     * transition (and its durable envelope write) to main without the active-Activity
+     * guard, so the consumed-token gate reaches APPLIED and Continue works.
+     */
+    @Test
+    fun retainedConsumedButUnappliedCardMustRecoverContinue() {
+        withReviewActivity("脱") { activity, store, reviewIo, session ->
+            assertTrue(activity.submitReview(MainActivityBase.RATING_AGAIN, false, interactionSource = "card"))
+            val feedback = requireNotNull(activity.studyAnswerFeedbackState)
+
+            // Commit the review while the Activity is finishing. The applied callback
+            // used to be dropped here; the fix delivers it durably so the retained
+            // in-memory gate reconciles to APPLIED against the consumed token.
+            activity.finish()
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, feedback.snapshot().phase)
+
+            // The user's mounted Continue button must not be frozen: the committed
+            // review means Continue has to work.
+            assertTrue(
+                "Consumed answered card must expose a working Continue",
+                requireNotNull(activity.studyAnswerFeedbackState).continueEnabled,
+            )
+            assertTrue(activity.continueAfterStudyAnswer())
+        }
+    }
+
+    /**
+     * Edge coverage for the durable side of the finishing-drop fix. The APPLIED
+     * transition now posts to main without the active-Activity guard, so the same
+     * runnable also re-persists the pending recovery envelope at APPLIED. This proves
+     * a subsequent process death would recover a continuable card instead of one
+     * frozen at SUBMITTING, keeping the "scheduler persistence completes before UI
+     * advancement" contract intact even when the Activity is finishing.
+     */
+    @Test
+    fun appliedCallbackOnFinishingActivityAlsoPersistsDurableAppliedEnvelope() {
+        withReviewActivity("脱") { activity, store, reviewIo, session ->
+            assertTrue(activity.submitReview(MainActivityBase.RATING_AGAIN, false, interactionSource = "card"))
+
+            activity.finish()
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertTrue(store.hasConsumedToken(session.token))
+            val stored = requireNotNull(activity.pendingStudyRecovery()) {
+                "Finishing activity must still persist the answered card for recovery"
+            }
+            assertEquals(session.token, stored.snapshot.feedback.sessionToken)
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, stored.snapshot.feedback.phase)
+        }
+    }
+
+    /**
+     * Edge coverage: the guardless post still validates the token. A
+     * markStudyAnswerApplied call for a token that is not the mounted feedback's
+     * token must be a no-op, so a stale/losing submission cannot force an unrelated
+     * card's gate to APPLIED.
+     */
+    @Test
+    fun markStudyAnswerAppliedIgnoresNonMatchingToken() {
+        withReviewActivity("脱") { activity, store, reviewIo, session ->
+            assertTrue(activity.submitReview(MainActivityBase.RATING_AGAIN, false, interactionSource = "card"))
+            val feedback = requireNotNull(activity.studyAnswerFeedbackState)
+
+            activity.markStudyAnswerApplied(session.token + "-stale")
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, feedback.snapshot().phase)
+        }
+    }
+
     private fun assertSelfGradedActionWaitsForExplicitContinue(pass: Boolean) {
         withReviewActivity(if (pass) "正" else "誤") { activity, store, reviewIo, session ->
             activity.prepareStudyAnswerFeedback(session.token)

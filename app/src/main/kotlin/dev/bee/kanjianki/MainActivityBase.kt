@@ -61,6 +61,18 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         }
     }
 
+    /**
+     * Post [action] to the main thread and run it even if the activity is
+     * finishing/destroyed. Unlike [postToMainIfActive] this deliberately omits the
+     * active-Activity guard, so it is only for main-confined work that is safe on a
+     * torn-down activity: Compose-observable state mutation and SharedPreferences
+     * persistence, NOT setContent/startActivity/toast. Used to make the study
+     * answer's APPLIED transition durable across a finishing config change.
+     */
+    fun postToMain(action: () -> Unit) {
+        main.post(action)
+    }
+
     @JvmField
     val io: ExecutorService = Executors.newSingleThreadExecutor()
 
