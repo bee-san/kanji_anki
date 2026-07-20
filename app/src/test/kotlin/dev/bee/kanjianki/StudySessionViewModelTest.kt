@@ -4,10 +4,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import dev.bee.kanjianki.core.RecordsSchedulerModels
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withTimeoutOrNull
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -638,55 +635,6 @@ class StudySessionViewModelTest {
         assertTrue(replacedData.version.value > firstRoute.version.value)
     }
 
-    @Test
-    fun staleAutoContinueGuardPublishesNoEffect() = runTest {
-        val viewModel = StudySessionViewModel()
-        viewModel.mountSession(session("current"))
-        val route = viewModel.acceptedRouteSnapshot()
-
-        assertFalse(
-            viewModel.requestAutoContinue(
-                "stale",
-                route.sessionGeneration,
-                route.version,
-            ),
-        )
-        assertNull(withTimeoutOrNull(50L) { viewModel.effects.first() })
-    }
-
-    @Test
-    fun autoContinueIsDeliveredAsOneShotEffect() = runTest {
-        val viewModel = StudySessionViewModel()
-        viewModel.mountSession(session("token"))
-        val route = viewModel.acceptedRouteSnapshot()
-        val effect = async { viewModel.effects.first() }
-
-        assertTrue(viewModel.requestAutoContinue("token", route.sessionGeneration, route.version))
-
-        assertEquals(
-            StudySessionEffect.AutoContinue("token", route.sessionGeneration, route.version),
-            effect.await(),
-        )
-    }
-
-    @Test
-    fun queuedAutoContinueIsRejectedAfterTheRouteAdvances() = runTest {
-        val viewModel = StudySessionViewModel()
-        viewModel.mountSession(session("token"))
-        val route = viewModel.acceptedRouteSnapshot()
-        assertTrue(viewModel.requestAutoContinue("token", route.sessionGeneration, route.version))
-        val effect = viewModel.effects.first() as StudySessionEffect.AutoContinue
-
-        viewModel.tracker.setTargetCount(1)
-
-        assertFalse(
-            viewModel.isCurrentRoute(
-                effect.sessionToken,
-                effect.sessionGeneration,
-                effect.routeVersion,
-            ),
-        )
-    }
 
     @Test
     fun routeActionClaimIsAtomicAndCannotBeReused() {
@@ -715,7 +663,7 @@ class StudySessionViewModelTest {
     }
 
     @Test
-    fun terminalRouteRejectsEveryLateActionWithoutMutation() = runTest {
+    fun terminalRouteRejectsEveryLateActionWithoutMutation() {
         val viewModel = viewModelAt(completed = 1, target = 1)
         val route = viewModel.acceptedRouteSnapshot()
         val evidence = requireNotNull(
@@ -742,14 +690,6 @@ class StudySessionViewModelTest {
             completeState,
             StudySessionReducer.reduce(completeState, StudySessionEvent.RouteActionClaimed),
         )
-        assertFalse(viewModel.requestAutoContinue(token))
-        assertFalse(
-            viewModel.requestAutoContinue(
-                token,
-                completeRoute.sessionGeneration,
-                completeRoute.version,
-            ),
-        )
         assertNull(
             viewModel.claimCurrentRouteAction(
                 token,
@@ -770,7 +710,6 @@ class StudySessionViewModelTest {
         assertSame(completeState, viewModel.uiState.value)
         assertEquals(completeRoute, viewModel.acceptedRouteSnapshot())
         assertEquals(completeRoute.completionReason, completeRoute.completionEvidenceReason)
-        assertNull(withTimeoutOrNull(50L) { viewModel.effects.first() })
     }
 
     @Test

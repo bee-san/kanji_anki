@@ -481,13 +481,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         ladder: RecordsBase.StudyLadderSettings? = null,
         interactionSource: String = "review-action",
         answerEvidence: AnswerEvidence? = null,
-        autoContinue: Boolean = false,
     ): Boolean {
         val selectedAnswer = answerEvidence?.selectedAnswer
             ?.takeIf { it.isNotBlank() }
             ?: typingAnswerState?.text?.toString()?.takeIf { it.isNotBlank() }
             ?: rating
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer, autoContinue) {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer) {
             writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)
         }
     }
@@ -495,13 +494,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private fun submitWithAnswerFeedback(
         correct: Boolean,
         selectedAnswer: String,
-        autoContinue: Boolean = false,
         submit: () -> Boolean,
     ): Boolean {
         return answerSubmissionCoordinator.submit(
             correct = correct,
             selectedAnswer = selectedAnswer,
-            autoContinue = autoContinue,
             enqueueReview = submit,
         )
     }
@@ -520,24 +517,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             val state = studyAnswerFeedbackState
             if (state?.markApplied(token) == true) {
                 persistPendingStudyAnswer(state)
-                if (state.autoContinueOnApply) {
-                    // The currently STARTED Activity consumes this one-shot
-                    // effect. A stale route rejects it and leaves the manual
-                    // Continue action enabled as the fallback.
-                    studySessionViewModel.requestAutoContinue(token)
-                }
             }
-        }
-    }
-
-    override fun handleStudySessionEffect(effect: StudySessionEffect) {
-        when (effect) {
-            is StudySessionEffect.AutoContinue -> continueAfterStudyAnswer(
-                expectedToken = effect.sessionToken,
-                expectedRecovery = null,
-                expectedGeneration = effect.sessionGeneration,
-                expectedVersion = effect.routeVersion,
-            )
         }
     }
 
@@ -616,25 +596,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return continueAfterStudyAnswer()
     }
 
-    private fun continueAfterStudyAnswer(
-        expectedToken: String,
-        expectedRecovery: StoredActiveStudyRecovery?,
-        expectedGeneration: StudySessionGeneration,
-        expectedVersion: StudyRouteVersion,
-    ): Boolean {
-        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
-        val claim = studySessionViewModel.claimCurrentRouteAction(
-            expectedToken,
-            expectedGeneration,
-            expectedVersion,
-        ) ?: return false
-        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
-        if (!studySessionViewModel.consumeRouteAction(claim)) return false
-        return continueAfterStudyAnswer()
-    }
-
     fun submitSimilarWritingRepair(rating: String): Boolean {
-        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating, autoContinue = true) {
+        return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, rating) {
             writingReview.submitSimilarWritingRepair(rating)
         }
     }
