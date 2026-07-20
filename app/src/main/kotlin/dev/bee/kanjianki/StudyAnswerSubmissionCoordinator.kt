@@ -28,13 +28,12 @@ internal class StudyAnswerSubmissionCoordinator(
     fun submit(
         correct: Boolean,
         selectedAnswer: String,
-        autoContinue: Boolean,
         enqueueReview: () -> Boolean,
     ): Boolean {
         val token = stateStore.activeSessionToken() ?: return false
         val state = stateStore.feedbackFor(token)
         val outcome = if (correct) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT
-        if (!state.begin(outcome, selectedAnswer, autoContinue)) return false
+        if (!state.begin(outcome, selectedAnswer)) return false
         stateStore.feedbackChanged()
 
         if (!persistence.persistPending(state)) {

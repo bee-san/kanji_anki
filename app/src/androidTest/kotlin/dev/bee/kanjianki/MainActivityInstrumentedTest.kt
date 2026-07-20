@@ -1000,6 +1000,7 @@ fun testKanjiDetailTimelineShowsReviewAfterStudy() {
             clickText(scenario, STUDY_NOW);
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
+            continueAfterStudyAnswer(scenario);
             waitForText(scenario, "Today's focus done");
             scenario.onActivity { activity -> assertHasText(activity, "Continue all kanji") }
             clickText(scenario, "Back home");
@@ -1133,6 +1134,7 @@ fun testStudyNowStopsAtConfiguredMaximumItems() {
                 clickText(scenario, REVEAL);
                 waitForText(scenario, "Pass");
                 clickText(scenario, "Pass");
+                continueAfterStudyAnswer(scenario);
             }
             waitForText(scenario, "Today's focus done");
             scenario.onActivity { activity ->
@@ -1173,6 +1175,7 @@ fun testStudyMoreNewCardsStartsOneTimeExtraSetWithoutChangingWorkload() {
                 clickText(scenario, REVEAL);
                 waitForText(scenario, "Pass");
                 clickText(scenario, "Pass");
+                continueAfterStudyAnswer(scenario);
             }
             waitForText(scenario, "Study more new cards");
 
@@ -1186,6 +1189,7 @@ fun testStudyMoreNewCardsStartsOneTimeExtraSetWithoutChangingWorkload() {
                 clickText(scenario, REVEAL);
                 waitForText(scenario, "Pass");
                 clickText(scenario, "Pass");
+                continueAfterStudyAnswer(scenario);
             }
             waitForText(scenario, "Today's focus done");
             scenario.onActivity { activity ->
@@ -1752,6 +1756,7 @@ fun testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
             clickText(scenario, REVEAL);
             val failedAtMillis = System.currentTimeMillis();
             clickText(scenario, "Fail");
+            continueAfterStudyAnswer(scenario);
 
             // The default 10-minute relearning step is inside the 20-minute
             // learn-ahead horizon, so it is immediately visible workload.
@@ -1775,6 +1780,7 @@ fun testDueLearningRepeatIsPracticeOnlyAndDoesNotLogReview() {
 
             clickText(scenario, REVEAL);
             clickText(scenario, "Pass");
+            continueAfterStudyAnswer(scenario);
             waitForDeviceText("Today's focus done");
             waitForDeviceText("2 / 2");
             scenario.onActivity { activity ->
@@ -2838,6 +2844,21 @@ fun deviceVisibleText(device: UiDevice): String {
         }
     }
     return texts.toString()
+}
+
+private fun continueAfterStudyAnswer(scenario: ActivityScenario<MainActivity>) {
+    val deadline = SystemClock.uptimeMillis() + 5_000L
+    var applied = false
+    while (SystemClock.uptimeMillis() < deadline && !applied) {
+        scenario.onActivity { activity ->
+            applied = activity.studyAnswerFeedbackState?.snapshot()?.phase == StudyAnswerFeedbackPhase.APPLIED
+        }
+        if (!applied) {
+            SystemClock.sleep(25L)
+        }
+    }
+    assertTrue("Study answer did not reach APPLIED before Continue", applied)
+    clickText(scenario, "Continue")
 }
 
 private fun waitForText(scenario: ActivityScenario<MainActivity>, text: String) {

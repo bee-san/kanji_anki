@@ -4,6 +4,9 @@
             android:name="dev.bee.kanjianki.anki.FakeAnkiDroidProvider"
             android:authorities="dev.bee.kanjianki.test.ankidroid"
             android:exported="false" />
+        <activity
+            android:name="dev.bee.kanjianki.SevenItemRouteActivity"
+            android:exported="false" />
         <!--
             The share-sheet FileProvider (authority ${applicationId}.debuglog) is declared in the
             main manifest so release builds can share AppDebugLog's kani-debug.log too.

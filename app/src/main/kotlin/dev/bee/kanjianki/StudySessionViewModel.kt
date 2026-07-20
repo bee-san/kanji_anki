@@ -2,12 +2,9 @@ package dev.bee.kanjianki
 
 import androidx.lifecycle.ViewModel
 import dev.bee.kanjianki.core.RecordsSchedulerModels
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 
 internal enum class StudySessionPhase {
     IDLE,
@@ -58,15 +55,6 @@ internal data class StudySessionUiState(
             completionEvidenceReason = completionEvidenceReason,
             completionReason = completionReason,
         )
-}
-
-/** One-shot work that must be handled by the currently started Activity instance. */
-internal sealed interface StudySessionEffect {
-    data class AutoContinue(
-        val sessionToken: String,
-        val sessionGeneration: StudySessionGeneration,
-        val routeVersion: StudyRouteVersion,
-    ) : StudySessionEffect
 }
 
 internal sealed interface StudySessionEvent {
@@ -276,11 +264,9 @@ internal object StudySessionReducer {
 internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
     private val routeStateLock = Any()
     private val _uiState = MutableStateFlow(StudySessionUiState())
-    private val effectChannel = Channel<StudySessionEffect>(Channel.BUFFERED)
     private var feedbackState: StudyAnswerFeedbackState? = null
 
     val uiState: StateFlow<StudySessionUiState> = _uiState.asStateFlow()
-    val effects: Flow<StudySessionEffect> = effectChannel.receiveAsFlow()
     val tracker = StudySessionTracker(onChanged = ::publishProgress)
 
     override fun activeSessionToken(): String? = _uiState.value.currentSession?.token
@@ -451,40 +437,6 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         }
     }
 
-    fun requestAutoContinue(sessionToken: String): Boolean = synchronized(routeStateLock) {
-        val state = _uiState.value
-        if (state.phase == StudySessionPhase.COMPLETE || sessionToken != state.currentSession?.token) {
-            return@synchronized false
-        }
-        effectChannel.trySend(
-            StudySessionEffect.AutoContinue(
-                sessionToken,
-                state.sessionGeneration,
-                state.routeVersion,
-            ),
-        ).isSuccess
-    }
-
-    fun requestAutoContinue(
-        sessionToken: String,
-        expectedGeneration: StudySessionGeneration,
-        expectedVersion: StudyRouteVersion,
-    ): Boolean = synchronized(routeStateLock) {
-        if (
-            _uiState.value.phase == StudySessionPhase.COMPLETE ||
-            !matchesRouteLocked(expectedGeneration, expectedVersion, sessionToken)
-        ) {
-            return@synchronized false
-        }
-        effectChannel.trySend(
-            StudySessionEffect.AutoContinue(
-                sessionToken,
-                expectedGeneration,
-                expectedVersion,
-            ),
-        ).isSuccess
-    }
-
     fun isCurrentRoute(
         sessionToken: String,
         expectedGeneration: StudySessionGeneration,
@@ -619,7 +571,6 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         synchronized(routeStateLock) {
             clearFeedbackLocked()
         }
-        effectChannel.close()
         super.onCleared()
     }
 }
