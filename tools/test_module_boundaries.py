@@ -325,6 +325,7 @@ class ModuleBoundaryTest(unittest.TestCase):
         violations = []
         source_roots = (
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data",
+            ROOT / "app/src/main/java/dev/bee/kanjianki/data",
             ROOT / "data/src/main",
         )
         for source_root in source_roots:
