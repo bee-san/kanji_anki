@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -18,10 +19,12 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -91,18 +94,23 @@ class StudySevenItemRouteInstrumentedTest {
 
             scenario.onActivity { activity ->
                 applyCorrectAnswer(activity, sessions.last())
+                persistConsumedReview(sessions.last())
                 visibleSnapshot = renderActiveSession(activity)
+                assertNull(activity.pendingStudyRecovery())
             }
             assertFrame(viewModel, visibleSnapshot, completed = 7, done = false)
             composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
                 .assertIsDisplayed()
                 .assertIsEnabled()
 
+            composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
+                .performClick()
+            composeRule.waitUntil(timeoutMillis = 15_000L) {
+                viewModel.acceptedRouteSnapshot().isComplete
+            }
             scenario.onActivity { activity ->
-                assertTrue(requireNotNull(activity.studyAnswerFeedbackState).tryContinue())
-                activity.studySessionViewModel.showLoading()
-                activity.renderStudyRunDone(activity.activeStudyPlan)
                 visibleSnapshot = activity.studySessionViewModel.acceptedRouteSnapshot()
+                assertNull(activity.pendingStudyRecovery())
             }
             assertFrame(viewModel, visibleSnapshot, completed = 7, done = true)
             assertEquals(StudyRouteCompletionReason.HARD_CAP, visibleSnapshot.completionReason)
@@ -131,6 +139,36 @@ class StudySevenItemRouteInstrumentedTest {
         assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
         activity.studySessionTracker.markTaskCompleted(activity.sessionTaskKey(session))
         assertTrue(feedback.markApplied(session.token))
+    }
+
+    private fun persistConsumedReview(session: RecordsSchedulerModels.StudySession) {
+        val item = requireNotNull(session.item)
+        val request = RecordsSchedulerModels.ReviewRequest.fromFields(
+            RecordsSchedulerModels.ReviewRequest.Fields(
+                kanji = item.kanji,
+                token = session.token,
+                rating = StudyRatings.GOOD,
+                writingRequired = session.writingRequired,
+                writingPassed = true,
+                writingClean = true,
+                manualOverride = false,
+                hintsUsed = 0,
+                taskType = session.taskType,
+                answerSignature = item.answerSignature,
+                prompt = session.prompt,
+            ),
+        )
+        LocalStore(context).use { store ->
+            store.saveReview(request, StudyRatings.GOOD, System.currentTimeMillis())
+            assertTrue(
+                store.hasMatchingConsumedReview(
+                    session.token,
+                    item.kanji,
+                    session.taskType,
+                    item.answerSignature,
+                ),
+            )
+        }
     }
 
     private fun assertFrame(
