@@ -446,6 +446,11 @@ class ModuleBoundaryTest(unittest.TestCase):
 
         self.assertEqual(1, study_adapter.count("store.commitReview(command)"))
         self.assertNotIn("store.saveReview(", study_adapter)
+        self.assertGreaterEqual(
+            study_adapter.count("store.readSnapshot {"),
+            1,
+            "composite study snapshots must use one database transaction",
+        )
         self.assertEqual(1, sync_adapter.count("store.publishSyncAtomically"))
         self.assertEqual(1, sync_adapter.count("command.queuePlanner.plan("))
         self.assertIn("internal class SqliteSettingsStore(", settings_store)

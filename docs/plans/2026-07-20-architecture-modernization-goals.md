@@ -251,12 +251,14 @@ than the `LocalStore` implementation.
   component, cursor, database, or table-name type.
 - The former raw key/value `SettingsRepository` is now the internal
   `SqliteSettingsStore`. The typed settings adapter persists logical groups,
-  including sync and workload groups, atomically without exposing raw keys.
+  including sync and workload groups, atomically without exposing raw keys;
+  every field accepted by the sync command round-trips through storage.
 - Internal SQLite adapters preserve the existing review token/revision CAS as
   one `commitReview` call. Sync accepts one pure queue planner, stages the
   mirror, invokes that planner once with an immutable snapshot, annotates
   conditional capabilities, and finalizes queue/history inside one outer
-  publication transaction.
+  publication transaction. Composite repository reads use one non-exclusive
+  transaction so a concurrent publication cannot mix storage generations.
 - Focused test fakes cover all five ports. Robolectric adapter tests pin typed
   settings round trips, feature snapshot projection, successful single-call
   sync publication, and rollback when queue planning fails. Source guardrails
@@ -266,7 +268,8 @@ than the `LocalStore` implementation.
   `./gradlew ciFast ciQuality` gate then passed all 110 tasks in 2m18s,
   including app/core tests, coverage reports/checks, lint, Android
   instrumentation compilation, 62 repository tool tests, 91 Ralph tests, 62
-  asset tests, and 70 CI-script tests.
+  asset tests, and 70 CI-script tests. After review hardening, the same gate
+  passed again in 2m06s along with the 62-test Python tool suite.
 - Production consumers still use the compatibility `LocalStore` facade until
   Goal 149, so no active provider/sync path changed. A live AnkiDroid run was
   therefore not required for this contract-only slice. Rollback is source-only;

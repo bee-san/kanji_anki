@@ -14,12 +14,15 @@ interface SyncSettingsStore {
 
 object SyncSettings {
     const val NOTE_TYPE_SETTING_KEY = "note_type_name"
+    const val TEMPLATE_SETTING_KEY = "template_name"
     const val EXPRESSION_FIELD_SETTING_KEY = "expression_field"
     const val READING_FIELD_SETTING_KEY = "reading_field"
     const val MEANING_FIELD_SETTING_KEY = "meaning_field"
     const val SENTENCE_FIELD_SETTING_KEY = "sentence_field"
     const val FREQUENCY_FIELD_SETTING_KEY = "frequency_field"
     const val FREQUENCY_SORT_FIELD_SETTING_KEY = "frequency_sort_field"
+    const val MATURE_DAYS_SETTING_KEY = "mature_days"
+    const val MATURE_SUPPORT_THRESHOLD_SETTING_KEY = "mature_support_threshold"
     const val WRITING_TRIGGER_MISS_DAYS_SETTING_KEY = "writing_trigger_miss_days"
     const val RECOGNITION_PROMOTION_PASSES_SETTING_KEY = "recognition_promotion_passes"
     const val REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY = "real_due_reviews_to_move"
@@ -53,12 +56,23 @@ object SyncSettings {
         } else {
             nonBlank(store.getStringSetting(NOTE_TYPE_SETTING_KEY, defaults.modelName), defaults.modelName)
         }
+        val templateName = if (store == null) {
+            defaults.templateName
+        } else {
+            nonBlank(store.getStringSetting(TEMPLATE_SETTING_KEY, defaults.templateName), defaults.templateName)
+        }
         val expressionField = fieldSetting(store, EXPRESSION_FIELD_SETTING_KEY, defaults.expressionField, true)
         val readingField = fieldSetting(store, READING_FIELD_SETTING_KEY, defaults.readingField, false)
         val meaningField = fieldSetting(store, MEANING_FIELD_SETTING_KEY, defaults.meaningField, false)
         val sentenceField = fieldSetting(store, SENTENCE_FIELD_SETTING_KEY, defaults.sentenceField, false)
         val frequencyField = fieldSetting(store, FREQUENCY_FIELD_SETTING_KEY, defaults.frequencyField, false)
         val frequencySortField = fieldSetting(store, FREQUENCY_SORT_FIELD_SETTING_KEY, defaults.frequencySortField, false)
+        val matureDays = store?.getIntSetting(MATURE_DAYS_SETTING_KEY, defaults.matureDays)
+            ?: defaults.matureDays
+        val matureSupportThreshold = store?.getIntSetting(
+            MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
+            defaults.matureSupportThreshold,
+        ) ?: defaults.matureSupportThreshold
         val minRank = store?.getIntSetting("suspended_rank_min", defaults.suspendedRankMin)
             ?: defaults.suspendedRankMin
         val maxRank = store?.getIntSetting(
@@ -130,15 +144,15 @@ object SyncSettings {
         )
         return RecordsSyncModels.Settings(
             modelName,
-            defaults.templateName,
+            templateName,
             expressionField,
             readingField,
             meaningField,
             sentenceField,
             frequencyField,
             frequencySortField,
-            defaults.matureDays,
-            defaults.matureSupportThreshold,
+            matureDays,
+            matureSupportThreshold,
             minRank,
             maxRank,
             activeQueueCap,

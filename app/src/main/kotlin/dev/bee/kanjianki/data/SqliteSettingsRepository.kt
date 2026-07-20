@@ -8,31 +8,33 @@ internal class SqliteSettingsRepository(
     private val store: LocalStore,
 ) : SettingsRepository {
     override suspend fun load() = safeStoreCall {
-        SettingsSnapshot(
-            sync = SyncSettings.fromStore(store),
-            tagRepairedCards = SyncSettings.tagRepairedCards(store),
-            adaptiveWorkload = AdaptiveWorkloadSnapshot(
-                store.adaptiveLoadWorkPercent(),
-                store.adaptiveLoadMaxItems(),
-                store.adaptiveLoadMode(),
-            ),
-            studyAheadMinutes = store.studyAheadMinutes(),
-            studyLadder = store.studyLadderSettings(),
-            schedulerParameters = store.schedulerParameters(),
-            schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
-            learningSteps = store.learningStepSettings(),
-            themeChoice = store.appThemeChoice(),
-            reminder = store.reminderSettings().toRepositorySnapshot(),
-            reminderAntiSpam = store.reminderAntiSpamSettings().toRepositorySnapshot(),
-            autoSync = store.autoSyncSettings().toRepositorySnapshot(),
-            autoUpdate = store.autoUpdateStatus().toRepositorySnapshot(),
-            debugLogEnabled = store.debugLogEnabled(),
-            fsrsPersonalizationEnabled = store.fsrsPersonalizationEnabled(),
-            fsrsFitSummaryJson = store.fsrsFitSummaryJson(),
-            updateCheckFailedAtMillis = store.updateCheckFailedAt(),
-            installPermissionPromptShown = store.installPermissionPromptShown(),
-            installPermissionPromptLastVersion = store.installPermissionPromptLastVersion(),
-        )
+        store.readSnapshot {
+            SettingsSnapshot(
+                sync = SyncSettings.fromStore(store),
+                tagRepairedCards = SyncSettings.tagRepairedCards(store),
+                adaptiveWorkload = AdaptiveWorkloadSnapshot(
+                    store.adaptiveLoadWorkPercent(),
+                    store.adaptiveLoadMaxItems(),
+                    store.adaptiveLoadMode(),
+                ),
+                studyAheadMinutes = store.studyAheadMinutes(),
+                studyLadder = store.studyLadderSettings(),
+                schedulerParameters = store.schedulerParameters(),
+                schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
+                learningSteps = store.learningStepSettings(),
+                themeChoice = store.appThemeChoice(),
+                reminder = store.reminderSettings().toRepositorySnapshot(),
+                reminderAntiSpam = store.reminderAntiSpamSettings().toRepositorySnapshot(),
+                autoSync = store.autoSyncSettings().toRepositorySnapshot(),
+                autoUpdate = store.autoUpdateStatus().toRepositorySnapshot(),
+                debugLogEnabled = store.debugLogEnabled(),
+                fsrsPersonalizationEnabled = store.fsrsPersonalizationEnabled(),
+                fsrsFitSummaryJson = store.fsrsFitSummaryJson(),
+                updateCheckFailedAtMillis = store.updateCheckFailedAt(),
+                installPermissionPromptShown = store.installPermissionPromptShown(),
+                installPermissionPromptLastVersion = store.installPermissionPromptLastVersion(),
+            )
+        }
     }
 
     override suspend fun save(command: SettingsSaveCommand) = safeStoreCall {
@@ -106,12 +108,18 @@ internal class SqliteSettingsRepository(
     private fun saveSync(settings: RecordsSyncModels.Settings, tagRepairedCards: Boolean) {
         saveAtomically {
             store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, settings.modelName)
+            store.putStringSetting(SyncSettings.TEMPLATE_SETTING_KEY, settings.templateName)
             store.putStringSetting(SyncSettings.EXPRESSION_FIELD_SETTING_KEY, settings.expressionField)
             store.putStringSetting(SyncSettings.READING_FIELD_SETTING_KEY, settings.readingField)
             store.putStringSetting(SyncSettings.MEANING_FIELD_SETTING_KEY, settings.meaningField)
             store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, settings.sentenceField)
             store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, settings.frequencyField)
             store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, settings.frequencySortField)
+            store.putIntSetting(SyncSettings.MATURE_DAYS_SETTING_KEY, settings.matureDays)
+            store.putIntSetting(
+                SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
+                settings.matureSupportThreshold,
+            )
             store.putIntSetting(SUSPENDED_RANK_MIN_KEY, settings.suspendedRankMin)
             store.putIntSetting(SUSPENDED_RANK_MAX_KEY, settings.suspendedRankMax)
             store.putIntSetting(SyncSettings.WRITING_TRIGGER_MISS_DAYS_SETTING_KEY, settings.writingTriggerMissDays)

@@ -8,13 +8,15 @@ internal class SqliteSyncRepository(
     private val store: LocalStore,
 ) : SyncRepository {
     override suspend fun loadStoredState() = safeStoreCall {
-        StoredSyncState(
-            hasCollectionMirror = store.hasPersistedCollectionMirror(),
-            suspendedImports = store.suspendedImports().toList(),
-            unrestoredSuspendedArchiveCardIds = store.unrestoredSuspendedArchiveCardIds().toSet(),
-            studyItems = store.studyItems().toList(),
-            latestSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
-        )
+        store.readSnapshot {
+            StoredSyncState(
+                hasCollectionMirror = store.hasPersistedCollectionMirror(),
+                suspendedImports = store.suspendedImports().toList(),
+                unrestoredSuspendedArchiveCardIds = store.unrestoredSuspendedArchiveCardIds().toSet(),
+                studyItems = store.studyItems().toList(),
+                latestSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
+            )
+        }
     }
 
     override suspend fun publish(command: SyncPublicationCommand) = safeStoreCall {
@@ -97,11 +99,15 @@ internal class SqliteSyncRepository(
         snapshot: RecordsSyncModels.CollectionSnapshot,
         matureSupportThreshold: Int,
     ) = safeStoreCall {
-        store.repairedWriteBackProposal(snapshot, matureSupportThreshold)
+        store.readSnapshot {
+            store.repairedWriteBackProposal(snapshot, matureSupportThreshold)
+        }
     }
 
     override suspend fun repairedWriteBackPreview(matureSupportThreshold: Int) = safeStoreCall {
-        store.repairedWriteBackPreview(matureSupportThreshold)
+        store.readSnapshot {
+            store.repairedWriteBackPreview(matureSupportThreshold)
+        }
     }
 
     override suspend fun recordRepairedWriteBack(command: RecordRepairedWriteBackCommand) = safeStoreCall {

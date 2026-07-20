@@ -38,6 +38,7 @@ class RepositoryAdaptersTest {
     @Test
     fun typedSettingsCommandsRoundTripWithoutRawKeys() = runTest {
         val repository = SqliteSettingsRepository(store)
+        val syncSettings = syncSettingsWithCustomImmutableFields()
 
         assertTrue(
             repository.save(
@@ -49,7 +50,7 @@ class RepositoryAdaptersTest {
         assertTrue(
             repository.save(
                 SettingsSaveCommand.Sync(
-                    RecordsSyncModels.Settings.kikuDefaults(),
+                    syncSettings,
                     tagRepairedCards = true,
                 ),
             ).isOk(),
@@ -60,6 +61,9 @@ class RepositoryAdaptersTest {
         assertEquals(17, snapshot?.adaptiveWorkload?.maxItems)
         assertEquals("manual", snapshot?.adaptiveWorkload?.mode)
         assertTrue(snapshot?.tagRepairedCards == true)
+        assertEquals("Alternate", snapshot?.sync?.templateName)
+        assertEquals(35, snapshot?.sync?.matureDays)
+        assertEquals(4, snapshot?.sync?.matureSupportThreshold)
     }
 
     @Test
@@ -153,6 +157,43 @@ class RepositoryAdaptersTest {
             true,
             "all",
         )
+
+    private fun syncSettingsWithCustomImmutableFields(): RecordsSyncModels.Settings {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        return RecordsSyncModels.Settings(
+            defaults.modelName,
+            "Alternate",
+            defaults.expressionField,
+            defaults.readingField,
+            defaults.meaningField,
+            defaults.sentenceField,
+            defaults.frequencyField,
+            defaults.frequencySortField,
+            35,
+            4,
+            defaults.suspendedRankMin,
+            defaults.suspendedRankMax,
+            defaults.activeQueueCap,
+            defaults.newPerDay,
+            defaults.writingTriggerMissDays,
+            defaults.recognitionPromotionPasses,
+            defaults.realDueReviewsToMove,
+            defaults.importActiveCards,
+            defaults.importSuspendedCards,
+            defaults.importTaggedCards,
+            defaults.importTags,
+            defaults.importWeakCards,
+            defaults.importWeakFsrsDifficultyThreshold,
+            defaults.importWeakLapsesThreshold,
+            defaults.importMinMatchingCardsPerKanji,
+            defaults.importBrowserQueryCards,
+            defaults.importBrowserQuery,
+            defaults.newCardSortMode,
+            defaults.ladderPromotionIntervalDays,
+            defaults.ladderDemotionFailStreak,
+            defaults.ladderPromotionMinPasses,
+        )
+    }
 
     private companion object {
         const val STARTED_AT = 1_000L
