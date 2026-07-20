@@ -31,12 +31,12 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             Runnable { revealFlashcardAnswer(sessionToken, activeUiRecovery) },
             Runnable {
                 if (sessionToken != null && activity.matchesUngradedStudyRoute(sessionToken, activeUiRecovery)) {
-                    activity.submitReview(MainActivityBase.RATING_AGAIN, false, autoContinue = true)
+                    activity.submitReview(MainActivityBase.RATING_AGAIN, false)
                 }
             },
             Runnable {
                 if (sessionToken != null && activity.matchesUngradedStudyRoute(sessionToken, activeUiRecovery)) {
-                    activity.submitReview(MainActivityBase.RATING_GOOD, false, autoContinue = true)
+                    activity.submitReview(MainActivityBase.RATING_GOOD, false)
                 }
             },
         )
@@ -273,7 +273,6 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
                             rating = decision.rating,
                             override = false,
                             interactionSource = "card",
-                            autoContinue = true,
                         )
                     }
                 }

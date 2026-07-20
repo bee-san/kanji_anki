@@ -27,10 +27,7 @@ data class StudyAnswerFeedbackSnapshot(
  * One-card UI gate between grading and navigation.
  *
  * The scheduler remains token-idempotent; this state additionally keeps the
- * answered card mounted until one Continue action is accepted — an explicit
- * tap, or the automatic continue that self-graded submits arm via
- * [autoContinueOnApply]. The flag is transient (never snapshotted): a
- * process-death restore always falls back to the manual Continue button.
+ * answered card mounted until one explicit Continue action is accepted.
  */
 class StudyAnswerFeedbackState private constructor(
     val sessionToken: String,
@@ -55,9 +52,6 @@ class StudyAnswerFeedbackState private constructor(
     var selectedAnswer by mutableStateOf(initialSelectedAnswer)
         private set
 
-    var autoContinueOnApply: Boolean = false
-        private set
-
     val feedbackVisible: Boolean
         get() = phase != StudyAnswerFeedbackPhase.UNANSWERED
 
@@ -67,14 +61,12 @@ class StudyAnswerFeedbackState private constructor(
     fun begin(
         answerOutcome: StudyAnswerOutcome,
         selectedAnswer: String = "",
-        autoContinue: Boolean = false,
     ): Boolean {
         if (phase != StudyAnswerFeedbackPhase.UNANSWERED) {
             return false
         }
         outcome = answerOutcome
         this.selectedAnswer = selectedAnswer
-        autoContinueOnApply = autoContinue
         phase = StudyAnswerFeedbackPhase.SUBMITTING
         notifyChanged()
         return true
@@ -95,7 +87,6 @@ class StudyAnswerFeedbackState private constructor(
         }
         outcome = null
         selectedAnswer = ""
-        autoContinueOnApply = false
         phase = StudyAnswerFeedbackPhase.UNANSWERED
         notifyChanged()
         return true

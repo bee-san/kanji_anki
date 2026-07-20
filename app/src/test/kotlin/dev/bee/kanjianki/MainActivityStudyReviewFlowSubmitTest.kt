@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -106,93 +107,32 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
-    fun selfGradedReviewAutoAdvancesExactlyOnceWhenApplied() {
-        withReviewActivity("裂") { activity, store, reviewIo, session ->
-            assertTrue(
-                activity.submitReview(
-                    MainActivityBase.RATING_GOOD,
-                    false,
-                    interactionSource = "card",
-                    autoContinue = true,
-                )
-            )
-            val feedback = activity.studyAnswerFeedbackState!!
-            assertTrue(feedback.autoContinueOnApply)
-            assertEquals(0, activity.renderCount())
-
-            reviewIo.runNext()
-            shadowOf(Looper.getMainLooper()).idle()
-
-            assertTrue(store.hasConsumedToken(session.token))
-            assertEquals(1, activity.renderCount())
-            assertEquals(
-                StudyAnswerFeedbackPhase.CONTINUED,
-                activity.pendingStudyAnswerSnapshot()?.feedback?.phase,
-            )
-            assertFalse(activity.continueAfterStudyAnswer())
-            assertEquals(1, activity.renderCount())
-        }
+    fun selfGradedPassKeepsAnsweredCardMountedUntilExplicitContinue() {
+        assertSelfGradedActionWaitsForExplicitContinue(pass = true)
     }
 
     @Test
-    fun selfGradedContinueFailureRollsBackToAppliedForManualContinue() {
-        withReviewActivity("裂") { activity, store, reviewIo, session ->
-            assertTrue(
-                activity.submitReview(
-                    MainActivityBase.RATING_GOOD,
-                    false,
-                    autoContinue = true,
-                )
-            )
-            reviewIo.runNext()
-            // Swap the mounted session before the applied callback runs so the
-            // durable continue handoff loses its CAS and must roll back.
-            val displaced = RecordsSchedulerModels.StudySession(
-                session.item,
-                session.row,
-                "token-displaced",
-                session.taskType,
-                session.writingRequired,
-                session.prompt,
-            )
-            activity.activeSession = displaced
-            shadowOf(Looper.getMainLooper()).idle()
-
-            val feedback = activity.studyAnswerFeedbackState!!
-            assertTrue(store.hasConsumedToken(session.token))
-            assertEquals(0, activity.renderCount())
-            assertTrue(feedback.continueEnabled)
-
-            // The manual Continue button remains the working fallback once the
-            // answered session is mounted again.
-            activity.activeSession = session
-            assertTrue(activity.continueAfterStudyAnswer())
-            assertEquals(1, activity.renderCount())
-        }
+    fun selfGradedFailKeepsAnsweredCardMountedUntilExplicitContinue() {
+        assertSelfGradedActionWaitsForExplicitContinue(pass = false)
     }
 
     @Test
-    fun retryableDropResetsAutoContinueWithThePhase() {
+    fun retryableSelfGradedDropRestoresUnansweredWithoutAdvancing() {
         withReviewActivity("裂") { activity, store, reviewIo, session ->
             clearStore(activity)
-            assertTrue(
-                activity.submitReview(
-                    MainActivityBase.RATING_GOOD,
-                    false,
-                    autoContinue = true,
-                )
-            )
-            assertTrue(activity.studyAnswerFeedbackState!!.autoContinueOnApply)
+            activity.prepareStudyAnswerFeedback(session.token)
+            activity.buildFlashcardActionBar(revealed = true)
+            requireNotNull(activity.flashcardActionBarState).onPass.run()
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, activity.studyAnswerFeedbackState?.snapshot()?.phase)
 
             reviewIo.runNext()
             shadowOf(Looper.getMainLooper()).idle()
 
             val feedback = activity.studyAnswerFeedbackState!!
             assertEquals(StudyAnswerFeedbackPhase.UNANSWERED, feedback.snapshot().phase)
-            assertFalse(feedback.autoContinueOnApply)
             assertEquals(0, activity.renderCount())
 
-            // A retried default submit must not inherit the cleared flag.
+            // A retried submit still waits for explicit Continue after it applies.
             activity.store = store
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             reviewIo.runNext()
@@ -239,6 +179,24 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }
+    }
+
+    @Test
+    fun writingPassActionKeepsAnsweredCardMountedUntilExplicitContinue() {
+        assertWritingActionWaitsForExplicitContinue(
+            WritingAnalysis.Status.PASS,
+            writingPassed = true,
+            expectedOutcome = StudyAnswerOutcome.CORRECT,
+        )
+    }
+
+    @Test
+    fun writingFailActionKeepsAnsweredCardMountedUntilExplicitContinue() {
+        assertWritingActionWaitsForExplicitContinue(
+            WritingAnalysis.Status.WRONG,
+            writingPassed = false,
+            expectedOutcome = StudyAnswerOutcome.INCORRECT,
+        )
     }
 
     @Test
@@ -546,7 +504,7 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     @Test
-    fun successfulRepairCompletionAppliesOnceAndAutoAdvances() {
+    fun successfulRepairCompletionAppliesOnceAndWaitsForExplicitContinue() {
         withReviewActivity("修") { activity, store, reviewIo, session ->
             val activeRepair = persistRepair(store, session.token)
             activity.activeSimilarWritingRepair = activeRepair
@@ -563,9 +521,10 @@ class MainActivityStudyReviewFlowSubmitTest {
 
             assertEquals("complete", repairStatus(store, activeRepair.id))
             assertFalse(activity.studySessionTracker.hasActiveTask())
-            // Writing repair is self-graded, so the applied write auto-advances
-            // exactly once; a duplicate manual Continue stays a no-op.
-            assertEquals(1, activity.renderCount())
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, activity.studyAnswerFeedbackState?.snapshot()?.phase)
+            assertEquals(session.token, activity.activeSession?.token)
+            assertEquals(0, activity.renderCount())
+            assertTrue(activity.continueAfterStudyAnswer())
             assertFalse(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }
@@ -639,6 +598,80 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(1, store.consumedTokens().size)
             assertEquals(0, activity.renderCount())
             assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    private fun assertSelfGradedActionWaitsForExplicitContinue(pass: Boolean) {
+        withReviewActivity(if (pass) "正" else "誤") { activity, store, reviewIo, session ->
+            activity.prepareStudyAnswerFeedback(session.token)
+            activity.buildFlashcardActionBar(revealed = true)
+            val actions = requireNotNull(activity.flashcardActionBarState)
+
+            if (pass) actions.onPass.run() else actions.onFail.run()
+
+            val feedback = requireNotNull(activity.studyAnswerFeedbackState)
+            assertEquals(
+                if (pass) StudyAnswerOutcome.CORRECT else StudyAnswerOutcome.INCORRECT,
+                feedback.outcome,
+            )
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, feedback.snapshot().phase)
+            assertEquals(1, reviewIo.pendingCount())
+            assertEquals(0, activity.renderCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, feedback.snapshot().phase)
+            assertTrue(feedback.continueEnabled)
+            assertEquals(session.token, activity.activeSession?.token)
+            assertEquals(0, activity.renderCount())
+
+            assertTrue(activity.continueAfterStudyAnswer())
+            assertFalse(activity.continueAfterStudyAnswer())
+            assertEquals(1, activity.renderCount())
+        }
+    }
+
+    private fun assertWritingActionWaitsForExplicitContinue(
+        status: WritingAnalysis.Status,
+        writingPassed: Boolean,
+        expectedOutcome: StudyAnswerOutcome,
+    ) {
+        withReviewActivity("書") { activity, store, reviewIo, session ->
+            activity.writingPrimaryActionsView = WritingPrimaryActionsView(activity)
+            activity.writingFallbackActionsView = WritingFallbackActionsView(activity)
+            activity.activeAnalysis = WritingAnalysis(
+                status,
+                if (writingPassed) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN,
+                writingPassed,
+                "result",
+                emptyList(),
+                null,
+            )
+            activity.prepareStudyAnswerFeedback(session.token)
+            activity.updateResultActions()
+            val action = requireNotNull(activity.writingPrimaryActionsView).currentModel()
+            assertTrue(action.nextVisible)
+
+            action.onNext.run()
+
+            val feedback = requireNotNull(activity.studyAnswerFeedbackState)
+            assertEquals(expectedOutcome, feedback.outcome)
+            assertEquals(StudyAnswerFeedbackPhase.SUBMITTING, feedback.snapshot().phase)
+            assertEquals(1, reviewIo.pendingCount())
+
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+
+            assertTrue(store.hasConsumedToken(session.token))
+            assertEquals(StudyAnswerFeedbackPhase.APPLIED, feedback.snapshot().phase)
+            assertTrue(feedback.continueEnabled)
+            assertEquals(session.token, activity.activeSession?.token)
+            assertEquals(0, activity.renderCount())
+
             assertTrue(activity.continueAfterStudyAnswer())
             assertEquals(1, activity.renderCount())
         }

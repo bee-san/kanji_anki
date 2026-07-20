@@ -95,12 +95,12 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 onNext = if (repairSkipVisible) {
                     Runnable { activity.skipSimilarWritingRepair() }
                 } else {
-                    Runnable { activity.submitReview(presentation.nextRating, false, autoContinue = true) }
+                    Runnable { activity.submitReview(presentation.nextRating, false) }
                 },
                 skipText = StudyWritingCopy.skipLabel(),
                 skipVisible = presentation.skipVisible,
                 skipEnabled = presentation.skipEnabled,
-                onSkip = Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true, autoContinue = true) },
+                onSkip = Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
 
             )
         )
@@ -113,7 +113,7 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 presentation.manualOverrideVisible,
                 presentation.practiceWithGuideVisible,
                 Runnable { activity.replayWritingAnalysis() },
-                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true, autoContinue = true) },
+                Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
                 Runnable { activity.startGuidedWritingRetry() },
             )
         )
