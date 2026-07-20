@@ -16,6 +16,19 @@ object ReleaseVersion {
         return false
     }
 
+    /**
+     * Returns true only when [tagName] is a usable strict `MAJOR.MINOR.PATCH`
+     * release tag (optionally `v`-prefixed). A blank/garbage tag — e.g. the
+     * empty `tag_name` a captive portal / intercepting proxy produces when it
+     * answers the releases API with an HTTP 200 HTML interstitial — is not a
+     * valid semver, so the caller can classify it as a connectivity failure
+     * instead of collapsing it to `0.0.0` and reporting "already on version".
+     */
+    @JvmStatic
+    fun isValidSemver(tagName: String?): Boolean {
+        return VERSION_PATTERN.matches(stripLeadingV(tagName))
+    }
+
     private fun stripLeadingV(version: String?): String {
         return version?.removePrefix("v").orEmpty()
     }

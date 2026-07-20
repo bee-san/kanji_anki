@@ -40,6 +40,7 @@ import java.net.URL
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.Locale
+import javax.net.ssl.SSLException
 
 class GitHubUpdater @JvmOverloads constructor(
     context: Context,
@@ -53,6 +54,28 @@ class GitHubUpdater @JvmOverloads constructor(
             val api = "$API_BASE${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}/releases/latest"
             val json = client.getText(api)
             val latest = GitHubReleaseMetadataParser.parseLatest(json)
+            if (!ReleaseVersion.isValidSemver(latest.tagName())) {
+                // A successful HTTP read that carries no usable release tag is
+                // not "up to date": it is the signature of a captive portal /
+                // intercepting proxy answering the releases API with an HTML
+                // interstitial (HTTP 200, empty tag_name). Classify it as a
+                // retryable connectivity failure so recordResult lights (does
+                // not clear) the update-check-failed flag and Home keeps a retry
+                // affordance, instead of collapsing the empty tag to 0.0.0 and
+                // reporting "already on version".
+                return recordResult(
+                    checkedAt,
+                    UpdateResult.failed(
+                        UpdateTextPolicy.updateCheckFailedMessage(
+                            UpdateTextPolicy.noUsableReleaseMetadataReason(),
+                        ),
+                        true,
+                    ),
+                    "",
+                    "",
+                    "",
+                )
+            }
             if (!ReleaseVersion.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName())) {
                 return recordResult(
                     checkedAt,
@@ -709,6 +732,7 @@ class GitHubUpdater @JvmOverloads constructor(
                     is UnknownHostException,
                     is NoRouteToHostException,
                     is SocketException,
+                    is SSLException,
                     -> return true
                 }
                 cause = cause?.cause
