@@ -550,7 +550,7 @@ internal abstract class LocalStoreStudy(
     fun getLongSetting(key: String, fallback: Long): Long = studySettings().getLongSetting(key, fallback)
 
     override fun getStringSetting(key: String, fallback: String?): String? {
-        return settingsRepository().getString(key, fallback)
+        return settingsStore().getString(key, fallback)
     }
 
     override fun getDoubleSetting(key: String, fallback: Double): Double =

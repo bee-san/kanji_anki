@@ -189,6 +189,30 @@ RECORD_DEFINITION_FILES = {
     "core/src/main/kotlin/dev/bee/kanjianki/core/RecordsSchedulerModels.kt",
     "core/src/main/kotlin/dev/bee/kanjianki/core/RecordsStudyModels.kt",
 }
+REPOSITORY_CONTRACTS = {
+    "HomeRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/HomeRepository.kt",
+    "StudyRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
+    "StatsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
+    "SettingsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
+    "SyncRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
+}
+REPOSITORY_MODEL_FILES = (
+    "app/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
+    "app/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
+)
+REPOSITORY_FORBIDDEN_TOKENS = (
+    "LocalStore",
+    "StatsCacheStore",
+    "StudyStatsStore",
+    "SQLite",
+    "ContentValues",
+    "Cursor",
+    "Context",
+    "Activity",
+    "TABLE_",
+    "android.",
+    "androidx.",
+)
 
 
 def parse_project_dependencies(build_script: str, module: str) -> set[str]:
@@ -212,6 +236,20 @@ def persistence_reference_allowed(reference: str) -> bool:
         reference == prefix or reference.startswith(f"{prefix}.")
         for prefix in PERSISTENCE_ALLOWED_REFERENCE_PREFIXES
     )
+
+
+def declaration_body(source: str, declaration: str) -> str:
+    start = source.index(f"interface {declaration}")
+    opening = source.index("{", start)
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1 : index]
+    raise AssertionError(f"{declaration} has no closing brace")
 
 
 class ModuleBoundaryTest(unittest.TestCase):
@@ -347,6 +385,77 @@ class ModuleBoundaryTest(unittest.TestCase):
             violations,
             "persistence must not import app, feature, platform, or UI implementations",
         )
+
+    def test_repository_contracts_are_suspend_store_result_boundaries(self) -> None:
+        for repository, relative_path in REPOSITORY_CONTRACTS.items():
+            with self.subTest(repository=repository):
+                source = (ROOT / relative_path).read_text(encoding="utf-8")
+                body = declaration_body(source, repository)
+                functions = re.findall(
+                    r"(?ms)^\s*(suspend\s+)?fun\b.*?(?=^\s*(?:suspend\s+)?fun\b|\Z)",
+                    body,
+                )
+                self.assertTrue(functions, f"{repository} must declare operations")
+                self.assertTrue(
+                    all(modifier is not None for modifier in functions),
+                    f"{repository} operations must be suspend functions",
+                )
+                self.assertEqual(
+                    len(functions),
+                    body.count("StoreResult<"),
+                    f"{repository} operations must return StoreResult",
+                )
+        public_surface_files = (*REPOSITORY_CONTRACTS.values(), *REPOSITORY_MODEL_FILES)
+        for relative_path in public_surface_files:
+            source = (ROOT / relative_path).read_text(encoding="utf-8")
+            with self.subTest(public_surface=relative_path):
+                for token in REPOSITORY_FORBIDDEN_TOKENS:
+                    self.assertNotIn(
+                        token,
+                        source,
+                        f"{relative_path} exposes persistence/platform implementation token {token}",
+                    )
+
+        study = declaration_body(
+            (ROOT / REPOSITORY_CONTRACTS["StudyRepository"]).read_text(encoding="utf-8"),
+            "StudyRepository",
+        )
+        sync = declaration_body(
+            (ROOT / REPOSITORY_CONTRACTS["SyncRepository"]).read_text(encoding="utf-8"),
+            "SyncRepository",
+        )
+        self.assertEqual(1, study.count("commitReview("))
+        self.assertEqual(1, sync.count("publish("))
+        self.assertTrue(
+            (ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt").exists(),
+        )
+
+    def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:
+        study_adapter = (
+            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteStudyRepository.kt"
+        ).read_text(encoding="utf-8")
+        sync_adapter = (
+            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSyncRepository.kt"
+        ).read_text(encoding="utf-8")
+        settings_store = (
+            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt"
+        ).read_text(encoding="utf-8")
+        fakes = (
+            ROOT / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(1, study_adapter.count("store.commitReview(command)"))
+        self.assertNotIn("store.saveReview(", study_adapter)
+        self.assertGreaterEqual(
+            study_adapter.count("store.readSnapshot {"),
+            1,
+            "composite study snapshots must use one database transaction",
+        )
+        self.assertEqual(1, sync_adapter.count("store.publishSyncAtomically"))
+        self.assertEqual(1, sync_adapter.count("command.queuePlanner.plan("))
+        self.assertIn("internal class SqliteSettingsStore(", settings_store)
+        for repository in REPOSITORY_CONTRACTS:
+            self.assertIn(f"class Fake{repository}", fakes)
 
     def test_production_sources_use_typed_record_factories(self) -> None:
         violations = []

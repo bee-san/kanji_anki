@@ -240,6 +240,46 @@ than the `LocalStore` implementation.
 - Repository APIs expose no `SQLiteDatabase`, cursor, table name, or Activity.
 - Review and sync atomic operations remain one repository call each.
 
+**Completion evidence (2026-07-20):**
+
+- Work started from `main` at `6a952df4`, immediately after Goal 146 merged,
+  on `architecture/goal-147-repository-apis`.
+- `HomeRepository`, `StudyRepository`, `StatsRepository`,
+  `SettingsRepository`, and `SyncRepository` are public suspend-based ports.
+  Every operation returns `StoreResult`; their immutable snapshots and typed
+  commands expose no `LocalStore`, cache/store implementation, Android
+  component, cursor, database, or table-name type.
+- The former raw key/value `SettingsRepository` is now the internal
+  `SqliteSettingsStore`. The typed settings adapter persists logical groups,
+  including sync and workload groups, atomically without exposing raw keys;
+  every valid field accepted by the sync command round-trips through storage,
+  while non-positive maturity values fall back to safe defaults.
+- Internal SQLite adapters preserve the existing review token/revision CAS as
+  one `commitReview` call. Sync accepts one pure queue planner, stages the
+  mirror, invokes that planner once with an immutable snapshot, annotates
+  conditional capabilities, and finalizes queue/history inside one outer
+  publication transaction. Composite repository reads use one non-exclusive
+  transaction so a concurrent publication cannot mix storage generations.
+- Focused test fakes cover all five ports. Robolectric adapter tests pin typed
+  settings round trips, feature snapshot projection, successful single-call
+  sync publication, and rollback when queue planning fails. Source guardrails
+  pin suspend/`StoreResult` contracts, forbidden implementation types, the
+  renamed settings store, fakes, and both atomic call boundaries.
+- The focused repository tests passed. The full
+  `./gradlew ciFast ciQuality` gate then passed all 110 tasks in 2m18s,
+  including app/core tests, coverage reports/checks, lint, Android
+  instrumentation compilation, 62 repository tool tests, 91 Ralph tests, 62
+  asset tests, and 70 CI-script tests. After review hardening, the same gate
+  passed again in 2m06s along with the 62-test Python tool suite. A final
+  maturity-value hardening rerun passed in 2m00s. Expanded repository contract
+  coverage then passed the gate in 2m06s with 1,341 app tests; JaCoCo reported
+  97.1% line-plus-branch coverage over production additions against `main`.
+- Production consumers still use the compatibility `LocalStore` facade until
+  Goal 149, so no active provider/sync path changed. A live AnkiDroid run was
+  therefore not required for this contract-only slice. Rollback is source-only;
+  no schema, stored value, provider behavior, backup format, or user data
+  changed.
+
 ### Goal 148: Introduce the process-owned `KaniContainer`
 
 **Outcome:** Object creation and lifetime are explicit and no longer owned by

@@ -4,10 +4,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class SettingsRepositoryTest {
+class SqliteSettingsStoreTest {
     @Test
     fun missingNumericValuesReturnFallbacks() {
-        val repository = SettingsRepository(FakeSettingsStorage())
+        val repository = SqliteSettingsStore(FakeSettingsStorage())
 
         assertEquals(7, repository.getInt("missing-int", 7))
         assertEquals(8L, repository.getLong("missing-long", 8L))
@@ -21,7 +21,7 @@ class SettingsRepositoryTest {
             "long" to "not a long",
             "double" to "not a double",
         )
-        val repository = SettingsRepository(storage)
+        val repository = SqliteSettingsStore(storage)
 
         assertEquals(11, repository.getInt("int", 11))
         assertEquals(12L, repository.getLong("long", 12L))
@@ -30,7 +30,7 @@ class SettingsRepositoryTest {
 
     @Test
     fun stringFallbackUsesOnlyMissingStorageValues() {
-        val repository = SettingsRepository(FakeSettingsStorage("empty" to ""))
+        val repository = SqliteSettingsStore(FakeSettingsStorage("empty" to ""))
 
         assertEquals("fallback", repository.getString("missing", "fallback"))
         assertEquals("", repository.getString("empty", "fallback"))
@@ -40,7 +40,7 @@ class SettingsRepositoryTest {
     @Test
     fun writesUseExistingStringFormats() {
         val storage = FakeSettingsStorage()
-        val repository = SettingsRepository(storage)
+        val repository = SqliteSettingsStore(storage)
 
         repository.putInt("int", 42)
         repository.putLong("long", 123456789L)
@@ -58,7 +58,7 @@ class SettingsRepositoryTest {
     @Test
     fun bulkStorageLoadsOneSnapshotForPresentAndMissingKeys() {
         val storage = BulkSettingsStorage("present" to "17")
-        val repository = SettingsRepository(storage)
+        val repository = SqliteSettingsStore(storage)
 
         assertEquals(17, repository.getInt("present", 0))
         assertEquals(9, repository.getInt("missing", 9))
@@ -71,8 +71,8 @@ class SettingsRepositoryTest {
     @Test
     fun writesInvalidateThisAndOtherRepositorySnapshots() {
         val storage = BulkSettingsStorage("value" to "old")
-        val first = SettingsRepository(storage)
-        val second = SettingsRepository(storage)
+        val first = SqliteSettingsStore(storage)
+        val second = SqliteSettingsStore(storage)
 
         assertEquals("old", first.getString("value", null))
         assertEquals(1, storage.getAllCalls)
@@ -86,7 +86,7 @@ class SettingsRepositoryTest {
     @Test
     fun explicitInvalidationPublishesDirectTransactionalWrites() {
         val storage = BulkSettingsStorage("value" to "before")
-        val repository = SettingsRepository(storage)
+        val repository = SqliteSettingsStore(storage)
         assertEquals("before", repository.getString("value", null))
 
         storage.values["value"] = "after"
@@ -99,7 +99,7 @@ class SettingsRepositoryTest {
     @Test
     fun transactionOwnerBypassesSharedSnapshotForReadAfterWriteAndRollback() {
         val storage = TransactionalBulkSettingsStorage("value" to "committed")
-        val repository = SettingsRepository(storage)
+        val repository = SqliteSettingsStore(storage)
 
         assertEquals("committed", repository.getString("value", null))
         assertEquals(1, storage.getAllCalls)

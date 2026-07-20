@@ -24,8 +24,11 @@ class SyncSettingsTest {
     fun storedValuesAreNormalizedWithoutDependingOnPersistenceTypes() {
         val store = FakeStore(
             SyncSettings.NOTE_TYPE_SETTING_KEY to "  Custom  ",
+            SyncSettings.TEMPLATE_SETTING_KEY to "  Alternate  ",
             SyncSettings.EXPRESSION_FIELD_SETTING_KEY to "  ",
             SyncSettings.READING_FIELD_SETTING_KEY to " Kana ",
+            SyncSettings.MATURE_DAYS_SETTING_KEY to "35",
+            SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY to "4",
             SyncSettings.NEW_PER_DAY_SETTING_KEY to "37",
             SyncSettings.ACTIVE_QUEUE_CAP_SETTING_KEY to "42",
             SyncSettings.IMPORT_BROWSER_QUERY_CARDS_SETTING_KEY to "1",
@@ -36,8 +39,11 @@ class SyncSettingsTest {
         val actual = SyncSettings.fromStore(store)
 
         assertEquals("Custom", actual.modelName)
+        assertEquals("Alternate", actual.templateName)
         assertEquals(RecordsSyncModels.Settings.kikuDefaults().expressionField, actual.expressionField)
         assertEquals("Kana", actual.readingField)
+        assertEquals(35, actual.matureDays)
+        assertEquals(4, actual.matureSupportThreshold)
         assertEquals(37, actual.newPerDay)
         assertEquals(42, actual.activeQueueCap)
         assertTrue(actual.importBrowserQueryCards)
@@ -66,6 +72,20 @@ class SyncSettingsTest {
         assertTrue(actual.importSuspendedCards)
         assertEquals("0", store.values[SyncSettings.IMPORT_ACTIVE_CARDS_SETTING_KEY])
         assertEquals("1", store.values[SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY])
+    }
+
+    @Test
+    fun nonPositiveMaturitySettingsFallBackToDefaults() {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        val store = FakeStore(
+            SyncSettings.MATURE_DAYS_SETTING_KEY to "0",
+            SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY to "-1",
+        )
+
+        val actual = SyncSettings.fromStore(store)
+
+        assertEquals(defaults.matureDays, actual.matureDays)
+        assertEquals(defaults.matureSupportThreshold, actual.matureSupportThreshold)
     }
 
     private class FakeStore(vararg entries: Pair<String, String>) : SyncSettingsStore {

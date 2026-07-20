@@ -36,10 +36,10 @@ abstract class LocalStoreBase internal constructor(
         setWriteAheadLoggingEnabled(true)
     }
 
-    private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this), diagnosticLogger)
+    private val settingsStore = SqliteSettingsStore(SqliteSettingsStorage(this), diagnosticLogger)
     private var settingsInvalidationPending = false
 
-    internal fun settingsRepository(): SettingsRepository = settingsRepository
+    internal fun settingsStore(): SqliteSettingsStore = settingsStore
 
     internal fun migrationHooks(): LocalStoreMigrationHooks = LocalStoreMigrationHooks(this)
 
@@ -79,15 +79,15 @@ abstract class LocalStoreBase internal constructor(
         super.onOpen(db)
         if (settingsInvalidationPending) {
             settingsInvalidationPending = false
-            settingsRepository.invalidate()
+            settingsStore.invalidate()
         }
     }
 
     fun consumeDowngradeNotice(): Int? {
-        val version = settingsRepository().getString(SETTING_DOWNGRADED_FROM_VERSION, null)
+        val version = settingsStore().getString(SETTING_DOWNGRADED_FROM_VERSION, null)
             ?.toIntOrNull() ?: return null
         writableDatabase.delete(TABLE_SETTINGS, WHERE_SETTING_KEY, arrayOf(SETTING_DOWNGRADED_FROM_VERSION))
-        settingsRepository().invalidate()
+        settingsStore().invalidate()
         return version
     }
 

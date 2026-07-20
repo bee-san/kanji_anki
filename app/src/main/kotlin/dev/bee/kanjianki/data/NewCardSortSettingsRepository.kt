@@ -4,7 +4,7 @@ import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.SyncSettings
 
 internal class NewCardSortSettingsRepository(
-    private val settings: SettingsRepository,
+    private val settings: SqliteSettingsStore,
 ) {
     fun saveMode(mode: String?): NewCardSortSettingsPolicy.SaveRequest {
         val request = NewCardSortSettingsPolicy.saveRequest(mode)

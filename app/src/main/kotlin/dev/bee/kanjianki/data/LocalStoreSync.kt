@@ -19,6 +19,15 @@ internal abstract class LocalStoreSync(
     diagnosticLogger: DiagnosticLogger,
 ) : LocalStoreInventory(context, diagnosticLogger) {
     /**
+     * Keeps composite repository reads on one database generation. A non-exclusive
+     * transaction permits concurrent readers while preventing a sync/settings writer
+     * from publishing between component queries, including queries served from caches.
+     */
+    fun <T> readSnapshot(block: () -> T): T {
+        return readableDatabase.transaction(exclusive = false) { block() }
+    }
+
+    /**
      * Publish the provider mirror, derived dashboard/inventory, and seeded study
      * queue behind one outer SQLite transaction. The existing save/finalize
      * methods use nested transactions; Android defers their commits until this
