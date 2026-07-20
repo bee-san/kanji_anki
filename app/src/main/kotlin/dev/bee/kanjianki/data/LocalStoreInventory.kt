@@ -53,6 +53,8 @@ internal abstract class LocalStoreInventory(
     private val conditionalRungAvailabilityCache = ConditionalRungAvailabilityCache()
     private val newCardSortPreviewCacheVersion = AtomicLong(0L)
     @Volatile
+    private var observedDashboardCacheEpoch: Long = DASHBOARD_CACHE_EPOCH.get()
+    @Volatile
     private var observedStudyItemsCacheEpoch: Long = STUDY_ITEMS_CACHE_EPOCH.get()
 
     fun newCardSortPreviewCacheVersion(): Long {
@@ -64,6 +66,12 @@ internal abstract class LocalStoreInventory(
     }
 
     internal fun clearDashboardRowsCache() {
+        val publishedEpoch = DASHBOARD_CACHE_EPOCH.incrementAndGet()
+        clearLocalDashboardRowsCache()
+        observedDashboardCacheEpoch = publishedEpoch
+    }
+
+    private fun clearLocalDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
@@ -73,11 +81,29 @@ internal abstract class LocalStoreInventory(
     }
 
     internal fun clearLocallySuspendedCache() {
+        val publishedEpoch = DASHBOARD_CACHE_EPOCH.incrementAndGet()
         cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
         clearKanjiInventoryAllCache()
         bumpNewCardSortPreviewCacheVersion()
+        observedDashboardCacheEpoch = publishedEpoch
+    }
+
+    private fun ensureDashboardCacheFresh() {
+        val currentEpoch = DASHBOARD_CACHE_EPOCH.get()
+        if (observedDashboardCacheEpoch == currentEpoch) {
+            return
+        }
+        synchronized(this) {
+            val latestEpoch = DASHBOARD_CACHE_EPOCH.get()
+            if (observedDashboardCacheEpoch != latestEpoch) {
+                cachedLocallySuspendedKanji = null
+                clearLocalDashboardRowsCache()
+                clearKanjiInventoryAllCache()
+                observedDashboardCacheEpoch = latestEpoch
+            }
+        }
     }
 
     internal override fun clearStudyItemsCache() {
@@ -130,6 +156,7 @@ internal abstract class LocalStoreInventory(
     }
 
     fun dashboardRows(): List<RecordsImportModels.DashboardRow> {
+        ensureDashboardCacheFresh()
         cachedDashboardRows?.let {
             diagnosticLogger.traceStudyLoad("dashboardRows cache hit size=${it.size}")
             return it
@@ -245,6 +272,7 @@ internal abstract class LocalStoreInventory(
     }
 
     fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
+        ensureDashboardCacheFresh()
         cachedActiveDashboardRows?.let { return it }
 
         val suspended = locallySuspendedKanji()
@@ -262,6 +290,7 @@ internal abstract class LocalStoreInventory(
     }
 
     fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
+        ensureDashboardCacheFresh()
         cachedActiveDashboardRowsByKanji?.let { return it }
 
         val rows = activeDashboardRows()
@@ -393,6 +422,7 @@ internal abstract class LocalStoreInventory(
     }
 
     fun locallySuspendedKanji(): Set<String> {
+        ensureDashboardCacheFresh()
         cachedLocallySuspendedKanji?.let { return it }
 
         val out = HashSet<String>()
@@ -434,10 +464,10 @@ internal abstract class LocalStoreInventory(
         }
         writableDatabase.transaction {
             setKanjiLocallySuspendedInTransaction(this, kanji, suspended, nowMillis)
+            StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty(this)
         }
         clearLocallySuspendedCache()
         clearKanjiInventoryAllCache()
-        StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty()
     }
 
     fun setKanjiLocallySuspendedForKanji(kanji: Collection<String?>?, suspended: Boolean, nowMillis: Long) {
@@ -453,10 +483,10 @@ internal abstract class LocalStoreInventory(
             for (value in normalized) {
                 setKanjiLocallySuspendedInTransaction(this, value, suspended, nowMillis)
             }
+            StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty(this)
         }
         clearLocallySuspendedCache()
         clearKanjiInventoryAllCache()
-        StatsCacheStore(this@LocalStoreInventory as LocalStore).markDirty()
     }
 
     private fun setKanjiLocallySuspendedInTransaction(
@@ -1124,6 +1154,9 @@ internal abstract class LocalStoreInventory(
 
     private companion object {
         const val DASHBOARD_ROW_LIMIT = "120"
+
+        /** Shared by every LocalStore helper in this process. */
+        val DASHBOARD_CACHE_EPOCH = AtomicLong(0L)
 
         /** Shared by every LocalStore helper in this process. */
         val STUDY_ITEMS_CACHE_EPOCH = AtomicLong(0L)
