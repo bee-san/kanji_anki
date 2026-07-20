@@ -1,10 +1,12 @@
 # Offline Resilience Audit (Kani / bee-san/kanji_anki)
 
 Branch: `fix/offline-resilience`
-Scope: audit + regression harness only. **No production fix is made by the
-audit card** (`t_51ce84ae`); the fixes belong to the child card
-(`t_22aceb86`). This document is the evidence-backed baseline and the
-regression matrix that later cards work against.
+Scope: this document began as the audit + regression-harness baseline for the
+audit card (`t_51ce84ae`). It now also records the fixes delivered by the child
+card (`t_22aceb86`) and the hermetic network-fault CI coverage built on top of
+the harness (JVM matrix in `ciFast` plus `@DeviceRisk` on-device parity in the
+API 26/35 emulator lanes). It remains the evidence-backed baseline and the
+regression matrix later cards work against.
 
 ## 1. Method
 
@@ -64,14 +66,25 @@ in the audit card to a deterministic effect on an HTTP read:
 | `DNS_FAILURE` | `UnknownHostException` | DNS failure |
 | `CONNECTION_REFUSED` | `ConnectException` | connection refused |
 | `BLACK_HOLE_TIMEOUT` | `SocketTimeoutException` | black-holed timeout |
+| `SLOW_RESPONSE_TIMEOUT` | `SocketTimeoutException` ("slow response") | slow / high-latency response, packet loss (surfaces as a read timeout) |
 | `TLS_HANDSHAKE_FAILURE` | `SSLHandshakeException` | TLS / proxy / captive-portal TLS |
-| `MID_REQUEST_DISCONNECT` | `SocketException` | mid-request disconnect |
+| `MID_REQUEST_DISCONNECT` | `SocketException` | mid-request disconnect / midstream drop |
+| `CANCELLED_READ` | `InterruptedIOException` | request cancellation (thread interrupt / WorkManager stop / process backgrounded) |
+| `TRUNCATED_JSON` | HTTP 200 + partial/corrupt JSON body | malformed / partial payload |
 | `CAPTIVE_PORTAL_HTML` | HTTP 200 + login HTML body | captive-portal / transparent-proxy interception |
+
+In addition to the single-fault catalogue, the harness scripts a `flappingClient`
+that walks a sequence of faults and healthy responses across successive
+`getText` calls, driving the online↔offline flapping scenario directly at the
+updater seam.
 
 Cold/warm launch, force-stop relaunch, flapping, high-latency/packet-loss, and
 recovery are all reducible, at the updater seam, to one of the transport
 outcomes above plus the persisted `LocalStore` flag state that survives process
 death; the harness drives that seam directly and asserts on the persisted flag.
+The flapping and process-restart invariants are pinned explicitly
+(`flappingConnectivityKeepsRetryFlagInSyncWithReality`,
+`retryFlagSurvivesProcessRestart`).
 
 ## 5. Regression matrix — updater offline contract
 
@@ -82,21 +95,52 @@ Command:
   --tests "dev.bee.kanjianki.offline.UpdaterOfflineContractTest" --no-daemon
 ```
 
-Observed: `9 tests completed, 4 failed` (5 pass as regression guards, 4 fail as
-confirmed defects). Full JUnit XML:
+Current (branch `fix/offline-resilience`): `15 tests completed, 0 failed` —
+every fault classifies correctly and the two originally-confirmed defects are
+now locked as passing guards. Full JUnit XML:
 `app/build/test-results/testDebugUnitTest/TEST-dev.bee.kanjianki.offline.UpdaterOfflineContractTest.xml`.
 
-| Fault | Expected offline contract | Observed today | Crash/ANR/data-loss | Recovery | Status |
-|-------|---------------------------|----------------|---------------------|----------|--------|
+RED evidence (TDD): the 6 tests added on top of the original 5 socket guards
+fail against pre-fix production behavior. Temporarily removing the
+`isValidSemver` unusable-body guard collapses the captive-portal and
+truncated-JSON cases to "already on version" (5 failures across the two
+`captivePortalHtml*`/`truncatedJson*` families), and naively adding
+`InterruptedIOException` to `retryableFailure`'s allowlist makes
+`cancelledReadIsNotRetryableAndDoesNotLightRetryFlag` fail — confirming each
+new test guards a real production decision, not tautology.
+
+| Fault | Expected offline contract | Classification today | Crash/ANR/data-loss | Recovery | Status |
+|-------|---------------------------|----------------------|---------------------|----------|--------|
 | `NO_ROUTE` | retryable failure, flag lit, not "up to date" | correct | none | retry when online | ✅ guard passes |
 | `DNS_FAILURE` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes |
 | `CONNECTION_REFUSED` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes |
 | `BLACK_HOLE_TIMEOUT` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes |
+| `SLOW_RESPONSE_TIMEOUT` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes |
 | `MID_REQUEST_DISCONNECT` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes |
-| `TLS_HANDSHAKE_FAILURE` | retryable failure, flag lit | **non-retryable; flag cleared** | none (silent) | **no retry affordance until next manual check** | ❌ **Defect B** |
-| `CAPTIVE_PORTAL_HTML` | not "up to date"; retryable; flag lit | **reported "Already on 0.4.204"; non-retryable; flag cleared** | none (silent, misleading) | **no retry; user believes they are current** | ❌ **Defect A** |
+| `CANCELLED_READ` | **non-retryable**, flag NOT lit, not "up to date" | correct | none | resumes on next check; no false retry banner | ✅ guard passes |
+| `TRUNCATED_JSON` | retryable failure, flag lit, not "up to date" | correct | none | retry when online | ✅ guard passes (was Defect A family) |
+| `TLS_HANDSHAKE_FAILURE` | retryable failure, flag lit | correct | none | retry when online | ✅ guard passes (fixed Defect B) |
+| `CAPTIVE_PORTAL_HTML` | not "up to date"; retryable; flag lit | correct | none | retry when online | ✅ guard passes (fixed Defect A) |
+| flapping (DNS → healthy → refused) | flag tracks reality: lit, cleared, re-lit | correct | none | banner matches live connectivity | ✅ guard passes |
+| process restart with lit flag | persisted flag survives store reopen | correct | none | Home shows retry after relaunch | ✅ guard passes |
 
-## 6. Confirmed defects
+On-device (API 26 + API 35, via the device-smoke / instrumented emulator lanes):
+`UpdateFlowInstrumentedTest` pins the same classification contract on a real
+Android runtime with `@DeviceRisk`-annotated tests
+(`offlineNoRouteIsRetryableConnectivityFailureOnDevice`,
+`offlineTlsHandshakeFailureIsRetryableConnectivityFailureOnDevice`,
+`offlineCaptivePortalHtmlIsNotReportedAsAlreadyCurrentOnDevice`,
+`offlineCancelledReadIsNotRetryableAndDoesNotLightRetryFlagOnDevice`,
+`offlineRetryFlagSurvivesProcessRestartOnDevice`). These run on the emulator
+lanes only; instrumentation compilation stays in `ciFast` so a broken device
+test fails the fast gate even without an emulator.
+
+## 6. Originally-confirmed defects (now fixed)
+
+Both defects below were confirmed by this audit and subsequently fixed by the
+child card `t_22aceb86` (commits `58c7fac7` / `387a3dd5`). The audit tests that
+originally reproduced them are now passing regression guards; the descriptions
+are retained for provenance.
 
 ### Defect A — captive portal misreported as "already up to date"
 
@@ -114,10 +158,12 @@ confirmed defects). Full JUnit XML:
   they are on the latest version while actually offline behind a portal. A
   network outage is represented as an empty *successful* remote response —
   exactly the failure mode the child card's contract forbids.
-- **Evidence:** `captivePortalHtmlMustNotBeReportedAsAlreadyOnVersion`
-  (actual message: `Already on 0.4.204.`),
+- **Evidence (at audit time, since fixed):**
+  `captivePortalHtmlMustNotBeReportedAsAlreadyOnVersion`
+  (actual message was `Already on 0.4.204.`),
   `captivePortalHtmlIsRetryableConnectivityFailure`,
-  `captivePortalHtmlLightsTheUpdateCheckFailedFlag` — all fail.
+  `captivePortalHtmlLightsTheUpdateCheckFailedFlag` — all failed pre-fix, all
+  pass now.
 
 ### Defect B — TLS handshake failure classified as permanent
 
@@ -133,37 +179,54 @@ confirmed defects). Full JUnit XML:
 - **User-visible effect:** A recoverable connectivity/interception failure is
   treated as permanent; the retry affordance is cleared and the outage is
   swallowed silently.
-- **Evidence:** `tlsHandshakeFailureIsRetryableConnectivityFailure` fails
-  (`result.retryable` is `false`).
+- **Evidence (at audit time, since fixed):**
+  `tlsHandshakeFailureIsRetryableConnectivityFailure` failed pre-fix
+  (`result.retryable` was `false`) and passes now.
 
-Both defects are misclassification bugs, not crashes; there is **no crash, ANR,
-or data-loss risk** on any updater path. No local surface is blocked by either
-defect — they only affect the update-check UX.
+Both defects were misclassification bugs, not crashes; there was **no crash,
+ANR, or data-loss risk** on any updater path. No local surface was blocked by
+either defect — they only affected the update-check UX.
 
-## 7. Fix guidance for the child card (`t_22aceb86`)
+## 7. Resolution (child card `t_22aceb86`, commits `58c7fac7` / `387a3dd5`)
 
-Keep the harness and tests; make them go green one invariant at a time. Do
-**not** widen scope beyond classification:
+The harness and tests were kept and made green one invariant at a time, without
+widening scope beyond classification:
 
-1. **Defect B:** add `SSLException`/`SSLHandshakeException` (and, defensively,
-   the `javax.net.ssl` family) to the retryable cause-walk in
-   `retryableFailure`.
-2. **Defect A:** treat a successful HTTP read that yields no usable
-   `tag_name`/semver as a connectivity/interception failure, not an
-   "already on version" result — return a retryable failure so `recordResult`
-   lights (does not clear) the update-check-failed flag. Guard against the
-   empty-tag → `0.0.0` collapse in the "not newer" branch.
+1. **Defect B:** `SSLException`/`SSLHandshakeException` (and the `javax.net.ssl`
+   family, via `SSLException`) were added to the retryable cause-walk in
+   `GitHubUpdater.retryableFailure`.
+2. **Defect A:** a successful HTTP read that yields no usable `tag_name`/semver
+   is now treated as a connectivity/interception failure via the
+   `!ReleaseVersion.isValidSemver(latest.tagName())` guard in
+   `checkDownloadAndInstall`, which returns a retryable failure so
+   `recordResult` lights (does not clear) the update-check-failed flag instead
+   of collapsing the empty tag to `0.0.0` and reporting "already on version".
 
-Preserve the existing signature-verification and APK-validation behavior; the
-captive-portal `download` path already writes HTML that must continue to be
-rejected by checksum/APK validation.
+Signature-verification and APK-validation behavior are unchanged; the
+captive-portal `download` path still writes HTML that is rejected by
+checksum/APK validation. Commit `387a3dd5` additionally surfaces the lit flag
+as a recoverable Home banner with retry.
+
+The regression matrix was subsequently expanded (this branch) to cover slow /
+high-latency responses, malformed/truncated payloads, request cancellation,
+online↔offline flapping, and process restart with pending work, and mirrored
+on-device at API 26/35 via `@DeviceRisk` instrumentation.
 
 ## 8. Coverage limits / residual risk
 
-- Emulator/KVM was not exercised in this audit run; API 26/35 device behavior
-  for the update UI is covered by existing instrumented tests and the CI
-  emulator lanes. All evidence here is host-side JVM (Robolectric `sdk = [35]`)
-  and is deterministic and Internet-free.
+- Host-side JVM evidence (Robolectric `sdk = [35]`, `UpdaterOfflineContractTest`)
+  is deterministic and Internet-free and runs in `ciFast`. On-device parity
+  (`UpdateFlowInstrumentedTest`, `@DeviceRisk`) runs in the API 26/35 emulator
+  lanes (`android-device-smoke.yml` risk suite and the nightly/dispatch
+  `android-instrumented.yml`); local runs require KVM, which the audit/CI-worker
+  hosts may lack, so on-device execution is delegated to the CI emulator lanes
+  while its compilation is enforced in `ciFast`.
+- Genuine radio-level shaping (airplane toggling, `tc`-based latency/packet
+  loss) is deliberately not used: the offline audit established the updater's
+  `UpdateClient` as the app's single outbound network touchpoint, so injecting
+  the transport fault at that seam is both hermetic and exhaustive for the
+  observable contract, and avoids the emulator-networking flakiness the release
+  path is explicitly kept free of.
 - ML Kit model download (touchpoint #2) is transport-owned by Play Services;
   its offline behavior is asserted through the `WritingRecognizer` fakes in the
   study tests, not this harness, by design.

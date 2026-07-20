@@ -26,7 +26,9 @@ import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.updatecore.SigningCertificateInfo
+import dev.bee.kanjianki.updatecore.UpdateTextPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,12 +45,15 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InterruptedIOException
 import java.io.OutputStream
+import java.net.NoRouteToHostException
 import java.security.MessageDigest
 import java.util.Collections
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executor
+import javax.net.ssl.SSLHandshakeException
 import kotlin.coroutines.EmptyCoroutineContext
 
 @RunWith(AndroidJUnit4::class)
@@ -883,6 +888,121 @@ class UpdateFlowInstrumentedTest {
         }
     }
 
+    // ---------------------------------------------------------------------
+    // On-device offline-classification contract (API 26 + API 35 via the
+    // device-smoke / instrumented emulator lanes). These mirror the hermetic
+    // JVM matrix in UpdaterOfflineContractTest but run against the real
+    // GitHubUpdater + real LocalStore on a real Android runtime, proving the
+    // connectivity-vs-permanent classification and the persisted
+    // update-check-failed retry flag behave identically on-device across API
+    // levels. No radio shaping and no Internet: the transport fault is
+    // injected at the UpdateClient seam, which the offline audit established as
+    // the app's single outbound network touchpoint.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DeviceRisk
+    fun offlineNoRouteIsRetryableConnectivityFailureOnDevice() {
+        val client = FakeUpdateClient().getTextFailure(NoRouteToHostException("api.github.com"))
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertFalse(result.success)
+        assertTrue("No-route must be a retryable connectivity failure on-device", result.retryable)
+        assertNotEquals(
+            "A no-route outage must not be reported as 'already on the latest version'",
+            UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME),
+            result.message,
+        )
+        val failedAt = LocalStore(context).use { store -> store.updateCheckFailedAt() }
+        assertTrue("A no-route outage must light the persisted retry flag", failedAt > 0L)
+        assertEquals(0, client.downloads)
+    }
+
+    @Test
+    @DeviceRisk
+    fun offlineTlsHandshakeFailureIsRetryableConnectivityFailureOnDevice() {
+        val client = FakeUpdateClient().getTextFailure(SSLHandshakeException("handshake_failure"))
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertFalse(result.success)
+        assertTrue(
+            "A TLS handshake failure (captive-portal / intercepting proxy) must be retryable on-device",
+            result.retryable,
+        )
+        val failedAt = LocalStore(context).use { store -> store.updateCheckFailedAt() }
+        assertTrue("A TLS handshake failure must light the persisted retry flag", failedAt > 0L)
+    }
+
+    @Test
+    @DeviceRisk
+    fun offlineCaptivePortalHtmlIsNotReportedAsAlreadyCurrentOnDevice() {
+        // A captive portal answers the releases API with HTTP 200 + an HTML
+        // login page. The read succeeds but carries no usable tag_name; the
+        // updater must classify this as a retryable connectivity failure, never
+        // collapse the empty tag to 0.0.0 and claim the user is up to date.
+        val client = FakeUpdateClient().latest(
+            "<!DOCTYPE html><html><head><title>Sign in to Wi-Fi</title></head>" +
+                "<body><h1>Login required</h1></body></html>",
+        )
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertFalse(result.success)
+        assertTrue("A captive-portal interstitial must be a retryable failure on-device", result.retryable)
+        assertNotEquals(
+            "A captive-portal interstitial must not be reported as 'already on the latest version'",
+            UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME),
+            result.message,
+        )
+        assertEquals(0, client.downloads)
+        val failedAt = LocalStore(context).use { store -> store.updateCheckFailedAt() }
+        assertTrue("A captive-portal interstitial must light the persisted retry flag", failedAt > 0L)
+    }
+
+    @Test
+    @DeviceRisk
+    fun offlineCancelledReadIsNotRetryableAndDoesNotLightRetryFlagOnDevice() {
+        // A cancelled/interrupted read (thread interrupt / WorkManager stop /
+        // process backgrounded mid-check) is NOT a broken network. It must be
+        // classified as a non-retryable failure so it does not light a
+        // persistent "check failed, tap to retry" affordance, and it must not
+        // masquerade as "already up to date".
+        val client = FakeUpdateClient().getTextFailure(InterruptedIOException("thread interrupted"))
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertFalse(result.success)
+        assertFalse("A cancelled read must not be a retryable connectivity failure on-device", result.retryable)
+        assertNotEquals(
+            "A cancelled read must not be reported as 'already on the latest version'",
+            UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME),
+            result.message,
+        )
+        val failedAt = LocalStore(context).use { store -> store.updateCheckFailedAt() }
+        assertEquals("A cancelled read is not a connectivity outage; it must not light the retry flag", 0L, failedAt)
+    }
+
+    @Test
+    @DeviceRisk
+    fun offlineRetryFlagSurvivesProcessRestartOnDevice() {
+        // The persisted update-check-failed flag must survive a store close and
+        // reopen, modeling an app kill/relaunch while offline: Home must still
+        // show the retry banner after restart.
+        GitHubUpdater(context, FakeUpdateClient().getTextFailure(NoRouteToHostException("api.github.com")))
+            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        val firstProcessFlag = LocalStore(context).use { it.updateCheckFailedAt() }
+        assertTrue("Offline check must light the retry flag on-device", firstProcessFlag > 0L)
+
+        val secondProcessFlag = LocalStore(context).use { it.updateCheckFailedAt() }
+        assertEquals(
+            "The persisted retry flag must survive a process restart on-device",
+            firstProcessFlag,
+            secondProcessFlag,
+        )
+    }
+
     @Test
     fun checkDownloadAndInstallRejectsReleaseWithoutApkBeforeDownloading() {
         val client = FakeUpdateClient()
@@ -1420,6 +1540,7 @@ class UpdateFlowInstrumentedTest {
         private var metadata = GitHubUpdater.ApkMetadata("", "", 0, currentSigners(byteArrayOf(1, 2, 3, 4)))
         private var installedCerts = currentSigners(byteArrayOf(1, 2, 3, 4))
         private var downloadFailure: IOException? = null
+        private var getTextFailure: IOException? = null
         private var inspectFailure: RuntimeException? = null
         private var canInstall = false
         var downloads = 0
@@ -1480,12 +1601,19 @@ class UpdateFlowInstrumentedTest {
             return this
         }
 
+        /** Make `getText` (the releases/checksum read) raise a transport fault. */
+        fun getTextFailure(getTextFailure: IOException): FakeUpdateClient {
+            this.getTextFailure = getTextFailure
+            return this
+        }
+
         fun inspectFailure(inspectFailure: RuntimeException): FakeUpdateClient {
             this.inspectFailure = inspectFailure
             return this
         }
 
         override fun getText(url: String): String {
+            getTextFailure?.let { throw it }
             return if (url.endsWith(".sha256")) checksumText else latestJson
         }
 
