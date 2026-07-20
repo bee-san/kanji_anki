@@ -252,7 +252,8 @@ than the `LocalStore` implementation.
 - The former raw key/value `SettingsRepository` is now the internal
   `SqliteSettingsStore`. The typed settings adapter persists logical groups,
   including sync and workload groups, atomically without exposing raw keys;
-  every field accepted by the sync command round-trips through storage.
+  every valid field accepted by the sync command round-trips through storage,
+  while non-positive maturity values fall back to safe defaults.
 - Internal SQLite adapters preserve the existing review token/revision CAS as
   one `commitReview` call. Sync accepts one pure queue planner, stages the
   mirror, invokes that planner once with an immutable snapshot, annotates
@@ -269,7 +270,10 @@ than the `LocalStore` implementation.
   including app/core tests, coverage reports/checks, lint, Android
   instrumentation compilation, 62 repository tool tests, 91 Ralph tests, 62
   asset tests, and 70 CI-script tests. After review hardening, the same gate
-  passed again in 2m06s along with the 62-test Python tool suite.
+  passed again in 2m06s along with the 62-test Python tool suite. A final
+  maturity-value hardening rerun passed in 2m00s. Expanded repository contract
+  coverage then passed the gate in 2m06s with 1,341 app tests; JaCoCo reported
+  97.1% line-plus-branch coverage over production additions against `main`.
 - Production consumers still use the compatibility `LocalStore` facade until
   Goal 149, so no active provider/sync path changed. A live AnkiDroid run was
   therefore not required for this contract-only slice. Rollback is source-only;

@@ -67,12 +67,16 @@ object SyncSettings {
         val sentenceField = fieldSetting(store, SENTENCE_FIELD_SETTING_KEY, defaults.sentenceField, false)
         val frequencyField = fieldSetting(store, FREQUENCY_FIELD_SETTING_KEY, defaults.frequencyField, false)
         val frequencySortField = fieldSetting(store, FREQUENCY_SORT_FIELD_SETTING_KEY, defaults.frequencySortField, false)
-        val matureDays = store?.getIntSetting(MATURE_DAYS_SETTING_KEY, defaults.matureDays)
-            ?: defaults.matureDays
-        val matureSupportThreshold = store?.getIntSetting(
+        val matureDays = positiveIntSetting(
+            store,
+            MATURE_DAYS_SETTING_KEY,
+            defaults.matureDays,
+        )
+        val matureSupportThreshold = positiveIntSetting(
+            store,
             MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
             defaults.matureSupportThreshold,
-        ) ?: defaults.matureSupportThreshold
+        )
         val minRank = store?.getIntSetting("suspended_rank_min", defaults.suspendedRankMin)
             ?: defaults.suspendedRankMin
         val maxRank = store?.getIntSetting(
@@ -227,6 +231,12 @@ object SyncSettings {
             return fallback
         }
         return store.getIntSetting(key, if (fallback) 1 else 0) == 1
+    }
+
+    @JvmStatic
+    private fun positiveIntSetting(store: SyncSettingsStore?, key: String, fallback: Int): Int {
+        val value = store?.getIntSetting(key, fallback) ?: fallback
+        return if (value > 0) value else fallback
     }
 
     @JvmStatic

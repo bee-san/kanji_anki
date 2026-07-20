@@ -93,7 +93,7 @@ internal class SqliteSettingsStore(
             val startedAtNanos = if (captureTiming) monotonicNanos() else 0L
             // The query may block on SQLite and therefore deliberately runs outside cacheLock.
             val loaded = storage.getAll() ?: return null
-            val immutable = Collections.unmodifiableMap(LinkedHashMap(loaded))
+            val immutable: Map<String, String> = Collections.unmodifiableMap(LinkedHashMap(loaded))
             var publishedFromStorage = false
             val accepted = synchronized(cacheLock) {
                 val generationAfterLoad = cacheGeneration.get()

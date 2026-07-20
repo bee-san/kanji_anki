@@ -106,6 +106,7 @@ internal class SqliteSettingsRepository(
     }
 
     private fun saveSync(settings: RecordsSyncModels.Settings, tagRepairedCards: Boolean) {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
         saveAtomically {
             store.putStringSetting(SyncSettings.NOTE_TYPE_SETTING_KEY, settings.modelName)
             store.putStringSetting(SyncSettings.TEMPLATE_SETTING_KEY, settings.templateName)
@@ -115,10 +116,16 @@ internal class SqliteSettingsRepository(
             store.putStringSetting(SyncSettings.SENTENCE_FIELD_SETTING_KEY, settings.sentenceField)
             store.putStringSetting(SyncSettings.FREQUENCY_FIELD_SETTING_KEY, settings.frequencyField)
             store.putStringSetting(SyncSettings.FREQUENCY_SORT_FIELD_SETTING_KEY, settings.frequencySortField)
-            store.putIntSetting(SyncSettings.MATURE_DAYS_SETTING_KEY, settings.matureDays)
+            store.putIntSetting(
+                SyncSettings.MATURE_DAYS_SETTING_KEY,
+                positiveOrDefault(settings.matureDays, defaults.matureDays),
+            )
             store.putIntSetting(
                 SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
-                settings.matureSupportThreshold,
+                positiveOrDefault(
+                    settings.matureSupportThreshold,
+                    defaults.matureSupportThreshold,
+                ),
             )
             store.putIntSetting(SUSPENDED_RANK_MIN_KEY, settings.suspendedRankMin)
             store.putIntSetting(SUSPENDED_RANK_MAX_KEY, settings.suspendedRankMax)
@@ -192,6 +199,9 @@ internal class SqliteSettingsRepository(
     }
 
     private fun Boolean.toSettingInt(): Int = if (this) 1 else 0
+
+    private fun positiveOrDefault(value: Int, defaultValue: Int): Int =
+        if (value > 0) value else defaultValue
 
     private companion object {
         const val SUSPENDED_RANK_MIN_KEY = "suspended_rank_min"

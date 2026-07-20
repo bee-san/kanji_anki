@@ -74,6 +74,20 @@ class SyncSettingsTest {
         assertEquals("1", store.values[SyncSettings.IMPORT_SUSPENDED_CARDS_SETTING_KEY])
     }
 
+    @Test
+    fun nonPositiveMaturitySettingsFallBackToDefaults() {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        val store = FakeStore(
+            SyncSettings.MATURE_DAYS_SETTING_KEY to "0",
+            SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY to "-1",
+        )
+
+        val actual = SyncSettings.fromStore(store)
+
+        assertEquals(defaults.matureDays, actual.matureDays)
+        assertEquals(defaults.matureSupportThreshold, actual.matureSupportThreshold)
+    }
+
     private class FakeStore(vararg entries: Pair<String, String>) : SyncSettingsStore {
         val values = entries.toMap().toMutableMap()
 
