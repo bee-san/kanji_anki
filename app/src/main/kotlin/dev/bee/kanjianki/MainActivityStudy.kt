@@ -513,7 +513,15 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun markStudyAnswerApplied(token: String) {
-        postToMainIfActive {
+        // The APPLIED transition + its durable envelope write must survive a
+        // finishing/destroyed Activity. Unlike setContent/startActivity/toast, these
+        // touch only Compose-observable state and SharedPreferences, so gating them
+        // behind postToMainIfActive (which drops on isFinishing/isDestroyed) would
+        // leave a consumed-token card permanently stuck at SUBMITTING on a config
+        // change / retained-holder teardown: "Fail saved" persists but Continue can
+        // never advance. Post to the main thread (Compose state is main-confined)
+        // without the active-Activity guard so the gate always reaches APPLIED.
+        postToMain {
             val state = studyAnswerFeedbackState
             if (state?.markApplied(token) == true) {
                 persistPendingStudyAnswer(state)
