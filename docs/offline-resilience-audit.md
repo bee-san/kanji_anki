@@ -230,3 +230,40 @@ on-device at API 26/35 via `@DeviceRisk` instrumentation.
 - ML Kit model download (touchpoint #2) is transport-owned by Play Services;
   its offline behavior is asserted through the `WritingRecognizer` fakes in the
   study tests, not this harness, by design.
+
+## 9. End-to-end validation run (2026-07-20, task t_2fc51229)
+
+Full-matrix validation of the branch head `65757ed8` on this task. No new
+offline regression was found; all discovered defects were already fixed and
+regression-pinned by the child tasks above, so this run is verification-only
+(no production-code change).
+
+Host-side (no local `/dev/kvm`; emulator binaries/system-images absent, so
+on-device execution was delegated to the authorized CI emulator lanes):
+
+- `ciFast` and `ciQuality`: BUILD SUCCESSFUL.
+- Forced-rerun (`--rerun-tasks`, 56 tasks executed) of the JVM surface:
+  full `:app:testDebugUnitTest` = 1334 tests / 0 failures / 0 errors / 0 skipped;
+  `UpdaterOfflineContractTest` 15/0, `AutoSyncRunnerTest` 4/0,
+  `HomeUpdateCheckFailedBannerComposeTest` 3/0, `ReleaseVersionTest` 5/0.
+- Debug + androidTest APKs assembled and verified: `dev.bee.kanjianki`,
+  versionName `0.4.204`, versionCode `4204`, minSdk 26, targetSdk 36,
+  APK Signature Scheme v2 with the Android Debug certificate (debug build,
+  not a release). `app-debug.apk` SHA-256
+  `b424d5c6efdba04ec44ced7223f6392d95cc05404622a3af82e3a9b372f0b567`.
+
+Authorized CI emulator evidence (all green on this branch head):
+
+- `Android CI` (Fast confidence gate): success — JVM/app-unit/lint/androidTest
+  compile/dependency-safety all green.
+- `android-device-smoke.yml`: Device smoke API 26 (Android 8.0.0, 6 tests on
+  emulator) success; Device smoke API 35 (6 tests) success; Device risk suite
+  API 35 (103 tests on emulator, includes the `@DeviceRisk` offline update-flow
+  parity tests) success.
+- `android-instrumented.yml` (live AnkiDroid provider fixture, `workflow_dispatch`
+  on `fix/offline-resilience`, run 29731132733): API 26 and API 35 both
+  `OK (62 tests)` against real AnkiDroid 2.24.0 using the pinned sanitized Kiku
+  CI fixture (`ci/scripts/create_ankidroid_kiku_fixture.py`; never a private
+  collection), plus the retired-lifecycle sub-fixtures. Note tags remain the
+  only supported provider write surface; no provider/sync production code
+  changed on this branch.
