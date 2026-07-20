@@ -3,6 +3,7 @@ import org.gradle.api.GradleException
 
 plugins {
     alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.sonarqube)
@@ -155,7 +156,14 @@ tasks.register<Exec>("testCiScripts") {
     commandLine("python3", "-m", "unittest", "discover", "-s", "ci/tests", "-p", "test_*.py")
 }
 
+tasks.register("testBuildLogic") {
+    group = "verification"
+    description = "Runs convention-plugin tests, including the Android library fixture."
+    dependsOn(gradle.includedBuild("build-logic").task(":test"))
+}
+
 val fastCiTasks = listOf(
+    "testBuildLogic",
     ":fsrs-java:test",
     ":fsrs-java:jacocoTestReport",
     ":fsrs-java:jacocoTestCoverageVerification",

@@ -18,12 +18,12 @@ val conventionExtension = extensions.create("kaniLibrary", KaniLibraryConvention
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(libs.versions.jvmTarget.get().toInt()))
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(libs.versions.jvmTarget.get().toInt())
 }
 
 tasks.withType<Test>().configureEach {

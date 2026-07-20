@@ -78,12 +78,12 @@ extensions.configure<KaniReleaseIntegrityExtension> {
 
 android {
     namespace = "dev.bee.kanjianki"
-    compileSdk = 36
+    compileSdk = libs.versions.androidCompileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "dev.bee.kanjianki"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = libs.versions.androidMinSdk.get().toInt()
+        targetSdk = libs.versions.androidTargetSdk.get().toInt()
         versionCode = appVersionCode
         versionName = appVersionName
 
@@ -98,8 +98,9 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        val javaVersion = JavaVersion.toVersion(libs.versions.jvmTarget.get())
+        sourceCompatibility = javaVersion
+        targetCompatibility = javaVersion
     }
 
     testCoverage {

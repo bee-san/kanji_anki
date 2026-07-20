@@ -75,6 +75,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - id: build-logic
+            label: Android convention plugin tests
+            tasks: 'testBuildLogic'
+            reports: |
+              build-logic/build/reports/**
+              build-logic/build/test-results/**
           - id: jvm
             label: JVM tests and coverage
             tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :domain:test :domain:jacocoTestReport :domain:jacocoTestCoverageVerification :sync-domain:test :sync-domain:jacocoTestReport :sync-domain:jacocoTestCoverageVerification :writing-core:test :writing-core:jacocoTestReport :writing-core:jacocoTestCoverageVerification :dictionary-core:test :dictionary-core:jacocoTestReport :dictionary-core:jacocoTestCoverageVerification :update-core:test :update-core:jacocoTestReport :update-core:jacocoTestCoverageVerification'
@@ -135,7 +141,7 @@ jobs:
         uses: ./.github/actions/setup-android-sdk
 
       - name: Cache Robolectric android-all jars
-        if: matrix.id == 'app-unit'
+        if: matrix.id == 'app-unit' || matrix.id == 'build-logic'
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: ~/.m2/repository/org/robolectric

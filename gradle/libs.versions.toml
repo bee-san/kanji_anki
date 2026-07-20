@@ -4,6 +4,10 @@ agp = "9.1.0"
 kotlin = "2.0.21"
 sonarqube = "7.3.0.8198"
 jacoco = "0.8.14"
+androidCompileSdk = "36"
+androidMinSdk = "26"
+androidTargetSdk = "36"
+jvmTarget = "17"
 
 # App version (single source; overridable via KANI_VERSION_* properties/env)
 appVersionName = "0.4.33"
@@ -26,10 +30,13 @@ coroutines = "1.10.2"
 workRuntime = "2.11.2"
 glance = "1.1.1"
 mlkitDigitalInk = "19.0.0"
+navigationCompose = "2.9.8"
 
 [libraries]
-# Used by build-logic convention plugins to apply the Kotlin JVM plugin.
+# Used by build-logic convention plugins to apply Android and Kotlin plugins.
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
@@ -56,10 +63,12 @@ androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "workRuntime" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 androidx-glance-appwidget-testing = { module = "androidx.glance:glance-appwidget-testing", version.ref = "glance" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 mlkit-digital-ink = { module = "com.google.mlkit:digital-ink-recognition", version.ref = "mlkitDigitalInk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }

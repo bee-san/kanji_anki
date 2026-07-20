@@ -104,6 +104,18 @@ class FastCiTaskWiringTest(unittest.TestCase):
                     asset_test_job,
                 )
 
+    def test_android_convention_fixture_runs_locally_and_in_android_ci(self) -> None:
+        fast_tasks = self.gradle.split("val fastCiTasks = listOf(", maxsplit=1)[1].split(
+            ")",
+            maxsplit=1,
+        )[0]
+        self.assertIn('tasks.register("testBuildLogic")', self.gradle)
+        self.assertIn('"testBuildLogic"', fast_tasks)
+
+        ci = (ROOT / ".github/workflows/android-ci.yml").read_text(encoding="utf-8")
+        self.assertIn("label: Android convention plugin tests", ci)
+        self.assertIn("tasks: 'testBuildLogic'", ci)
+
 
 class WorkflowSupplyChainTest(unittest.TestCase):
     REMOTE_ACTION = re.compile(r"^\s*uses:\s*[\"']?([^\s\"'#]+)@([^\s\"'#]+)")
