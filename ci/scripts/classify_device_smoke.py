@@ -49,6 +49,7 @@ FULL_ANDROID_TEST_FILES = frozenset(
     {
         "app/src/androidTest/kotlin/dev/bee/kanjianki/BackupAndRestoreInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/LadderSchedulerEndToEndTest.kt",
+        "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityPrimaryRouteSmokeInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityStudyRouteSmokeInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/StudySevenItemRouteInstrumentedTest.kt",

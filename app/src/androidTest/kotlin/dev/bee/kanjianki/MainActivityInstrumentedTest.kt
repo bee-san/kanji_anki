@@ -43,6 +43,7 @@ import dev.bee.kanjianki.core.FrequencyRetentionRanges;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
+import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.study.InkPoint;
 import dev.bee.kanjianki.core.study.InkStroke;
 import dev.bee.kanjianki.core.study.StrokeGuide;
@@ -1044,6 +1045,13 @@ fun testGradedCardContinuesAfterConfigChangeRecreate() {
             clickText(scenario, STUDY_NOW);
             clickText(scenario, REVEAL);
             clickText(scenario, "Fail");
+
+            // Mirror the exact screenshot: the user waits until the answer is durably
+            // committed ("Incorrect." feedback shown, Continue mounted) before the
+            // config change. Recreating in the sub-commit window instead races the
+            // finishing Activity's io.shutdownNow() and would drop the in-flight review
+            // (token never consumed) rather than exercise the freeze fix.
+            waitForStudyAnswerCommitted(scenario);
 
             // A config change (rotation) recreates the Activity while the answer
             // feedback is mounted. The finishing Activity used to drop the applied
@@ -2889,6 +2897,30 @@ fun deviceVisibleText(device: UiDevice): String {
         }
     }
     return texts.toString()
+}
+
+private fun waitForStudyAnswerCommitted(scenario: ActivityScenario<MainActivity>) {
+    // Wait until the graded answer is durably committed on the mounted Activity: the
+    // review token is consumed and the gate has reached APPLIED (Continue enabled).
+    // This is the exact state the screenshot shows ("Incorrect." + an enabled
+    // Continue) before the user rotates, and it guarantees the durable SUBMITTING
+    // envelope + consumed token exist so the recreate reconciles to APPLIED instead
+    // of racing the finishing Activity's io.shutdownNow() and dropping the review.
+    val deadline = SystemClock.uptimeMillis() + 5_000L
+    var committed = false
+    while (SystemClock.uptimeMillis() < deadline && !committed) {
+        scenario.onActivity { activity ->
+            val token = activity.studyAnswerFeedbackState?.sessionToken
+            committed = token != null &&
+                activity.studyAnswerFeedbackState?.snapshot()?.phase == StudyAnswerFeedbackPhase.APPLIED &&
+                activity.store.hasConsumedToken(token)
+        }
+        if (!committed) {
+            SystemClock.sleep(25L)
+        }
+    }
+    assertTrue("Study answer was not durably committed before recreate", committed)
+    waitForText(scenario, StudyTextCopy.answerIncorrectFeedback())
 }
 
 private fun continueAfterStudyAnswer(scenario: ActivityScenario<MainActivity>) {
