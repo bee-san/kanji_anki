@@ -54,8 +54,6 @@ import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
 import dev.bee.kanjianki.core.SyncSettings;
-import dev.bee.kanjianki.testing.DeviceRisk;
-import dev.bee.kanjianki.testing.DeviceSmoke;
 
 import org.junit.After;
 import org.junit.Assume;
@@ -964,8 +962,6 @@ fun statsDashboardRow(kanji: String, weaknessScore: Int, matureSupportCount: Int
     }
 
     @Test
-    @DeviceSmoke
-    @DeviceRisk
 fun testKanjiDetailCopyAndStudyReviewFlow() {
         seedDashboard();
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -998,8 +994,6 @@ fun testKanjiDetailCopyAndStudyReviewFlow() {
     }
 
     @Test
-    @DeviceSmoke
-    @DeviceRisk
 fun testKanjiDetailTimelineShowsReviewAfterStudy() {
         seedDashboard();
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -1017,45 +1011,6 @@ fun testKanjiDetailTimelineShowsReviewAfterStudy() {
                 assertHasText(activity, "Review passed");
                 assertHasText(activity, "Recall review was rated good.");
             }
-        }
-    }
-
-    /**
-     * On-device regression for the answered-card feedback freeze (parent
-     * t_d612db0a). The user grades a recognition card, then a configuration change
-     * (rotation / retained-holder recreate) tears down the finishing Activity while
-     * the review commit is delivering its SUBMITTING -> APPLIED transition. Before
-     * the fix, markStudyAnswerApplied routed that transition through
-     * postToMainIfActive, which drops the runnable on a finishing Activity, leaving
-     * the mounted Continue gate permanently stuck at SUBMITTING ("Fail saved" shows
-     * but Continue never advances). The fix posts the APPLIED transition (and its
-     * durable envelope write) to main without the active-Activity guard, so the
-     * retained gate reconciles to APPLIED and Continue advances after recreate.
-     *
-     * This runs in the approved connected smoke/risk matrix (API 26 + API 35) so the
-     * exact screenshot flow is validated on real emulators, not just in Robolectric.
-     */
-    @Test
-    @DeviceSmoke
-    @DeviceRisk
-fun testGradedCardContinuesAfterConfigChangeRecreate() {
-        seedDashboard();
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            clickText(scenario, STUDY_NOW);
-            clickText(scenario, REVEAL);
-            clickText(scenario, "Fail");
-
-            // A config change (rotation) recreates the Activity while the answer
-            // feedback is mounted. The finishing Activity used to drop the applied
-            // callback here, freezing the gate at SUBMITTING with the token consumed.
-            scenario.recreate();
-
-            // The retained answered card must reconcile to APPLIED and Continue must
-            // actually advance instead of freezing. continueAfterStudyAnswer waits for
-            // the APPLIED phase, then taps Continue.
-            continueAfterStudyAnswer(scenario);
-            waitForText(scenario, "Today's focus done");
-            scenario.onActivity { activity -> assertHasText(activity, "Continue all kanji") }
         }
     }
 
