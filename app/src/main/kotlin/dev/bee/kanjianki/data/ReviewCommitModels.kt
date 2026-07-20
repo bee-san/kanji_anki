@@ -5,7 +5,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsImportModels
 
 /** Outcome of the single transactional review commit boundary. */
-internal enum class ReviewCommitDisposition {
+enum class ReviewCommitDisposition {
     APPLIED,
     DUPLICATE,
     STALE,
@@ -14,7 +14,7 @@ internal enum class ReviewCommitDisposition {
 /** Aborts the owning review transaction and maps the result to STALE. */
 internal class StaleReviewCommitException : RuntimeException()
 
-internal class ReviewCommitResult(
+class ReviewCommitResult(
     @JvmField val disposition: ReviewCommitDisposition,
     @JvmField val item: RecordsStudyModels.StudyItem?,
 ) {
@@ -31,7 +31,7 @@ internal class ReviewCommitResult(
 }
 
 /** Immutable timing snapshot prepared by the study session tracker. */
-internal class ReviewTaskTiming(
+class ReviewTaskTiming(
     @JvmField val taskKey: String,
     @JvmField val kanji: String,
     @JvmField val taskType: String,
@@ -45,7 +45,7 @@ internal class ReviewTaskTiming(
  * Compatibility write for the legacy confusion log. New adaptive evidence is
  * stored on review_log, but the existing miner continues to consume this row.
  */
-internal class ReviewChoiceLog(
+class ReviewChoiceLog(
     @JvmField val targetKanji: String,
     @JvmField val choiceSignature: String,
     @JvmField val selectedAnswer: String,
@@ -54,7 +54,7 @@ internal class ReviewChoiceLog(
     @JvmField val reviewedAtMillis: Long,
 )
 
-internal class SimilarChoiceCommit(
+class SimilarChoiceCommit(
     @JvmField val submitted: RecordsImportModels.SimilarKanjiChoiceCard,
     @JvmField val selectedAnswer: String,
     @JvmField val reviewedAtMillis: Long,
@@ -65,7 +65,7 @@ internal class SimilarChoiceCommit(
  * is the compare-and-swap expectation; callers cannot provide a separate,
  * contradictory revision.
  */
-internal class ReviewCommitCommand(
+class ReviewCommitCommand(
     @JvmField val afterReview: RecordsStudyModels.StudyItem,
     @JvmField val request: RecordsSchedulerModels.ReviewRequest,
     @JvmField val appliedRating: String?,

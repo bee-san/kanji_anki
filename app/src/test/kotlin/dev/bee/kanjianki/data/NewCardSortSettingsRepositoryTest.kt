@@ -10,7 +10,7 @@ class NewCardSortSettingsRepositoryTest {
     @Test
     fun saveNewCardSortModeNormalizesAndPersistsThroughStorageBoundary() {
         val storage = FakeSettingsStorage()
-        val repository = NewCardSortSettingsRepository(SettingsRepository(storage))
+        val repository = NewCardSortSettingsRepository(SqliteSettingsStore(storage))
 
         val request = repository.saveMode("not-a-mode")
 

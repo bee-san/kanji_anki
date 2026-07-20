@@ -7,7 +7,7 @@ import org.junit.Test
 class KaniThemeChoiceRepositoryTest {
     @Test
     fun missingThemeChoiceDefaultsToGirlypop() {
-        val repository = KaniThemeChoiceRepository(SettingsRepository(FakeSettingsStorage()))
+        val repository = KaniThemeChoiceRepository(SqliteSettingsStore(FakeSettingsStorage()))
 
         assertEquals(KaniThemeChoice.GIRLYPOP, repository.currentChoice())
     }
@@ -16,7 +16,7 @@ class KaniThemeChoiceRepositoryTest {
     fun allChoicesRoundTripThroughStorage() {
         for (choice in KaniThemeChoice.entries) {
             val storage = FakeSettingsStorage()
-            val repository = KaniThemeChoiceRepository(SettingsRepository(storage))
+            val repository = KaniThemeChoiceRepository(SqliteSettingsStore(storage))
 
             val saved = repository.saveChoice(choice)
 
@@ -29,7 +29,7 @@ class KaniThemeChoiceRepositoryTest {
     @Test
     fun invalidStoredThemeChoiceFallsBackToGirlypop() {
         val storage = FakeSettingsStorage(KaniThemeChoice.SETTING_KEY to "not-a-theme")
-        val repository = KaniThemeChoiceRepository(SettingsRepository(storage))
+        val repository = KaniThemeChoiceRepository(SqliteSettingsStore(storage))
 
         assertEquals(KaniThemeChoice.GIRLYPOP, repository.currentChoice())
     }

@@ -1,0 +1,279 @@
+package dev.bee.kanjianki.data.fakes
+
+import dev.bee.kanjianki.core.AppliedReviewSnapshot
+import dev.bee.kanjianki.core.RepairedWriteBackPolicy
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StoreResult
+import dev.bee.kanjianki.data.CommitFsrsFitCommand
+import dev.bee.kanjianki.data.FinishLegacyRepairCommand
+import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
+import dev.bee.kanjianki.data.HomeRepository
+import dev.bee.kanjianki.data.HomeSnapshot
+import dev.bee.kanjianki.data.RecordRepairedWriteBackCommand
+import dev.bee.kanjianki.data.RecordSyncFailureCommand
+import dev.bee.kanjianki.data.ReviewCommitCommand
+import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTokenQuery
+import dev.bee.kanjianki.data.ReviewTokenStatus
+import dev.bee.kanjianki.data.SaveMnemonicCommand
+import dev.bee.kanjianki.data.SetLocalSuspensionCommand
+import dev.bee.kanjianki.data.SettingsRepository
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
+import dev.bee.kanjianki.data.SkipLegacyRepairCommand
+import dev.bee.kanjianki.data.StatsRepository
+import dev.bee.kanjianki.data.StatsSnapshot
+import dev.bee.kanjianki.data.StoredSyncState
+import dev.bee.kanjianki.data.StudyChoiceDataSnapshot
+import dev.bee.kanjianki.data.StudyQueueSnapshot
+import dev.bee.kanjianki.data.StudyQueueWriteCommand
+import dev.bee.kanjianki.data.StudyRecoveryQuery
+import dev.bee.kanjianki.data.StudyRecoveryStatus
+import dev.bee.kanjianki.data.StudyRepository
+import dev.bee.kanjianki.data.SyncPublicationCommand
+import dev.bee.kanjianki.data.SyncPublicationResult
+import dev.bee.kanjianki.data.SyncRepository
+
+class FakeHomeRepository : HomeRepository {
+    var loadHomeHandler: suspend (Long) -> StoreResult<HomeSnapshot> = unconfigured1("loadHome")
+    var searchHandler:
+        suspend (String, Boolean) -> StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
+        unconfigured2("searchInventory")
+    var detailHandler: suspend (String, Long) -> StoreResult<HomeKanjiDetailSnapshot> =
+        unconfigured2("loadKanjiDetail")
+    var saveMnemonicHandler: suspend (SaveMnemonicCommand) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var suspensionHandler: suspend (SetLocalSuspensionCommand) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+
+    val mnemonicCommands = mutableListOf<SaveMnemonicCommand>()
+    val suspensionCommands = mutableListOf<SetLocalSuspensionCommand>()
+
+    override suspend fun loadHome(nowMillis: Long): StoreResult<HomeSnapshot> =
+        loadHomeHandler(nowMillis)
+
+    override suspend fun searchInventory(
+        query: String,
+        onlySimilarKanji: Boolean,
+    ): StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
+        searchHandler(query, onlySimilarKanji)
+
+    override suspend fun loadKanjiDetail(
+        kanji: String,
+        nowMillis: Long,
+    ): StoreResult<HomeKanjiDetailSnapshot> = detailHandler(kanji, nowMillis)
+
+    override suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit> {
+        mnemonicCommands += command
+        return saveMnemonicHandler(command)
+    }
+
+    override suspend fun setLocalSuspension(command: SetLocalSuspensionCommand): StoreResult<Unit> {
+        suspensionCommands += command
+        return suspensionHandler(command)
+    }
+}
+
+class FakeStudyRepository : StudyRepository {
+    var loadQueueHandler: suspend (Long) -> StoreResult<StudyQueueSnapshot> = unconfigured1("loadQueue")
+    var loadItemsHandler:
+        suspend (Collection<String>) -> StoreResult<List<RecordsStudyModels.StudyItem>> =
+        unconfigured1("loadItems")
+    var replaceQueueHandler: suspend (StudyQueueWriteCommand) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var annotateHandler:
+        suspend (List<RecordsStudyModels.StudyItem>) -> StoreResult<List<RecordsStudyModels.StudyItem>> =
+        { StoreResult.ok(it) }
+    var commitReviewHandler: suspend (ReviewCommitCommand) -> StoreResult<ReviewCommitResult> =
+        unconfigured1("commitReview")
+    var undoHandler: suspend (AppliedReviewSnapshot) -> StoreResult<Boolean> =
+        unconfigured1("undoLastReview")
+    var tokenHandler: suspend (ReviewTokenQuery) -> StoreResult<ReviewTokenStatus> =
+        unconfigured1("reviewTokenStatus")
+    var recoveryHandler: suspend (StudyRecoveryQuery) -> StoreResult<StudyRecoveryStatus> =
+        unconfigured1("recoveryStatus")
+    var choiceHandler: suspend (String, Long) -> StoreResult<StudyChoiceDataSnapshot> =
+        unconfigured2("loadChoiceData")
+    var dueChoiceHandler:
+        suspend (String, Long) -> StoreResult<RecordsImportModels.SimilarKanjiChoiceCard?> =
+        { _, _ -> StoreResult.ok(null) }
+    var dueRepairsHandler:
+        suspend (Long) -> StoreResult<List<RecordsImportModels.SimilarKanjiWritingRepair>> =
+        { StoreResult.ok(emptyList()) }
+    var saveRepairHandler:
+        suspend (RecordsImportModels.SimilarKanjiWritingRepair) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var finishRepairHandler: suspend (FinishLegacyRepairCommand) -> StoreResult<Boolean> =
+        { StoreResult.ok(true) }
+    var skipRepairHandler: suspend (SkipLegacyRepairCommand) -> StoreResult<Boolean> =
+        { StoreResult.ok(true) }
+    var mnemonicHandler: suspend (String) -> StoreResult<String> = { StoreResult.ok("") }
+
+    val queueWrites = mutableListOf<StudyQueueWriteCommand>()
+    val reviewCommits = mutableListOf<ReviewCommitCommand>()
+
+    override suspend fun loadQueue(nowMillis: Long): StoreResult<StudyQueueSnapshot> =
+        loadQueueHandler(nowMillis)
+
+    override suspend fun loadItems(
+        kanji: Collection<String>,
+    ): StoreResult<List<RecordsStudyModels.StudyItem>> = loadItemsHandler(kanji)
+
+    override suspend fun replaceQueue(command: StudyQueueWriteCommand): StoreResult<Unit> {
+        queueWrites += command
+        return replaceQueueHandler(command)
+    }
+
+    override suspend fun annotateCapabilities(
+        items: List<RecordsStudyModels.StudyItem>,
+    ): StoreResult<List<RecordsStudyModels.StudyItem>> = annotateHandler(items)
+
+    override suspend fun commitReview(command: ReviewCommitCommand): StoreResult<ReviewCommitResult> {
+        reviewCommits += command
+        return commitReviewHandler(command)
+    }
+
+    override suspend fun undoLastReview(snapshot: AppliedReviewSnapshot): StoreResult<Boolean> =
+        undoHandler(snapshot)
+
+    override suspend fun reviewTokenStatus(query: ReviewTokenQuery): StoreResult<ReviewTokenStatus> =
+        tokenHandler(query)
+
+    override suspend fun recoveryStatus(query: StudyRecoveryQuery): StoreResult<StudyRecoveryStatus> =
+        recoveryHandler(query)
+
+    override suspend fun loadChoiceData(
+        kanji: String,
+        nowMillis: Long,
+    ): StoreResult<StudyChoiceDataSnapshot> = choiceHandler(kanji, nowMillis)
+
+    override suspend fun loadDueSimilarChoice(
+        targetKanji: String,
+        nowMillis: Long,
+    ): StoreResult<RecordsImportModels.SimilarKanjiChoiceCard?> =
+        dueChoiceHandler(targetKanji, nowMillis)
+
+    override suspend fun loadDueLegacyWritingRepairs(
+        nowMillis: Long,
+    ): StoreResult<List<RecordsImportModels.SimilarKanjiWritingRepair>> =
+        dueRepairsHandler(nowMillis)
+
+    override suspend fun saveLegacyWritingRepair(
+        repair: RecordsImportModels.SimilarKanjiWritingRepair,
+    ): StoreResult<Unit> = saveRepairHandler(repair)
+
+    override suspend fun finishLegacyWritingRepair(
+        command: FinishLegacyRepairCommand,
+    ): StoreResult<Boolean> = finishRepairHandler(command)
+
+    override suspend fun skipLegacyWritingRepair(
+        command: SkipLegacyRepairCommand,
+    ): StoreResult<Boolean> = skipRepairHandler(command)
+
+    override suspend fun loadMnemonic(kanji: String): StoreResult<String> = mnemonicHandler(kanji)
+}
+
+class FakeStatsRepository : StatsRepository {
+    var cachedResult: StoreResult<StatsSnapshot?> = StoreResult.ok(null)
+    var latestResult: StoreResult<StatsSnapshot?> = StoreResult.ok(null)
+    var refreshHandler: suspend (Long) -> StoreResult<StatsSnapshot> = unconfigured1("refresh")
+    val refreshRequests = mutableListOf<Long>()
+
+    override suspend fun loadCached(nowMillis: Long): StoreResult<StatsSnapshot?> = cachedResult
+
+    override suspend fun loadLatest(): StoreResult<StatsSnapshot?> = latestResult
+
+    override suspend fun refresh(nowMillis: Long): StoreResult<StatsSnapshot> {
+        refreshRequests += nowMillis
+        return refreshHandler(nowMillis)
+    }
+}
+
+class FakeSettingsRepository : SettingsRepository {
+    var loadHandler: suspend () -> StoreResult<SettingsSnapshot> = unconfigured0("load")
+    var saveHandler: suspend (SettingsSaveCommand) -> StoreResult<Unit> = { StoreResult.ok(Unit) }
+    var fitHandler: suspend (CommitFsrsFitCommand) -> StoreResult<Boolean> = { StoreResult.ok(false) }
+    val saveCommands = mutableListOf<SettingsSaveCommand>()
+    val fitCommands = mutableListOf<CommitFsrsFitCommand>()
+
+    override suspend fun load(): StoreResult<SettingsSnapshot> = loadHandler()
+
+    override suspend fun save(command: SettingsSaveCommand): StoreResult<Unit> {
+        saveCommands += command
+        return saveHandler(command)
+    }
+
+    override suspend fun commitFsrsFit(command: CommitFsrsFitCommand): StoreResult<Boolean> {
+        fitCommands += command
+        return fitHandler(command)
+    }
+}
+
+class FakeSyncRepository : SyncRepository {
+    var storedStateHandler: suspend () -> StoreResult<StoredSyncState> = unconfigured0("loadStoredState")
+    var publishHandler: suspend (SyncPublicationCommand) -> StoreResult<SyncPublicationResult> =
+        unconfigured1("publish")
+    var failureHandler: suspend (RecordSyncFailureCommand) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var removalHandler: suspend (Long, String?) -> StoreResult<Unit> =
+        { _, _ -> StoreResult.ok(Unit) }
+    var proposalHandler:
+        suspend (RecordsSyncModels.CollectionSnapshot, Int) ->
+            StoreResult<RepairedWriteBackPolicy.Proposal> =
+        unconfigured2("repairedWriteBackProposal")
+    var previewHandler:
+        suspend (Int) -> StoreResult<RepairedWriteBackPolicy.Proposal> =
+        unconfigured1("repairedWriteBackPreview")
+    var writeBackHandler: suspend (RecordRepairedWriteBackCommand) -> StoreResult<List<String>> =
+        { StoreResult.ok(emptyList()) }
+    var handoffResult: StoreResult<List<String>> = StoreResult.ok(emptyList())
+    var dismissResult: StoreResult<Unit> = StoreResult.ok(Unit)
+
+    val publications = mutableListOf<SyncPublicationCommand>()
+    val failures = mutableListOf<RecordSyncFailureCommand>()
+
+    override suspend fun loadStoredState(): StoreResult<StoredSyncState> = storedStateHandler()
+
+    override suspend fun publish(command: SyncPublicationCommand): StoreResult<SyncPublicationResult> {
+        publications += command
+        return publishHandler(command)
+    }
+
+    override suspend fun recordFailure(command: RecordSyncFailureCommand): StoreResult<Unit> {
+        failures += command
+        return failureHandler(command)
+    }
+
+    override suspend fun updateRemovalMessage(syncId: Long, message: String?): StoreResult<Unit> =
+        removalHandler(syncId, message)
+
+    override suspend fun repairedWriteBackProposal(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        matureSupportThreshold: Int,
+    ) = proposalHandler(snapshot, matureSupportThreshold)
+
+    override suspend fun repairedWriteBackPreview(matureSupportThreshold: Int) =
+        previewHandler(matureSupportThreshold)
+
+    override suspend fun recordRepairedWriteBack(
+        command: RecordRepairedWriteBackCommand,
+    ): StoreResult<List<String>> = writeBackHandler(command)
+
+    override suspend fun loadRepairedHandoff(): StoreResult<List<String>> = handoffResult
+
+    override suspend fun dismissRepairedHandoff(): StoreResult<Unit> = dismissResult
+}
+
+private fun <T> unconfigured0(name: String): suspend () -> StoreResult<T> = {
+    error("Fake repository operation '$name' was not configured")
+}
+
+private fun <A, T> unconfigured1(name: String): suspend (A) -> StoreResult<T> = {
+    error("Fake repository operation '$name' was not configured")
+}
+
+private fun <A, B, T> unconfigured2(name: String): suspend (A, B) -> StoreResult<T> = { _, _ ->
+    error("Fake repository operation '$name' was not configured")
+}

@@ -15,32 +15,32 @@ import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
-    private val newCardSortSettings = NewCardSortSettingsRepository(store.settingsRepository())
-    private val themeChoiceSettings = KaniThemeChoiceRepository(store.settingsRepository())
+    private val newCardSortSettings = NewCardSortSettingsRepository(store.settingsStore())
+    private val themeChoiceSettings = KaniThemeChoiceRepository(store.settingsStore())
 
-    fun getIntSetting(key: String, fallback: Int): Int = store.settingsRepository().getInt(key, fallback)
+    fun getIntSetting(key: String, fallback: Int): Int = store.settingsStore().getInt(key, fallback)
 
-    fun getLongSetting(key: String, fallback: Long): Long = store.settingsRepository().getLong(key, fallback)
+    fun getLongSetting(key: String, fallback: Long): Long = store.settingsStore().getLong(key, fallback)
 
-    fun getStringSetting(key: String, fallback: String): String = store.settingsRepository().getString(key, fallback) ?: fallback
+    fun getStringSetting(key: String, fallback: String): String = store.settingsStore().getString(key, fallback) ?: fallback
 
-    fun getDoubleSetting(key: String, fallback: Double): Double = store.settingsRepository().getDouble(key, fallback)
+    fun getDoubleSetting(key: String, fallback: Double): Double = store.settingsStore().getDouble(key, fallback)
 
     fun putIntSetting(key: String, value: Int) {
-        store.settingsRepository().putInt(key, value)
+        store.settingsStore().putInt(key, value)
         markStatsDirtyIfNeeded(key)
     }
 
     fun putLongSetting(key: String, value: Long) {
-        store.settingsRepository().putLong(key, value)
+        store.settingsStore().putLong(key, value)
     }
 
     fun putStringSetting(key: String, value: String?) {
-        store.settingsRepository().putString(key, value)
+        store.settingsStore().putString(key, value)
     }
 
     fun putDoubleSetting(key: String, value: Double) {
-        store.settingsRepository().putDouble(key, value)
+        store.settingsStore().putDouble(key, value)
     }
 
     fun adaptiveLoadWorkPercent(): Int {
@@ -76,8 +76,8 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         return RecordsBase.StudyLadderSettings.fromStored(
             getStringSetting(KEY_STUDY_LADDER_ORDER, ""),
             getStringSetting(KEY_STUDY_LADDER_ENABLED, ""),
-            store.settingsRepository().getString(KEY_ADAPTIVE_REPAIR_ORDER, null),
-            store.settingsRepository().getString(KEY_ADAPTIVE_REPAIR_ENABLED, null),
+            store.settingsStore().getString(KEY_ADAPTIVE_REPAIR_ORDER, null),
+            store.settingsStore().getString(KEY_ADAPTIVE_REPAIR_ENABLED, null),
         )
     }
 
@@ -541,7 +541,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         // Individual put calls invalidate eagerly, but another LocalStore can only observe these
         // values after commit. Publish one final generation after the transaction is visible so
         // no reader can retain a pre-commit bulk snapshot under the latest generation.
-        store.settingsRepository().invalidate()
+        store.settingsStore().invalidate()
     }
 
     private fun markStatsDirtyIfNeeded(key: String) {

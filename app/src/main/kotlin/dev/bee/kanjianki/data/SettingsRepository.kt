@@ -1,158 +1,190 @@
 package dev.bee.kanjianki.data
 
-import android.os.SystemClock
-import dev.bee.kanjianki.core.SettingValuePolicy
-import java.util.Collections
-import java.util.Locale
-import java.util.concurrent.atomic.AtomicLong
+import dev.bee.kanjianki.core.KaniThemeChoice
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StoreResult
+import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
+import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
-internal class SettingsRepository(
-    private val storage: SettingsStorage,
-    private val diagnosticLogger: DiagnosticLogger = NoOpDiagnosticLogger,
-) {
-    private val cacheLock = Any()
+/** Typed settings persistence for feature and platform consumers. */
+interface SettingsRepository {
+    suspend fun load(): StoreResult<SettingsSnapshot>
 
-    @Volatile
-    private var cachedValues: CachedValues? = null
-    private val lastLoggedHitGeneration = AtomicLong(-1L)
+    suspend fun save(command: SettingsSaveCommand): StoreResult<Unit>
 
-    fun getInt(key: String?, fallback: Int): Int {
-        return value(key)?.let { SettingValuePolicy.parseInt(it, fallback) } ?: fallback
-    }
-
-    fun getLong(key: String?, fallback: Long): Long {
-        return value(key)?.let { SettingValuePolicy.parseLong(it, fallback) } ?: fallback
-    }
-
-    fun getString(key: String?, fallback: String?): String? {
-        return value(key) ?: fallback
-    }
-
-    fun getDouble(key: String?, fallback: Double): Double {
-        return value(key)?.let { SettingValuePolicy.parseDouble(it, fallback) } ?: fallback
-    }
-
-    fun putInt(key: String?, value: Int) {
-        put(key, value.toString())
-    }
-
-    fun putLong(key: String?, value: Long) {
-        put(key, value.toString())
-    }
-
-    fun putString(key: String?, value: String?) {
-        put(key, value ?: "")
-    }
-
-    fun putDouble(key: String?, value: Double) {
-        put(key, String.format(Locale.ROOT, "%.4f", value))
-    }
-
-    fun put(key: String?, value: String?) {
-        // Never hold cacheLock across storage I/O. Settings groups acquire SQLite's write
-        // transaction before reaching this method, so taking cacheLock first here would invert
-        // the lock order and could deadlock a concurrent standalone write.
-        storage.put(key, value)
-        invalidate()
-    }
-
-    /** Invalidates snapshots after a transaction writes the settings table directly. */
-    fun invalidate() {
-        invalidateAllRepositories()
-        synchronized(cacheLock) {
-            cachedValues = null
-        }
-    }
-
-    private fun value(key: String?): String? {
-        // A bulk snapshot is process-visible, so it must never contain uncommitted values. A
-        // transaction-owning thread instead reads its own SQLite connection directly, which also
-        // preserves read-after-write semantics for reminder counters and other grouped settings.
-        if (key == null || storage.isTransactionOwner()) {
-            return storage.get(key)
-        }
-        val snapshot = valuesSnapshot()
-        return if (snapshot != null) snapshot[key] else storage.get(key)
-    }
-
-    /**
-     * Loads the complete settings table once per repository generation. The generation is shared
-     * across LocalStore instances, so a receiver/maintenance store write invalidates an Activity
-     * store snapshot too. A write racing the bulk query forces a retry rather than publishing a
-     * mixed or stale point-in-time map.
-     */
-    private fun valuesSnapshot(): Map<String, String>? {
-        while (true) {
-            val generationBeforeLoad = cacheGeneration.get()
-            cachedValues?.takeIf { it.generation == generationBeforeLoad }?.let {
-                logCacheHitOnce(it)
-                return it.values
-            }
-
-            val captureTiming = diagnosticLogger.isCapturing()
-            val startedAtNanos = if (captureTiming) monotonicNanos() else 0L
-            // The query may block on SQLite and therefore deliberately runs outside cacheLock.
-            val loaded = storage.getAll() ?: return null
-            val immutable = Collections.unmodifiableMap(LinkedHashMap(loaded))
-            var publishedFromStorage = false
-            val accepted = synchronized(cacheLock) {
-                val generationAfterLoad = cacheGeneration.get()
-                if (generationBeforeLoad != generationAfterLoad) {
-                    null
-                } else {
-                    cachedValues?.takeIf { it.generation == generationAfterLoad } ?: CachedValues(
-                        generationAfterLoad,
-                        immutable,
-                    ).also {
-                        cachedValues = it
-                        publishedFromStorage = true
-                    }
-                }
-            }
-            if (accepted == null) {
-                continue
-            }
-            if (captureTiming && publishedFromStorage) {
-                diagnosticLogger.log(
-                    String.format(
-                        Locale.US,
-                        "settings snapshot source=storage rows=%d duration_ms=%.2f",
-                        accepted.values.size,
-                        (monotonicNanos() - startedAtNanos) / 1_000_000.0,
-                    ),
-                )
-            } else if (!publishedFromStorage) {
-                logCacheHitOnce(accepted)
-            }
-            return accepted.values
-        }
-    }
-
-    private fun logCacheHitOnce(values: CachedValues) {
-        if (!diagnosticLogger.isCapturing()) {
-            return
-        }
-        val previous = lastLoggedHitGeneration.get()
-        if (previous == values.generation || !lastLoggedHitGeneration.compareAndSet(previous, values.generation)) {
-            return
-        }
-        diagnosticLogger.log("settings snapshot source=cache rows=${values.values.size} duration_ms=0.00")
-    }
-
-    private data class CachedValues(
-        val generation: Long,
-        val values: Map<String, String>,
-    )
-
-    private companion object {
-        val cacheGeneration = AtomicLong(0L)
-
-        fun invalidateAllRepositories() {
-            cacheGeneration.incrementAndGet()
-        }
-
-        fun monotonicNanos(): Long {
-            return runCatching { SystemClock.elapsedRealtimeNanos() }.getOrDefault(System.nanoTime())
-        }
-    }
+    suspend fun commitFsrsFit(command: CommitFsrsFitCommand): StoreResult<Boolean>
 }
+
+data class SettingsSnapshot(
+    val sync: RecordsSyncModels.Settings,
+    val tagRepairedCards: Boolean,
+    val adaptiveWorkload: AdaptiveWorkloadSnapshot,
+    val studyAheadMinutes: Int,
+    val studyLadder: RecordsBase.StudyLadderSettings,
+    val schedulerParameters: RecordsSchedulerModels.SchedulerParameters,
+    val schedulerFsrsWeights: List<Double>?,
+    val learningSteps: RecordsSchedulerModels.LearningStepSettings,
+    val themeChoice: KaniThemeChoice,
+    val reminder: ReminderSettingsSnapshot,
+    val reminderAntiSpam: ReminderAntiSpamSettingsSnapshot,
+    val autoSync: AutoSyncSettingsSnapshot,
+    val autoUpdate: AutoUpdateStatusSnapshot,
+    val debugLogEnabled: Boolean,
+    val fsrsPersonalizationEnabled: Boolean,
+    val fsrsFitSummaryJson: String,
+    val updateCheckFailedAtMillis: Long,
+    val installPermissionPromptShown: Boolean,
+    val installPermissionPromptLastVersion: String,
+)
+
+data class ReminderSettingsSnapshot(
+    val enabled: Boolean,
+    val hour: Int,
+    val minute: Int,
+) {
+    fun normalized(): ReminderSettingsSnapshot {
+        val value = TimeOfDaySettingsPolicy.normalizeReminder(enabled, hour, minute)
+        return ReminderSettingsSnapshot(value.enabled, value.hour, value.minute)
+    }
+
+    fun displayTime(): String = TimeOfDaySettingsPolicy.displayTime(hour, minute)
+}
+
+data class ReminderAntiSpamSettingsSnapshot(
+    val quietStartMinuteOfDay: Int,
+    val quietEndMinuteOfDay: Int,
+    val maxRemindersPerDay: Int,
+)
+
+data class AutoSyncSettingsSnapshot(
+    val configured: Boolean,
+    val enabled: Boolean,
+    val hour: Int,
+    val minute: Int,
+    val lastAttemptAtMillis: Long,
+    val lastSuccessAtMillis: Long,
+    val nextRunAtMillis: Long,
+) {
+    fun normalized(): AutoSyncSettingsSnapshot {
+        val value = TimeOfDaySettingsPolicy.normalizeAutoSync(
+            configured,
+            enabled,
+            hour,
+            minute,
+            lastAttemptAtMillis,
+            lastSuccessAtMillis,
+            nextRunAtMillis,
+        )
+        return AutoSyncSettingsSnapshot(
+            value.configured,
+            value.enabled,
+            value.hour,
+            value.minute,
+            value.lastAttemptAtMillis,
+            value.lastSuccessAtMillis,
+            value.nextRunAtMillis,
+        )
+    }
+
+    fun displayTime(): String = TimeOfDaySettingsPolicy.displayTime(hour, minute)
+}
+
+data class AutoUpdateStatusSnapshot(
+    val enabled: Boolean,
+    val lastCheckAtMillis: Long,
+    val lastResult: String,
+    val lastVersion: String,
+    val pendingApkName: String,
+    val pendingMessage: String,
+) {
+    fun hasPendingUpdate(): Boolean = AutoUpdateStatusPolicy.hasPendingUpdate(pendingApkName)
+}
+
+sealed interface SettingsSaveCommand {
+    data class Sync(
+        val settings: RecordsSyncModels.Settings,
+        val tagRepairedCards: Boolean,
+    ) : SettingsSaveCommand
+
+    data class AdaptiveWorkload(val value: AdaptiveWorkloadSnapshot) : SettingsSaveCommand
+
+    data class StudyAhead(val minutes: Int) : SettingsSaveCommand
+
+    data class StudyLadder(val value: RecordsBase.StudyLadderSettings) : SettingsSaveCommand
+
+    data class NewCardSort(val mode: String) : SettingsSaveCommand
+
+    data class Theme(val choice: KaniThemeChoice) : SettingsSaveCommand
+
+    data class Reminder(val value: ReminderSettingsSnapshot) : SettingsSaveCommand
+
+    data class ReminderAntiSpam(val value: ReminderAntiSpamSettingsSnapshot) : SettingsSaveCommand
+
+    data class ReminderPosted(
+        val postedAtMillis: Long,
+        val family: String,
+        val signature: String,
+        val dailyTimeOverride: Boolean,
+    ) : SettingsSaveCommand
+
+    data class ReminderDismissed(
+        val dismissedAtMillis: Long,
+        val family: String,
+    ) : SettingsSaveCommand
+
+    data class AutoSync(val value: AutoSyncSettingsSnapshot) : SettingsSaveCommand
+
+    data class AutoSyncEnabled(val enabled: Boolean) : SettingsSaveCommand
+
+    data class AutoSyncScheduled(val nextRunAtMillis: Long) : SettingsSaveCommand
+
+    data class AutoSyncAttempt(
+        val attemptedAtMillis: Long,
+        val success: Boolean,
+    ) : SettingsSaveCommand
+
+    data class AutoUpdateEnabled(val enabled: Boolean) : SettingsSaveCommand
+
+    data class AutoUpdateResult(
+        val checkedAtMillis: Long,
+        val result: String,
+        val version: String,
+        val pendingApkName: String,
+        val pendingMessage: String,
+    ) : SettingsSaveCommand
+
+    data class ClearPendingAutoUpdate(val result: String) : SettingsSaveCommand
+
+    data class UpdateCheckFailed(val failedAtMillis: Long) : SettingsSaveCommand
+
+    data object ClearUpdateCheckFailed : SettingsSaveCommand
+
+    data class InstallPermissionPrompted(val version: String) : SettingsSaveCommand
+
+    data class DebugLogEnabled(val enabled: Boolean) : SettingsSaveCommand
+
+    data class SchedulerParameters(
+        val value: RecordsSchedulerModels.SchedulerParameters,
+    ) : SettingsSaveCommand
+
+    data class SchedulerFsrsWeights(val weights: List<Double>?) : SettingsSaveCommand
+
+    data class FsrsPersonalizationEnabled(val enabled: Boolean) : SettingsSaveCommand
+
+    data class FsrsFitSummary(val summaryJson: String) : SettingsSaveCommand
+
+    data object ResetFsrsPersonalization : SettingsSaveCommand
+
+    data class LearningSteps(
+        val value: RecordsSchedulerModels.LearningStepSettings,
+    ) : SettingsSaveCommand
+}
+
+data class CommitFsrsFitCommand(
+    val weightsToAdopt: List<Double>?,
+    val summaryJson: String,
+    val disabledSummaryJson: String?,
+    val preserveExistingWeights: Boolean,
+)
