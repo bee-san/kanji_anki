@@ -34,6 +34,7 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
     }
 
     private val settingsRepository = SettingsRepository(SqliteSettingsStorage(this))
+    private var settingsInvalidationPending = false
 
     internal fun settingsRepository(): SettingsRepository = settingsRepository
 
@@ -65,6 +66,18 @@ abstract class LocalStoreBase internal constructor(context: Context?) : SQLiteOp
             put(COLUMN_UPDATED_AT, System.currentTimeMillis())
         }
         db.insertWithOnConflict(TABLE_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        // SQLiteOpenHelper wraps this callback in the schema-version transaction. Publish
+        // the direct write from onOpen, after that transaction commits, so another helper
+        // cannot cache the old settings under the newly invalidated generation.
+        settingsInvalidationPending = true
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        if (settingsInvalidationPending) {
+            settingsInvalidationPending = false
+            settingsRepository.invalidate()
+        }
     }
 
     fun consumeDowngradeNotice(): Int? {

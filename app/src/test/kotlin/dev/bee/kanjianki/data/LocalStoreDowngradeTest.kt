@@ -61,6 +61,36 @@ class LocalStoreDowngradeTest {
     }
 
     @Test
+    fun cachedSettingsStillExposeDowngradeNoticeAfterReopen() {
+        val store = LocalStore(context)
+        store.writableDatabase
+        assertNull(store.getStringSetting(LocalStoreBase.SETTING_DOWNGRADED_FROM_VERSION, null))
+        store.close()
+
+        setDatabaseVersion(LocalStoreSchema.DB_VERSION + 1)
+
+        store.readableDatabase
+        assertEquals(LocalStoreSchema.DB_VERSION + 1, store.consumeDowngradeNotice())
+        store.close()
+    }
+
+    @Test
+    fun cachedSettingsStillExposeDowngradeNoticeAcrossStores() {
+        val observer = LocalStore(context)
+        observer.writableDatabase
+        assertNull(observer.getStringSetting(LocalStoreBase.SETTING_DOWNGRADED_FROM_VERSION, null))
+
+        setDatabaseVersion(LocalStoreSchema.DB_VERSION + 1)
+
+        LocalStore(context).use { it.readableDatabase }
+        assertEquals(
+            LocalStoreSchema.DB_VERSION + 1,
+            observer.getStringSetting(LocalStoreBase.SETTING_DOWNGRADED_FROM_VERSION, null)?.toInt(),
+        )
+        observer.close()
+    }
+
+    @Test
     fun downgradeDoesNotCrashOnOpen() {
         val store = LocalStore(context)
         store.writableDatabase
