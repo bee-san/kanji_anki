@@ -31,19 +31,13 @@ class StudyLoadDebugLogTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         clearFileProviderPathStrategyCache()
-        // StudyLoadDebugLog keeps static state and writes on a shared background thread, so a
-        // trailing write from a previous test can recreate the file. Delete until it stays gone.
-        val file = logFile()
-        repeat(50) {
-            file.delete()
-            Thread.sleep(10)
-            if (!file.exists()) return@repeat
-        }
-        file.delete()
+        assertTrue("shared log writer reset", StudyLoadDebugLog.resetForTests())
+        logFile().delete()
     }
 
     @After
     fun tearDown() {
+        assertTrue("shared log writer reset", StudyLoadDebugLog.resetForTests())
         logFile().delete()
     }
 
@@ -67,15 +61,13 @@ class StudyLoadDebugLogTest {
 
     @Test
     fun hasLogFalseWhenFileMissing() {
-        // hasLog resolves the internal log path and checks the file; with the file removed it must
-        // report false even if a stale handle is cached from a prior test.
-        deleteLogFileStably()
+        logFile().delete()
         assertFalse(StudyLoadDebugLog.hasLog(context))
     }
 
     @Test
     fun buildShareIntentNullWhenFileMissing() {
-        deleteLogFileStably()
+        logFile().delete()
         assertNull(awaitShareIntent())
     }
 
@@ -125,16 +117,6 @@ class StudyLoadDebugLogTest {
         }
         assertTrue("share callback completed", ready.await(5, TimeUnit.SECONDS))
         return intent
-    }
-
-    /** Removes the log file and keeps it gone against the shared background writer. */
-    private fun deleteLogFileStably() {
-        val file = logFile()
-        repeat(50) {
-            file.delete()
-            Thread.sleep(10)
-            if (!file.exists()) return
-        }
     }
 
     /**

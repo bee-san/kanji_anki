@@ -53,7 +53,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val asyncHomeRouteLoader by lazy {
         AsyncHomeRouteLoader(
             background = io,
-            postToMain = { task -> main.post(task) },
+            postToMain = { task -> postToMainIfActive(task::run) },
             onRouteRequested = ::onAsyncRouteRequested,
             onRouteCanceled = ::onAsyncRouteCanceled,
             onRouteSettled = ::onAsyncRouteSettled,
@@ -88,6 +88,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
 
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
+        currentHomeRouteRestoration = null
         activeUpdateUiRunToken = 0
         clearStudyModeOverrides()
         if (isScreenshotRouteRequested()) {
@@ -356,11 +357,35 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderFocusQueue() {
+        currentHomeRouteRestoration = HomeRouteRestoration.focusQueue()
         focusQueue.renderFocusQueue()
     }
 
     fun renderRecentMistakes() {
+        currentHomeRouteRestoration = HomeRouteRestoration.recentMistakes()
         focusQueue.renderRecentMistakes()
+    }
+
+    internal open fun renderRestoredHomeRoute(route: HomeRouteRestoration) {
+        currentHomeRouteRestoration = route
+        when (route.destination) {
+            HomeRouteRestoration.Destination.FOCUS_QUEUE -> renderFocusQueue()
+            HomeRouteRestoration.Destination.RECENT_MISTAKES -> renderRecentMistakes()
+            HomeRouteRestoration.Destination.BROWSE -> renderBrowseKanji(
+                route.query,
+                route.onlySimilarKanji,
+                route.allKanjiScope,
+            )
+            HomeRouteRestoration.Destination.DETAIL -> {
+                activeBrowseQuery = route.query
+                activeBrowseSimilarOnly = route.onlySimilarKanji
+                activeBrowseAllKanji = route.allKanjiScope
+                renderDetail(route.kanji, route.fromBrowse, route.query)
+            }
+            HomeRouteRestoration.Destination.READ_ONLY_DETAIL ->
+                renderReadOnlyDetail(route.kanji, route.query)
+            HomeRouteRestoration.Destination.GAMES -> renderGames()
+        }
     }
 
     fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {
@@ -451,6 +476,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun runSync() {
+        currentHomeRouteRestoration = null
         val repairedNoteIds = confirmedRepairedNoteIds
         confirmedRepairedNoteIds = emptySet()
         val progressView = SyncProgressPanel()
@@ -482,7 +508,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             },
             this::renderSyncResult,
         )
-        coordinator.start { update -> main.post { progressView.render(update) } }
+        coordinator.start { update -> postToMainIfActive { progressView.render(update) } }
     }
 
     private data class SyncConsent(

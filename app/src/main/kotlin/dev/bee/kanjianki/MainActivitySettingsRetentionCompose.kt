@@ -22,9 +22,11 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +52,18 @@ private val RetentionPanelShape = KaniUiTokens.PanelShape
 @Composable
 fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
     var retentionPercent by rememberSaveable { mutableIntStateOf(model.selectedRetentionPercent[0]) }
+    var frequencyRetentionEnabled by rememberSaveable {
+        mutableStateOf(model.state.frequencyRetentionEnabled)
+    }
+    var frequencyRetentionRanges by rememberSaveable {
+        mutableStateOf(model.state.frequencyRetentionRanges)
+    }
+
+    SideEffect {
+        model.selectedRetentionPercent[0] = retentionPercent
+        model.state.frequencyRetentionEnabled = frequencyRetentionEnabled
+        model.state.frequencyRetentionRanges = frequencyRetentionRanges
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RetentionPanelShape,
@@ -99,9 +113,9 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
             }
             RetentionCheckbox(
                 label = model.rankRetentionLabel,
-                checked = model.state.frequencyRetentionEnabled,
+                checked = frequencyRetentionEnabled,
                 onCheckedChange = {
-                    model.state.frequencyRetentionEnabled = it
+                    frequencyRetentionEnabled = it
                 }
             )
             Text(
@@ -110,9 +124,9 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 fontSize = 15.sp
             )
             OutlinedTextField(
-                value = model.state.frequencyRetentionRanges,
+                value = frequencyRetentionRanges,
                 onValueChange = {
-                    model.state.frequencyRetentionRanges = it
+                    frequencyRetentionRanges = it
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,7 +143,7 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 label = model.exampleRangesLabel,
                 modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    model.state.frequencyRetentionRanges = model.exampleRangesText
+                    frequencyRetentionRanges = model.exampleRangesText
                 }
             )
             KaniPrimaryButton(
@@ -137,8 +151,8 @@ fun SettingsRetentionPanel(model: SettingsRetentionPanelModel) {
                 onClick = {
                     model.onSave.save(
                         retentionPercent,
-                        model.state.frequencyRetentionEnabled,
-                        model.state.frequencyRetentionRanges
+                        frequencyRetentionEnabled,
+                        frequencyRetentionRanges
                     )
                 }
             )

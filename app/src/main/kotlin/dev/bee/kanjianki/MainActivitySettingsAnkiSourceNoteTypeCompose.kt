@@ -14,6 +14,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -34,6 +35,7 @@ private val NoteTypePanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
+    val fields = rememberSaveable(saver = SettingsNoteTypeFieldState.Saver) { model.fields }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = NoteTypePanelShape,
@@ -64,10 +66,10 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
             )
             NoteTypeInput(
                 label = model.noteTypeLabel,
-                value = model.fields.noteType,
+                value = fields.noteType,
                 testTag = SettingsNoteTypeTestTags.NOTE_TYPE_INPUT,
                 textSizeSp = 20,
-                onValueChange = model.fields::setNoteType
+                onValueChange = fields::setNoteType
             )
             Text(
                 text = model.requiredTitle,
@@ -82,42 +84,42 @@ fun SettingsNoteTypePanel(model: SettingsNoteTypePanelModel) {
             )
             NoteTypeInput(
                 label = model.expressionLabel,
-                value = model.fields.expression,
+                value = fields.expression,
                 testTag = SettingsNoteTypeTestTags.EXPRESSION_FIELD_INPUT,
-                onValueChange = model.fields::setExpression
+                onValueChange = fields::setExpression
             )
-            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.run() }
-            NoteTypeOutlinedButton(model.chooseLabel, minHeightDp = 44) { model.onChoose.run() }
-            NoteTypeOutlinedButton(model.kikuLabel, minHeightDp = 44) { model.onUseKiku.run() }
+            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.run(fields) }
+            NoteTypeOutlinedButton(model.chooseLabel, minHeightDp = 48) { model.onChoose.run(fields) }
+            NoteTypeOutlinedButton(model.kikuLabel, minHeightDp = 48) { model.onUseKiku.run(fields) }
             NoteTypeInput(
                 label = model.readingLabel,
-                value = model.fields.reading,
+                value = fields.reading,
                 testTag = SettingsNoteTypeTestTags.READING_FIELD_INPUT,
-                onValueChange = model.fields::setReading
+                onValueChange = fields::setReading
             )
             NoteTypeInput(
                 label = model.meaningLabel,
-                value = model.fields.meaning,
+                value = fields.meaning,
                 testTag = SettingsNoteTypeTestTags.MEANING_FIELD_INPUT,
-                onValueChange = model.fields::setMeaning
+                onValueChange = fields::setMeaning
             )
             NoteTypeInput(
                 label = model.sentenceLabel,
-                value = model.fields.sentence,
+                value = fields.sentence,
                 testTag = SettingsNoteTypeTestTags.SENTENCE_FIELD_INPUT,
-                onValueChange = model.fields::setSentence
+                onValueChange = fields::setSentence
             )
             NoteTypeInput(
                 label = model.frequencyLabel,
-                value = model.fields.frequency,
+                value = fields.frequency,
                 testTag = SettingsNoteTypeTestTags.FREQUENCY_FIELD_INPUT,
-                onValueChange = model.fields::setFrequency
+                onValueChange = fields::setFrequency
             )
             NoteTypeInput(
                 label = model.frequencySortLabel,
-                value = model.fields.frequencySort,
+                value = fields.frequencySort,
                 testTag = SettingsNoteTypeTestTags.FREQUENCY_SORT_FIELD_INPUT,
-                onValueChange = model.fields::setFrequencySort
+                onValueChange = fields::setFrequencySort
             )
         }
     }

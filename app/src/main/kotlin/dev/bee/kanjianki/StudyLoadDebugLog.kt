@@ -7,7 +7,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Debug-only file sink for the study-load timing probes.
@@ -57,10 +59,11 @@ internal object StudyLoadDebugLog {
         if (!BuildConfig.DEBUG) {
             return
         }
-        val stamp = runCatching { timestampFormat.format(Date()) }.getOrDefault("")
+        val wallTimeMillis = System.currentTimeMillis()
         val uptime = runCatching { SystemClock.elapsedRealtime() }.getOrDefault(0L)
         writer.execute {
             val file = logFile ?: return@execute
+            val stamp = runCatching { timestampFormat.format(Date(wallTimeMillis)) }.getOrDefault("")
             runCatching { appendLine(file, "$stamp [+${uptime}ms] $message") }
         }
     }
@@ -113,5 +116,20 @@ internal object StudyLoadDebugLog {
     private fun resolveLogFile(context: Context): File {
         logFile?.let { return it }
         return File(context.applicationContext.filesDir, LOG_FILE_NAME)
+    }
+
+    internal fun drainForTests(timeout: Long = 5L, unit: TimeUnit = TimeUnit.SECONDS): Boolean {
+        val drained = CountDownLatch(1)
+        writer.execute { drained.countDown() }
+        return drained.await(timeout, unit)
+    }
+
+    internal fun resetForTests(timeout: Long = 5L, unit: TimeUnit = TimeUnit.SECONDS): Boolean {
+        val reset = CountDownLatch(1)
+        writer.execute {
+            logFile = null
+            reset.countDown()
+        }
+        return reset.await(timeout, unit)
     }
 }

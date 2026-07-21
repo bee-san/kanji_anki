@@ -332,6 +332,77 @@ class MainActivityStartupTest {
     }
 
     @Test
+    fun activityRecreationRestoresStatsInsteadOfFallingBackHome() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = Intent(context, RouteRestorationStartupActivity::class.java)
+        val state = Bundle()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val first = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+        var second: org.robolectric.android.controller.ActivityController<RouteRestorationStartupActivity>? = null
+        try {
+            val firstActivity = first.create().start().resume().get()
+            firstActivity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
+            first.pause().saveInstanceState(state).stop().destroy()
+
+            second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+            val recreated = second.create(state).start().resume().get()
+
+            assertEquals(1, recreated.renderStatsCalls)
+            assertEquals(0, recreated.renderHomeCalls)
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            second?.pause()?.stop()?.destroy()
+        }
+    }
+
+    @Test
+    fun activityRecreationRestoresBrowseRouteAndArgumentsInsteadOfFallingBackHome() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = Intent(context, RouteRestorationStartupActivity::class.java)
+        val state = Bundle()
+        val route = HomeRouteRestoration.browse("学", onlySimilarKanji = true, allKanjiScope = false)
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val first = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+        var second: org.robolectric.android.controller.ActivityController<RouteRestorationStartupActivity>? = null
+        try {
+            val firstActivity = first.create().start().resume().get()
+            firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
+            firstActivity.currentHomeRouteRestoration = route
+            first.pause().saveInstanceState(state).stop().destroy()
+
+            second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+            val recreated = second.create(state).start().resume().get()
+
+            assertEquals(route, recreated.restoredHomeRoute)
+            assertEquals(0, recreated.renderHomeCalls)
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            second?.pause()?.stop()?.destroy()
+        }
+    }
+
+    @Test
+    fun onlyKnownSettingsAndStatsRoutesAreRestorable() {
+        val restorable = listOf(
+            MainActivityBase.NAV_STATS_ROUTE,
+            MainActivityBase.NAV_SETTINGS_ROUTE,
+            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE,
+            MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE,
+            MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE,
+            MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE,
+            MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE,
+            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE,
+            MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE,
+            MainActivityBase.NAV_SETTINGS_HOW_IT_WORKS_ROUTE,
+        )
+
+        assertTrue(restorable.all(MainActivityBase::isRestorableRoute))
+        assertFalse(MainActivityBase.isRestorableRoute(MainActivityBase.NAV_HOME_ROUTE))
+        assertFalse(MainActivityBase.isRestorableRoute(MainActivityBase.NAV_STUDY))
+        assertFalse(MainActivityBase.isRestorableRoute("malformed"))
+    }
+
+    @Test
     fun screenshotHarnessDoesNotMutateProductionStudyRecovery() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
@@ -497,6 +568,24 @@ class MainActivityStartupTest {
 
         override fun renderStudyRecoveryOnly() {
             renderStudyCalls += 1
+        }
+    }
+
+    private class RouteRestorationStartupActivity : MainActivity() {
+        var renderHomeCalls = 0
+        var renderStatsCalls = 0
+        var restoredHomeRoute: HomeRouteRestoration? = null
+
+        override fun renderHome() {
+            renderHomeCalls += 1
+        }
+
+        override fun renderStats() {
+            renderStatsCalls += 1
+        }
+
+        override fun renderRestoredHomeRoute(route: HomeRouteRestoration) {
+            restoredHomeRoute = route
         }
     }
 

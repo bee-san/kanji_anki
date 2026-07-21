@@ -262,7 +262,7 @@ class DrawingPadView(context: Context) : View(context) {
                 performClick()
                 handleTouchEnd(event)
             }
-            MotionEvent.ACTION_CANCEL -> handleTouchEnd(event)
+            MotionEvent.ACTION_CANCEL -> cancelTouch()
             else -> true
         }
     }
@@ -345,6 +345,16 @@ class DrawingPadView(context: Context) : View(context) {
         blockingCurrentStroke = false
         activePointerId = -1
         requestParentIntercept(true)
+        return true
+    }
+
+    private fun cancelTouch(): Boolean {
+        currentPoints.clear()
+        current = null
+        blockingCurrentStroke = false
+        activePointerId = -1
+        requestParentIntercept(true)
+        invalidate()
         return true
     }
 

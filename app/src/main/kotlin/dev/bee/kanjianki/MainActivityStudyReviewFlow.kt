@@ -349,8 +349,12 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 refreshWidgetAfterPersistedReviewMutation()
             }
             showToast(StudyTextCopy.similarWritingRepairSkippedToast())
-            activity.activeSimilarWritingRepair = null
-            activity.renderStudy()
+            activity.postToMainIfActive {
+                if (activity.activeSimilarWritingRepair === repair) {
+                    activity.activeSimilarWritingRepair = null
+                    activity.renderStudy()
+                }
+            }
             activity.requestReminderRearm("review")
         }
     }
@@ -614,14 +618,14 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             val currentItem = activity.findStudyItem(activity.store.studyItems(), pending.snapshot.afterReview.kanji)
             if (!StudyReviewActions.matchesUndoBoundary(currentItem, pending.snapshot.afterReview)) {
                 activity.studyUndoState.clear()
-                activity.renderStudy()
+                activity.postToMainIfActive(activity::renderStudy)
                 return@runReviewWrite
             }
             val restoredKanji = pending.snapshot.beforeReview.kanji
             activity.studyUndoState.clear()
             val restored = runCatching { activity.store.undoLastAppliedReview(pending.snapshot) }.getOrDefault(false)
             if (!restored) {
-                activity.renderStudy()
+                activity.postToMainIfActive(activity::renderStudy)
                 return@runReviewWrite
             }
             refreshWidgetAfterPersistedReviewMutation()
@@ -634,7 +638,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 "review event=token-released token_id=${reviewTokenId(pending.snapshot.token)} reason=undo",
             )
             activity.clearStudyAnswerAfterUndo(pending.snapshot.token, answeredRecovery)
-            activity.renderStudyForKanji(restoredKanji)
+            activity.postToMainIfActive {
+                activity.renderStudyForKanji(restoredKanji)
+            }
             activity.scheduleStatsPrecomputeIfStaleAsync()
             activity.requestReminderRearm("review")
         }

@@ -43,7 +43,7 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
                     hasSimilarLocalPair = activity.store::hasSimilarLocalPair,
                 )
             } finally {
-                activity.main.post {
+                activity.postToMainIfActive {
                     activity.newCardSortPreviewRefreshPending = false
                     previewRowsData?.let { snapshot ->
                         activity.cachedNewCardSortPreviewRows = snapshot

@@ -127,6 +127,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     /** One-shot recreation marker; unlike [intent], this reflects the route active at teardown. */
     internal var restoreStudyRouteOnCreate: Boolean = false
 
+    /** One-shot non-Study route marker restored from Activity saved state. */
+    internal var restoreRouteOnCreate: String? = null
+
+    /** One-shot Home secondary-screen marker restored from Activity saved state. */
+    internal var restoreHomeRouteOnCreate: HomeRouteRestoration? = null
+
+    /** Home secondary screen currently visible under the Home navigation destination. */
+    internal var currentHomeRouteRestoration: HomeRouteRestoration? = null
+
     /** Screenshot/benchmark routing must observe, but never mutate, production recovery state. */
     internal var preserveStudyRecoveryForHarnessRoute: Boolean = false
 
@@ -386,6 +395,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         restoreStudyRouteOnCreate = savedInstanceState?.getBoolean(STATE_RESTORE_STUDY_ROUTE, false) == true
+        restoreRouteOnCreate = savedInstanceState
+            ?.getString(STATE_RESTORE_ROUTE)
+            ?.takeIf(::isRestorableRoute)
+        restoreHomeRouteOnCreate = HomeRouteRestoration.fromBundle(
+            savedInstanceState?.getBundle(STATE_RESTORE_HOME_ROUTE),
+        )
         pendingReminderSettings = restorePendingReminderSettings(savedInstanceState)
         // Activity-result launchers must be registered once, before the activity reaches STARTED.
         // Keep the established SAF launchers first: ComponentActivity's automatic registry keys
@@ -412,6 +427,12 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     override fun onSaveInstanceState(outState: Bundle) {
         if (shouldRestoreStudyRouteAfterRecreation()) {
             outState.putBoolean(STATE_RESTORE_STUDY_ROUTE, true)
+        } else if (isRestorableRoute(currentRoute)) {
+            outState.putString(STATE_RESTORE_ROUTE, currentRoute)
+        } else if (currentRoute == NAV_HOME_ROUTE) {
+            currentHomeRouteRestoration?.let {
+                outState.putBundle(STATE_RESTORE_HOME_ROUTE, it.toBundle())
+            }
         }
         pendingReminderSettings?.let { pending ->
             outState.putBundle(
@@ -455,6 +476,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         super.onNewIntent(intent)
         // A genuine warm-launch intent is newer than any marker restored by onCreate.
         restoreStudyRouteOnCreate = false
+        restoreRouteOnCreate = null
+        restoreHomeRouteOnCreate = null
         setIntent(intent)
         handleLaunchIntent(intent)
     }
@@ -715,6 +738,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         private const val STATE_PENDING_REMINDER = "kani.pending-reminder"
         private const val STATE_RESTORE_STUDY_ROUTE = "kani.restore-study-route"
+        private const val STATE_RESTORE_ROUTE = "kani.restore-route"
+        private const val STATE_RESTORE_HOME_ROUTE = "kani.restore-home-route"
         private const val STATE_PENDING_REMINDER_ENABLED = "enabled"
         private const val STATE_PENDING_REMINDER_HOUR = "hour"
         private const val STATE_PENDING_REMINDER_MINUTE = "minute"
@@ -745,6 +770,20 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
                 route.startsWith("$NAV_SETTINGS_ROUTE/") -> route.substringBeforeLast('/')
                 else -> NAV_HOME_ROUTE
             }
+        }
+
+        @JvmStatic
+        fun isRestorableRoute(route: String): Boolean {
+            return route == NAV_STATS_ROUTE ||
+                route == NAV_SETTINGS_ROUTE ||
+                route == NAV_SETTINGS_IMPORT_SYNC_ROUTE ||
+                route == NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE ||
+                route == NAV_SETTINGS_AUTOMATION_ROUTE ||
+                route == NAV_SETTINGS_APPEARANCE_ROUTE ||
+                route == NAV_SETTINGS_DISPLAY_DATA_ROUTE ||
+                route == NAV_SETTINGS_UPDATE_ROUTE ||
+                route == NAV_SETTINGS_LICENSES_ROUTE ||
+                route == NAV_SETTINGS_HOW_IT_WORKS_ROUTE
         }
         const val LABEL_BACK_HOME = "Back home"
         const val LABEL_MEANING = "Meaning"

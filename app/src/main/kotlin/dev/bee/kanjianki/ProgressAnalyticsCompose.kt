@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -414,7 +417,9 @@ internal fun ProgressConfusionCard(pairs: List<ProgressConfusionPairState>, onBr
         pairs.forEach { pair ->
             Row(
                 Modifier.fillMaxWidth().testTag(ProgressConfusionRowTagPrefix + pair.firstKanji)
-                    .clickable { onBrowseKanji(pair.firstKanji) }.padding(vertical = 8.dp),
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button) { onBrowseKanji(pair.firstKanji) }
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("${pair.firstKanji} ↔ ${pair.secondKanji}", fontFamily = GamesKanjiFontFamily, style = MaterialTheme.typography.headlineSmall)
@@ -448,7 +453,14 @@ internal fun ProgressRangeChips(
         ranges.forEach { range ->
             val active = range == selected
             Surface(
-                modifier = Modifier.testTag(ProgressRangeChipTagPrefix + scope + "-" + range.name).clickable { onSelect(range) },
+                modifier = Modifier
+                    .testTag(ProgressRangeChipTagPrefix + scope + "-" + range.name)
+                    .heightIn(min = 48.dp)
+                    .selectable(
+                        selected = active,
+                        role = Role.RadioButton,
+                        onClick = { onSelect(range) },
+                    ),
                 shape = KaniUiTokens.PillShape,
                 color = if (active) KaniTheme.colors.primary else KaniTheme.colors.pill,
             ) {

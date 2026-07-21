@@ -281,7 +281,8 @@ class DrawingPadViewInstrumentedTest {
         sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 100f, 100f)
         drawToBitmap(pad)
         sendTouch(pad, 100L, 120L, MotionEvent.ACTION_CANCEL, 180f, 220f)
-        assertTrue(pad.hasInk())
+        assertFalse(pad.hasInk())
+        assertEquals(0, pad.capturedWriting().strokes.size)
 
         pad.clear()
         sendTouch(pad, 200L, 200L, MotionEvent.ACTION_DOWN, 500f, 500f)

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -167,6 +168,19 @@ class MainActivityHomeBrowseDetailComposeTest {
     }
 
     @Test
+    fun browseQueryDraftSurvivesStateRestorationWithFreshModel() {
+        var model = browseModel("initial query")
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { BrowseScreen(model) }
+
+        composeRule.onNodeWithText("initial query").performTextReplacement("draft query")
+        model = browseModel("initial query")
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithText("draft query").assertTextContains("draft query")
+    }
+
+    @Test
     fun rendersBrowseEmptyStateWithoutRows() {
         composeRule.setContent {
             BrowseScreen(
@@ -314,6 +328,45 @@ class MainActivityHomeBrowseDetailComposeTest {
         composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).performClick()
         assertEquals("", savedNotes.last())
     }
+
+    @Test
+    fun mnemonicDraftSurvivesStateRestorationWithFreshModel() {
+        var saved = ""
+        var model = mnemonicModel("saved note") { saved = it }
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { BrowseMnemonicNoteEditor(model) }
+
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT)
+            .performTextReplacement("unsaved draft")
+        model = mnemonicModel("saved note") { saved = it }
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT).assertTextContains("unsaved draft")
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).performClick()
+        composeRule.runOnIdle {
+            assertEquals("unsaved draft", saved)
+        }
+    }
+
+    private fun browseModel(initialQuery: String) = BrowseScreenModel(
+        initialQuery = initialQuery,
+        resultHeading = "No results",
+        rows = emptyList(),
+        onHome = {},
+        onSearch = {},
+    )
+
+    private fun mnemonicModel(
+        initialNote: String,
+        onSave: (String) -> Unit,
+    ) = BrowseMnemonicNoteModel(
+        title = "My mnemonic",
+        fieldLabel = "Mnemonic note",
+        helper = "Helper",
+        initialNote = initialNote,
+        saveLabel = "Save mnemonic",
+        onSave = onSave,
+    )
 
     @Test
     fun rendersFullDetailScreenAndMissingState() {

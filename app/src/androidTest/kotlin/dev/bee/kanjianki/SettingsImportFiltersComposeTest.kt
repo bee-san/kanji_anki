@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -158,6 +159,28 @@ class SettingsImportFiltersComposeTest {
         }
     }
 
+    @Test
+    fun importFilterDraftSurvivesStateRestorationAndSavesThroughFreshModel() {
+        var state = freshState(tags = "initial")
+        var savedTags = ""
+        var model = importModel(state) { restored -> savedTags = restored.tags }
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { SettingsImportFiltersPanel(model) }
+
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.TAGS_INPUT)
+            .performTextReplacement("draft tags")
+
+        state = freshState(tags = "initial")
+        model = importModel(state) { restored -> savedTags = restored.tags }
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithTag(SettingsImportFiltersTestTags.TAGS_INPUT).assertTextEquals("draft tags")
+        composeRule.onNode(hasText(SettingsTextCopy.saveImportFiltersLabel()) and hasClickAction()).performClick()
+        composeRule.runOnIdle {
+            assertEquals("draft tags", savedTags)
+        }
+    }
+
     private fun render(
         state: SettingsImportFiltersState,
         summary: String = "Suspended cards",
@@ -168,30 +191,12 @@ class SettingsImportFiltersComposeTest {
         composeRule.setContent {
             val content = @androidx.compose.runtime.Composable {
                 SettingsImportFiltersPanel(
-                    model = SettingsImportFiltersPanelModel(
-                        title = SettingsTextCopy.importFiltersTitle(),
-                        summary = summary,
-                        body = SettingsTextCopy.importFiltersBody(),
-                        presetsTitle = SettingsTextCopy.presetsTitle(),
-                        presets = presets,
+                    model = importModel(
                         state = state,
-                        activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
-                        suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
-                        taggedCardsLabel = SettingsTextCopy.taggedCardsLabel(),
-                        weakCardsLabel = SettingsTextCopy.weakCardsLabel(),
-                        browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
-                        browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
-                        browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
-                        browserQueryHelperText = SettingsTextCopy.ankiBrowserQueryHelperText(),
-                        tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
-                        tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
-                        difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),
-                        lapsesLabel = SettingsTextCopy.lapsesLabel(),
-                        minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
-                        saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-                        onSave = SettingsImportFilterAction { onSave() },
-                        tagRepairedCardsLabel = SettingsTextCopy.tagRepairedCardsLabel(),
-                    )
+                        summary = summary,
+                        presets = presets,
+                        onSave = { onSave() },
+                    ),
                 )
             }
             if (widthDp == null) {
@@ -201,6 +206,36 @@ class SettingsImportFiltersComposeTest {
             }
         }
     }
+
+    private fun importModel(
+        state: SettingsImportFiltersState,
+        summary: String = "Suspended cards",
+        presets: List<SettingsImportPresetButtonModel> = emptyList(),
+        onSave: (SettingsImportFiltersState) -> Unit = {},
+    ) = SettingsImportFiltersPanelModel(
+        title = SettingsTextCopy.importFiltersTitle(),
+        summary = summary,
+        body = SettingsTextCopy.importFiltersBody(),
+        presetsTitle = SettingsTextCopy.presetsTitle(),
+        presets = presets,
+        state = state,
+        activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
+        suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
+        taggedCardsLabel = SettingsTextCopy.taggedCardsLabel(),
+        weakCardsLabel = SettingsTextCopy.weakCardsLabel(),
+        browserQueryCardsLabel = SettingsTextCopy.browserQueryLabel(),
+        browserQueryLabel = SettingsTextCopy.ankiBrowserQueryLabel(),
+        browserQueryHint = SettingsTextCopy.ankiBrowserQueryHint(),
+        browserQueryHelperText = SettingsTextCopy.ankiBrowserQueryHelperText(),
+        tagsLabel = SettingsTextCopy.ankiNoteTagsLabel(),
+        tagsHint = SettingsTextCopy.ankiNoteTagsHint(),
+        difficultyLabel = SettingsTextCopy.fsrsDifficultyLabel(),
+        lapsesLabel = SettingsTextCopy.lapsesLabel(),
+        minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
+        saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
+        onSave = SettingsImportFilterSaveAction(onSave),
+        tagRepairedCardsLabel = SettingsTextCopy.tagRepairedCardsLabel(),
+    )
 
     private fun freshState(
         activeCards: Boolean = false,

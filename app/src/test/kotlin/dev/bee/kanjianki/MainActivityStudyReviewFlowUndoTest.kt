@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
@@ -18,6 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
@@ -111,10 +113,13 @@ class MainActivityStudyReviewFlowUndoTest {
 
                 undoIo.runNext()
 
-                // The undo write ran and rendered the restored kanji. The stats precompute is now
-                // queued on the maintenance executor (not io), so io is drained and maintenance
-                // holds exactly the precompute work -- keeping the heavy recompute off the
-                // route-load path.
+                // Persistence runs on io, but route rendering must wait for main dispatch.
+                assertNull(activity.renderedKanji())
+                shadowOf(Looper.getMainLooper()).idle()
+
+                // The stats precompute is queued on the maintenance executor (not io), so io is
+                // drained and maintenance holds exactly the precompute work -- keeping the heavy
+                // recompute off the route-load path.
                 assertEquals("裂", activity.renderedKanji())
                 assertNull(activity.pendingStudyAnswerSnapshot())
                 assertNull(activity.studyAnswerFeedbackState)

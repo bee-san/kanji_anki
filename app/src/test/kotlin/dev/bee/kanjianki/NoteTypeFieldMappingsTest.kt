@@ -77,6 +77,23 @@ class NoteTypeFieldMappingsTest {
     }
 
     @Test
+    fun presentNoteTypesIgnoresInvalidChooserIndices() {
+        val ui = FakeUi()
+        val inputs = FakeInputs()
+        NoteTypeFieldMappings.presentNoteTypes(
+            listOf(choice("Mining", "Expression")),
+            inputs,
+            ui,
+        )
+
+        ui.select(-1)
+        ui.select(1)
+
+        assertEquals("", inputs.noteTypeValue)
+        assertEquals("", inputs.expressionValue)
+    }
+
+    @Test
     fun choiceNormalizesNullNamesAndFieldsForLabels() {
         val blank = NoteTypeFieldMappings.Choice(null, null)
 

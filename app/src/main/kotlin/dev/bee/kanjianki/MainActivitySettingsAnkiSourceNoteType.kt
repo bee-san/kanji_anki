@@ -33,11 +33,11 @@ internal class MainActivitySettingsAnkiSourceNoteType(private val activity: Main
             chooseLabel = SettingsTextCopy.chooseFromAnkiDroidLabel(),
             kikuLabel = SettingsTextCopy.useKikuLabel(),
             saveLabel = SettingsTextCopy.saveNoteTypeLabel(),
-            onChoose = SettingsNoteTypeAction {
-                NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fieldState)
+            onChoose = SettingsNoteTypeAction { fields ->
+                NoteTypeFieldMappings.choose(activity, activity.gateway, activity.io, activity.main, fields)
             },
-            onUseKiku = SettingsNoteTypeAction { fieldState.applyDefaults(defaults) },
-            onSave = SettingsNoteTypeAction { saveNoteTypeFields(fieldState) }
+            onUseKiku = SettingsNoteTypeAction { fields -> fields.applyDefaults(defaults) },
+            onSave = SettingsNoteTypeAction(::saveNoteTypeFields)
         )
     }
 

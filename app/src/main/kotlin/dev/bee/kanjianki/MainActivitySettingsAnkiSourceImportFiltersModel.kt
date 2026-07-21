@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 
 object SettingsImportFiltersTestTags {
@@ -36,10 +37,49 @@ class SettingsImportFiltersState(
     var lapses by mutableStateOf(lapses.orEmpty())
     var minMatching by mutableStateOf(minMatching.orEmpty())
     var tagRepairedCards by mutableStateOf(tagRepairedCards)
+
+    companion object {
+        val Saver = listSaver<SettingsImportFiltersState, Any>(
+            save = { state ->
+                listOf(
+                    state.activeCards,
+                    state.suspendedCards,
+                    state.taggedCards,
+                    state.weakCards,
+                    state.browserQueryCards,
+                    state.browserQuery,
+                    state.tags,
+                    state.difficulty,
+                    state.lapses,
+                    state.minMatching,
+                    state.tagRepairedCards,
+                )
+            },
+            restore = { values ->
+                SettingsImportFiltersState(
+                    activeCards = values[0] as Boolean,
+                    suspendedCards = values[1] as Boolean,
+                    taggedCards = values[2] as Boolean,
+                    weakCards = values[3] as Boolean,
+                    browserQueryCards = values[4] as Boolean,
+                    browserQuery = values[5] as String,
+                    tags = values[6] as String,
+                    difficulty = values[7] as String,
+                    lapses = values[8] as String,
+                    minMatching = values[9] as String,
+                    tagRepairedCards = values[10] as Boolean,
+                )
+            },
+        )
+    }
 }
 
 fun interface SettingsImportFilterAction {
     fun run()
+}
+
+fun interface SettingsImportFilterSaveAction {
+    fun save(state: SettingsImportFiltersState)
 }
 
 data class SettingsImportPresetButtonModel(
@@ -68,6 +108,6 @@ data class SettingsImportFiltersPanelModel(
     val lapsesLabel: String,
     val minMatchingLabel: String,
     val saveLabel: String,
-    val onSave: SettingsImportFilterAction,
+    val onSave: SettingsImportFilterSaveAction,
     val tagRepairedCardsLabel: String = "",
 ) : SettingsPanelModel

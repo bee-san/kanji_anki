@@ -54,9 +54,11 @@ internal object KaniChartGeometry {
         if (axis.axisMax <= 0) 0f else (value.coerceIn(0, axis.axisMax) / axis.axisMax.toFloat())
 
     fun donutSweeps(values: List<Int>): List<Float> {
-        val total = values.sumOf { it.coerceAtLeast(0) }
-        if (total == 0) return emptyList()
-        return values.map { it.coerceAtLeast(0) * 360f / total }
+        val total = values.sumOf { it.coerceAtLeast(0).toLong() }
+        if (total == 0L) return emptyList()
+        return values.map {
+            (it.coerceAtLeast(0).toDouble() * 360.0 / total.toDouble()).toFloat()
+        }
     }
 
     fun centeredSquareBounds(width: Float, height: Float, inset: Float): SquareBounds {

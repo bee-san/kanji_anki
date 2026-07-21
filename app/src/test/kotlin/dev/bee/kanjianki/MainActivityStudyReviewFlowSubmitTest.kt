@@ -410,6 +410,9 @@ class MainActivityStudyReviewFlowSubmitTest {
             reviewIo.runNext()
 
             assertEquals(2, widgetRefreshes)
+            assertEquals(0, activity.renderCount())
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, activity.renderCount())
         }
     }
 

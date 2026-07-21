@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
@@ -181,6 +182,44 @@ class ReadingExposureMediaReaderTest {
 
         val refreshed = ReadingExposureMediaReader(listOf(media)).read()
         assertEquals(77, refreshed.statFor("山")?.totalCount)
+    }
+
+    @Test
+    fun readerRejectsManifestStatsPathOutsideMediaDirectory() {
+        val root = temporaryFolder.newFolder("traversal")
+        val media = File(root, "collection.media").apply { mkdirs() }
+        File(root, "outside.json").writeText(
+            """{"kanji":[{"kanji":"外","totalCount":99}]}""",
+            Charsets.UTF_8,
+        )
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"kanjiFile":"../outside.json"}""",
+            Charsets.UTF_8,
+        )
+
+        val index = ReadingExposureMediaReader(listOf(media)).read()
+
+        assertNull(index.statFor("外"))
+    }
+
+    @Test
+    fun readerRejectsDecodedGzipPayloadOverConfiguredLimit() {
+        val media = temporaryFolder.newFolder("oversized.media")
+        File(media, ReadingExposureMediaReader.MANIFEST_FILE).writeText(
+            """{"kanjiFile":"stats.json.gz"}""",
+            Charsets.UTF_8,
+        )
+        gzip(
+            File(media, "stats.json.gz"),
+            """{"kanji":[{"kanji":"大","totalCount":99}],"padding":"${"x".repeat(2_000)}"}""",
+        )
+
+        val index = ReadingExposureMediaReader(
+            mediaDirs = listOf(media),
+            maxStatsBytes = 256,
+        ).read()
+
+        assertNull(index.statFor("大"))
     }
 
     @Test

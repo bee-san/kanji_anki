@@ -83,6 +83,28 @@ class HomeViewModelTest {
         assertEquals(1, callCount)
     }
 
+    @Test
+    fun failedRefreshStopsLoadingAndPreservesThePreviousModel() = runTest(testDispatcher) {
+        val vm = HomeViewModel()
+        vm.refresh(testDispatcher) { testModel("Preserved") }
+        advanceUntilIdle()
+
+        vm.refresh(testDispatcher) { error("load failed") }
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertFalse(state.loading)
+        assertEquals("Preserved", state.model?.title)
+    }
+
+    @Test(expected = AssertionError::class)
+    fun fatalErrorFromRefreshIsNotSwallowed() = runTest(testDispatcher) {
+        val vm = HomeViewModel()
+
+        vm.refresh(testDispatcher) { throw AssertionError("fatal load failure") }
+        advanceUntilIdle()
+    }
+
     private fun testModel(title: String) = HomeScreenModel(
         title = title,
         subtitle = "",

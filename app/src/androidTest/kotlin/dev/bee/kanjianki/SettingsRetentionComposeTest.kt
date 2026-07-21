@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -92,4 +93,52 @@ class SettingsRetentionComposeTest {
             assertEquals(FrequencyRetentionRanges.exampleText(), savedRanges)
         }
     }
+
+    @Test
+    fun retentionDraftSurvivesStateRestorationWithFreshModelState() {
+        var selected = intArrayOf(90)
+        var state = SettingsRetentionState(false, "1-500=95%")
+        var savedRanges = ""
+        var model = retentionModel(selected, state) { _, _, ranges -> savedRanges = ranges }
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { SettingsRetentionPanel(model) }
+
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX)
+            .performClick()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT)
+            .performTextReplacement("1-200=96%")
+
+        selected = intArrayOf(90)
+        state = SettingsRetentionState(false, "1-500=95%")
+        model = retentionModel(selected, state) { _, _, ranges -> savedRanges = ranges }
+        restoration.emulateSavedInstanceStateRestore()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RETENTION_CHECKBOX).assertIsOn()
+        composeRule.onNodeWithContentDescription(SettingsRetentionControlDescriptions.RANK_RANGES_INPUT)
+            .assertTextEquals("1-200=96%")
+        composeRule.onNodeWithText(SettingsTextCopy.saveRetentionLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertTrue(state.frequencyRetentionEnabled)
+            assertEquals("1-200=96%", state.frequencyRetentionRanges)
+            assertEquals("1-200=96%", savedRanges)
+        }
+    }
+
+    private fun retentionModel(
+        selected: IntArray,
+        state: SettingsRetentionState,
+        onSave: (Int, Boolean, String) -> Unit,
+    ) = SettingsRetentionPanelModel(
+        title = SettingsTextCopy.fsrsRetentionTitle(),
+        body = SettingsTextCopy.fsrsRetentionBody(),
+        selectedRetentionPercent = selected,
+        presetValues = intArrayOf(85, 90, 95),
+        state = state,
+        rankRetentionLabel = SettingsTextCopy.useJitenRankRetentionRangesLabel(),
+        rankRangesBody = SettingsTextCopy.jitenRankRetentionRangesBody(),
+        exampleRangesText = FrequencyRetentionRanges.exampleText(),
+        exampleRangesLabel = SettingsTextCopy.useExampleRangesLabel(),
+        saveLabel = SettingsTextCopy.saveRetentionLabel(),
+        onSave = SettingsRetentionSaveAction(onSave),
+    )
 }

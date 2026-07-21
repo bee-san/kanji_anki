@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.os.SystemClock
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -70,50 +71,73 @@ internal class AsyncHomeRouteLoader(
         )
 
         val enqueuedAtNanos = nanoClock()
+        val taskStarted = AtomicBoolean(false)
 
-        background.execute {
-            if (token != generation.get()) {
-                loadingHandle?.cancel()
+        try {
+            background.execute {
+                taskStarted.set(true)
+                if (token != generation.get()) {
+                    loadingHandle?.cancel()
+                    finished.set(true)
+                    postToMain(
+                        Runnable {
+                            runCatching { onStaleResult(token, generation.get(), traceLabel) }
+                        },
+                    )
+                    return@execute
+                }
+                // Surface how long this load waited in the (single-threaded) executor queue before it
+                // started running. withAsyncLoadTrace only measures on-thread execution, so without
+                // this the debug log hides head-of-line blocking: each load looks fast even when the
+                // user waited seconds for it to even start.
+                runCatching { onQueueWait(traceLabel, nanoClock() - enqueuedAtNanos) }
+
+                val result = withAsyncLoadTrace(traceLabel, "load") {
+                    runCatching(load)
+                }
+
                 finished.set(true)
-                postToMain(
-                    Runnable {
-                        runCatching { onStaleResult(token, generation.get(), traceLabel) }
-                    },
-                )
-                return@execute
+                loadingHandle?.cancel()
+                postResult(token, traceLabel, result, render, renderError)
             }
-            // Surface how long this load waited in the (single-threaded) executor queue before it
-            // started running. withAsyncLoadTrace only measures on-thread execution, so without
-            // this the debug log hides head-of-line blocking: each load looks fast even when the
-            // user waited seconds for it to even start.
-            runCatching { onQueueWait(traceLabel, nanoClock() - enqueuedAtNanos) }
-
-            val result = withAsyncLoadTrace(traceLabel, "load") {
-                runCatching(load)
+        } catch (error: RejectedExecutionException) {
+            if (taskStarted.get()) {
+                throw error
             }
-
+            // Activity teardown shuts down the route executor. Treat a rejected request like any
+            // other recoverable load failure so its loading guard is canceled and route observers
+            // do not remain permanently armed.
             finished.set(true)
             loadingHandle?.cancel()
-
-            postToMain(
-                Runnable {
-                    val currentToken = generation.get()
-                    if (token != currentToken) {
-                        runCatching { onStaleResult(token, currentToken, traceLabel) }
-                        return@Runnable
-                    }
-                    try {
-                        withAsyncLoadTrace(traceLabel, "render") {
-                            result.fold(render, renderError)
-                        }
-                    } finally {
-                        // Both a rendered model and a rendered recoverable error release deferred
-                        // maintenance. Superseded results return above and never settle.
-                        runCatching { onRouteSettled(token, traceLabel, result.isSuccess) }
-                    }
-                },
-            )
+            postResult(token, traceLabel, Result.failure(error), render, renderError)
         }
+    }
+
+    private fun <T> postResult(
+        token: Int,
+        traceLabel: String,
+        result: Result<T>,
+        render: (T) -> Unit,
+        renderError: (Throwable) -> Unit,
+    ) {
+        postToMain(
+            Runnable {
+                val currentToken = generation.get()
+                if (token != currentToken) {
+                    runCatching { onStaleResult(token, currentToken, traceLabel) }
+                    return@Runnable
+                }
+                try {
+                    withAsyncLoadTrace(traceLabel, "render") {
+                        result.fold(render, renderError)
+                    }
+                } finally {
+                    // Both a rendered model and a rendered recoverable error release deferred
+                    // maintenance. Superseded results return above and never settle.
+                    runCatching { onRouteSettled(token, traceLabel, result.isSuccess) }
+                }
+            },
+        )
     }
 
     private fun scheduleLoadingGuard(

@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -75,6 +76,28 @@ class SettingsReminderComposeTest {
             assertTrue(pickerOpened)
             assertEquals(6, selectedHour[0])
             assertEquals(5, selectedMinute[0])
+        }
+    }
+
+    @Test
+    fun selectedTimeSurvivesStateRestorationAndSyncsToFreshModel() {
+        var selectedHour = intArrayOf(21)
+        var selectedMinute = intArrayOf(0)
+        var model = reminderModel(selectedHour = selectedHour, selectedMinute = selectedMinute)
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { SettingsReminderPanel(model) }
+
+        composeRule.onNodeWithText(SettingsTextCopy.reminderPresetButtonLabel("Morning", 8, 0)).performClick()
+
+        selectedHour = intArrayOf(21)
+        selectedMinute = intArrayOf(0)
+        model = reminderModel(selectedHour = selectedHour, selectedMinute = selectedMinute)
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithText(SettingsTextCopy.reminderTimeButtonLabel(8, 0)).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(8, selectedHour[0])
+            assertEquals(0, selectedMinute[0])
         }
     }
 

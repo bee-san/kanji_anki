@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
@@ -176,13 +177,19 @@ internal fun trimUtf8LogTailIfOversized(
     if (file.length() <= maxBytes) {
         return
     }
-    val bytes = file.readBytes()
-    val requestedStart = (bytes.size - keepBytes).coerceAtLeast(0)
-    var newline = requestedStart
+    val boundedKeepBytes = keepBytes.coerceAtLeast(0)
+    val fileLength = file.length()
+    val tailLength = minOf(fileLength, boundedKeepBytes.toLong()).toInt()
+    val bytes = ByteArray(tailLength)
+    RandomAccessFile(file, "r").use { input ->
+        input.seek(fileLength - tailLength)
+        input.readFully(bytes)
+    }
+    var newline = 0
     while (newline < bytes.size && bytes[newline] != '\n'.code.toByte()) {
         newline += 1
     }
-    var tailStart = if (newline < bytes.size - 1) newline + 1 else requestedStart
+    var tailStart = if (newline < bytes.size - 1) newline + 1 else 0
     while (tailStart < bytes.size && (bytes[tailStart].toInt() and 0xc0) == 0x80) {
         tailStart += 1
     }

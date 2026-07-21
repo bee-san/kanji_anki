@@ -61,7 +61,9 @@ internal object NoteTypeFieldMappings {
             return
         }
         ui.showNoteTypeChoices(CHOOSE_NOTE_TYPE_TITLE, labels(noteTypes)) { which ->
-            chooseNoteType(noteTypes[which], inputs)
+            if (which in noteTypes.indices) {
+                chooseNoteType(noteTypes[which], inputs)
+            }
         }
     }
 
@@ -164,20 +166,25 @@ internal object NoteTypeFieldMappings {
 
     class AndroidChooserUi(private val activity: Activity) : ChooserUi {
         override fun showShortMessage(message: String) {
+            if (!activityCanShowUi()) return
             Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
         }
 
         override fun showLongMessage(message: String) {
+            if (!activityCanShowUi()) return
             Toast.makeText(activity, message, Toast.LENGTH_LONG).show()
         }
 
         override fun showNoteTypeChoices(title: String, labels: Array<String>, selection: Selection) {
+            if (!activityCanShowUi()) return
             AlertDialog.Builder(activity)
                 .setTitle(title)
                 .setItems(labels) { _, which -> selection.select(which) }
                 .setNegativeButton("Cancel", null)
                 .show()
         }
+
+        private fun activityCanShowUi(): Boolean = !activity.isFinishing && !activity.isDestroyed
     }
 
     class Inputs(

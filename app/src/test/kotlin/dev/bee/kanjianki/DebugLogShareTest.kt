@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.file.Files
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -238,6 +239,28 @@ class DebugLogShareTest {
         }
 
         assertTrue(result.exceptionOrNull() is IllegalArgumentException)
+    }
+
+    @Test
+    fun oversizedSparseLogReadsOnlyTheConfiguredTail() {
+        val source = File(context.filesDir, "kani-debug.log")
+        val tail = "partial line\n診断 tail\nnewest\n".toByteArray(Charsets.UTF_8)
+        RandomAccessFile(source, "rw").use { file ->
+            val oversizedLength = Int.MAX_VALUE.toLong() + 4_096L
+            file.setLength(oversizedLength)
+            file.seek(oversizedLength - tail.size)
+            file.write(tail)
+        }
+
+        trimUtf8LogTailIfOversized(
+            file = source,
+            maxBytes = 1_024L,
+            keepBytes = 128,
+            marker = "trimmed",
+        )
+
+        assertEquals("trimmed\n診断 tail\nnewest\n", source.readText(Charsets.UTF_8))
+        assertTrue(source.length() < 128L)
     }
 
     private fun readUri(uri: Uri): String {

@@ -28,6 +28,11 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
 
     fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, allKanjiScope: Boolean = false) {
         val requestedQuery = query ?: ""
+        home.currentHomeRouteRestoration = HomeRouteRestoration.browse(
+            requestedQuery,
+            onlySimilarKanji,
+            allKanjiScope,
+        )
         home.activeBrowseQuery = requestedQuery
         home.activeBrowseSimilarOnly = onlySimilarKanji
         home.activeBrowseAllKanji = allKanjiScope
@@ -55,6 +60,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
 
     fun renderReadOnlyDetail(kanji: String, browseQuery: String?) {
         val requestedQuery = browseQuery ?: ""
+        home.currentHomeRouteRestoration = HomeRouteRestoration.readOnlyDetail(kanji, requestedQuery)
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
@@ -158,6 +164,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
 
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?, customBackAction: Runnable?) {
         val requestedQuery = browseQuery ?: ""
+        home.currentHomeRouteRestoration = HomeRouteRestoration.detail(
+            kanji = kanji,
+            fromBrowse = fromBrowse,
+            query = requestedQuery,
+            onlySimilarKanji = home.activeBrowseSimilarOnly,
+            allKanjiScope = home.activeBrowseAllKanji,
+        )
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
@@ -436,7 +449,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             Runnable {
                 home.io.execute {
                     home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
-                    home.main.post {
+                    home.postToMainIfActive {
                         Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
                         renderDetail(displayKanji, fromBrowse, browseQuery ?: "")
                     }

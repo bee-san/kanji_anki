@@ -406,7 +406,7 @@ private fun StudyAnswerDisclosureSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 48.dp)
                     .testTag(studyAnswerAccordionHeaderTestTag(testTagLabel))
                     .semantics {
                         stateDescription = if (expanded) {

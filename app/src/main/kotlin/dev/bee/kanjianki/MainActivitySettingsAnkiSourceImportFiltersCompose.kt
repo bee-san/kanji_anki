@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,7 @@ private val ImportFilterPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
+    val state = rememberSaveable(saver = SettingsImportFiltersState.Saver) { model.state }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = ImportFilterPanelShape,
@@ -69,30 +71,30 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                 color = ImportFilterMuted,
                 fontSize = 15.sp
             )
-            ImportFilterCheckbox(model.activeCardsLabel, model.state.activeCards) { model.state.activeCards = it }
-            ImportFilterCheckbox(model.suspendedCardsLabel, model.state.suspendedCards) { model.state.suspendedCards = it }
-            ImportFilterCheckbox(model.taggedCardsLabel, model.state.taggedCards) { model.state.taggedCards = it }
-            ImportFilterCheckbox(model.weakCardsLabel, model.state.weakCards) { model.state.weakCards = it }
-            ImportFilterCheckbox(model.browserQueryCardsLabel, model.state.browserQueryCards) { model.state.browserQueryCards = it }
+            ImportFilterCheckbox(model.activeCardsLabel, state.activeCards) { state.activeCards = it }
+            ImportFilterCheckbox(model.suspendedCardsLabel, state.suspendedCards) { state.suspendedCards = it }
+            ImportFilterCheckbox(model.taggedCardsLabel, state.taggedCards) { state.taggedCards = it }
+            ImportFilterCheckbox(model.weakCardsLabel, state.weakCards) { state.weakCards = it }
+            ImportFilterCheckbox(model.browserQueryCardsLabel, state.browserQueryCards) { state.browserQueryCards = it }
             if (model.tagRepairedCardsLabel.isNotBlank()) {
-                ImportFilterCheckbox(model.tagRepairedCardsLabel, model.state.tagRepairedCards) {
-                    model.state.tagRepairedCards = it
+                ImportFilterCheckbox(model.tagRepairedCardsLabel, state.tagRepairedCards) {
+                    state.tagRepairedCards = it
                 }
             }
             ImportFilterTextField(
                 label = model.browserQueryLabel,
-                value = model.state.browserQuery,
+                value = state.browserQuery,
                 hint = model.browserQueryHint,
                 helperText = model.browserQueryHelperText,
                 testTag = SettingsImportFiltersTestTags.BROWSER_QUERY_INPUT,
-                onValueChange = { model.state.browserQuery = it }
+                onValueChange = { state.browserQuery = it }
             )
             ImportFilterTextField(
                 label = model.tagsLabel,
-                value = model.state.tags,
+                value = state.tags,
                 hint = model.tagsHint,
                 testTag = SettingsImportFiltersTestTags.TAGS_INPUT,
-                onValueChange = { model.state.tags = it }
+                onValueChange = { state.tags = it }
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -100,19 +102,19 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
             ) {
                 ImportFilterTextField(
                     label = model.difficultyLabel,
-                    value = model.state.difficulty,
+                    value = state.difficulty,
                     testTag = SettingsImportFiltersTestTags.DIFFICULTY_INPUT,
                     keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f),
-                    onValueChange = { model.state.difficulty = it }
+                    onValueChange = { state.difficulty = it }
                 )
                 ImportFilterTextField(
                     label = model.lapsesLabel,
-                    value = model.state.lapses,
+                    value = state.lapses,
                     testTag = SettingsImportFiltersTestTags.LAPSES_INPUT,
                     keyboardType = KeyboardType.Number,
                     modifier = Modifier.weight(1f),
-                    onValueChange = { model.state.lapses = it }
+                    onValueChange = { state.lapses = it }
                 )
             }
             Text(
@@ -129,18 +131,18 @@ fun SettingsImportFiltersPanel(model: SettingsImportFiltersPanelModel) {
                     model.presets.forEach { preset ->
                         KaniOutlinedButton(
                             label = preset.label,
-                            minHeightDp = 44
+                            minHeightDp = 48
                         ) { preset.onClick.run() }
                     }
                 }
             }
-            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.run() }
+            KaniPrimaryButton(label = model.saveLabel, minHeightDp = 48) { model.onSave.save(state) }
             ImportFilterTextField(
                 label = model.minMatchingLabel,
-                value = model.state.minMatching,
+                value = state.minMatching,
                 testTag = SettingsImportFiltersTestTags.MIN_MATCHING_INPUT,
                 keyboardType = KeyboardType.Number,
-                onValueChange = { model.state.minMatching = it }
+                onValueChange = { state.minMatching = it }
             )
         }
     }
@@ -151,7 +153,7 @@ private fun ImportFilterCheckbox(label: String, checked: Boolean, onCheckedChang
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .heightIn(min = 48.dp)
             .toggleable(
                 value = checked,
                 role = Role.Checkbox,

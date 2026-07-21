@@ -312,7 +312,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
             withUiTrace(traceSection) {
                 write()
             }
-            main.post(onComplete)
+            postToMainIfActive(onComplete)
         }
     }
 

@@ -27,7 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
+import java.util.concurrent.Executor
 
 internal fun browseKanjiRowTestTag(kanji: String): String = "browse-kanji-row-$kanji"
 internal fun browseKanjiStudiedToggleTestTag(kanji: String): String = "browse-kanji-studied-$kanji"
@@ -106,12 +107,30 @@ internal fun browseScreenModel(
         onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
         onToggleAllKanjiScope = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, true) },
         onSelectAllStudied = {
-            activity.store.setKanjiLocallySuspendedForKanji(screenData.kanjiList, false, System.currentTimeMillis())
-            activity.renderBrowseKanji(query, onlySimilarKanji)
+            runBrowseSelectionWrite(
+                activity = activity,
+                write = {
+                    activity.store.setKanjiLocallySuspendedForKanji(
+                        screenData.kanjiList,
+                        false,
+                        System.currentTimeMillis(),
+                    )
+                },
+                onComplete = { activity.renderBrowseKanji(query, onlySimilarKanji) },
+            )
         },
         onDeselectAllStudied = {
-            activity.store.setKanjiLocallySuspendedForKanji(screenData.kanjiList, true, System.currentTimeMillis())
-            activity.renderBrowseKanji(query, onlySimilarKanji)
+            runBrowseSelectionWrite(
+                activity = activity,
+                write = {
+                    activity.store.setKanjiLocallySuspendedForKanji(
+                        screenData.kanjiList,
+                        true,
+                        System.currentTimeMillis(),
+                    )
+                },
+                onComplete = { activity.renderBrowseKanji(query, onlySimilarKanji) },
+            )
         },
         onHome = activity::renderHome,
         onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji) }
@@ -185,16 +204,50 @@ private fun browseKanjiRowModel(
         suspended = item.suspended,
         studied = !item.suspended,
         onStudiedChange = { studied ->
-            activity.store.setKanjiLocallySuspended(item.kanji, !studied, System.currentTimeMillis())
-            activity.renderBrowseKanji(browseQuery, onlySimilarKanji)
+            runBrowseSelectionWrite(
+                activity = activity,
+                write = {
+                    activity.store.setKanjiLocallySuspended(
+                        item.kanji,
+                        !studied,
+                        System.currentTimeMillis(),
+                    )
+                },
+                onComplete = { activity.renderBrowseKanji(browseQuery, onlySimilarKanji) },
+            )
         },
         onClick = { activity.renderDetail(item.kanji, true, browseQuery) }
     )
 }
 
+private fun runBrowseSelectionWrite(
+    activity: MainActivityHome,
+    write: () -> Unit,
+    onComplete: () -> Unit,
+) {
+    runBrowseSelectionWrite(
+        background = activity.io,
+        write = write,
+        postToMain = activity::postToMainIfActive,
+        onComplete = onComplete,
+    )
+}
+
+internal fun runBrowseSelectionWrite(
+    background: Executor,
+    write: () -> Unit,
+    postToMain: (() -> Unit) -> Unit,
+    onComplete: () -> Unit,
+) {
+    background.execute {
+        write()
+        postToMain(onComplete)
+    }
+}
+
 @Composable
 fun BrowseScreen(model: BrowseScreenModel) {
-    var query by remember(model.initialQuery) { mutableStateOf(model.initialQuery) }
+    var query by rememberSaveable(model.initialQuery) { mutableStateOf(model.initialQuery) }
     val runSearch = { model.onSearch(query) }
     Column(
         modifier = Modifier.fillMaxWidth(),

@@ -17,6 +17,10 @@ class KaniChartGeometryTest {
         assertEquals(emptyList<Float>(), KaniChartGeometry.donutSweeps(listOf(0, 0)))
         assertEquals(listOf(90f, 270f), KaniChartGeometry.donutSweeps(listOf(1, 3)))
         assertEquals(listOf(0f, 360f), KaniChartGeometry.donutSweeps(listOf(-2, 4)))
+        assertEquals(
+            listOf(180f, 180f),
+            KaniChartGeometry.donutSweeps(listOf(Int.MAX_VALUE, Int.MAX_VALUE)),
+        )
     }
 
     @Test fun donutBoundsStaySquareAndCenteredInsideWideCanvas() {

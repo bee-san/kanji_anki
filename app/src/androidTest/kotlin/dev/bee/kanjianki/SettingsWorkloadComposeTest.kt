@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -94,6 +95,32 @@ class SettingsWorkloadComposeTest {
             assertEquals(expectedMax, selectedMax[0])
             assertTrue(savedMaximum)
             assertTrue(manual)
+        }
+    }
+
+    @Test
+    fun workloadDraftSurvivesStateRestorationAndSyncsToFreshModel() {
+        var selectedWorkload = intArrayOf(20)
+        var selectedMax = intArrayOf(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS)
+        var model = workloadModel(false, selectedWorkload, selectedMax)
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { SettingsWorkloadPanel(model) }
+
+        composeRule.onNodeWithTag(SettingsWorkloadTestTags.WORKLOAD_PERCENT_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action -> action(70f) }
+        composeRule.onNodeWithTag(SettingsWorkloadTestTags.MAX_ITEMS_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { action -> action(9f) }
+
+        selectedWorkload = intArrayOf(20)
+        selectedMax = intArrayOf(AdaptiveLoadPlanner.DEFAULT_MAX_ITEMS)
+        model = workloadModel(false, selectedWorkload, selectedMax)
+        restoration.emulateSavedInstanceStateRestore()
+
+        val expectedMax = AdaptiveLoadPlanner.normalizeMaxItems(9)
+        composeRule.onNodeWithText(SettingsTextCopy.workloadStatusText(70, expectedMax)).assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(70, selectedWorkload[0])
+            assertEquals(expectedMax, selectedMax[0])
         }
     }
 

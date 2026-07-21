@@ -37,9 +37,9 @@ internal class MainActivityStudyWritingCheck(private val activity: MainActivityS
         }
         recognizer.modelStatus().whenComplete { status, statusError ->
             if (statusError != null || status == null || !status.downloaded) {
-                activity.main.post {
+                activity.postToMainIfActive {
                     if (!activity.isActiveToken(token)) {
-                        return@post
+                        return@postToMainIfActive
                     }
                     activity.writingModelDownloaded = false
                     activity.writingModelStatusKnown = true
@@ -67,9 +67,9 @@ internal class MainActivityStudyWritingCheck(private val activity: MainActivityS
         token: String,
     ) {
         recognizer.recognize(captured).whenComplete { result, error ->
-            activity.main.post {
+            activity.postToMainIfActive {
                 if (!activity.isActiveToken(token)) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 activity.checkingWriting = false
                 val analysis = if (error != null) {

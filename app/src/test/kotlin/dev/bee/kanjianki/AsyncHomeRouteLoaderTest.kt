@@ -3,10 +3,13 @@ package dev.bee.kanjianki
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 class AsyncHomeRouteLoaderTest {
@@ -179,9 +182,10 @@ class AsyncHomeRouteLoaderTest {
                     latch.countDown()
                 }
             }
-            latch.await()
-            while (mainQueue.isNotEmpty()) {
-                mainQueue.poll().run()
+            assertTrue("concurrent load requests completed", latch.await(5, TimeUnit.SECONDS))
+            while (true) {
+                val task = mainQueue.poll() ?: break
+                task.run()
             }
 
             // At most one render survives per generation; no crash / lost-update means
@@ -247,10 +251,10 @@ class AsyncHomeRouteLoaderTest {
         // were scheduled inside the background task, a load stuck in the queue would show no
         // loading UI and the app would look frozen.
         assertEquals(1, scheduler.scheduled.size)
-        assertEquals(120L, scheduler.scheduled[0].first)
+        assertEquals(120L, scheduler.scheduled[0].delayMs)
 
         // Fire the guard while the background load is still queued (never started).
-        scheduler.scheduled[0].second.run()
+        scheduler.scheduled[0].task.run()
         while (mainQueue.isNotEmpty()) {
             mainQueue.poll()?.run()
         }
@@ -258,13 +262,108 @@ class AsyncHomeRouteLoaderTest {
         assertTrue("a queued-but-unstarted load must still show the loading screen", loadingShown)
     }
 
+    @Test
+    fun rejectedBackgroundExecutionCancelsLoadingGuardAndSettlesAsError() {
+        val mainQueue = ArrayDeque<Runnable>()
+        val scheduler = RecordingLoadingScheduler()
+        val settled = mutableListOf<Triple<Int, String, Boolean>>()
+        val errors = mutableListOf<Throwable>()
+        val loader = AsyncHomeRouteLoader(
+            background = Executor { throw RejectedExecutionException("activity destroyed") },
+            postToMain = { mainQueue.add(it) },
+            loadingTaskScheduler = scheduler,
+            onRouteSettled = { requestId, route, succeeded ->
+                settled.add(Triple(requestId, route, succeeded))
+            },
+        )
+
+        loader.load(
+            showLoading = {},
+            load = { "unreachable" },
+            render = {},
+            renderError = errors::add,
+            traceLabel = "rejected-route",
+            showLoadingAfterMs = 120,
+        )
+
+        assertTrue(scheduler.scheduled.single().canceled)
+        assertEquals(1, mainQueue.size)
+        mainQueue.removeFirst().run()
+
+        assertEquals(listOf(Triple(1, "rejected-route", false)), settled)
+        assertEquals(listOf("activity destroyed"), errors.map { it.message })
+    }
+
+    @Test
+    fun directExecutorRenderFailureIsNotMisclassifiedAsDispatchRejection() {
+        var renderCalls = 0
+        var errorCalls = 0
+        val loader = AsyncHomeRouteLoader(
+            background = Executor(Runnable::run),
+            postToMain = Runnable::run,
+        )
+
+        try {
+            loader.load(
+                showLoading = {},
+                load = { "loaded" },
+                render = {
+                    renderCalls += 1
+                    throw IllegalStateException("render failed")
+                },
+                renderError = { errorCalls += 1 },
+            )
+            fail("direct render failure should propagate")
+        } catch (error: IllegalStateException) {
+            assertEquals("render failed", error.message)
+        }
+
+        assertEquals(1, renderCalls)
+        assertEquals(0, errorCalls)
+    }
+
+    @Test
+    fun directExecutorTaskRejectedExecutionFailurePropagatesOnce() {
+        var renderCalls = 0
+        var errorCalls = 0
+        val loader = AsyncHomeRouteLoader(
+            background = Executor(Runnable::run),
+            postToMain = Runnable::run,
+        )
+
+        try {
+            loader.load(
+                showLoading = {},
+                load = { "loaded" },
+                render = {
+                    renderCalls += 1
+                    throw RejectedExecutionException("render failed")
+                },
+                renderError = { errorCalls += 1 },
+            )
+            fail("task failure should propagate")
+        } catch (error: RejectedExecutionException) {
+            assertEquals("render failed", error.message)
+        }
+
+        assertEquals(1, renderCalls)
+        assertEquals(0, errorCalls)
+    }
+
     /** Records scheduled loading-guard tasks so the test can fire them deterministically. */
     private class RecordingLoadingScheduler : LoadingTaskScheduler {
-        val scheduled = mutableListOf<Pair<Long, Runnable>>()
+        data class ScheduledTask(
+            val delayMs: Long,
+            val task: Runnable,
+            var canceled: Boolean = false,
+        )
+
+        val scheduled = mutableListOf<ScheduledTask>()
 
         override fun schedule(delayMs: Long, task: Runnable): LoadingTaskHandle {
-            scheduled.add(delayMs to task)
-            return LoadingTaskHandle { }
+            val scheduledTask = ScheduledTask(delayMs, task)
+            scheduled.add(scheduledTask)
+            return LoadingTaskHandle { scheduledTask.canceled = true }
         }
     }
 }

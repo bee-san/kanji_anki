@@ -25,14 +25,14 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
             return
         }
         recognizer.modelStatus().whenComplete { status, error ->
-            activity.main.post {
+            activity.postToMainIfActive {
                 if (token == null || !activity.isActiveToken(token)) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 updateWritingModelAvailability(error == null && status != null && status.downloaded)
                 activity.updateResultActions()
                 if (activity.activeAnalysis != null || activity.checkingWriting) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 setWritingModelStatusMessage(status, error)
             }
@@ -61,9 +61,9 @@ internal class MainActivityStudyWritingStatus(private val activity: MainActivity
         }
         activity.setStudyStatus(WritingFeedbackCopy.checkerDownloadStatus(guidePrefix()), MainActivityBase.MUTED)
         recognizer.downloadModel().whenComplete { _, error ->
-            activity.main.post {
+            activity.postToMainIfActive {
                 if (token != null && !activity.isActiveToken(token)) {
-                    return@post
+                    return@postToMainIfActive
                 }
                 val prefix = guidePrefix()
                 if (error != null) {

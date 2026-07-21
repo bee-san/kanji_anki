@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.os.Bundle
+import android.os.Looper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -10,6 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -57,6 +59,18 @@ class MainActivityBackNavigationTest {
         invokePrepareRoute(host, MainActivityBase.NAV_STATS_ROUTE)
         assertTrue(activity.handleBackNavigation())
         assertEquals(1, activity.renderHomeCalls)
+    }
+
+    @Test
+    fun activeMainPostDropsUiCallbackAfterActivityFinishes() {
+        val activity = buildActivity()
+        var callbacks = 0
+
+        activity.finish()
+        activity.postToMainIfActive { callbacks += 1 }
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(0, callbacks)
     }
 
     private fun buildActivity(): BackNavigationTestActivity {

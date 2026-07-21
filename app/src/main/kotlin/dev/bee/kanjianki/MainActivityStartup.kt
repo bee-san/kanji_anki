@@ -100,9 +100,21 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         val recreatedStudy = study?.takeIf {
             activity.restoreStudyRouteOnCreate && it.shouldResumeStudyOnOrdinaryLaunch()
         }
+        val recreatedRoute = activity.restoreRouteOnCreate
+        val recreatedHomeRoute = activity.restoreHomeRouteOnCreate
         activity.restoreStudyRouteOnCreate = false
+        activity.restoreRouteOnCreate = null
+        activity.restoreHomeRouteOnCreate = null
         if (recreatedStudy != null) {
             recreatedStudy.renderStudyRecoveryOnly()
+            return
+        }
+        if (recreatedRoute != null) {
+            renderRoute(recreatedRoute)
+            return
+        }
+        if (recreatedHomeRoute != null && activity is MainActivityHome) {
+            activity.renderRestoredHomeRoute(recreatedHomeRoute)
             return
         }
         val shortcutDestination = launcherShortcutDestination(intent?.action)
@@ -192,6 +204,21 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             MainActivityBase.NAV_STUDY -> activity.renderStudy()
             MainActivityBase.NAV_STATS_ROUTE -> if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
             MainActivityBase.NAV_SETTINGS_ROUTE -> activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsImportSync() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_STUDY_BEHAVIOR_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsStudyBehavior() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsAutomation() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_APPEARANCE_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsAppearance() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_DISPLAY_DATA_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsDisplayData() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_UPDATE_ROUTE -> activity.renderUpdate()
+            MainActivityBase.NAV_SETTINGS_LICENSES_ROUTE ->
+                (activity as? MainActivitySettings)?.renderReferenceDataDetails() ?: activity.renderSettings()
+            MainActivityBase.NAV_SETTINGS_HOW_IT_WORKS_ROUTE ->
+                (activity as? MainActivitySettings)?.renderHowItWorks() ?: activity.renderSettings()
             "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
             "update" -> activity.renderUpdate()
             else -> activity.renderHome()

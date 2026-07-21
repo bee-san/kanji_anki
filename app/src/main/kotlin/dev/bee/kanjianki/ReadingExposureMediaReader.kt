@@ -5,7 +5,9 @@ import android.util.Log
 import dev.bee.kanjianki.core.ReadingExposureModels
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.util.Locale
@@ -13,6 +15,8 @@ import java.util.zip.GZIPInputStream
 
 internal class ReadingExposureMediaReader(
     private val mediaDirs: List<File> = defaultCollectionMediaDirs(),
+    private val maxManifestBytes: Int = DEFAULT_MAX_MANIFEST_BYTES,
+    private val maxStatsBytes: Int = DEFAULT_MAX_STATS_BYTES,
 ) {
     fun read(): ReadingExposureModels.ExposureIndex {
         // read() is called repeatedly on the study-load hot path (multiple adaptivePlan calls
@@ -68,8 +72,11 @@ internal class ReadingExposureMediaReader(
                     // Fingerprint the actual manifest-declared stats file, not just the default,
                     // so a custom kanjiFile that changes without the manifest still busts the
                     // cache (matches readFromMediaDir's resolution).
-                    val kanjiFile = File(dir, resolveKanjiFileName(manifest, candidate))
-                    if (kanjiFile.isFile) {
+                    val kanjiFile = resolveStatsFile(
+                        dir,
+                        resolveKanjiFileName(manifest, candidate),
+                    )
+                    if (kanjiFile?.isFile == true) {
                         builder.append('|').append(kanjiFile.name)
                             .append(':').append(kanjiFile.lastModified())
                             .append(':').append(kanjiFile.length())
@@ -83,7 +90,7 @@ internal class ReadingExposureMediaReader(
 
     private fun resolveKanjiFileName(manifest: File, candidate: ManifestCandidate): String {
         return runCatching {
-            JSONObject(manifest.readText(Charsets.UTF_8)).optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
+            readManifest(manifest).optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
         }.getOrDefault(candidate.defaultKanjiFile)
     }
 
@@ -95,10 +102,12 @@ internal class ReadingExposureMediaReader(
             }
             try {
                 val manifestJson = readingExposurePhase("manifest-read") {
-                    JSONObject(manifest.readText(Charsets.UTF_8))
+                    readManifest(manifest)
                 }
                 val kanjiFile = manifestJson.optString(KANJI_FILE_KEY, candidate.defaultKanjiFile)
-                val statsJson = readStatsText(File(dir, kanjiFile))
+                val statsFile = resolveStatsFile(dir, kanjiFile)
+                    ?: throw IOException("Reading exposure stats path must stay in collection.media.")
+                val statsJson = readStatsText(statsFile)
                 val stats = readingExposurePhase(
                     phase = "parse",
                     details = { parsed -> "rows=${parsed.size}" },
@@ -123,12 +132,55 @@ internal class ReadingExposureMediaReader(
         ) {
             if (file.name.endsWith(".gz")) {
                 GZIPInputStream(file.inputStream()).use { stream ->
-                    String(stream.readBytes(), StandardCharsets.UTF_8)
+                    String(readBytesBounded(stream, maxStatsBytes), StandardCharsets.UTF_8)
                 }
             } else {
-                file.readText(Charsets.UTF_8)
+                readUtf8File(file, maxStatsBytes)
             }
         }
+    }
+
+    private fun readManifest(file: File): JSONObject {
+        return JSONObject(readUtf8File(file, maxManifestBytes))
+    }
+
+    private fun resolveStatsFile(mediaDir: File, declaredName: String): File? {
+        if (declaredName.isBlank()) return null
+        val declared = File(declaredName)
+        if (declared.isAbsolute) return null
+        return try {
+            val canonicalMediaDir = mediaDir.canonicalFile
+            val resolved = File(canonicalMediaDir, declaredName).canonicalFile
+            resolved.takeIf { it.parentFile == canonicalMediaDir }
+        } catch (_: IOException) {
+            null
+        }
+    }
+
+    private fun readUtf8File(file: File, maxBytes: Int): String {
+        if (file.length() > maxBytes.toLong()) {
+            throw IOException("Optional reading exposure media exceeds its size limit.")
+        }
+        return file.inputStream().use { stream ->
+            String(readBytesBounded(stream, maxBytes), StandardCharsets.UTF_8)
+        }
+    }
+
+    private fun readBytesBounded(input: InputStream, maxBytes: Int): ByteArray {
+        val output = ByteArrayOutputStream(minOf(maxBytes, READ_BUFFER_BYTES))
+        val buffer = ByteArray(READ_BUFFER_BYTES)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            if (read == 0) continue
+            if (total > maxBytes - read) {
+                throw IOException("Optional reading exposure media exceeds its size limit.")
+            }
+            output.write(buffer, 0, read)
+            total += read
+        }
+        return output.toByteArray()
     }
 
     companion object {
@@ -138,6 +190,9 @@ internal class ReadingExposureMediaReader(
         const val LEGACY_KANI_KANJI_FILE: String = "_kani_reading_exposure_kanji.json.gz"
         private const val KANJI_FILE_KEY = "kanjiFile"
         private const val TAG = "ReadingExposure"
+        internal const val DEFAULT_MAX_MANIFEST_BYTES = 64 * 1024
+        internal const val DEFAULT_MAX_STATS_BYTES = 32 * 1024 * 1024
+        private const val READ_BUFFER_BYTES = 8 * 1024
 
         private val CACHE_LOCK = Any()
         @Volatile

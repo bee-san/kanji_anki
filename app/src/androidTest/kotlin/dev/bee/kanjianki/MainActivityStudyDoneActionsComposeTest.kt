@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -150,6 +151,36 @@ class MainActivityStudyDoneActionsComposeTest {
         composeRule.onNodeWithText("Cancel").assertIsEnabled().performClick()
         assertTrue(dismissed)
     }
+
+    @Test
+    fun studyMoreCountDraftSurvivesStateRestorationWithFreshModel() {
+        var confirmed = ""
+        var model = studyMoreDialog { confirmed = it }
+        val restoration = StateRestorationTester(composeRule)
+        restoration.setContent { StudyMoreNewCardsDialog(model) }
+
+        composeRule.onNodeWithText("2").performTextReplacement("4")
+        model = studyMoreDialog { confirmed = it }
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeRule.onNodeWithText("4").assertIsDisplayed()
+        composeRule.onNodeWithText(MainActivityBase.LABEL_STUDY).performClick()
+        assertEquals("4", confirmed)
+    }
+
+    private fun studyMoreDialog(onConfirm: (String) -> Unit) = StudyMoreNewCardsDialogModel(
+        title = "Study more new cards",
+        message = "How many extra new cards?",
+        inputLabel = MainActivityBase.LABEL_NEW_CARDS,
+        initialCount = 2,
+        confirmLabel = MainActivityBase.LABEL_STUDY,
+        cancelLabel = "Cancel",
+        onConfirm = {
+            onConfirm(it)
+            true
+        },
+        onDismiss = Runnable {},
+    )
 
     @Test
     fun rendersFullEmptyScreenWithoutActions() {

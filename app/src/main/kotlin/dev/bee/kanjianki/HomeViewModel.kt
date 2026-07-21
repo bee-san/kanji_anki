@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,8 +37,14 @@ internal class HomeViewModel : ViewModel() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(loading = true)
-            val model = withContext(ioDispatcher) { loader() }
-            _uiState.value = HomeUiState(loading = false, model = model)
+            try {
+                val model = withContext(ioDispatcher) { loader() }
+                _uiState.value = HomeUiState(loading = false, model = model)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(loading = false)
+            }
         }
     }
 

@@ -11,10 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,8 +33,13 @@ private val WorkloadPanelShape = KaniUiTokens.PanelShape
 
 @Composable
 fun SettingsWorkloadPanel(model: SettingsWorkloadPanelModel) {
-    var workloadPercent by remember { mutableIntStateOf(model.selectedWorkloadPercent[0]) }
-    var maxItems by remember { mutableIntStateOf(model.selectedMaxItems[0]) }
+    var workloadPercent by rememberSaveable { mutableIntStateOf(model.selectedWorkloadPercent[0]) }
+    var maxItems by rememberSaveable { mutableIntStateOf(model.selectedMaxItems[0]) }
+
+    SideEffect {
+        model.selectedWorkloadPercent[0] = workloadPercent
+        model.selectedMaxItems[0] = maxItems
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),

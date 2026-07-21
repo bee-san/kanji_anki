@@ -17,6 +17,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     private var cachedGameData: GameData? = null
 
     override fun renderGames() {
+        currentHomeRouteRestoration = HomeRouteRestoration.games()
         if (isScreenshotLaunchRequested()) {
             renderScreenshotGames()
             return
@@ -90,6 +91,7 @@ internal abstract class MainActivityGames : MainActivityHome() {
     }
 
     fun startGame(mode: KanjiGameEngine.GameMode) {
+        currentHomeRouteRestoration = HomeRouteRestoration.games()
         gameRound = KanjiGameRoundState.newRound(GAME_ROUND_QUESTIONS)
         renderGameQuestion(mode)
     }

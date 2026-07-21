@@ -126,6 +126,7 @@ class StatsRedesignComposeTest {
         composeRule.waitForIdle()
         val first = composeRule.onNodeWithTag(ProgressRangeChipTagPrefix + "reviews-SEVEN_DAYS").fetchSemanticsNode().boundsInRoot
         val last = composeRule.onNodeWithTag(ProgressRangeChipTagPrefix + "reviews-NINETY_DAYS").fetchSemanticsNode().boundsInRoot
+        assertTrue("range chip touch target must be at least 48dp: $first", first.height >= 48f)
         assertTrue("range chips should wrap on narrow width: first=$first, last=$last", last.top > first.top)
     }
 
@@ -134,7 +135,9 @@ class StatsRedesignComposeTest {
         var browsed = ""
         composeRule.setContent { ProgressConfusionCard(pairs, onBrowseKanji = { browsed = it }) }
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(ProgressConfusionRowTagPrefix + "徴").performClick()
+        val row = composeRule.onNodeWithTag(ProgressConfusionRowTagPrefix + "徴")
+        assertTrue("confusion row touch target must be at least 48dp", row.fetchSemanticsNode().boundsInRoot.height >= 48f)
+        row.performClick()
         composeRule.runOnIdle { assertEquals("徴", browsed) }
     }
 

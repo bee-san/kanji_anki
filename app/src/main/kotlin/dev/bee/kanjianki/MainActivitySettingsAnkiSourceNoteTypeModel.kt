@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import dev.bee.kanjianki.core.RecordsSyncModels
 
@@ -16,7 +17,7 @@ object SettingsNoteTypeTestTags {
 }
 
 fun interface SettingsNoteTypeAction {
-    fun run()
+    fun run(fields: SettingsNoteTypeFieldState)
 }
 
 class SettingsNoteTypeFieldState(
@@ -87,6 +88,37 @@ class SettingsNoteTypeFieldState(
         setSentence(defaults.sentenceField)
         setFrequency(defaults.frequencyField)
         setFrequencySort(defaults.frequencySortField)
+    }
+
+    companion object {
+        val Saver = listSaver<SettingsNoteTypeFieldState, String>(
+            save = { state ->
+                listOf(
+                    state.noteType,
+                    state.expression,
+                    state.reading,
+                    state.meaning,
+                    state.sentence,
+                    state.frequency,
+                    state.frequencySort,
+                )
+            },
+            restore = { values ->
+                SettingsNoteTypeFieldState(
+                    noteType = values.getOrNull(0),
+                    expression = values.getOrNull(1),
+                    reading = values.getOrNull(2),
+                    meaning = values.getOrNull(3),
+                    sentence = values.getOrNull(4),
+                    frequency = values.getOrNull(5),
+                    frequencySort = values.getOrNull(6),
+                ).apply {
+                    // The normal constructor supplies Kiku for an initially blank model. A
+                    // restored user draft may intentionally be blank and must remain so.
+                    setNoteType(values.getOrNull(0))
+                }
+            },
+        )
     }
 }
 

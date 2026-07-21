@@ -802,9 +802,9 @@ class ComposeScreenModelsTest {
             chooseLabel = "Choose",
             kikuLabel = "Use Kiku",
             saveLabel = "Save",
-            onChoose = SettingsNoteTypeAction {},
-            onUseKiku = SettingsNoteTypeAction {},
-            onSave = SettingsNoteTypeAction {},
+            onChoose = SettingsNoteTypeAction { _ -> },
+            onUseKiku = SettingsNoteTypeAction { _ -> },
+            onSave = SettingsNoteTypeAction { _ -> },
         )
         val importFilters = SettingsImportFiltersPanelModel(
             title = "Import filters",
@@ -827,7 +827,7 @@ class ComposeScreenModelsTest {
             lapsesLabel = "Lapses",
             minMatchingLabel = "Minimum",
             saveLabel = "Save",
-            onSave = SettingsImportFilterAction {},
+            onSave = SettingsImportFilterSaveAction { _ -> },
         )
         val frequency = SettingsFrequencyRangePanelModel(
             title = "Suspended card range",

@@ -50,7 +50,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             lapsesLabel = SettingsTextCopy.lapsesLabel(),
             minMatchingLabel = SettingsTextCopy.minimumMatchingCardsLabel(),
             saveLabel = SettingsTextCopy.saveImportFiltersLabel(),
-            onSave = SettingsImportFilterAction { saveImportFilters(state) },
+            onSave = SettingsImportFilterSaveAction(::saveImportFilters),
             tagRepairedCardsLabel = SettingsTextCopy.tagRepairedCardsLabel(),
         )
     }
