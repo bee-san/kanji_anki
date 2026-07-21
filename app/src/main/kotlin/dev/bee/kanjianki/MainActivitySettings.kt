@@ -412,7 +412,10 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         }
         val updateUiRun = ++updateUiRunCounter
         activeUpdateUiRunToken = updateUiRun
-        io.execute {
+        // A manual release lookup/download may block until its bounded network
+        // timeout expires. Do not queue it ahead of Home/Settings/Study route
+        // loads on the user-facing executor.
+        maintenance.execute {
             val updater = GitHubUpdater(this)
             val result = if (cachedPending) {
                 updater.installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)

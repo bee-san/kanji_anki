@@ -79,7 +79,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     /**
      * Second single-threaded executor for background maintenance that must NOT block user-facing
      * route loads: cold-start scheduler setup (reminders/auto-sync/auto-update/backup plus
-     * first-time WorkManager init), the daily stats precompute, and the resume-time update check.
+     * first-time WorkManager init), the daily stats precompute, and automatic/manual update work.
      * Keeping these off [io] fixes cold-boot head-of-line blocking, where tapping between screens
      * queued behind seconds of startup maintenance on the shared executor. SQLite stays consistent
      * across both threads via WAL plus the per-helper write lock.
