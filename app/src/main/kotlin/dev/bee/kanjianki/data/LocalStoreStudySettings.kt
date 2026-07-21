@@ -27,8 +27,14 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun getDoubleSetting(key: String, fallback: Double): Double = store.settingsStore().getDouble(key, fallback)
 
     fun putIntSetting(key: String, value: Int) {
-        store.settingsStore().putInt(key, value)
-        markStatsDirtyIfNeeded(key)
+        if (key !in STATS_SETTING_KEYS) {
+            store.settingsStore().putInt(key, value)
+            return
+        }
+        inTransaction {
+            store.settingsStore().putInt(key, value)
+            markStatsDirty()
+        }
     }
 
     fun putLongSetting(key: String, value: Long) {
@@ -544,12 +550,6 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         // values after commit. Publish one final generation after the transaction is visible so
         // no reader can retain a pre-commit bulk snapshot under the latest generation.
         store.settingsStore().invalidate()
-    }
-
-    private fun markStatsDirtyIfNeeded(key: String) {
-        if (key in STATS_SETTING_KEYS) {
-            markStatsDirty()
-        }
     }
 
     private fun markStatsDirty() {
