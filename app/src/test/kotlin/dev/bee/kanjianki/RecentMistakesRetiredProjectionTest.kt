@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -9,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
@@ -85,6 +87,97 @@ class RecentMistakesRetiredProjectionTest {
         saveAgainReview()
 
         assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+    }
+
+    @Test
+    fun recentMistakesQueryExcludesMatureUnseededCurrentRow() {
+        val occurredAt = nextTime()
+        saveDashboardRow(dashboardRow(matureSupportCount = 2), occurredAt)
+        saveAgainReview()
+
+        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+        assertTrue(routeData().mistakes.isEmpty())
+        assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun recentMistakesQueryExcludesMatureCurrentRowWithOnlyStaleActiveFamily() {
+        val currentRow = dashboardRow(matureSupportCount = 2)
+        val occurredAt = nextTime()
+        val syncId = saveDashboardRow(currentRow, occurredAt)
+        val staleActive = studyItem(
+            state = StudyLadderRules.STATE_REVIEW,
+            signature = StudyQueueSeeder.answerSignature(
+                dashboardRow(matureSupportCount = 1, expression = "古橋"),
+            ),
+        )
+        store.replaceStudyItems(listOf(staleActive), syncId, occurredAt, settings)
+        saveAgainReview()
+
+        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+        assertTrue(routeData().mistakes.isEmpty())
+        assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun recentMistakesQueryExcludesMatureRetiredFamilyWithActiveLegacyDuplicate() {
+        val currentRow = dashboardRow(matureSupportCount = 2)
+        val occurredAt = nextTime()
+        val syncId = saveDashboardRow(currentRow, occurredAt)
+        val currentRetired = studyItem(
+            state = StudyLadderRules.STATE_RETIRED,
+            signature = StudyQueueSeeder.answerSignature(currentRow),
+        )
+        val legacyActive = studyItem(
+            state = StudyLadderRules.STATE_REVIEW,
+            signature = "",
+        )
+        store.replaceStudyItems(listOf(currentRetired, legacyActive), syncId, occurredAt, settings)
+        saveAgainReview()
+
+        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+        assertTrue(routeData().mistakes.isEmpty())
+        assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun recentMistakesProjectionRestoresRetiredFamilyAfterSupportDrops() {
+        val matureRow = dashboardRow(matureSupportCount = 2)
+        val retiredAt = nextTime()
+        val retiredSyncId = saveDashboardRow(matureRow, retiredAt)
+        val retired = studyItem(
+            state = StudyLadderRules.STATE_RETIRED,
+            signature = StudyQueueSeeder.answerSignature(matureRow),
+        )
+        store.replaceStudyItems(listOf(retired), retiredSyncId, retiredAt, settings)
+        saveAgainReview()
+        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+
+        saveDashboardRow(dashboardRow(matureSupportCount = 1), nextTime())
+
+        assertEquals(listOf(KANJI), store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).map { it.kanji })
+        assertEquals(listOf(KANJI), routeData().mistakes.map { it.kanji })
+        assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun recentMistakesProjectionRestoresHistoryWhenMatureSupportThresholdIncreases() {
+        val matureRow = dashboardRow(matureSupportCount = 2)
+        val retiredAt = nextTime()
+        val retiredSyncId = saveDashboardRow(matureRow, retiredAt)
+        val retired = studyItem(
+            state = StudyLadderRules.STATE_RETIRED,
+            signature = StudyQueueSeeder.answerSignature(matureRow),
+        )
+        store.replaceStudyItems(listOf(retired), retiredSyncId, retiredAt, settings)
+        saveAgainReview()
+        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+
+        store.putIntSetting(SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY, 3)
+
+        assertEquals(listOf(KANJI), store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).map { it.kanji })
+        assertEquals(listOf(KANJI), routeData().mistakes.map { it.kanji })
+        assertEquals(1, reviewCount())
     }
 
     @Test
@@ -298,6 +391,13 @@ class RecentMistakesRetiredProjectionTest {
 
                 override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
                     return targetStore.activeDashboardRowsByKanji()
+                }
+
+                override fun settings(): RecordsSyncModels.Settings = SyncSettings.fromStore(targetStore)
+
+                override fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> {
+                    return StudyStatsStore(targetStore).kanjiRepairEvidence()
+                        .associate { it.kanji to it.status }
                 }
             },
         )

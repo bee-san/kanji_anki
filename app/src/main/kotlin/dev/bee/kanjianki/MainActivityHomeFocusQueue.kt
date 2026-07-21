@@ -3,9 +3,11 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
@@ -22,6 +24,8 @@ internal interface RecentMistakesRouteDataSource {
     fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
     fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem>
     fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow>
+    fun settings(): RecordsSyncModels.Settings = RecordsSyncModels.Settings.kikuDefaults()
+    fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> = emptyMap()
 }
 
 internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): RecentMistakesRouteData {
@@ -39,6 +43,8 @@ internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): Rec
     val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(
         rowsByKanji.values.toList(),
         items,
+        source.settings(),
+        source.evidenceStatusByKanji(),
     )
     val mistakes = historicalMistakes.filter { eligibleKanji.contains(it.kanji) }
     return RecentMistakesRouteData(mistakes, if (mistakes.isEmpty()) emptyMap() else rowsByKanji)
@@ -109,6 +115,13 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
 
                         override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
                             return home.store.activeDashboardRowsByKanji()
+                        }
+
+                        override fun settings(): RecordsSyncModels.Settings = home.settings()
+
+                        override fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> {
+                            return StudyStatsStore(home.store).kanjiRepairEvidence()
+                                .associate { it.kanji to it.status }
                         }
                     }
                 )

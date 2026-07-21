@@ -4,8 +4,9 @@ package dev.bee.kanjianki.core
  * Shared eligibility boundary for projections derived from the study queue.
  *
  * Retired items remain persisted for history and can still have an overdue timestamp,
- * but they must not contribute to active plans or counts. Dashboard rows with no matching
- * study item remain eligible so the seeder can admit them as new problems.
+ * but they must not contribute to active plans or counts. Dashboard projections reuse the
+ * seeder's admission, retirement, and reopening rules instead of treating every unseeded row
+ * as current work.
  */
 object StudyProjectionEligibilityPolicy {
     internal data class PlanningProjection(
@@ -34,7 +35,22 @@ object StudyProjectionEligibilityPolicy {
         rows: List<RecordsImportModels.DashboardRow>?,
         items: List<RecordsStudyModels.StudyItem>?,
     ): Set<String> {
-        return planningProjection(rows, items).rows.mapTo(LinkedHashSet()) { it.kanji }
+        return eligibleDashboardKanji(rows, items, RecordsSyncModels.Settings.kikuDefaults(), null)
+    }
+
+    @JvmStatic
+    fun eligibleDashboardKanji(
+        rows: List<RecordsImportModels.DashboardRow>?,
+        items: List<RecordsStudyModels.StudyItem>?,
+        settings: RecordsSyncModels.Settings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>?,
+    ): Set<String> {
+        return StudyQueueSeeder().currentRepairEligibleKanji(
+            rows.orEmpty(),
+            items.orEmpty(),
+            settings ?: RecordsSyncModels.Settings.kikuDefaults(),
+            evidenceStatusByKanji,
+        )
     }
 
     @JvmStatic

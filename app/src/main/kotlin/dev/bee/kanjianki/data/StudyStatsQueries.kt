@@ -54,7 +54,15 @@ internal class StudyStatsQueries(
             return emptyList()
         }
         val items = store.studyItemsForKanji(rows.map { it.kanji })
-        val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(rows, items)
+        val evidenceStatusByKanji = kanjiRepairEvidenceInputs()
+            .map(KanjiRepairEvidencePolicy::summarize)
+            .associate { it.kanji() to it.status() }
+        val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(
+            rows,
+            items,
+            SyncSettings.fromStore(store),
+            evidenceStatusByKanji,
+        )
         if (eligibleKanji.isEmpty()) {
             return emptyList()
         }

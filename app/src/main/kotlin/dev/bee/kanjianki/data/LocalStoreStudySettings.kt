@@ -586,6 +586,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         const val KEY_REMINDER_QUIET_END_MINUTE = "reminder_quiet_end_minute"
         const val KEY_REMINDER_MAX_PER_DAY = "reminder_max_per_day"
         val STATS_SETTING_KEYS = setOf(
+            SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
             SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
             SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY,
             SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY,
