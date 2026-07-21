@@ -123,6 +123,24 @@ class AutoSyncSchedulerTest {
     }
 
     @Test
+    fun disabledScheduleClearsRecordedRunWhenBackendCancellationThrows() {
+        val recorder = Recorder().apply { nextRunAt = 123L }
+        val backend = Backend().apply { throwOnCancel = true }
+
+        val cancelled = AutoSyncScheduler.scheduleWithState(
+            settings(false, 8, 30),
+            nowAt(9, 0),
+            false,
+            recorder,
+            backend,
+        )
+
+        assertFalse(cancelled)
+        assertTrue(backend.cancelled)
+        assertEquals(0L, recorder.nextRunAt)
+    }
+
+    @Test
     fun scheduleAtAppliesMinimumLatencyForNearFutureTriggers() {
         val recorder = Recorder()
         val backend = Backend()
@@ -159,6 +177,7 @@ class AutoSyncSchedulerTest {
         var scheduleCalled = false
         var scheduleResult = true
         var throwOnSchedule = false
+        var throwOnCancel = false
         var cancelled = false
         var minimumLatencyMillis = 0L
         var overrideDeadlineMillis = 0L
@@ -175,6 +194,9 @@ class AutoSyncSchedulerTest {
 
         override fun cancel() {
             cancelled = true
+            if (throwOnCancel) {
+                throw IllegalStateException("scheduler cancellation unavailable")
+            }
         }
     }
 }

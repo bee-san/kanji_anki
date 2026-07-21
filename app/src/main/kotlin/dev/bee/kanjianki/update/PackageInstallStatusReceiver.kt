@@ -107,8 +107,12 @@ class PackageInstallStatusReceiver : BroadcastReceiver() {
             val sourceName = source?.name
             if (confirmation != null && PackageInstallStatusPolicy.shouldLaunchInstallConfirmation(sourceName)) {
                 confirmation.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                handler.startActivity(confirmation)
-                return
+                try {
+                    handler.startActivity(confirmation)
+                    return
+                } catch (error: RuntimeException) {
+                    Log.w(TAG, "Could not launch Android's install confirmation.", error)
+                }
             }
             handler.showPendingUpdate(version, message)
         }

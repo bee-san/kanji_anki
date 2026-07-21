@@ -47,7 +47,7 @@ internal object AutoSyncScheduler {
             shouldKeepExistingJob(settings.nextRunAt, plan.triggerAtMillis, now, alreadySyncedToday)
         ) {
             if (shouldCancelRetry(settings, alreadySyncedToday)) {
-                AutoSyncRetryScheduler.cancel(context)
+                cancelRetry(context)
             }
             return
         }
@@ -59,7 +59,7 @@ internal object AutoSyncScheduler {
             AndroidSchedulerBackend(context, existingJobId ?: PRIMARY_JOB_ID),
         )
         if (shouldCancelRetry(settings, alreadySyncedToday)) {
-            AutoSyncRetryScheduler.cancel(context)
+            cancelRetry(context)
         }
     }
 
@@ -102,7 +102,7 @@ internal object AutoSyncScheduler {
             AndroidSchedulerBackend(context, nextJobId(currentJobId)),
         )
         if (shouldCancelRetry(settings, alreadySyncedToday)) {
-            AutoSyncRetryScheduler.cancel(context)
+            cancelRetry(context)
         }
         return scheduled
     }
@@ -116,9 +116,16 @@ internal object AutoSyncScheduler {
         backend: SchedulerBackend,
     ): Boolean {
         if (settings == null || !settings.enabled) {
-            backend.cancel()
-            recorder.markAutoSyncScheduled(0L)
-            return true
+            var cancelled = true
+            try {
+                backend.cancel()
+            } catch (error: RuntimeException) {
+                warn("Failed to cancel automatic sync jobs.", error)
+                cancelled = false
+            } finally {
+                recorder.markAutoSyncScheduled(0L)
+            }
+            return cancelled
         }
         return schedulePlan(
             recorder,
@@ -130,8 +137,12 @@ internal object AutoSyncScheduler {
     @JvmStatic
     fun cancel(context: Context) {
         val backend: SchedulerBackend = AndroidSchedulerBackend(context, PRIMARY_JOB_ID)
-        backend.cancel()
-        AutoSyncRetryScheduler.cancel(context)
+        try {
+            backend.cancel()
+        } catch (error: RuntimeException) {
+            warn("Failed to cancel automatic sync jobs.", error)
+        }
+        cancelRetry(context)
         AppLocalStoreFactory.create(context).use { store ->
             store.markAutoSyncScheduled(0L)
         }
@@ -177,6 +188,14 @@ internal object AutoSyncScheduler {
 
     private fun localDayStart(now: Long): Long {
         return AutoSyncSchedulePolicy.localDayStart(now)
+    }
+
+    private fun cancelRetry(context: Context) {
+        try {
+            AutoSyncRetryScheduler.cancel(context)
+        } catch (error: RuntimeException) {
+            warn("Failed to cancel automatic sync retry work.", error)
+        }
     }
 
     private fun existingAutoSyncJobId(context: Context): Int? {

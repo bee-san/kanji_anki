@@ -2,7 +2,9 @@ package dev.bee.kanjianki.reminders
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -25,5 +27,27 @@ class ReminderReceiverDailyActionsTest {
         actions.showReminderNotification()
 
         assertEquals(listOf("widget", "notification"), events)
+    }
+
+    @Test
+    fun failedNotificationStillRearmsTheOneShotReminder() {
+        val events = mutableListOf<String>()
+        val settings = LocalStoreBase.ReminderSettings(true, 8, 30)
+        val actions = object : ReminderReceiver.DailyReminderActions {
+            override fun showReminderNotification() {
+                events += "notification"
+                throw IllegalStateException("notification service failed")
+            }
+
+            override fun schedule(settings: LocalStoreBase.ReminderSettings?) {
+                events += "schedule"
+            }
+        }
+
+        assertThrows(IllegalStateException::class.java) {
+            ReminderReceiver.handleDailyReminder(settings, actions)
+        }
+
+        assertEquals(listOf("notification", "schedule"), events)
     }
 }

@@ -566,6 +566,24 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    fun browserQueryCursorIterationFailureMapsToConfigError() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "deferBrowserQueryFailure", null, null)
+
+        try {
+            gateway.readCollection(browserQueryOnlySettings())
+            assertTrue("Expected deferred browser query failure", false)
+        } catch (error: AnkiDroidGateway.SyncFailure) {
+            assertTrue(error.permanentFailure)
+            assertEquals(
+                "AnkiDroid could not run the browser query. Check the query in Import filters.",
+                error.message,
+            )
+        }
+        assertEquals(1, providerInt("browserQueryQueries"))
+    }
+
+    @Test
     fun browserQueryMarksMatchingActiveCardForImport() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         val settings = browserQueryOnlySettings()

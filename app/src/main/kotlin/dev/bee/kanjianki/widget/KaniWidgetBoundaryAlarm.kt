@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.edit
 import java.time.ZoneId
 
@@ -73,13 +74,37 @@ internal object KaniWidgetBoundaryAlarm {
             preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
             return
         }
-        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
-        alarmManager.set(AlarmManager.RTC, triggerAt, pendingIntent(context))
+        val alarmManager = try {
+            context.getSystemService(AlarmManager::class.java)
+        } catch (error: RuntimeException) {
+            warn("Could not access AlarmManager.", error)
+            null
+        }
+        if (alarmManager == null) {
+            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
+            return
+        }
+        try {
+            alarmManager.set(AlarmManager.RTC, triggerAt, pendingIntent(context))
+        } catch (error: RuntimeException) {
+            warn("Could not schedule widget boundary alarm.", error)
+            try {
+                alarmManager.cancel(pendingIntent(context))
+            } catch (cancelError: RuntimeException) {
+                warn("Could not cancel failed widget boundary alarm.", cancelError)
+            }
+            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
+            return
+        }
         preferences.edit(commit = true) { putLong(KEY_SCHEDULED_AT, triggerAt) }
     }
 
     private fun cancelAlarm(context: Context) {
-        context.getSystemService(AlarmManager::class.java)?.cancel(pendingIntent(context))
+        try {
+            context.getSystemService(AlarmManager::class.java)?.cancel(pendingIntent(context))
+        } catch (error: RuntimeException) {
+            warn("Could not cancel widget boundary alarm.", error)
+        }
     }
 
     private fun pendingIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
@@ -97,4 +122,12 @@ internal object KaniWidgetBoundaryAlarm {
 
     private fun android.content.SharedPreferences.Editor.putOrRemove(key: String, value: Long) =
         if (value > 0L) putLong(key, value) else remove(key)
+
+    private fun warn(message: String, error: Throwable) {
+        try {
+            Log.w("KaniWidgetBoundary", message, error)
+        } catch (_: RuntimeException) {
+            // Android Log is unavailable in local JVM tests.
+        }
+    }
 }

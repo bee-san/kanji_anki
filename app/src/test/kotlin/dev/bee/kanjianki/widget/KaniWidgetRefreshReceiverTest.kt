@@ -7,7 +7,10 @@ import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -62,6 +65,24 @@ class KaniWidgetRefreshReceiverTest {
         receiver.launchRefresh(context) { finished = true }
         advanceUntilIdle()
 
+        assertTrue(finished)
+    }
+
+    @Test
+    fun cancelledScopeStillFinishesPendingWork() = runTest {
+        val cancelledJob = SupervisorJob()
+        cancelledJob.cancel()
+        var refreshed = false
+        var finished = false
+        val receiver = KaniWidgetRefreshReceiver().apply {
+            coroutineScope = CoroutineScope(cancelledJob + StandardTestDispatcher(testScheduler))
+            refreshInstalled = { refreshed = true }
+        }
+
+        receiver.launchRefresh(context) { finished = true }
+        advanceUntilIdle()
+
+        assertFalse(refreshed)
         assertTrue(finished)
     }
 

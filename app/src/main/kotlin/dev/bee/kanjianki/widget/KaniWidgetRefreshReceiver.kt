@@ -40,15 +40,16 @@ class KaniWidgetRefreshReceiver : BroadcastReceiver() {
     }
 
     internal fun launchRefresh(context: Context, onFinished: () -> Unit) {
-        coroutineScope.launch {
+        val refresh = coroutineScope.launch {
             try {
                 refreshInstalled(context)
             } catch (error: Exception) {
                 Log.w(TAG, "Widget family refresh failed", error)
-            } finally {
-                onFinished()
             }
         }
+        // A launch into an already-cancelled scope may never enter the coroutine
+        // body, so completion rather than a body-level finally owns goAsync().
+        refresh.invokeOnCompletion { onFinished() }
     }
 
     private companion object {

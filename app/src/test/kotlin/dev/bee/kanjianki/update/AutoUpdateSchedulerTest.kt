@@ -37,12 +37,26 @@ class AutoUpdateSchedulerTest {
         assertEquals(AutoUpdateSchedulePolicy.FLEX_MILLIS, backend.request?.workSpec?.flexDuration)
     }
 
+    @Test
+    fun backendFailuresDoNotEscapeSchedulerEntryPoints() {
+        val cancelFailure = Backend().apply { throwOnCancel = true }
+        val enqueueFailure = Backend().apply { throwOnEnqueue = true }
+
+        AutoUpdateScheduler.schedule(false, cancelFailure)
+        AutoUpdateScheduler.schedule(true, enqueueFailure)
+
+        assertEquals(AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME, cancelFailure.cancelledName)
+        assertTrue(enqueueFailure.enqueued)
+    }
+
     private class Backend : AutoUpdateScheduler.SchedulerBackend {
         var enqueued = false
         var enqueuedName: String? = null
         var cancelledName: String? = null
         var policy: ExistingPeriodicWorkPolicy? = null
         var request: PeriodicWorkRequest? = null
+        var throwOnEnqueue = false
+        var throwOnCancel = false
 
         override fun enqueueUniquePeriodicWork(
             uniqueWorkName: String,
@@ -53,10 +67,16 @@ class AutoUpdateSchedulerTest {
             enqueuedName = uniqueWorkName
             this.policy = policy
             this.request = request
+            if (throwOnEnqueue) {
+                throw IllegalStateException("work manager unavailable")
+            }
         }
 
         override fun cancelUniqueWork(uniqueWorkName: String) {
             cancelledName = uniqueWorkName
+            if (throwOnCancel) {
+                throw IllegalStateException("work manager unavailable")
+            }
         }
     }
 }

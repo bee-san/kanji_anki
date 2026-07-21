@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
@@ -32,5 +33,23 @@ class ReceiverAsyncWorkTest {
 
         assertEquals(1, ran.get())
         assertEquals(0, executorCalls.get())
+    }
+
+    @Test
+    fun rejectedExecutorFinishesPendingWorkWithoutRunningIt() {
+        val ran = AtomicInteger(0)
+        val finished = AtomicInteger(0)
+        val rejectingExecutor = Executor {
+            throw RejectedExecutionException("receiver executor stopped")
+        }
+
+        ReceiverAsyncWork.dispatch(
+            rejectingExecutor,
+            { ran.incrementAndGet() },
+            { finished.incrementAndGet() },
+        )
+
+        assertEquals(0, ran.get())
+        assertEquals(1, finished.get())
     }
 }

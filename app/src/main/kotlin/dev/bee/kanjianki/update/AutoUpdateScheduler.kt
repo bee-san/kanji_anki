@@ -3,6 +3,7 @@ package dev.bee.kanjianki.update
 import dev.bee.kanjianki.AppLocalStoreFactory
 
 import android.content.Context
+import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -13,6 +14,8 @@ import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy
 import java.util.concurrent.TimeUnit
 
 object AutoUpdateScheduler {
+    private const val TAG = "KaniUpdate"
+
     @JvmStatic
     fun schedule(context: Context) {
         val appContext = context.applicationContext
@@ -24,14 +27,18 @@ object AutoUpdateScheduler {
     internal fun schedule(enabled: Boolean, backend: SchedulerBackend) {
         val plan = AutoUpdateSchedulePolicy.plan(enabled)
         if (!plan.enabled()) {
-            backend.cancelUniqueWork(plan.uniqueWorkName())
+            cancel(backend, plan.uniqueWorkName())
             return
         }
-        backend.enqueueUniquePeriodicWork(
-            plan.uniqueWorkName(),
-            ExistingPeriodicWorkPolicy.KEEP,
-            dailyUpdateRequest(plan),
-        )
+        try {
+            backend.enqueueUniquePeriodicWork(
+                plan.uniqueWorkName(),
+                ExistingPeriodicWorkPolicy.KEEP,
+                dailyUpdateRequest(plan),
+            )
+        } catch (error: RuntimeException) {
+            warn("Could not schedule automatic update checks.", error)
+        }
     }
 
     private fun dailyUpdateRequest(plan: AutoUpdateSchedulePolicy.SchedulePlan): PeriodicWorkRequest {
@@ -52,7 +59,26 @@ object AutoUpdateScheduler {
 
     @JvmStatic
     fun cancel(context: Context) {
-        WorkManagerSchedulerBackend(context.applicationContext).cancelUniqueWork(AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME)
+        cancel(
+            WorkManagerSchedulerBackend(context.applicationContext),
+            AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME,
+        )
+    }
+
+    private fun cancel(backend: SchedulerBackend, uniqueWorkName: String) {
+        try {
+            backend.cancelUniqueWork(uniqueWorkName)
+        } catch (error: RuntimeException) {
+            warn("Could not cancel automatic update checks.", error)
+        }
+    }
+
+    private fun warn(message: String, error: Throwable) {
+        try {
+            Log.w(TAG, message, error)
+        } catch (_: RuntimeException) {
+            // Android Log is unavailable in local JVM tests.
+        }
     }
 
     internal interface SchedulerBackend {

@@ -859,8 +859,9 @@ class GitHubUpdater @JvmOverloads constructor(
             if (info == null) {
                 return ApkMetadata("", "", 0)
             }
+            val packageName: String? = info.packageName
             return ApkMetadata(
-                info.packageName,
+                packageName.orEmpty(),
                 info.versionName ?: "",
                 info.applicationInfo?.targetSdkVersion ?: 0,
                 signingCertificates(info),
@@ -899,9 +900,12 @@ class GitHubUpdater @JvmOverloads constructor(
                 session.commit(pending.intentSender)
                 committed = true
             } finally {
-                session?.close()
-                if (!committed) {
-                    installer.abandonSession(sessionId)
+                try {
+                    session?.close()
+                } finally {
+                    if (!committed) {
+                        installer.abandonSession(sessionId)
+                    }
                 }
             }
         }

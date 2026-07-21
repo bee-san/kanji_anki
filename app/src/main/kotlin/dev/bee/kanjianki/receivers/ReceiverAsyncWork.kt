@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.util.Log
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Helper for running a BroadcastReceiver's work off the main thread.
@@ -34,14 +35,42 @@ object ReceiverAsyncWork {
             work()
             return
         }
-        executor.execute {
+        dispatch(executor, work) { pending.finish() }
+    }
+
+    internal fun dispatch(executor: Executor, work: () -> Unit, onFinished: () -> Unit) {
+        val finished = AtomicBoolean(false)
+        val finishOnce = {
+            if (finished.compareAndSet(false, true)) {
+                try {
+                    onFinished()
+                } catch (error: RuntimeException) {
+                    logError("Could not finish async receiver work.", error)
+                }
+            }
+        }
+        val task = Runnable {
             try {
                 work()
             } catch (error: Exception) {
-                Log.e(TAG, "Async receiver work failed.", error)
+                logError("Async receiver work failed.", error)
             } finally {
-                pending.finish()
+                finishOnce()
             }
+        }
+        try {
+            executor.execute(task)
+        } catch (error: RuntimeException) {
+            logError("Could not dispatch async receiver work.", error)
+            finishOnce()
+        }
+    }
+
+    private fun logError(message: String, error: Throwable) {
+        try {
+            Log.e(TAG, message, error)
+        } catch (_: RuntimeException) {
+            // Android Log is unavailable in local JVM tests.
         }
     }
 }

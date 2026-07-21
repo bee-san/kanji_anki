@@ -405,13 +405,17 @@ class AnkiDroidGateway private constructor(
             // Real AnkiDroid returns a null cursor when a valid browser query
             // matches zero notes; treat that as an empty result, not an error.
             ?: return ids
-        cursor.use { queryCursor ->
-            while (queryCursor.moveToNext()) {
-                val modelId = longValue(queryCursor, COLUMN_MODEL_ID, mapping.modelId)
-                if (modelId == mapping.modelId) {
-                    ids.add(longValue(queryCursor, COLUMN_ID, 0))
+        try {
+            cursor.use { queryCursor ->
+                while (queryCursor.moveToNext()) {
+                    val modelId = longValue(queryCursor, COLUMN_MODEL_ID, mapping.modelId)
+                    if (modelId == mapping.modelId) {
+                        ids.add(longValue(queryCursor, COLUMN_ID, 0))
+                    }
                 }
             }
+        } catch (error: Exception) {
+            throw browserQueryFailure(error)
         }
         return ids
     }

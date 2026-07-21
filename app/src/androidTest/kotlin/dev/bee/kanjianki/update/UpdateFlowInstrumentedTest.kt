@@ -245,6 +245,27 @@ class UpdateFlowInstrumentedTest {
     }
 
     @Test
+    fun failedInstallConfirmationLaunchFallsBackToNotification() {
+        val handler = PendingActionHandler().apply { failStart = true }
+        val status = Intent().putExtra(
+            Intent.EXTRA_INTENT,
+            Intent("dev.bee.kanjianki.CONFIRM_UNAVAILABLE"),
+        )
+
+        PackageInstallStatusReceiver.handlePendingUserAction(
+            status,
+            GitHubUpdater.UpdateSource.MANUAL,
+            "v3.0.1",
+            "confirm later",
+            handler,
+        )
+
+        assertEquals(1, handler.started)
+        assertEquals(1, handler.notifications)
+        assertEquals("v3.0.1", handler.notificationVersion)
+    }
+
+    @Test
     fun packageInstallReceiverDeleteSeamHandlesEmptyMissingDeletedAndFailedCacheFiles() {
         assertFalse(
             PackageInstallStatusReceiver.deleteCachedApk(
@@ -511,6 +532,26 @@ class UpdateFlowInstrumentedTest {
         assertTrue(commitFailure.session.closed)
         assertTrue(commitFailure.session.fsynced)
         assertFalse(commitFailure.session.committed)
+
+        val closeSession = FakeInstallerSession(true).apply { failClose = true }
+        val closeFailure = FakeInstallerBackend(closeSession)
+        val closeError: IllegalStateException? = try {
+            GitHubUpdater.startPackageInstaller(
+                context,
+                closeFailure,
+                apk,
+                "v8.0.1",
+                GitHubUpdater.UpdateSource.MANUAL,
+                34,
+            )
+            throw AssertionError("Expected IllegalStateException")
+        } catch (caught: IllegalStateException) {
+            caught
+        }
+
+        assertEquals("close failed", closeError!!.message)
+        assertEquals(1, closeFailure.abandonedSessions)
+        assertTrue(closeFailure.session.closed)
     }
 
     @Test
@@ -544,7 +585,7 @@ class UpdateFlowInstrumentedTest {
         assertEquals("kani-update.apk", access.writeName)
         assertEquals(5L, access.writeOffset)
         assertEquals(12L, access.writeLength)
-        assertEquals(42, access.bytes.toByteArray()[0])
+        assertEquals(42.toByte(), access.bytes.toByteArray()[0])
         assertSame(output, access.fsyncedOutput)
         assertTrue(access.committed)
         assertTrue(access.closed)
@@ -565,7 +606,7 @@ class UpdateFlowInstrumentedTest {
         assertEquals("factory.apk", access.writeName)
         assertEquals(2L, access.writeOffset)
         assertEquals(4L, access.writeLength)
-        assertEquals(7, access.bytes.toByteArray()[0])
+        assertEquals(7.toByte(), access.bytes.toByteArray()[0])
         assertSame(output, access.fsyncedOutput)
         assertTrue(access.committed)
         assertTrue(access.closed)
@@ -1412,6 +1453,7 @@ class UpdateFlowInstrumentedTest {
         val bytes = ByteArrayOutputStream()
         var failFsync = false
         var failCommit = false
+        var failClose = false
         var fsynced = false
         var committed = false
         var closed = false
@@ -1443,6 +1485,9 @@ class UpdateFlowInstrumentedTest {
 
         override fun close() {
             closed = true
+            if (failClose) {
+                throw IllegalStateException("close failed")
+            }
         }
     }
 
@@ -1498,6 +1543,7 @@ class UpdateFlowInstrumentedTest {
     }
 
     private inner class PendingActionHandler : PackageInstallStatusReceiver.PendingUserActionHandler {
+        var failStart = false
         var started = 0
         var notifications = 0
         var startedIntent: Intent? = null
@@ -1507,6 +1553,9 @@ class UpdateFlowInstrumentedTest {
         override fun startActivity(intent: Intent) {
             started++
             startedIntent = intent
+            if (failStart) {
+                throw IllegalStateException("confirmation unavailable")
+            }
         }
 
         override fun showPendingUpdate(version: String?, message: String?): Boolean {

@@ -116,8 +116,13 @@ class ReminderReceiver : BroadcastReceiver() {
             if (!ReminderReceiverPolicy.shouldHandleDailyReminder(settings.enabled)) {
                 return
             }
-            actions.showReminderNotification()
-            actions.schedule(settings)
+            try {
+                actions.showReminderNotification()
+            } finally {
+                // This is a one-shot alarm. Re-arm it even when notification
+                // construction or posting fails so reminders recover tomorrow.
+                actions.schedule(settings)
+            }
         }
     }
 }

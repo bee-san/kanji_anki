@@ -78,6 +78,10 @@ class FakeAnkiDroidProvider : ContentProvider() {
                 failBrowserQuery = true
                 result.putBoolean("ok", true)
             }
+            "deferBrowserQueryFailure" -> {
+                deferBrowserQueryFailure = true
+                result.putBoolean("ok", true)
+            }
             "failConfiguredSearch" -> {
                 failConfiguredSearch = true
                 result.putBoolean("ok", true)
@@ -341,6 +345,12 @@ class FakeAnkiDroidProvider : ContentProvider() {
         }
         if (browserQuery) {
             browserQueryQueries++
+            if (deferBrowserQueryFailure) {
+                return ThrowingCursor(
+                    arrayOf("_id", "mid", "flds", "tags"),
+                    "Invalid search: deferred browser query failure",
+                )
+            }
             if (failBrowserQueryReread && browserQueryQueries > 1) {
                 throw IllegalArgumentException("second browser query failed")
             }
@@ -755,6 +765,9 @@ class FakeAnkiDroidProvider : ContentProvider() {
         var failBrowserQuery = false
 
         @JvmField
+        var deferBrowserQueryFailure = false
+
+        @JvmField
         var failConfiguredSearch = false
 
         @JvmField
@@ -836,6 +849,7 @@ class FakeAnkiDroidProvider : ContentProvider() {
             browserQueryMatchesActive = false
             browserQueryMatchesSuspended = false
             failBrowserQuery = false
+            deferBrowserQueryFailure = false
             failConfiguredSearch = false
             secondTemplateCard = false
             browserQueryMatchesMissingNote = false

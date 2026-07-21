@@ -2,6 +2,8 @@ package dev.bee.kanjianki.update
 
 import dev.bee.kanjianki.QueueingExecutor
 import dev.bee.kanjianki.data.LocalStoreBase
+import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,6 +145,27 @@ class ResumeUpdateInstallerTest {
         executor.runNext()
 
         assertEquals(2, installs.get())
+    }
+
+    @Test
+    fun rejectedDispatchReleasesInstallAttemptGuard() {
+        val dispatches = AtomicInteger()
+        val rejectingExecutor = Executor {
+            dispatches.incrementAndGet()
+            throw RejectedExecutionException("maintenance executor stopped")
+        }
+        val installer = ResumeUpdateInstaller(
+            { true },
+            { status(enabled = true, pendingApkName = "kani-update.apk") },
+            rejectingExecutor,
+        ) {
+            throw AssertionError("rejected work must not run")
+        }
+
+        installer.onResume()
+        installer.onResume()
+
+        assertEquals(2, dispatches.get())
     }
 
     private fun installer(
