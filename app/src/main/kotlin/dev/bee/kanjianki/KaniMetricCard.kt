@@ -40,6 +40,7 @@ internal fun KaniMetricCard(
     onClick: (() -> Unit)? = null,
     contentDescriptionPrefix: String? = null,
     compactValue: Boolean = false,
+    compactLayout: Boolean = false,
 ) {
     val description = listOfNotNull(contentDescriptionPrefix, label, value, delta).joinToString(", ")
     Surface(
@@ -49,15 +50,35 @@ internal fun KaniMetricCard(
         shape = KaniUiTokens.LeafShape,
         color = accent.copy(alpha = if (KaniTheme.colors.isDark) .18f else .10f),
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(shape = CircleShape, color = accent.copy(alpha = .18f)) {
+        Column(
+            Modifier.fillMaxWidth().padding(if (compactLayout) 10.dp else 14.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(if (compactLayout) 6.dp else 8.dp),
+            ) {
+                if (compactLayout) {
                     Icon(
                         painterResource(iconRes), contentDescription = null, tint = accent,
-                        modifier = Modifier.padding(7.dp).size(18.dp),
+                        modifier = Modifier.size(18.dp),
                     )
+                } else {
+                    Surface(shape = CircleShape, color = accent.copy(alpha = .18f)) {
+                        Icon(
+                            painterResource(iconRes), contentDescription = null, tint = accent,
+                            modifier = Modifier.padding(7.dp).size(18.dp),
+                        )
+                    }
                 }
-                Text(label, style = MaterialTheme.typography.labelSmall, color = KaniTheme.colors.muted)
+                Text(
+                    text = label,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                    color = KaniTheme.colors.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Text(
                 value,
@@ -77,7 +98,15 @@ internal fun KaniMetricCard(
                     null
                 },
             )
-            delta?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = accent) }
+            delta?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                    color = accent,
+                    maxLines = if (compactLayout) 2 else Int.MAX_VALUE,
+                    overflow = if (compactLayout) TextOverflow.Ellipsis else TextOverflow.Clip,
+                )
+            }
         }
     }
 }

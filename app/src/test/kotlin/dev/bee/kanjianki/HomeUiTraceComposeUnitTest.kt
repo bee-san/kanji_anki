@@ -141,7 +141,7 @@ class HomeUiTraceComposeUnitTest {
     }
 
     @Test
-    fun homeScreenDefersSecondaryPanelsUntilAfterFirstFrame() {
+    fun homeScreenComposesSecondaryPanelsOnTheFirstFrame() {
         composeRule.mainClock.autoAdvance = false
         val metric = HomeMetricModel(
             R.drawable.ic_target_24,
@@ -177,13 +177,6 @@ class HomeUiTraceComposeUnitTest {
         }
 
         composeRule.onNodeWithTag(homeStudyCtaTestTag(MainActivityBase.LABEL_STUDY_NOW)).assertIsDisplayed()
-        composeRule.onAllNodesWithTag(homeMetricCardTestTag("Focus")).assertCountEquals(0)
-        composeRule.onAllNodesWithText("Focus queue").assertCountEquals(0)
-
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.mainClock.advanceTimeByFrame()
-        composeRule.waitForIdle()
-
         composeRule.onAllNodesWithTag(homeMetricCardTestTag("Focus")).assertCountEquals(1)
         composeRule.onAllNodesWithText("Focus queue").assertCountEquals(1)
     }

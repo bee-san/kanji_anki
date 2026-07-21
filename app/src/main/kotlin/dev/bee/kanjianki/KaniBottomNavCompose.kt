@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -74,22 +75,48 @@ internal fun KaniBottomNavBar(
         border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
         shadowElevation = 3.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            items.forEach { item ->
-                KaniBottomNavItem(
-                    item = item,
-                    selected = item.route == selectedRoute || (
-                        item.route == MainActivityBase.NAV_SETTINGS_ROUTE && MainActivityBase.isSettingsRoute(selectedRoute)
-                    ),
-                    modifier = Modifier.weight(1f),
-                )
+        val useTwoRows = LocalDensity.current.fontScale >= 1.5f
+        if (useTwoRows) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items.chunked(2).forEach { rowItems ->
+                    KaniBottomNavRow(items = rowItems, selectedRoute = selectedRoute)
+                }
             }
+        } else {
+            KaniBottomNavRow(
+                items = items,
+                selectedRoute = selectedRoute,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun KaniBottomNavRow(
+    items: List<KaniNavItem>,
+    selectedRoute: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEach { item ->
+            KaniBottomNavItem(
+                item = item,
+                selected = item.route == selectedRoute || (
+                    item.route == MainActivityBase.NAV_SETTINGS_ROUTE &&
+                        MainActivityBase.isSettingsRoute(selectedRoute)
+                    ),
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
@@ -145,12 +172,16 @@ private fun KaniBottomNavItem(
                 }
                 Text(
                     text = item.label,
+                    modifier = Modifier.fillMaxWidth(),
                     color = contentColor,
                     fontSize = 12.sp,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                    style = TextStyle(
+                        letterSpacing = 0.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
                 )
             }
         }

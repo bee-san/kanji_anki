@@ -13,6 +13,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -34,39 +35,35 @@ internal fun gamesChoiceButtonTestTag(label: String): String = "games-choice-but
 @Composable
 fun GamesScoreStrip(model: GamesScoreStripModel) {
     val scoreDescription = model.scoreDescription
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 3.dp, bottom = 8.dp)
-            .then(
-                if (scoreDescription != null) {
-                    Modifier.semantics(mergeDescendants = true) {
-                        contentDescription = scoreDescription
-                    }
-                } else {
-                    Modifier
+    val modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 3.dp, bottom = 8.dp)
+        .then(
+            if (scoreDescription != null) {
+                Modifier.semantics(mergeDescendants = true) {
+                    contentDescription = scoreDescription
                 }
-            ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        GamesScoreCard(
-            label = model.roundLabel,
-            value = model.roundValue,
-            accentColor = GamesBlue,
-            modifier = Modifier.weight(1f)
+            } else {
+                Modifier
+            }
         )
-        GamesScoreCard(
-            label = model.scoreLabel,
-            value = model.scoreValue,
-            accentColor = GamesCoral,
-            modifier = Modifier.weight(1f)
-        )
-        GamesScoreCard(
-            label = model.streakLabel,
-            value = model.streakValue,
-            accentColor = GamesTeal,
-            modifier = Modifier.weight(1f)
-        )
+    val cards = listOf(
+        Triple(model.roundLabel, model.roundValue, GamesBlue),
+        Triple(model.scoreLabel, model.scoreValue, GamesCoral),
+        Triple(model.streakLabel, model.streakValue, GamesTeal),
+    )
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            cards.forEach { (label, value, accent) ->
+                GamesScoreCard(label, value, accent, Modifier.fillMaxWidth())
+            }
+        }
+    } else {
+        Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            cards.forEach { (label, value, accent) ->
+                GamesScoreCard(label, value, accent, Modifier.weight(1f))
+            }
+        }
     }
 }
 
@@ -89,21 +86,27 @@ private fun GamesScoreCard(
         ) {
             Text(
                 text = label,
+                modifier = Modifier.fillMaxWidth(),
                 style = TextStyle(
                     fontSize = 12.sp,
                     lineHeight = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.sp,
                 ),
-                color = accentColor
+                color = accentColor,
+                maxLines = 1,
             )
             Text(
                 text = value,
+                modifier = Modifier.fillMaxWidth(),
                 style = TextStyle(
                     fontSize = 20.sp,
                     lineHeight = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.sp,
                 ),
-                color = GamesInk
+                color = GamesInk,
+                maxLines = 1,
             )
         }
     }

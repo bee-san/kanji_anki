@@ -1,9 +1,5 @@
 package dev.bee.kanjianki
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -14,12 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
@@ -29,13 +19,6 @@ internal fun homeFirstRunOfflineNoticeTestTag(): String = "home-first-run-offlin
 
 @Composable
 fun HomeScreen(model: HomeScreenModel) {
-    var showSecondaryPanels by remember(model) { mutableStateOf(false) }
-
-    LaunchedEffect(model) {
-        withFrameNanos { }
-        showSecondaryPanels = true
-    }
-
     Column(modifier = Modifier.fillMaxWidth()) {
         HomeHeader(title = model.title, subtitle = model.subtitle)
         Spacer(modifier = Modifier.height(14.dp))
@@ -53,15 +36,7 @@ fun HomeScreen(model: HomeScreenModel) {
                 style = MaterialTheme.typography.bodySmall,
             )
         }
-        AnimatedVisibility(
-            visible = showSecondaryPanels,
-            enter = fadeIn(animationSpec = tween(durationMillis = 200)) +
-                expandVertically(animationSpec = tween(durationMillis = 220)),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                HomeSecondaryPanels(model)
-            }
-        }
+        HomeSecondaryPanels(model)
     }
 }
 
