@@ -34,7 +34,22 @@ object StudyProjectionEligibilityPolicy {
         rows: List<RecordsImportModels.DashboardRow>?,
         items: List<RecordsStudyModels.StudyItem>?,
     ): Set<String> {
-        return planningProjection(rows, items).rows.mapTo(LinkedHashSet()) { it.kanji }
+        return eligibleDashboardKanji(rows, items, RecordsSyncModels.Settings.kikuDefaults(), null)
+    }
+
+    @JvmStatic
+    fun eligibleDashboardKanji(
+        rows: List<RecordsImportModels.DashboardRow>?,
+        items: List<RecordsStudyModels.StudyItem>?,
+        settings: RecordsSyncModels.Settings?,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>?,
+    ): Set<String> {
+        return StudyQueueSeeder().currentRepairEligibleKanji(
+            rows.orEmpty(),
+            items.orEmpty(),
+            settings ?: RecordsSyncModels.Settings.kikuDefaults(),
+            evidenceStatusByKanji,
+        )
     }
 
     @JvmStatic

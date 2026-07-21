@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyLadderRules
@@ -73,11 +74,45 @@ class MainActivityHomeFocusQueueTest {
         assertEquals(setOf("落"), data.rowsByKanji.keys)
     }
 
+    @Test
+    fun recentMistakesRouteDataRevalidatesCachedMistakeAgainstMatureSupportGate() {
+        val source = CountingRecentMistakesRouteDataSource(
+            cachedSnapshot = snapshot(
+                mistakes = listOf(StudyStatsStore.RecentMistake("済", "again", 1_000L)),
+                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+            ),
+            dashboardRowsByKanji = mapOf("済" to dashboardRow("済", matureSupportCount = 2)),
+        )
+
+        val data = recentMistakesRouteData(source)
+
+        assertTrue(data.mistakes.isEmpty())
+        assertTrue(data.rowsByKanji.isEmpty())
+    }
+
+    @Test
+    fun recentMistakesRouteDataKeepsCachedMatureMistakeWhenEvidenceIsRegressing() {
+        val source = CountingRecentMistakesRouteDataSource(
+            cachedSnapshot = snapshot(
+                mistakes = listOf(StudyStatsStore.RecentMistake("済", "again", 1_000L)),
+                cacheFormatVersion = STATS_CACHE_FORMAT_VERSION,
+            ),
+            dashboardRowsByKanji = mapOf("済" to dashboardRow("済", matureSupportCount = 2)),
+            evidenceStatusByKanji = mapOf("済" to KanjiRepairEvidencePolicy.Status.REGRESSING),
+        )
+
+        val data = recentMistakesRouteData(source)
+
+        assertEquals("済", data.mistakes.single().kanji)
+        assertEquals(setOf("済"), data.rowsByKanji.keys)
+    }
+
     private class CountingRecentMistakesRouteDataSource : RecentMistakesRouteDataSource {
         var cachedSnapshot: StatsCacheStore.Snapshot? = null
         var liveMistakes: List<StudyStatsStore.RecentMistake> = emptyList()
         var studyItems: List<RecordsStudyModels.StudyItem> = emptyList()
         var dashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow> = emptyMap()
+        var evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status> = emptyMap()
         var cachedReads = 0
         var liveReads = 0
         var studyItemReads = 0
@@ -89,11 +124,13 @@ class MainActivityHomeFocusQueueTest {
             liveMistakes: List<StudyStatsStore.RecentMistake> = emptyList(),
             studyItems: List<RecordsStudyModels.StudyItem> = emptyList(),
             dashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow> = emptyMap(),
+            evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status> = emptyMap(),
         ) {
             this.cachedSnapshot = cachedSnapshot
             this.liveMistakes = liveMistakes
             this.studyItems = studyItems
             this.dashboardRowsByKanji = dashboardRowsByKanji
+            this.evidenceStatusByKanji = evidenceStatusByKanji
         }
 
         override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
@@ -116,6 +153,10 @@ class MainActivityHomeFocusQueueTest {
             activeRowsByKanjiReads += 1
             return dashboardRowsByKanji
         }
+
+        override fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> {
+            return evidenceStatusByKanji
+        }
     }
 
     private companion object {
@@ -135,7 +176,10 @@ class MainActivityHomeFocusQueueTest {
             )
         }
 
-        fun dashboardRow(kanji: String): RecordsImportModels.DashboardRow {
+        fun dashboardRow(
+            kanji: String,
+            matureSupportCount: Int = 0,
+        ): RecordsImportModels.DashboardRow {
             return RecordsImportModels.DashboardRow(
                 kanji,
                 1,
@@ -147,7 +191,7 @@ class MainActivityHomeFocusQueueTest {
                 "",
                 0,
                 0,
-                0,
+                matureSupportCount,
                 emptyList<RecordsImportModels.Example>(),
             )
         }

@@ -91,6 +91,45 @@ class StudyQueueSeeder {
         )
     }
 
+    /**
+     * Projects which current dashboard families still require study without consuming
+     * admission quota or mutating persisted items. This intentionally runs the same
+     * signature alignment, duplicate reconciliation, retirement, and reopening steps as
+     * [seedQueue] so historical projections cannot drift from queue lifecycle semantics.
+     */
+    fun currentRepairEligibleKanji(
+        rows: List<RecordsImportModels.DashboardRow>,
+        existing: List<RecordsStudyModels.StudyItem>,
+        settings: RecordsSyncModels.Settings,
+        evidenceStatusByKanji: Map<String, KanjiRepairEvidencePolicy.Status>? = null,
+    ): Set<String> {
+        if (rows.isEmpty()) {
+            return emptySet()
+        }
+        val request = SeedQueueRequest(
+            SeedQueueSource(rows, rows, emptyList(), existing, settings, evidenceStatusByKanji),
+            SeedQueueTiming(0L, 0L),
+            SeedQueueLimits(0, false),
+            null,
+        )
+        val state = reconcileExistingItems(request, indexSeedRows(request.allRows))
+        reopenEligibleRetiredItems(request, state)
+
+        val eligible = LinkedHashSet<String>()
+        for (row in rows) {
+            val current = state.byFamily[identityKey(row.kanji)]
+            val requiresRepair = if (current == null) {
+                !isAlreadyRepairedRow(request, row)
+            } else {
+                current.state != StudyLadderRules.STATE_RETIRED
+            }
+            if (requiresRepair) {
+                eligible.add(row.kanji)
+            }
+        }
+        return eligible
+    }
+
     fun countExtraNewCardsAvailable(
         rows: List<RecordsImportModels.DashboardRow>,
         existing: List<RecordsStudyModels.StudyItem>,

@@ -117,6 +117,7 @@ class StatsCacheInvalidationTest {
         assertSettingDirty(SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY, 22)
         assertSettingDirty(SyncSettings.LADDER_DEMOTION_FAIL_STREAK_SETTING_KEY, 4)
         assertSettingDirty(SyncSettings.REAL_DUE_REVIEWS_TO_MOVE_SETTING_KEY, 5)
+        assertSettingDirty(SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY, 3)
     }
 
     private fun assertSettingDirty(key: String, value: Int) {
