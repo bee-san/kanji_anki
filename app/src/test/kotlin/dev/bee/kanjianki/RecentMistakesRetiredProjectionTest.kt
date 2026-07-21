@@ -16,6 +16,7 @@ import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -149,6 +150,82 @@ class RecentMistakesRetiredProjectionTest {
         assertEquals(1, reviewCount())
     }
 
+    @Test
+    fun recentMistakesRouteRefreshesDashboardFamilyAfterAnotherStoreSyncs() {
+        val oldRow = dashboardRow(matureSupportCount = 1, expression = "古橋")
+        val oldSyncAt = nextTime()
+        val oldSyncId = saveDashboardRow(oldRow, oldSyncAt)
+        store.replaceStudyItems(
+            listOf(
+                studyItem(
+                    state = StudyLadderRules.STATE_REVIEW,
+                    signature = StudyQueueSeeder.answerSignature(oldRow),
+                ),
+            ),
+            oldSyncId,
+            oldSyncAt,
+            settings,
+        )
+        saveAgainReview()
+        assertEquals(listOf(KANJI), routeData().mistakes.map { it.kanji })
+
+        LocalStore(context).use { syncStore ->
+            val currentRow = dashboardRow(matureSupportCount = 2, expression = "新橋")
+            val newSyncAt = nextTime()
+            val newSyncId = saveDashboardRow(currentRow, newSyncAt, syncStore)
+            syncStore.replaceStudyItems(
+                listOf(
+                    studyItem(
+                        state = StudyLadderRules.STATE_RETIRED,
+                        signature = StudyQueueSeeder.answerSignature(currentRow),
+                    ),
+                    studyItem(
+                        state = StudyLadderRules.STATE_REVIEW,
+                        signature = StudyQueueSeeder.answerSignature(oldRow),
+                    ),
+                ),
+                newSyncId,
+                newSyncAt,
+                settings,
+            )
+        }
+
+        assertTrue(routeData().mistakes.isEmpty())
+        LocalStore(context).use { coldStore ->
+            assertTrue(routeData(coldStore).mistakes.isEmpty())
+        }
+        assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun suspensionWritesRollBackWhenStatsInvalidationFails() {
+        val batchKanji = "誤"
+        store.setKanjiLocallySuspendedForKanji(listOf(KANJI, batchKanji), true, nextTime())
+        val cacheStore = StatsCacheStore(store)
+        val sourceVersion = cacheStore.currentSourceVersion()
+        store.writableDatabase.execSQL(
+            """
+            CREATE TEMP TRIGGER abort_stats_source_version_update
+            BEFORE UPDATE OF value ON stats_cache_state
+            BEGIN
+                SELECT RAISE(ABORT, 'forced stats invalidation failure');
+            END
+            """.trimIndent(),
+        )
+
+        assertThrows(android.database.sqlite.SQLiteException::class.java) {
+            store.setKanjiLocallySuspended(KANJI, false, nextTime())
+        }
+        assertTrue(store.isKanjiLocallySuspended(KANJI))
+        assertEquals(sourceVersion, cacheStore.currentSourceVersion())
+
+        assertThrows(android.database.sqlite.SQLiteException::class.java) {
+            store.setKanjiLocallySuspendedForKanji(listOf(batchKanji), false, nextTime())
+        }
+        assertTrue(store.isKanjiLocallySuspended(batchKanji))
+        assertEquals(sourceVersion, cacheStore.currentSourceVersion())
+    }
+
     private fun seedWeakMistake() {
         transitionTo(StudyLadderRules.STATE_REVIEW, matureSupportCount = 1)
         saveAgainReview()
@@ -189,8 +266,9 @@ class RecentMistakesRetiredProjectionTest {
     private fun saveDashboardRow(
         row: RecordsImportModels.DashboardRow,
         occurredAt: Long,
+        targetStore: LocalStore = store,
     ): Long {
-        return store.saveSuccessfulSync(
+        return targetStore.saveSuccessfulSync(
             RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
             emptyList(),
             listOf(row),
@@ -201,25 +279,25 @@ class RecentMistakesRetiredProjectionTest {
         )
     }
 
-    private fun routeData(): RecentMistakesRouteData {
+    private fun routeData(targetStore: LocalStore = store): RecentMistakesRouteData {
         return recentMistakesRouteData(
             object : RecentMistakesRouteDataSource {
                 override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-                    return store.cachedStatsSnapshotOrNull()
+                    return targetStore.cachedStatsSnapshotOrNull()
                 }
 
                 override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
-                    return store.recentMistakes(limit)
+                    return targetStore.recentMistakes(limit)
                 }
 
                 override fun studyItemsForKanji(
                     kanji: Collection<String>,
                 ): List<RecordsStudyModels.StudyItem> {
-                    return store.studyItemsForKanji(kanji)
+                    return targetStore.studyItemsForKanji(kanji)
                 }
 
                 override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
-                    return store.activeDashboardRowsByKanji()
+                    return targetStore.activeDashboardRowsByKanji()
                 }
             },
         )
