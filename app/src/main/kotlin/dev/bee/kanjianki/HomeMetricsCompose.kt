@@ -2,11 +2,8 @@
 
 package dev.bee.kanjianki
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -14,32 +11,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
-import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.SyncStatus
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyStatsStore
@@ -106,20 +86,34 @@ internal fun homeMetricModels(
 
 @Composable
 fun HomeMetricRow(metrics: List<HomeMetricModel>) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        metrics.forEach { metric ->
-            HomeMetricCard(
-                model = metric,
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val stacked = LocalDensity.current.fontScale >= 1.3f || maxWidth < 300.dp
+        if (stacked) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                metrics.forEach { metric ->
+                    HomeMetricCard(model = metric, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        } else {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 4.dp)
-                    .fillMaxHeight()
-            )
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                metrics.forEach { metric ->
+                    HomeMetricCard(
+                        model = metric,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        compactLayout = true,
+                    )
+                }
+            }
         }
     }
 }
@@ -127,22 +121,20 @@ fun HomeMetricRow(metrics: List<HomeMetricModel>) {
 @Composable
 fun HomeMetricCard(
     model: HomeMetricModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compactLayout: Boolean = false,
 ) {
     val accentColor = kaniColor(model.accent)
-    val compactBody = remember(model.body) { model.body?.let { StudyTextCopy.compact(it, 22) } }
     KaniMetricCard(
         iconRes = model.iconRes,
         label = model.label,
         value = model.value,
-        delta = compactBody,
+        delta = model.body,
         accent = accentColor,
         modifier = modifier.fillMaxWidth().heightIn(min = 118.dp).testTag(homeMetricCardTestTag(model.label)),
         onClick = model.onClick?.let { action -> { withButtonTrace("Home metric ${model.label}") { action() } } },
         contentDescriptionPrefix = HomeTextCopy.homeMetricCardDescription(),
         compactValue = true,
+        compactLayout = compactLayout,
     )
 }
-
-private val HomeMetricInk: Color @Composable get() = KaniTheme.colors.ink
-private val HomeMetricMuted: Color @Composable get() = KaniTheme.colors.muted

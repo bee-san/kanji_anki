@@ -20,11 +20,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -184,30 +187,13 @@ private fun GamesModeCard(model: GamesModeCardModel) {
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = model.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = titleColor
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Surface(
-                    shape = GamesPillShape,
-                    color = chipFill,
-                    border = BorderStroke(1.dp, chipStroke)
-                ) {
-                    Text(
-                        text = model.chipLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (model.available) availableAccent else GamesGrey
-                    )
-                }
-            }
+            GamesModeCardHeader(
+                model = model,
+                titleColor = titleColor,
+                chipFill = chipFill,
+                chipStroke = chipStroke,
+                chipColor = if (model.available) availableAccent else GamesGrey,
+            )
 
             Text(
                 text = model.label,
@@ -221,5 +207,85 @@ private fun GamesModeCard(model: GamesModeCardModel) {
                 color = GamesMuted
             )
         }
+    }
+}
+
+@Composable
+private fun GamesModeCardHeader(
+    model: GamesModeCardModel,
+    titleColor: ComposeColor,
+    chipFill: ComposeColor,
+    chipStroke: ComposeColor,
+    chipColor: ComposeColor,
+) {
+    val largeText = LocalDensity.current.fontScale >= 1.3f
+    if (largeText) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            GamesModeTitle(model.title, titleColor, Modifier.fillMaxWidth())
+            GamesModeStatusChip(
+                model.chipLabel,
+                chipFill,
+                chipStroke,
+                chipColor,
+                accessibilityWidth = true,
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GamesModeTitle(model.title, titleColor, Modifier.weight(1f))
+            Spacer(modifier = Modifier.width(10.dp))
+            GamesModeStatusChip(model.chipLabel, chipFill, chipStroke, chipColor)
+        }
+    }
+}
+
+@Composable
+private fun GamesModeTitle(
+    title: String,
+    color: ComposeColor,
+    modifier: Modifier,
+) {
+    Text(
+        text = title,
+        modifier = modifier,
+        style = MaterialTheme.typography.titleLarge.copy(letterSpacing = 0.sp),
+        fontWeight = FontWeight.Bold,
+        color = color,
+    )
+}
+
+@Composable
+private fun GamesModeStatusChip(
+    label: String,
+    fill: ComposeColor,
+    stroke: ComposeColor,
+    color: ComposeColor,
+    accessibilityWidth: Boolean = false,
+) {
+    Surface(
+        modifier = if (accessibilityWidth) Modifier.width(160.dp) else Modifier,
+        shape = GamesPillShape,
+        color = fill,
+        border = BorderStroke(1.dp, stroke),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier
+                .then(if (accessibilityWidth) Modifier.fillMaxWidth() else Modifier)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+            color = color,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

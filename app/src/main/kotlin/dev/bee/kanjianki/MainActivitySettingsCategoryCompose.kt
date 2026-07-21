@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -36,6 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -79,78 +83,130 @@ private fun SettingsCardChrome(
         border = BorderStroke(1.dp, model.borderColor)
     ) {
         val icon: Painter = painterResource(id = model.iconRes)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
-                .testTag(model.testTag)
-                .semantics {
-                    this.contentDescription = model.contentDescription
-                    if (stateDescription != null) {
-                        this.stateDescription = stateDescription
-                    }
+        val contentModifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 16.dp, end = 14.dp, bottom = 16.dp)
+            .testTag(model.testTag)
+            .semantics {
+                this.contentDescription = model.contentDescription
+                if (stateDescription != null) {
+                    this.stateDescription = stateDescription
                 }
-                .clickable(
-                    role = Role.Button,
-                    onClick = { onClick() }
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(HEADER_ICON_SIZE.dp)
-                    .background(HEADER_ICON_BG, RoundedCornerShape(HEADER_ICON_RADIUS.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = ColorFilter.tint(model.iconTint)
-                )
             }
-
+            .clickable(
+                role = Role.Button,
+                onClick = { onClick() }
+            )
+        if (LocalDensity.current.fontScale >= 1.3f) {
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = contentModifier,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = model.title,
-                    color = model.titleColor,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                if (model.summary.isNotBlank()) {
-                    Text(
-                        text = model.summary,
-                        color = model.summaryColor,
-                        fontSize = 14.sp
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SettingsCardIcon(icon, model.iconTint)
+                    Spacer(modifier = Modifier.weight(1f))
+                    SettingsCardCount(model, accessibilityWidth = true)
+                    trailingContent()
                 }
+                SettingsCardCopy(model, Modifier.fillMaxWidth())
             }
-
-            Surface(
-                modifier = Modifier
-                    .wrapContentWidth()
-                    .wrapContentHeight()
-                    .padding(start = 10.dp, end = 8.dp),
-                color = HEADER_COUNT_BG,
-                shape = RoundedCornerShape(HEADER_COUNT_RADIUS.dp),
-                border = BorderStroke(1.dp, model.borderColor)
+        } else {
+            Row(
+                modifier = contentModifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    text = model.countText,
-                    color = model.countColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
-                )
+                SettingsCardIcon(icon, model.iconTint)
+                SettingsCardCopy(model, Modifier.weight(1f))
+                SettingsCardCount(model)
+                trailingContent()
             }
-
-            trailingContent()
         }
+    }
+}
+
+@Composable
+private fun SettingsCardIcon(icon: Painter, tint: ComposeColor) {
+    Box(
+        modifier = Modifier
+            .size(HEADER_ICON_SIZE.dp)
+            .background(HEADER_ICON_BG, RoundedCornerShape(HEADER_ICON_RADIUS.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            contentScale = ContentScale.Fit,
+            colorFilter = ColorFilter.tint(tint),
+        )
+    }
+}
+
+@Composable
+private fun SettingsCardCopy(
+    model: SettingsCardChromeModel,
+    modifier: Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = model.title,
+            modifier = Modifier.fillMaxWidth(),
+            color = model.titleColor,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.sp,
+        )
+        if (model.summary.isNotBlank()) {
+            Text(
+                text = model.summary,
+                modifier = Modifier.fillMaxWidth(),
+                color = model.summaryColor,
+                fontSize = 14.sp,
+                letterSpacing = 0.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsCardCount(
+    model: SettingsCardChromeModel,
+    accessibilityWidth: Boolean = false,
+) {
+    Surface(
+        modifier = if (accessibilityWidth) {
+            Modifier.width(152.dp)
+        } else {
+            Modifier
+                .wrapContentWidth()
+                .wrapContentHeight()
+                .padding(start = 10.dp, end = 8.dp)
+        },
+        color = HEADER_COUNT_BG,
+        shape = RoundedCornerShape(HEADER_COUNT_RADIUS.dp),
+        border = BorderStroke(1.dp, model.borderColor),
+    ) {
+        Text(
+            text = model.countText,
+            color = model.countColor,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier
+                .then(if (accessibilityWidth) Modifier.fillMaxWidth() else Modifier)
+                .padding(horizontal = 9.dp, vertical = 6.dp),
+        )
     }
 }
 
