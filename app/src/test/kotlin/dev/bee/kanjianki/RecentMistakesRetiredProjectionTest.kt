@@ -161,7 +161,7 @@ class RecentMistakesRetiredProjectionTest {
     }
 
     @Test
-    fun recentMistakesProjectionRestoresHistoryWhenMatureSupportThresholdIncreases() {
+    fun recentMistakesProjectionRestoresCachedHistoryAfterThresholdIncreaseAndRestart() {
         val matureRow = dashboardRow(matureSupportCount = 2)
         val retiredAt = nextTime()
         val retiredSyncId = saveDashboardRow(matureRow, retiredAt)
@@ -171,13 +171,43 @@ class RecentMistakesRetiredProjectionTest {
         )
         store.replaceStudyItems(listOf(retired), retiredSyncId, retiredAt, settings)
         saveAgainReview()
-        assertTrue(store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).isEmpty())
+        store.recomputeStatsSnapshotSynchronously(nextTime())
+        assertTrue(routeData().mistakes.isEmpty())
 
         store.putIntSetting(SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY, 3)
+        assertEquals(3, store.getIntSetting(SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY, -1))
+        store.close()
+        store = LocalStore(context)
 
         assertEquals(listOf(KANJI), store.recentMistakes(STATS_RECENT_MISTAKE_LIMIT).map { it.kanji })
         assertEquals(listOf(KANJI), routeData().mistakes.map { it.kanji })
         assertEquals(1, reviewCount())
+    }
+
+    @Test
+    fun matureSupportThresholdWritesRollBackWhenStatsInvalidationFails() {
+        val thresholdKey = SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY
+        store.putIntSetting(thresholdKey, 2)
+        val sourceVersion = StatsCacheStore(store).currentSourceVersion()
+        store.writableDatabase.execSQL(
+            """
+            CREATE TEMP TRIGGER abort_stats_source_version_update
+            BEFORE UPDATE OF value ON stats_cache_state
+            BEGIN
+                SELECT RAISE(ABORT, 'forced stats invalidation failure');
+            END
+            """.trimIndent(),
+        )
+
+        assertThrows(android.database.sqlite.SQLiteException::class.java) {
+            store.putIntSetting(thresholdKey, 3)
+        }
+        assertEquals(2, store.getIntSetting(thresholdKey, -1))
+        store.close()
+        store = LocalStore(context)
+
+        assertEquals(2, store.getIntSetting(thresholdKey, -1))
+        assertEquals(sourceVersion, StatsCacheStore(store).currentSourceVersion())
     }
 
     @Test
