@@ -280,6 +280,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 updatePermissionPrompt = updatePermissionPrompt,
                 updateCheckFailedLine = updateCheckFailedLine,
                 onRetryUpdateCheck = if (updateCheckFailedLine != null) this::triggerManualUpdateCheck else null,
+                firstRunOfflineNotice = if (latestSuccessfulSyncAt == null) {
+                    HomeTextCopy.firstRunOfflineNotice()
+                } else {
+                    null
+                },
             )
         }
     }
@@ -341,6 +346,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             emptyTitle = HomeTextCopy.noKanjiQueuedTitle(),
             emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
             previewCards = emptyList(),
+            firstRunOfflineNotice = HomeTextCopy.firstRunOfflineNotice(),
         )
         renderHomeScreen(
             model,

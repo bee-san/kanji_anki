@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -54,11 +55,14 @@ class HomeScreenComposeTest {
                 onSync = { syncClicked = true },
                 syncMetricBody = "AnkiDroid",
                 emptyTitle = "No kanji queued",
-                emptyBody = HomeTextCopy.homeNoKanjiQueuedBody()
+                emptyBody = HomeTextCopy.homeNoKanjiQueuedBody(),
+                firstRunOfflineNotice = HomeTextCopy.firstRunOfflineNotice(),
             )
         )
 
         composeRule.onNodeWithText("Kani").assertIsDisplayed()
+        composeRule.onNodeWithTag(homeFirstRunOfflineNoticeTestTag()).assertIsDisplayed()
+        composeRule.onNodeWithText(HomeTextCopy.firstRunOfflineNotice()).assertIsDisplayed()
         composeRule.onNodeWithText("Focus queue").performScrollTo().assertIsDisplayed()
         composeRule.onAllNodesWithText("View all").assertCountEquals(0)
         composeRule.onNodeWithText("No kanji queued").performScrollTo().assertIsDisplayed()
@@ -212,6 +216,7 @@ class HomeScreenComposeTest {
         setHomeContent(baseModel(showSyncCta = false))
 
         composeRule.onAllNodesWithText(HomeTextCopy.updateCheckFailedLine()).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(homeFirstRunOfflineNoticeTestTag()).assertCountEquals(0)
     }
 
     private fun baseModel(
@@ -229,6 +234,7 @@ class HomeScreenComposeTest {
         studyRemainingCount: Int = 0,
         updateCheckFailedLine: String? = null,
         onRetryUpdateCheck: (() -> Unit)? = null,
+        firstRunOfflineNotice: String? = null,
         todayPlan: HomeTodayPlanModel = HomeTodayPlanModel(
             title = HomeTextCopy.todayPlanTitle(),
             summary = "Nothing useful now",
@@ -260,6 +266,7 @@ class HomeScreenComposeTest {
             studyRemainingCount = studyRemainingCount,
             updateCheckFailedLine = updateCheckFailedLine,
             onRetryUpdateCheck = onRetryUpdateCheck,
+            firstRunOfflineNotice = firstRunOfflineNotice,
         )
     }
 }

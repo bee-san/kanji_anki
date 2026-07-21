@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,7 +21,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+
+internal fun homeFirstRunOfflineNoticeTestTag(): String = "home-first-run-offline-notice"
 
 @Composable
 fun HomeScreen(model: HomeScreenModel) {
@@ -34,6 +40,19 @@ fun HomeScreen(model: HomeScreenModel) {
         HomeHeader(title = model.title, subtitle = model.subtitle)
         Spacer(modifier = Modifier.height(14.dp))
         HomePrimaryHomeCta(model)
+        model.firstRunOfflineNotice?.let { notice ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = notice,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .testTag(homeFirstRunOfflineNoticeTestTag()),
+                color = KaniTheme.colors.greyText,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
         AnimatedVisibility(
             visible = showSecondaryPanels,
             enter = fadeIn(animationSpec = tween(durationMillis = 200)) +

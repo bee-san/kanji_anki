@@ -25,4 +25,5 @@ data class HomeScreenModel(
     val updatePermissionPrompt: HomeUpdatePermissionPromptSnapshot? = null,
     val updateCheckFailedLine: String? = null,
     val onRetryUpdateCheck: (() -> Unit)? = null,
+    val firstRunOfflineNotice: String? = null,
 )

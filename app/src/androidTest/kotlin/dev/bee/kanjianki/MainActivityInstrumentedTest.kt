@@ -40,6 +40,7 @@ import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy;
 import dev.bee.kanjianki.core.BridgeScheduler;
 import dev.bee.kanjianki.core.FrequencyRetentionRanges;
+import dev.bee.kanjianki.core.HomeTextCopy;
 import dev.bee.kanjianki.core.SettingsInputRules;
 import dev.bee.kanjianki.core.SettingsTextCopy;
 import dev.bee.kanjianki.core.SimilarKanjiIndex;
@@ -163,6 +164,7 @@ fun testLaunchesHomeWithoutSeedDataOrProviderCrash() {
                 assertTrue(content.getHeight() >= 0);
                 assertHasText(activity, "Kani");
                 assertHasText(activity, "Sync AnkiDroid");
+                assertHasText(activity, HomeTextCopy.firstRunOfflineNotice());
                 assertHasText(activity, "Streak");
                 assertHasText(activity, "No streak yet");
                 assertHasText(activity, "Settings");

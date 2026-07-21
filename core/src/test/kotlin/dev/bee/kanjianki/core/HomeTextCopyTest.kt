@@ -126,6 +126,10 @@ class HomeTextCopyTest {
         assertEquals("Kani", HomeTextCopy.appTitle())
         assertEquals("", HomeTextCopy.appSubtitle())
         assertEquals("Sync AnkiDroid", HomeTextCopy.syncAnkiDroidLabel())
+        assertEquals(
+            "Study and AnkiDroid sync work offline. Internet is only needed to download the optional handwriting checker or an app update.",
+            HomeTextCopy.firstRunOfflineNotice(),
+        )
         assertEquals("Focus queue", HomeTextCopy.focusQueueTitle())
         assertEquals("View all", HomeTextCopy.viewAllLabel())
         assertEquals("No kanji queued", HomeTextCopy.noKanjiQueuedTitle())
@@ -283,6 +287,10 @@ class HomeTextCopyTest {
             assertEquals("保存しました。", HomeTextCopy.reviewToast(false, null, 0))
             assertEquals("すでに保存済み。", HomeTextCopy.reviewToast(true, StudyRatings.GOOD, 2))
             assertEquals("AnkiDroidを同期", HomeTextCopy.syncAnkiDroidLabel())
+            assertEquals(
+                "学習とAnkiDroid同期はオフラインで使えます。インターネットは任意の手書き判定モデルとアプリ更新のダウンロード時だけ必要です。",
+                HomeTextCopy.firstRunOfflineNotice(),
+            )
             assertEquals("集中キュー", HomeTextCopy.focusQueueTitle())
             assertEquals("キューに漢字がありません", HomeTextCopy.noKanjiQueuedTitle())
             assertEquals("ホームの指標カード", HomeTextCopy.homeMetricCardDescription())

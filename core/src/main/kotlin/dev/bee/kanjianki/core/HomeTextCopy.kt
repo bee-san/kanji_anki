@@ -136,6 +136,12 @@ object HomeTextCopy {
     fun syncAnkiDroidLabel(): String = localizedText("Sync AnkiDroid", "AnkiDroidを同期")
 
     @JvmStatic
+    fun firstRunOfflineNotice(): String = localizedText(
+        "Study and AnkiDroid sync work offline. Internet is only needed to download the optional handwriting checker or an app update.",
+        "学習とAnkiDroid同期はオフラインで使えます。インターネットは任意の手書き判定モデルとアプリ更新のダウンロード時だけ必要です。",
+    )
+
+    @JvmStatic
     fun focusQueueTitle(): String = localizedText("Focus queue", "集中キュー")
 
     @JvmStatic
