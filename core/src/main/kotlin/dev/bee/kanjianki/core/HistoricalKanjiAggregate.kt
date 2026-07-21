@@ -41,28 +41,28 @@ class HistoricalKanjiAggregate(kanji: String?) {
     ) {
         val memory = fsrs ?: EMPTY_FSRS
         if (suspended) {
-            suspendedCards++
+            suspendedCards = saturatingAddNonNegative(suspendedCards, 1)
         } else {
-            activeCards++
+            activeCards = saturatingAddNonNegative(activeCards, 1)
         }
         if (mature) {
-            matureSupportCount++
+            matureSupportCount = saturatingAddNonNegative(matureSupportCount, 1)
         }
-        totalLapses += maxOf(0, lapses)
-        totalReps += maxOf(0, reps)
-        intervalSum += maxOf(0, intervalDays)
-        intervalCount++
-        if (memory.stability != null) {
-            stabilitySum += memory.stability
-            stabilityCount++
+        totalLapses = saturatingAddNonNegative(totalLapses, lapses)
+        totalReps = saturatingAddNonNegative(totalReps, reps)
+        intervalSum = saturatingFiniteAdd(intervalSum, maxOf(0, intervalDays).toDouble())
+        intervalCount = saturatingAddNonNegative(intervalCount, 1)
+        if (memory.stability?.isFinite() == true) {
+            stabilitySum = saturatingFiniteAdd(stabilitySum, memory.stability)
+            stabilityCount = saturatingAddNonNegative(stabilityCount, 1)
         }
-        if (memory.difficulty != null) {
-            difficultySum += memory.difficulty
-            difficultyCount++
+        if (memory.difficulty?.isFinite() == true) {
+            difficultySum = saturatingFiniteAdd(difficultySum, memory.difficulty)
+            difficultyCount = saturatingAddNonNegative(difficultyCount, 1)
         }
-        if (memory.retrievability != null) {
-            retrievabilitySum += memory.retrievability
-            retrievabilityCount++
+        if (memory.retrievability?.isFinite() == true) {
+            retrievabilitySum = saturatingFiniteAdd(retrievabilitySum, memory.retrievability)
+            retrievabilityCount = saturatingAddNonNegative(retrievabilityCount, 1)
         }
     }
 
@@ -139,5 +139,14 @@ class HistoricalKanjiAggregate(kanji: String?) {
 
     companion object {
         private val EMPTY_FSRS = FsrsMemoryValues(null, null, null)
+
+        private fun saturatingFiniteAdd(left: Double, right: Double): Double {
+            val sum = left + right
+            return when (sum) {
+                Double.POSITIVE_INFINITY -> Double.MAX_VALUE
+                Double.NEGATIVE_INFINITY -> -Double.MAX_VALUE
+                else -> sum
+            }
+        }
     }
 }

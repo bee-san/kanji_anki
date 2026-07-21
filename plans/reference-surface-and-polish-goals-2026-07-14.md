@@ -6,12 +6,12 @@ with `/goal`. Line numbers are correct as of commit
 `63f40462` (2026-07-14, branch `merge-pr-542`, app version 0.4.33 / 4033) and
 may drift — search the named symbols.
 
-Goal numbers continue from 112
-(`plans/study-experience-settings-and-hardening-goals-2026-07-13.md`, on the
-`goals-96-112` branch, ends at Goal 112) because goal numbers are globally
-unique across all plan files in this repo — commit messages and AGENTS.md
-reference bare goal numbers, so "Goal 120" must always mean exactly one thing.
-Numbers 96–112 stay reserved for that plan even though it is not fully merged.
+Goal numbers continue from 112, reserved by an untracked sibling plan on the
+historical `goals-96-112` branch. That plan is not present in this repository
+or any currently reachable ref, so references to it below are provenance, not
+a navigable authority. The reservation remains because commit messages and
+AGENTS.md reference bare goal numbers, so "Goal 120" must mean exactly one
+thing in this numbered sequence.
 
 ## Asks
 
@@ -208,8 +208,8 @@ Numbers 96–112 stay reserved for that plan even though it is not fully merged.
 | Range | Plan | Status |
 |---|---|---|
 | 82–95 | `plans/repair-loop-and-stats-goals-2026-07-10.md` | Landed on `main`; Goal 94 live gate `OK (62 tests)` re-validated 2026-07-10 |
-| 96–97, 103 | `plans/study-experience-settings-and-hardening-goals-2026-07-13.md` | Landed on `main` via PRs #536/#539 and commit `3eac3c17` |
-| 98–99 (session recap), 100–101 (parking), 102 (vocabulary unlock), 104 (settings declutter), 105–106 (runtime/recreation), 107–109 (vararg freeze), 110–111 (signing/R8), 112 (consistency pass) | same plan, branch `goals-96-112` | **Pending** — that plan remains the authority for those goals; this plan does not renumber or restate them |
+| 96–97, 103 | Untracked Goals 96–112 sibling plan | Landed on `main` via PRs #536/#539 and commit `3eac3c17` |
+| 98–99 (session recap), 100–101 (parking), 102 (vocabulary unlock), 104 (settings declutter), 105–106 (runtime/recreation), 107–109 (vararg freeze), 110–111 (signing/R8), 112 (consistency pass) | same untracked plan, branch `goals-96-112` | **Pending at authoring time** — this plan does not renumber or restate them |
 
 This plan is a **sibling queue** to the pending Goals 98–112 and is written to
 be workable in any interleaving with them; every point of contact is called
@@ -1096,8 +1096,8 @@ follows once the reference surface is stable.
 ## Status
 
 > **2026-07-14:** Plan authored; all 16 goals (113–128) implemented on
-> branch `goals-113-128`. `ciFast` green. Goals 98–112 remain owned by
-> `plans/study-experience-settings-and-hardening-goals-2026-07-13.md`.
+> branch `goals-113-128`. `ciFast` green. At that time Goals 98–112 remained
+> assigned to the untracked sibling plan described above.
 >
 > **2026-07-14:** ✅ **DONE.** PR #544 merged to `main`. All 16 goals
 > (113–128) landed.

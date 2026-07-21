@@ -77,6 +77,37 @@ class LocalStoreReminderStateTest {
     }
 
     @Test
+    fun reviewReminderCounterSaturatesAtMaximumValue() {
+        val dayStart = utc(2026, Calendar.MAY, 15, 0, 0)
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        store.putLongSetting("review_reminder_day_start", dayStart)
+        store.putIntSetting("review_reminder_count", Int.MAX_VALUE)
+
+        store.recordReviewReminderNotificationShown(now)
+
+        assertEquals(Int.MAX_VALUE, store.reviewReminderNotificationsToday(now))
+    }
+
+    @Test
+    fun reminderFamilyCountersSaturateAtMaximumValue() {
+        val dayStart = utc(2026, Calendar.MAY, 15, 0, 0)
+        val now = utc(2026, Calendar.MAY, 15, 9, 0)
+        store.putLongSetting("reminder_state_day_start", dayStart)
+        store.putIntSetting("reminder_due_shown_today", Int.MAX_VALUE)
+        store.putIntSetting("reminder_streak_shown_today", Int.MAX_VALUE)
+        store.putIntSetting("reminder_sync_shown_today", Int.MAX_VALUE)
+
+        store.recordReminderPosted(now, "DUE", "due", false)
+        store.recordReminderPosted(now, "STREAK", "streak", false)
+        store.recordReminderPosted(now, "SYNC", "sync", false)
+
+        val state = store.reminderThrottleState(now)
+        assertEquals(Int.MAX_VALUE, state.dueShownToday)
+        assertEquals(Int.MAX_VALUE, state.streakShownToday)
+        assertEquals(Int.MAX_VALUE, state.syncShownToday)
+    }
+
+    @Test
     fun dismissedFamilyIsSuppressedSameDayThenClearsNextDay() {
         val day1 = utc(2026, Calendar.MAY, 15, 20, 0)
         store.recordReminderDismissed(day1, "DUE")

@@ -310,7 +310,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         when (context.rating) {
             StudyRatings.AGAIN -> {
                 state.stepIndex = 0
-                state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[0])
+                state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(steps[0]))
                 state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING
                 state.schedulerState = StudyLadderRules.STATE_LEARNING
             }
@@ -351,13 +351,16 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             // descending steps like [10, 5], where max(step0, midpoint) would collapse
             // Hard onto the Again delay.
             val avg = (StudyLadderRules.stepDelayMillis(steps[0]) + StudyLadderRules.stepDelayMillis(steps[1])) / 2L
-            state.due = context.nowMillis + avg
+            state.due = saturatingAdd(context.nowMillis, avg)
         } else if (idx == 0) {
             // Anki semantics: with a single learning step, Hard waits 1.5x the
             // step delay so it sits strictly between Again and Good.
-            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[0]) * 3L / 2L
+            state.due = saturatingAdd(
+                context.nowMillis,
+                StudyLadderRules.stepDelayMillis(steps[0]) * 3L / 2L,
+            )
         } else {
-            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[idx])
+            state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(steps[idx]))
         }
         state.stepIndex = idx
         state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING
@@ -370,13 +373,13 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         steps: List<Int>,
         isNewLearning: Boolean
     ) {
-        val nextIdx = state.stepIndex + 1
-        if (nextIdx >= steps.size) {
+        val nextIdx = nextLearningGoodStep(state.stepIndex, steps.size)
+        if (nextIdx == null) {
             graduateToReview(context, state, isNewLearning)
             return
         }
         state.stepIndex = nextIdx
-        state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(steps[nextIdx])
+        state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(steps[nextIdx]))
         state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING
         state.schedulerState = StudyLadderRules.STATE_LEARNING
     }
@@ -393,7 +396,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         state.stability = result.stability
         state.difficulty = result.difficulty
         state.scheduledIntervalDays = result.intervalDays()
-        state.due = context.nowMillis + result.intervalMillis
+        state.due = saturatingAdd(context.nowMillis, result.intervalMillis.coerceAtLeast(1L))
         state.phase = RecordsBase.SchedulerPhase.REVIEW
         state.schedulerState = StudyLadderRules.STATE_REVIEW
     }
@@ -409,8 +412,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     private fun applyReviewAgain(context: ReviewContext, state: ReviewState) {
-        state.lapses++
-        state.taskLapses++
+        state.lapses = saturatingAddNonNegative(state.lapses, 1)
+        state.taskLapses = saturatingAddNonNegative(state.taskLapses, 1)
         val result = fsrsAdapter.review(
             state.stability,
             state.difficulty,
@@ -427,19 +430,19 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             // No relearning steps: skip practice and reschedule straight from
             // the FSRS post-lapse memory state, matching Anki's FSRS behavior.
             state.phase = RecordsBase.SchedulerPhase.REVIEW
-            state.due = context.nowMillis + result.intervalMillis
+            state.due = saturatingAdd(context.nowMillis, result.intervalMillis.coerceAtLeast(1L))
             state.schedulerState = StudyLadderRules.STATE_REVIEW
             state.scheduledIntervalDays = result.intervalDays()
         } else {
             state.phase = RecordsBase.SchedulerPhase.RELEARNING
-            state.due = context.nowMillis + StudyLadderRules.stepDelayMillis(relearning[0])
+            state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(relearning[0]))
             state.schedulerState = StudyLadderRules.STATE_LEARNING
             state.scheduledIntervalDays = 0
         }
 
         if (countsAsRealDue(context, state)) {
             state.realPassStreak = 0
-            state.realAgainStreak++
+            state.realAgainStreak = saturatingAddNonNegative(state.realAgainStreak, 1)
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             state.lastFailedRealReviewDueAtMillis = context.item.dueAtMillis
             // A failed streak demotes as usual; additionally, a failed *first*
@@ -497,14 +500,14 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         state.stability = result.stability
         state.difficulty = result.difficulty
         state.scheduledIntervalDays = result.intervalDays()
-        state.due = context.nowMillis + result.intervalMillis
+        state.due = saturatingAdd(context.nowMillis, result.intervalMillis.coerceAtLeast(1L))
         state.phase = RecordsBase.SchedulerPhase.REVIEW
         state.schedulerState = StudyLadderRules.STATE_REVIEW
         state.stepIndex = 0
 
         if (countsAsRealDue(context, state)) {
             state.realAgainStreak = 0
-            state.realPassStreak++
+            state.realPassStreak = saturatingAddNonNegative(state.realPassStreak, 1)
             state.lastRealReviewDueAtMillis = context.item.dueAtMillis
             // A single qualifying interval is thin evidence that a distinct rung
             // skill is retired: after the 7-day promotion cap a promoted rung
@@ -554,7 +557,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         val capDays = max(1, context.settings.ladderPromotionIntervalDays / PROMOTED_RUNG_FIRST_REVIEW_DIVISOR)
         if (state.scheduledIntervalDays > capDays) {
             state.scheduledIntervalDays = capDays
-            state.due = context.nowMillis + capDays * StudyLadderRules.DAY
+            state.due = saturatingAdd(context.nowMillis, capDays.toLong() * StudyLadderRules.DAY)
         }
     }
 
@@ -570,7 +573,10 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
      * step already delivers the promise and this cap is not applied.
      */
     private fun capDemotedRungFirstReview(context: ReviewContext, state: ReviewState) {
-        val capMillis = context.nowMillis + DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS * StudyLadderRules.DAY
+        val capMillis = saturatingAdd(
+            context.nowMillis,
+            DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS.toLong() * StudyLadderRules.DAY,
+        )
         if (state.due > capMillis) {
             state.due = capMillis
             state.scheduledIntervalDays = min(state.scheduledIntervalDays, DEMOTED_RUNG_FIRST_REVIEW_CAP_DAYS)
@@ -603,7 +609,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         if (context.failedWriting) {
             state.writingLevel = max(0, state.writingLevel - 1)
         } else if (context.cleanWritingPass) {
-            state.writingLevel = min(3, state.writingLevel + 1)
+            state.writingLevel = min(3, saturatingAddNonNegative(state.writingLevel, 1))
         }
     }
 
@@ -681,8 +687,8 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         private fun elapsedReviewDays(): Int {
             val previousIntervalMillis = max(0L, previousTaskMemory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
             val lastReviewAtMillis = previousTaskMemory.lastReviewedAtMillis.takeIf { it > 0L }
-                ?: max(0L, previousTaskMemory.dueAtMillis - previousIntervalMillis)
-            val elapsedMillis = max(0L, nowMillis - lastReviewAtMillis)
+                ?: max(0L, saturatingSubtract(previousTaskMemory.dueAtMillis, previousIntervalMillis))
+            val elapsedMillis = nonNegativeDifference(nowMillis, lastReviewAtMillis)
             return min(Int.MAX_VALUE.toLong(), elapsedMillis / StudyLadderRules.DAY).toInt()
         }
 
@@ -781,16 +787,16 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         companion object {
             fun from(context: ReviewContext): ReviewState {
                 val state = ReviewState()
-                state.total = context.item.totalReviews + 1
-                state.lapses = context.item.lapses
-                state.taskTotal = context.previousTaskMemory.totalReviews + 1
-                state.taskLapses = context.previousTaskMemory.lapses
+                state.total = saturatingAddNonNegative(context.item.totalReviews, 1)
+                state.lapses = context.item.lapses.coerceAtLeast(0)
+                state.taskTotal = saturatingAddNonNegative(context.previousTaskMemory.totalReviews, 1)
+                state.taskLapses = context.previousTaskMemory.lapses.coerceAtLeast(0)
                 state.stepIndex = context.previousTaskMemory.learningStep
-                state.writingLevel = context.item.writingLevel
+                state.writingLevel = context.item.writingLevel.coerceIn(0, 3)
                 state.rung = context.rung
                 state.phase = context.phase
-                state.realPassStreak = context.item.realPassStreak
-                state.realAgainStreak = context.item.realAgainStreak
+                state.realPassStreak = context.item.realPassStreak.coerceAtLeast(0)
+                state.realAgainStreak = context.item.realAgainStreak.coerceAtLeast(0)
                 state.lastRealReviewDueAtMillis = context.item.lastRealReviewDueAtMillis
                 state.lastFailedRealReviewDueAtMillis = context.item.lastFailedRecognitionDayMillis
                 state.stability = context.previousTaskMemory.stability
@@ -802,6 +808,19 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     companion object {
+        /**
+         * A negative persisted index represents a card before its first step.
+         * It must enter step zero on Good, while an index at or beyond the last
+         * configured step graduates. Checking the upper bound before adding
+         * also prevents [Int.MAX_VALUE] from wrapping negative.
+         */
+        internal fun nextLearningGoodStep(currentIndex: Int, stepCount: Int): Int? {
+            if (stepCount <= 0 || currentIndex >= stepCount - 1) {
+                return null
+            }
+            return if (currentIndex < 0) 0 else currentIndex + 1
+        }
+
         /**
          * Divisor applied to `ladder_promotion_interval_days` to derive the
          * first-review cap for a freshly promoted rung.

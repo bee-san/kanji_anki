@@ -317,7 +317,16 @@ run_instrumentation_gate() {
   done
 }
 
-trap 'status=$?; if [ "${status}" -ne 0 ]; then dump_logcat; fi; exit "${status}"' EXIT
+on_exit() {
+  local exit_status=$?
+  trap - EXIT
+  if [ "${exit_status}" -ne 0 ]; then
+    dump_logcat
+  fi
+  exit "${exit_status}"
+}
+
+trap on_exit EXIT
 
 # The debug and androidTest APKs are built before the emulator step (CI) or by
 # the operator (local runs) so emulator wall time is spent only on device work.

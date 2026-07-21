@@ -57,7 +57,7 @@ object StudyNowCountPolicy {
             .filter { it.isNotEmpty() }
             .distinct()
             .count()
-        return studyItemCount.coerceAtLeast(0) + additionalCount
+        return saturatingAddNonNegative(studyItemCount, additionalCount)
     }
 
     @JvmStatic

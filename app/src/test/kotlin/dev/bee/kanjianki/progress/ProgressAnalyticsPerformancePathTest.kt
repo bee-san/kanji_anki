@@ -32,7 +32,7 @@ class ProgressAnalyticsPerformancePathTest {
         )
 
         assertEquals(1_111L, state.generatedAtMillis)
-        assertEquals(1, source.freshReads)
+        assertEquals(listOf(now), source.freshReads)
         assertEquals(0, source.directRecomputes)
         assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
@@ -55,7 +55,7 @@ class ProgressAnalyticsPerformancePathTest {
         )
 
         assertEquals(2_222L, state.generatedAtMillis)
-        assertEquals(1, source.freshReads)
+        assertEquals(listOf(now), source.freshReads)
         assertEquals(1, source.directRecomputes)
         assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
@@ -78,7 +78,7 @@ class ProgressAnalyticsPerformancePathTest {
         )
 
         assertEquals(1_111L, state.generatedAtMillis)
-        assertEquals(1, source.freshReads)
+        assertEquals(listOf(now), source.freshReads)
         assertEquals(1, source.directRecomputes)
         assertEquals(0, scheduled)
         assertEquals(4, state.reviewsAnalytics.totalReviews.value)
@@ -144,11 +144,11 @@ class ProgressAnalyticsPerformancePathTest {
         private val fresh: StatsCacheStore.Snapshot? = null,
         private val direct: StatsCacheStore.Snapshot,
     ) : ProgressAnalyticsStatsSource {
-        var freshReads = 0
+        val freshReads = mutableListOf<Long>()
         var directRecomputes = 0
 
-        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            freshReads += 1
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot? {
+            freshReads += nowMillis
             return fresh
         }
 

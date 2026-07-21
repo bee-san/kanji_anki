@@ -3,11 +3,13 @@ package dev.bee.kanjianki.progress
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.ChartAxisPolicy
+import dev.bee.kanjianki.core.KanjiImpactAnalyzer
+import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StatsDashboardCopy
+import dev.bee.kanjianki.core.StatsValueFormatter
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
@@ -23,6 +25,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.Locale
+import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -92,6 +96,177 @@ class ProgressAnalyticsLiveDataSourceTest {
     }
 
     @Test
+    fun explicitNowMillisControlsCacheFreshness() {
+        val historicalNow = 1_700_000_000_000L
+        writeFreshStatsSnapshot(historicalNow, cachedReviewDaySummaries(historicalNow))
+
+        val snapshot = progressAnalyticsSnapshot(localStore!!, historicalNow)
+
+        assertEquals(historicalNow, snapshot.generatedAtMillis)
+        assertEquals(12, snapshot.overview.totalReviews.value)
+    }
+
+    @Test
+    fun accuracyDeltaUsesPercentagePointsAcrossDisjointThirtyDayWindows() {
+        val now = 1_780_000_000_000L
+        val today = LocalDayPolicy.localDayStart(now)
+        val reviewDays = (-59..0).map { offset ->
+            reviewDaySnapshot(
+                LocalDayPolicy.moveLocalDays(today, offset),
+                total = 10,
+                again = if (offset < -29) 2 else 1,
+            )
+        }
+        writeFreshStatsSnapshot(now, reviewDays)
+
+        val snapshot = progressAnalyticsSnapshot(localStore!!, now)
+
+        assertEquals(90, snapshot.overview.accuracy.value)
+        assertEquals("+10% vs previous 30d", snapshot.overview.accuracy.deltaLabel)
+    }
+
+    @Test
+    fun cumulativeWeeklyDeltaUsesSevenInclusiveLocalDatesAndChartUsesNinetyDays() {
+        val now = 1_780_000_000_000L
+        val today = LocalDayPolicy.localDayStart(now)
+        val oldDay = LocalDayPolicy.moveLocalDays(today, -100)
+        val rangeStart = LocalDayPolicy.moveLocalDays(today, -89)
+        val points = listOf(
+            StatsCacheStore.CumulativeKanjiSnapshot(oldDay, 1),
+            StatsCacheStore.CumulativeKanjiSnapshot(LocalDayPolicy.moveLocalDays(today, -7), 2),
+            StatsCacheStore.CumulativeKanjiSnapshot(LocalDayPolicy.moveLocalDays(today, -6), 3),
+            StatsCacheStore.CumulativeKanjiSnapshot(today, 8),
+        )
+        writeFreshStatsSnapshot(
+            now,
+            cachedReviewDaySummaries(now),
+            cumulativeKanjiPracticed = points,
+        )
+
+        val snapshot = progressAnalyticsSnapshot(localStore!!, now)
+
+        assertEquals("+6 this week", snapshot.overview.kanjiLearned.deltaLabel)
+        assertEquals(
+            StatsValueFormatter.date(rangeStart, "MMM d"),
+            snapshot.progressByLevel.cumulativeProgress.xAxisLabels.first(),
+        )
+        assertFalse(snapshot.progressByLevel.cumulativeProgress.xAxisLabels.contains(StatsValueFormatter.date(oldDay, "MMM d")))
+    }
+
+    @Test
+    fun cumulativeChartSamplesTheWholeNinetyDayWindow() {
+        val now = 1_780_000_000_000L
+        val today = LocalDayPolicy.localDayStart(now)
+        val rangeStart = LocalDayPolicy.moveLocalDays(today, -89)
+        val points = (-89..0).mapIndexed { index, offset ->
+            StatsCacheStore.CumulativeKanjiSnapshot(
+                LocalDayPolicy.moveLocalDays(today, offset),
+                index + 1,
+            )
+        }
+        writeFreshStatsSnapshot(
+            now,
+            cachedReviewDaySummaries(now),
+            cumulativeKanjiPracticed = points,
+        )
+
+        val chart = progressAnalyticsSnapshot(localStore!!, now).progressByLevel.cumulativeProgress
+
+        assertEquals(12, chart.xAxisLabels.size)
+        assertEquals(StatsValueFormatter.date(rangeStart, "MMM d"), chart.xAxisLabels.first())
+        assertEquals(StatsValueFormatter.date(today, "MMM d"), chart.xAxisLabels.last())
+        assertEquals(1, chart.series.single().values.first())
+        assertEquals(90, chart.series.single().values.last())
+    }
+
+    @Test
+    fun cumulativeChartUsesElapsedLocalDaysWhenReviewHistoryIsSparse() {
+        val now = 1_780_000_000_000L
+        val today = LocalDayPolicy.localDayStart(now)
+        val rangeStart = LocalDayPolicy.moveLocalDays(today, -89)
+        val points = listOf(
+            StatsCacheStore.CumulativeKanjiSnapshot(rangeStart, 1),
+            StatsCacheStore.CumulativeKanjiSnapshot(LocalDayPolicy.moveLocalDays(rangeStart, 1), 2),
+            StatsCacheStore.CumulativeKanjiSnapshot(today, 3),
+        )
+        writeFreshStatsSnapshot(
+            now,
+            cachedReviewDaySummaries(now),
+            cumulativeKanjiPracticed = points,
+        )
+
+        val chart = progressAnalyticsSnapshot(localStore!!, now).progressByLevel.cumulativeProgress
+
+        assertEquals(12, chart.xAxisLabels.size)
+        assertEquals(
+            StatsValueFormatter.date(LocalDayPolicy.moveLocalDays(rangeStart, 8), "MMM d"),
+            chart.xAxisLabels[1],
+        )
+        assertEquals(listOf(1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3), chart.series.single().values)
+    }
+
+    @Test
+    fun japaneseDatesAndUtcForecastMonthsStayLocalizedInWesternTimeZone() {
+        val previousLocale = Locale.getDefault()
+        val previousTimeZone = TimeZone.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPAN)
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
+            val now = 1_784_635_200_000L
+            val marchUtc = 1_803_859_200_000L
+            val forecast = LadderCompletionForecastPolicy.Forecast(
+                totalItems = 2,
+                burnDown = listOf(LadderCompletionForecastPolicy.MonthPoint(marchUtc, 1, 1)),
+                projectedCompletionMonthMillis = marchUtc,
+                beyondHorizon = false,
+                alreadyAtCeiling = 0,
+                alreadyParked = 0,
+                alreadyRetired = 0,
+                assumptionCopyIds = emptyList(),
+            )
+            writeFreshStatsSnapshot(
+                now,
+                cachedReviewDaySummaries(now),
+                ladderForecast = forecast,
+            )
+
+            val snapshot = progressAnalyticsSnapshot(localStore!!, now)
+
+            assertTrue(snapshot.accuracyRetention.accuracyTrend.xAxisLabels.all { " " !in it })
+            assertTrue(snapshot.accuracyRetention.accuracyTrend.tooltipLabel!!.contains("、"))
+            assertTrue(snapshot.forecast!!.headline.contains("2027年3月"))
+            assertEquals(listOf("3月"), snapshot.forecast!!.burnDown.xAxisLabels)
+        } finally {
+            Locale.setDefault(previousLocale)
+            TimeZone.setDefault(previousTimeZone)
+        }
+    }
+
+    @Test
+    fun malformedDailyCountsAreClampedMergedAndBoundedToTheRequestedRange() {
+        val now = 1_780_000_000_000L
+        val today = LocalDayPolicy.localDayStart(now)
+        val tomorrow = LocalDayPolicy.moveLocalDays(today, 1)
+        writeFreshStatsSnapshot(
+            now,
+            listOf(
+                reviewDaySnapshot(today, total = Int.MAX_VALUE, good = Int.MAX_VALUE),
+                reviewDaySnapshot(today, total = Int.MAX_VALUE, good = Int.MAX_VALUE),
+                reviewDaySnapshot(LocalDayPolicy.moveLocalDays(today, -1), total = -5, again = -3),
+                reviewDaySnapshot(tomorrow, total = 20, good = 20),
+            ),
+        )
+
+        val reviews = progressAnalyticsSnapshot(localStore!!, now).reviewsAnalytics
+
+        assertEquals(Int.MAX_VALUE, reviews.totalReviews.value)
+        assertEquals(Int.MAX_VALUE, reviews.correct.value)
+        assertEquals(0, reviews.incorrect.value)
+        assertEquals(Int.MAX_VALUE, reviews.reviewsPerDay.values.last())
+        assertTrue(reviews.reviewsPerDay.values.all { it >= 0 })
+    }
+
+    @Test
     fun legacyLadderRowsFollowStoredCustomOrder() {
         val now = System.currentTimeMillis()
         val defaults = RecordsBase.StudyLadderSettings.defaults()
@@ -155,7 +330,7 @@ class ProgressAnalyticsLiveDataSourceTest {
             ladderSettings = RecordsBase.StudyLadderSettings.defaults(),
         )
 
-        assertEquals(1, source.cachedReads)
+        assertEquals(listOf(now), source.cachedReads)
         assertEquals(listOf(now), source.recomputeReads)
         assertEquals(17, snapshot.overview.totalReviews.value)
         assertEquals("17", snapshot.overview.totalReviews.valueLabel)
@@ -202,6 +377,9 @@ class ProgressAnalyticsLiveDataSourceTest {
             lastStudyAtMillis = now,
         ),
         outcomeStats: StudyStatsStore.KaniOutcomeStats = StudyStatsStore.KaniOutcomeStats.empty(),
+        cumulativeKanjiPracticed: List<StatsCacheStore.CumulativeKanjiSnapshot> =
+            listOf(StatsCacheStore.CumulativeKanjiSnapshot(now, 5)),
+        ladderForecast: LadderCompletionForecastPolicy.Forecast? = null,
     ) {
         val sourceVersion = statsCache.currentSourceVersion(db)
         statsCache.write(
@@ -259,9 +437,10 @@ class ProgressAnalyticsLiveDataSourceTest {
                     StatsCacheStore.TaskTypeDaySummarySnapshot(now, "write_kanji", 1, 2),
                     StatsCacheStore.TaskTypeDaySummarySnapshot(now, "similar_kanji", 1, 2),
                 ),
-                cumulativeKanjiPracticed = listOf(StatsCacheStore.CumulativeKanjiSnapshot(now, 5)),
+                cumulativeKanjiPracticed = cumulativeKanjiPracticed,
                 wrongPickCounts = mapOf("徴" to mapOf("微" to 2)),
                 confusionMeanings = mapOf("徴" to "sign", "微" to "minute"),
+                ladderForecast = ladderForecast,
             ),
         )
     }
@@ -305,11 +484,11 @@ class ProgressAnalyticsLiveDataSourceTest {
     private class CountingProgressStatsSource(
         private val recomputed: StatsCacheStore.Snapshot,
     ) : ProgressAnalyticsStatsSource {
-        var cachedReads = 0
+        val cachedReads = mutableListOf<Long>()
         val recomputeReads = mutableListOf<Long>()
 
-        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-            cachedReads += 1
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot? {
+            cachedReads += nowMillis
             return null
         }
 

@@ -157,7 +157,7 @@ revalidation, escalation risk, and stuck repairs. Completion and parking mean a
 contextual core in review with no repair/revalidation and at least one
 contextual due-review pass. Legacy items continue to use the old fallback until
 conversion. Review commits and material sync/settings changes dirty the cache
-inside their owning transaction; readers accept only a same-day format-10
+inside their owning transaction; readers accept only a same-day format-11
 snapshot whose source version still matches.
 
 ## Sync and backup integrity

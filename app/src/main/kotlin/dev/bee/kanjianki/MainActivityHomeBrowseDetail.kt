@@ -28,11 +28,12 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
 
     fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, allKanjiScope: Boolean = false) {
         val requestedQuery = query ?: ""
-        home.currentHomeRouteRestoration = HomeRouteRestoration.browse(
+        val browseRoute = HomeRouteRestoration.browse(
             requestedQuery,
             onlySimilarKanji,
             allKanjiScope,
         )
+        home.currentHomeRouteRestoration = browseRoute
         home.activeBrowseQuery = requestedQuery
         home.activeBrowseSimilarOnly = onlySimilarKanji
         home.activeBrowseAllKanji = allKanjiScope
@@ -47,11 +48,15 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 }
             },
             render = { data ->
-                home.activeBrowseQuery = data.model.initialQuery
+                home.activeBrowseQuery = home.browseQueryDraft(browseRoute, data.model.initialQuery)
                 home.activeBrowseSimilarOnly = data.model.similarFilterActive
                 home.activeBrowseAllKanji = data.model.allKanjiScope
                 home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
-                    BrowseScreen(data.model)
+                    BrowseScreen(
+                        data.model.copy(
+                            initialQuery = home.browseQueryDraft(browseRoute, data.model.initialQuery),
+                        ),
+                    )
                 }
             },
             traceName = "browse-route",

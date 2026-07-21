@@ -194,13 +194,25 @@ class StudyCueFormatter private constructor() {
                 return value
             }
             if (maxChars <= 3) {
-                return value.substring(0, maxChars)
+                return value.substring(0, codePointBoundary(value, maxChars))
             }
             var cut = value.lastIndexOf(' ', maxChars - 3)
             if (cut < 32) {
                 cut = maxChars - 3
             }
+            cut = codePointBoundary(value, cut)
             return value.substring(0, cut).trim() + "..."
+        }
+
+        private fun codePointBoundary(value: String, end: Int): Int {
+            return if (end in 1 until value.length &&
+                Character.isHighSurrogate(value[end - 1]) &&
+                Character.isLowSurrogate(value[end])
+            ) {
+                end - 1
+            } else {
+                end
+            }
         }
 
         private fun readingLine(reading: String): String = localizedText(

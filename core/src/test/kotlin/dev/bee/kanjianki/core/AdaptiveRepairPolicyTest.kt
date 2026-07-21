@@ -106,6 +106,22 @@ class AdaptiveRepairPolicyTest {
     }
 
     @Test
+    fun recurrenceAndTaskProgressionSaturateAtIntegerLimits() {
+        val recurrence = AdaptiveRepairPolicy.recordFailure(
+            AdaptiveRepairPolicy.FailureRecurrence(FailureKind.WRONG_READING, Int.MAX_VALUE),
+            FailureKind.WRONG_READING,
+            true,
+        )
+
+        assertEquals(Int.MAX_VALUE, recurrence.count)
+        assertEquals(3, AdaptiveRepairPolicy.nextTaskIndex(Int.MAX_VALUE, 3, StudyRatings.GOOD))
+        assertEquals(
+            Int.MAX_VALUE,
+            AdaptiveRepairPolicy.nextTaskIndex(Int.MAX_VALUE, Int.MAX_VALUE, StudyRatings.GOOD),
+        )
+    }
+
+    @Test
     fun repairRatingsRestartRepeatAndAdvance() {
         assertEquals(0, AdaptiveRepairPolicy.nextTaskIndex(2, 3, StudyRatings.AGAIN))
         assertEquals(1, AdaptiveRepairPolicy.nextTaskIndex(1, 3, StudyRatings.HARD))

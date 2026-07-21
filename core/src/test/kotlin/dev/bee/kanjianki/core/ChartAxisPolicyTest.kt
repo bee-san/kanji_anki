@@ -18,4 +18,15 @@ class ChartAxisPolicyTest {
         assertEquals(axis.ticks.map(Int::toString), axis.labels)
         assertEquals(ChartAxisPolicy.Axis(0, listOf(0)), ChartAxisPolicy.forValues(null))
     }
+
+    @Test fun maximumDomainAndUntrustedIntervalCountStayBounded() {
+        val axis = ChartAxisPolicy.forMaximum(Int.MAX_VALUE, Int.MAX_VALUE)
+
+        assertEquals(Int.MAX_VALUE, axis.axisMax)
+        assertEquals(0, axis.ticks.first())
+        assertEquals(Int.MAX_VALUE, axis.ticks.last())
+        assertEquals(axis.ticks.sorted(), axis.ticks)
+        assertEquals(axis.ticks.distinct(), axis.ticks)
+        org.junit.Assert.assertTrue(axis.ticks.size <= 102)
+    }
 }

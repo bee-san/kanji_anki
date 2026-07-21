@@ -22,6 +22,13 @@ class LadderSchedulerTest {
     // ---- New learning phase (Anki-exact semantics) ----
 
     @Test
+    fun learningGoodNormalizesLegacyStepIndicesWithoutOverflow() {
+        assertEquals(0, ReviewTransitionEngine.nextLearningGoodStep(-1, 1))
+        assertEquals(null, ReviewTransitionEngine.nextLearningGoodStep(0, 1))
+        assertEquals(null, ReviewTransitionEngine.nextLearningGoodStep(Int.MAX_VALUE, 1))
+    }
+
+    @Test
     fun newCardAgainLoopsInLearningForever() {
         val scheduler = BridgeScheduler();
         var item = newCard("裂")
@@ -1100,6 +1107,53 @@ class LadderSchedulerTest {
         assertEquals("good", result.appliedRating)
         assertTrue("stability stays finite", result.item.stability.isFinite())
         assertTrue("difficulty stays finite", result.item.difficulty.isFinite())
+    }
+
+    @Test
+    fun legacyReviewSaturatesPersistedCountersAndDueTimestamp() {
+        val adapter = object : KaniFsrsAdapter {
+            override fun initialReview(
+                rating: String?,
+                currentStability: Double,
+                currentDifficulty: Double,
+                targetRetention: Double,
+                isNewLearning: Boolean,
+            ) = KaniFsrsReviewResult(currentStability, currentDifficulty, Long.MAX_VALUE)
+
+            override fun review(
+                stability: Double,
+                difficulty: Double,
+                rating: String?,
+                elapsedDays: Int,
+                targetRetention: Double,
+            ) = KaniFsrsReviewResult(stability, difficulty, Long.MAX_VALUE, BridgeScheduler.DAY)
+        }
+        val now = Long.MAX_VALUE - 1_000L
+        val memory = RecordsStudyModels.TaskMemory(
+            "review", now - 1L, 1.2, 5.0, Int.MAX_VALUE, Int.MIN_VALUE, 0, "good", 1,
+        )
+        val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, now - 1L)
+            .withTaskMemory(StudyTaskTypes.KANJI_MEANING, memory)
+            .copyBuilder()
+            .totalReviews(Int.MAX_VALUE)
+            .lapses(Int.MIN_VALUE)
+            .writingLevel(Int.MIN_VALUE)
+            .activeToken("max")
+            .build()
+
+        val reviewed = BridgeScheduler(adapter).applyReview(
+            item,
+            passRequest("裂", "max"),
+            HashSet(),
+            now,
+        ).item
+
+        assertEquals(Int.MAX_VALUE, reviewed.totalReviews)
+        assertEquals(Int.MAX_VALUE, reviewed.kanjiMeaningMemory.totalReviews)
+        assertEquals(0, reviewed.lapses)
+        assertEquals(0, reviewed.kanjiMeaningMemory.lapses)
+        assertEquals(0, reviewed.writingLevel)
+        assertEquals(Long.MAX_VALUE, reviewed.dueAtMillis)
     }
 
     // ---- Helpers ----

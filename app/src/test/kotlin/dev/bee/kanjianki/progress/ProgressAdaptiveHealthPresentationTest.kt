@@ -86,7 +86,7 @@ class ProgressAdaptiveHealthPresentationTest {
     }
 
     private class FixedSource(private val snapshot: StatsCacheStore.Snapshot) : ProgressAnalyticsStatsSource {
-        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot = snapshot
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot = snapshot
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot = snapshot
         override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> = emptyList()
     }

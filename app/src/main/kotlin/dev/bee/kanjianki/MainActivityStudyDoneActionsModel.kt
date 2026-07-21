@@ -21,6 +21,8 @@ data class StudyMoreNewCardsDialogModel(
     val message: String,
     val inputLabel: String,
     val initialCount: Int,
+    val requestText: String = initialCount.toString(),
+    val onRequestTextChanged: (String) -> Unit = {},
     val confirmLabel: String,
     val cancelLabel: String,
     val onConfirm: (String) -> Boolean,

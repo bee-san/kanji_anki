@@ -77,6 +77,79 @@ class AdaptiveStudySessionSelectorTest {
         assertTrue(selected.item!!.routingVersion >= AdaptiveStudyItemPolicy.ROUTING_VERSION)
     }
 
+    @Test
+    fun studyAheadHorizonSaturatesAtLongMaximum() {
+        val now = Long.MAX_VALUE - 30_000L
+        val base = item(CoreSkill.RECOGNITION, totalReviews = 1)
+        val future = base
+            .withTaskMemory(
+                StudyTaskTypes.KANJI_MEANING,
+                base.kanjiMeaningMemory.withDueAtMillis(Long.MAX_VALUE),
+            )
+            .copyBuilder()
+            .dueAtMillis(Long.MAX_VALUE)
+            .build()
+
+        val selected = selector.nextSession(
+            listOf(future),
+            listOf(row()),
+            now,
+            60_000L,
+            null,
+            settings,
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+
+        assertEquals("脱", selected!!.item!!.kanji)
+        assertEquals(
+            1,
+            selector.dueCount(
+                listOf(future),
+                listOf(row()),
+                now,
+                60_000L,
+                RecordsBase.StudyLadderSettings.defaults(),
+            ),
+        )
+
+        val trace = selector.debugTraceNextSession(
+            listOf(future),
+            listOf(row()),
+            now,
+            60_000L,
+            null,
+            settings,
+            RecordsBase.StudyLadderSettings.defaults(),
+        )
+        assertEquals("脱", trace.selected!!.kanji)
+        assertTrue(trace.selected!!.reasonCodes.contains("inside_study_ahead"))
+
+        val taskKeys = selector.randomizedTaskKeys(
+            listOf(future),
+            listOf(row()),
+            now,
+            60_000L,
+            null,
+            settings,
+            RecordsBase.StudyLadderSettings.defaults(),
+            1L,
+        )
+        assertEquals(listOf(selector.sessionTaskKeyForItem(future)), taskKeys)
+        assertEquals(
+            "脱",
+            selector.nextSessionForTaskKeys(
+                listOf(future),
+                listOf(row()),
+                now,
+                60_000L,
+                null,
+                settings,
+                RecordsBase.StudyLadderSettings.defaults(),
+                taskKeys,
+            )!!.item!!.kanji,
+        )
+    }
+
     private fun session(
         item: RecordsStudyModels.StudyItem,
         ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults(),

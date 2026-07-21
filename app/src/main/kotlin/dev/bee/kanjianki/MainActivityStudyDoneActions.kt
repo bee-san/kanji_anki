@@ -13,11 +13,8 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 
 internal class MainActivityStudyDoneActions(private val home: MainActivityStudy) {
-    private var renderedPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
-    private var renderedScreenModel: StudyDoneScreenModel? = null
-    private var studyMoreDialog: StudyMoreNewCardsDialogModel? = null
-    private var cachedStudyMoreNewCardsSnapshot: StudyMoreNewCardsSnapshot? = null
-    private var cachedStudyMoreNewCardsAvailability: Int? = null
+    private val retained: StudyDoneViewModel
+        get() = home.studyDoneViewModel
 
     internal data class StudyMoreNewCardsSnapshot(
         val rows: List<RecordsImportModels.DashboardRow>,
@@ -169,21 +166,25 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
             return
         }
         KaniWidgetUpdater.requestUpdate(home)
-        renderedPlan = plan
-        renderedScreenModel = model
-        renderCurrentStudyDone(plan, model)
+        retained.install(plan, model, reason)
+        renderCurrentStudyDone()
     }
 
-    private fun renderCurrentStudyDone(
-        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
-        model: StudyDoneScreenModel,
-    ) {
-        home.activeStudyPlan = plan
+    private fun renderCurrentStudyDone() {
+        val presentation = retained.presentation ?: return
+        home.activeStudyPlan = retained.renderedPlan
         val routeSnapshot = home.studySessionViewModel.acceptedRouteSnapshot()
         if (!routeSnapshot.isComplete) return
         home.renderComposeStudyRoute(routeSnapshot) {
             StudyDoneScreen(
-                model = model.copy(studyMoreDialog = studyMoreDialog),
+                model = presentation.toScreenModel(
+                    studyMoreDialog = studyMoreDialogModel(),
+                    onStudyMore = Runnable {
+                        showStudyMoreNewCardsDialog(presentation.availableStudyMoreNewCards)
+                    },
+                    onContinueAll = Runnable(::continueAllKanji),
+                    onBackHome = Runnable(::backHome),
+                ),
                 modifier = Modifier.padding(top = 10.dp),
                 routeSnapshot = routeSnapshot,
             )
@@ -191,8 +192,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     }
 
     private fun rerenderStudyDone() {
-        val model = renderedScreenModel ?: return
-        renderCurrentStudyDone(renderedPlan, model)
+        renderCurrentStudyDone()
     }
 
     private fun studyDoneScreenModel(
@@ -224,12 +224,12 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     private fun continueAllKanji() {
         home.studyMoreNewCardKanji.clear()
         home.continueAllKanjiSession = true
-        clearStudyMoreNewCardsSnapshot()
+        clearRetainedStudyDone()
         home.renderStudy()
     }
 
     private fun backHome() {
-        clearStudyMoreNewCardsSnapshot()
+        clearRetainedStudyDone()
         home.clearStudyModeOverrides()
         home.renderHome()
     }
@@ -237,8 +237,8 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
     fun availableStudyMoreNewCards(): Int {
         return withUiTrace("kani.study.more-new-cards.available") {
             val availability = resolveStudyMoreNewCardsAvailability(
-                cachedStudyMoreNewCardsSnapshot,
-                cachedStudyMoreNewCardsAvailability,
+                retained.cachedStudyMoreSnapshot,
+                retained.cachedStudyMoreAvailability,
                 loadRows = { home.store.activeDashboardRows() },
                 loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
                 countAvailable = { loadData ->
@@ -257,45 +257,51 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 clearStudyMoreNewCardsSnapshot()
                 return@withUiTrace 0
             }
-            if (cachedStudyMoreNewCardsSnapshot == null) {
-                cachedStudyMoreNewCardsSnapshot = StudyMoreNewCardsSnapshot(
+            if (retained.cachedStudyMoreSnapshot == null) {
+                retained.cachedStudyMoreSnapshot = StudyMoreNewCardsSnapshot(
                     availability.loadData.rows,
                     availability.loadData.existing,
                 )
             }
-            if (cachedStudyMoreNewCardsAvailability == null) {
-                cachedStudyMoreNewCardsAvailability = availability.availableCount
+            if (retained.cachedStudyMoreAvailability == null) {
+                retained.cachedStudyMoreAvailability = availability.availableCount
             }
             availability.availableCount
         }
     }
 
     fun studyMoreNewCardsSnapshot(): StudyMoreNewCardsSnapshot? {
-        return cachedStudyMoreNewCardsSnapshot
+        return retained.cachedStudyMoreSnapshot
     }
 
     fun clearStudyMoreNewCardsSnapshot() {
-        cachedStudyMoreNewCardsSnapshot = null
-        cachedStudyMoreNewCardsAvailability = null
+        retained.clearStudyMoreCache()
     }
 
     fun showStudyMoreNewCardsDialog(availableAtOpen: Int) {
         val defaultCount = StudyMoreNewCardsPolicy.defaultRequestCount(availableAtOpen)
-        studyMoreDialog = StudyMoreNewCardsDialogModel(
+        retained.showDialog(defaultCount)
+        rerenderStudyDone()
+    }
+
+    private fun studyMoreDialogModel(): StudyMoreNewCardsDialogModel? {
+        val initialCount = retained.dialogInitialCount ?: return null
+        return StudyMoreNewCardsDialogModel(
             title = StudyTextCopy.studyMoreNewCardsLabel(),
             message = StudyTextCopy.studyMoreNewCardsDialogMessage(),
             inputLabel = StudyTextCopy.newCardsLabel(),
-            initialCount = defaultCount,
+            initialCount = initialCount,
+            requestText = retained.dialogRequestText ?: initialCount.toString(),
+            onRequestTextChanged = retained::updateDialogRequestText,
             confirmLabel = StudyTextCopy.studyLabel(),
             cancelLabel = StudyTextCopy.cancelLabel(),
             onConfirm = ::applyStudyMoreNewCardsRequest,
             onDismiss = Runnable {
-                studyMoreDialog = null
+                retained.hideDialog()
                 clearStudyMoreNewCardsSnapshot()
                 rerenderStudyDone()
             }
         )
-        rerenderStudyDone()
     }
 
     fun applyStudyMoreNewCardsRequest(countInput: EditText): Boolean {
@@ -310,8 +316,30 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         }
         val started = home.startStudyMoreNewCards(requested)
         if (started) {
-            studyMoreDialog = null
+            retained.hideDialog()
         }
         return started
+    }
+
+    fun hasRetainedStudyDone(): Boolean = retained.presentation != null
+
+    fun restoreRetainedStudyDone(): Boolean {
+        val reason = retained.completionReason
+        if (!hasRetainedStudyDone() || reason == null) {
+            return false
+        }
+        if (
+            !home.studySessionViewModel.acceptedRouteSnapshot().isComplete &&
+            !home.studySessionViewModel.restoreTerminalPresentation(reason)
+        ) {
+            clearRetainedStudyDone()
+            return false
+        }
+        renderCurrentStudyDone()
+        return true
+    }
+
+    fun clearRetainedStudyDone() {
+        retained.clear()
     }
 }

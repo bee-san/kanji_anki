@@ -9,8 +9,9 @@ object ReleaseVersion {
         val current = parseVersion(stripLeadingV(currentVersion))
         val remote = parseVersion(stripLeadingV(tagName))
         for (index in 0 until SEMVER_COMPONENTS) {
-            if (remote[index] != current[index]) {
-                return remote[index] > current[index]
+            val comparison = compareNumericComponents(remote[index], current[index])
+            if (comparison != 0) {
+                return comparison > 0
             }
         }
         return false
@@ -33,12 +34,17 @@ object ReleaseVersion {
         return version?.removePrefix("v").orEmpty()
     }
 
-    private fun parseVersion(version: String): IntArray {
-        val match = VERSION_PATTERN.matchEntire(version) ?: return intArrayOf(0, 0, 0)
-        return intArrayOf(
-            match.groupValues[1].toInt(),
-            match.groupValues[2].toInt(),
-            match.groupValues[3].toInt(),
-        )
+    private fun parseVersion(version: String): List<String> {
+        val match = VERSION_PATTERN.matchEntire(version) ?: return List(SEMVER_COMPONENTS) { "0" }
+        return List(SEMVER_COMPONENTS) { index ->
+            match.groupValues[index + 1].trimStart('0').ifEmpty { "0" }
+        }
+    }
+
+    private fun compareNumericComponents(left: String, right: String): Int {
+        if (left.length != right.length) {
+            return left.length.compareTo(right.length)
+        }
+        return left.compareTo(right)
     }
 }

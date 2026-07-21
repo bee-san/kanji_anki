@@ -29,7 +29,7 @@ class ConfusionPairMiner {
                 continue
             }
             val key = canonicalKey(row.targetKanji, row.selectedKanji)
-            wrongPickCounts[key] = (wrongPickCounts[key] ?: 0) + 1
+            wrongPickCounts[key] = saturatingAddNonNegative(wrongPickCounts[key] ?: 0, 1)
             firstSeenByPair.merge(key, row.reviewedAtMillis) { a, b -> minOf(a, b) }
             lastSeenByPair.merge(key, row.reviewedAtMillis) { a, b -> maxOf(a, b) }
         }
@@ -79,7 +79,7 @@ class ConfusionPairMiner {
 
         @JvmStatic
         fun windowStartMillis(nowMillis: Long): Long {
-            return nowMillis - WINDOW_DAYS * DAY_MILLIS
+            return saturatingSubtract(nowMillis, WINDOW_DAYS * DAY_MILLIS)
         }
     }
 }

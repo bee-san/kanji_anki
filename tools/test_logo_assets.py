@@ -9,7 +9,8 @@ TOOLS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_DIR.parents[0]
 sys.path.insert(0, str(TOOLS_DIR))
 
-import remove_logo_background as logo_bg
+# This test also runs directly, when tools is not an importable package.
+import remove_logo_background as logo_bg  # noqa: E402
 
 
 LOGO_ASSETS = sorted((REPO_ROOT / "app/src/main/res").glob("mipmap-*/ic_launcher*.png"))

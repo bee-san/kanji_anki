@@ -86,8 +86,16 @@ object ReminderThrottlePolicy {
 
         val gapMillis = request.minGapMillis.coerceAtLeast(0L)
         val graceMillis = request.activityGraceMillis.coerceAtLeast(0L)
-        val gapEnd = if (request.lastPostedAtMillis > 0L) request.lastPostedAtMillis + gapMillis else 0L
-        val graceEnd = if (request.lastReviewAtMillis > 0L) request.lastReviewAtMillis + graceMillis else 0L
+        val gapEnd = if (request.lastPostedAtMillis > 0L) {
+            saturatingAdd(request.lastPostedAtMillis, gapMillis)
+        } else {
+            0L
+        }
+        val graceEnd = if (request.lastReviewAtMillis > 0L) {
+            saturatingAdd(request.lastReviewAtMillis, graceMillis)
+        } else {
+            0L
+        }
         val withinGap = now < gapEnd
         val withinGrace = now < graceEnd
 

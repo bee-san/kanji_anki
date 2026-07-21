@@ -96,10 +96,14 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertIn('captured_uiautomator_dumps=()', script)
         self.assertIn('capture_ui_xml()', script)
         self.assertIn('uiautomator_dump_path": ui_dump_file', script)
+        self.assertIn('python3 - "${#captured_routes[@]}"', script)
+        self.assertIn("expected_field_count = capture_count * len(field_names)", script)
+        self.assertNotIn("CAPTURED_UIAUTOMATOR_DUMPS_RAW", script)
         self.assertIn('"requested_locale": requested_locale,', script)
         self.assertIn('local status=0', script)
         self.assertNotIn('wait_for_route "${capture_name}" "${expected_terms[@]}"\n  sleep 1\n  capture_png "${capture_name}" >/dev/null', script)
-        self.assertIn('if len(captured_routes) != len(captured_files):', script)
+        self.assertIn("len(serialized_fields) != expected_field_count", script)
+        self.assertIn('value ~ /^(enabled|disabled|default)$/', script)
         self.assertIn('"captures": captures,', script)
         self.assertIn('hashlib.sha256', script)
 
@@ -318,6 +322,30 @@ class GithubScreenshotsTest(unittest.TestCase):
             self.assertEqual("missing_artifact", mismatch["status"])
             self.assertIn("SHA-256", cast(str, mismatch["message"]))
 
+    def test_validate_artifact_rejects_files_that_disagree_with_captures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            home = out / "home.png"
+            other = out / "other.png"
+            home.write_bytes(b"\x89PNG\r\n\x1a\n-home")
+            other.write_bytes(b"\x89PNG\r\n\x1a\n-other")
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(other)],
+                        "captures": [_capture_entry(home, "home")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="home")
+
+        self.assertEqual("missing_artifact", result["status"])
+        self.assertIn("exactly match capture paths", str(result["message"]))
+
     def test_validate_artifact_verifies_uiautomator_dumps(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
@@ -469,6 +497,28 @@ class GithubScreenshotsTest(unittest.TestCase):
             blank_sha256 = github_screenshots.validate_artifact(out, expected_route="home")
             self.assertEqual("missing_artifact", blank_sha256["status"])
             self.assertIn("sha256", str(blank_sha256["message"]))
+
+    def test_validate_artifact_rejects_blank_expected_route(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            png = out / "home.png"
+            png.write_bytes(b"\x89PNG\r\n\x1a\n")
+            (out / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "requested_route": "home",
+                        "routes": ["home"],
+                        "files": [str(png)],
+                        "captures": [_capture_entry(png, "home")],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = github_screenshots.validate_artifact(out, expected_route="  ")
+
+        self.assertEqual("missing_artifact", result["status"])
+        self.assertIn("must not be blank", str(result["message"]))
 
     def test_validate_artifact_rejects_extra_or_blank_capture_routes_for_route_specific_runs(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

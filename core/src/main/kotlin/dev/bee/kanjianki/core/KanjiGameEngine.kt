@@ -106,17 +106,22 @@ class KanjiGameEngine {
                     if (exampleMeaning.isEmpty()) {
                         exampleMeaning = example.meaning
                     }
-                    if (exampleReading.isEmpty()) {
-                        exampleReading = example.reading
-                    }
-                    if (expression.isEmpty()) {
+                    if (expression.isEmpty() &&
+                        example.expression.isNotBlank() &&
+                        example.reading.isNotBlank()
+                    ) {
                         expression = example.expression
+                        exampleReading = example.reading
                     }
                 }
                 return GameCandidate(
                     clean(row.kanji),
                     firstNonEmpty(row.primaryMeaning, exampleMeaning),
-                    firstNonEmpty(row.reading, exampleReading),
+                    if (expression.isEmpty()) {
+                        firstNonEmpty(row.reading, exampleReading)
+                    } else {
+                        clean(exampleReading)
+                    },
                     firstNonEmpty(expression, row.kanji),
                     true,
                 )

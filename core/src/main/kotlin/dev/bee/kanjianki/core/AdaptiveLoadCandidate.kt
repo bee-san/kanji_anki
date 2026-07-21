@@ -58,7 +58,10 @@ internal class AdaptiveLoadCandidate(
 
     @JvmField val suspendedCount: Int = row.suspendedExampleCount
 
-    @JvmField val supportDeficit: Int = max(0, settings.matureSupportThreshold - row.matureSupportCount)
+    @JvmField val supportDeficit: Int = max(
+        0,
+        settings.matureSupportThreshold.coerceAtLeast(0) - row.matureSupportCount.coerceAtLeast(0),
+    )
 
     @JvmField val priorityScore: Double = fsrsRisk +
         exposureBoost +
@@ -69,6 +72,8 @@ internal class AdaptiveLoadCandidate(
     companion object {
         private const val FREQUENCY_VALUE_MAX = 24.0
         private const val FREQUENCY_RANK_HORIZON = 4000.0
+        private const val MIN_FSRS_DIFFICULTY = 1.0
+        private const val MAX_FSRS_DIFFICULTY = 10.0
 
         /**
          * Manual-mode ordering: due tier first, most overdue first inside the
@@ -126,7 +131,7 @@ internal class AdaptiveLoadCandidate(
             if (!recoveryDue || item == null) {
                 return 0L
             }
-            return max(0L, nowMillis - item.dueAtMillis)
+            return nonNegativeDifference(nowMillis, item.dueAtMillis)
         }
 
         /**
@@ -153,7 +158,10 @@ internal class AdaptiveLoadCandidate(
             if (item == null) {
                 return 0
             }
-            return item.lapses * 3 + max(0, 3 - item.writingLevel)
+            return saturatingAddNonNegative(
+                saturatingMultiplyNonNegative(item.lapses, 3),
+                3 - item.writingLevel.coerceIn(0, 3),
+            )
         }
 
         private fun fsrsRisk(row: RecordsImportModels.DashboardRow, settings: RecordsSyncModels.Settings): Double {
@@ -166,27 +174,34 @@ internal class AdaptiveLoadCandidate(
 
         private fun exampleRisk(example: RecordsImportModels.Example, settings: RecordsSyncModels.Settings): Double {
             var risk = 0.0
+            val matureDays = settings.matureDays.coerceAtLeast(0)
+            val intervalDays = example.intervalDays.coerceAtLeast(0)
+            val reps = example.reps.coerceAtLeast(0)
             val retrievability = normalizedRetrievability(example.fsrsRetrievability)
             if (retrievability != null) {
                 risk += max(0.0, 0.90 - retrievability) * 120.0
             }
-            if (example.fsrsDifficulty != null) {
-                risk += max(0.0, example.fsrsDifficulty - 5.0) * 5.0
+            val difficulty = example.fsrsDifficulty
+                ?.takeIf { it.isFinite() }
+                ?.coerceIn(MIN_FSRS_DIFFICULTY, MAX_FSRS_DIFFICULTY)
+            if (difficulty != null) {
+                risk += max(0.0, difficulty - 5.0) * 5.0
             }
-            if (example.fsrsStability != null) {
-                if (example.reps >= 5 && example.fsrsStability < settings.matureDays) {
-                    risk += (settings.matureDays - example.fsrsStability) * 1.4
-                } else if (example.mature && example.fsrsStability >= settings.matureDays * 2.0) {
+            val stability = example.fsrsStability?.takeIf { it.isFinite() && it > 0.0 }
+            if (stability != null) {
+                if (reps >= 5 && stability < matureDays.toDouble()) {
+                    risk += (matureDays.toDouble() - stability) * 1.4
+                } else if (example.mature && stability >= matureDays.toDouble() * 2.0) {
                     risk -= 8.0
                 }
-            } else if (example.reps >= 8 && example.intervalDays < settings.matureDays) {
-                risk += min(16.0, (settings.matureDays - example.intervalDays) * 0.6)
+            } else if (reps >= 8 && intervalDays < matureDays) {
+                risk += min(16.0, (matureDays.toDouble() - intervalDays.toDouble()) * 0.6)
             }
             return risk
         }
 
         private fun normalizedRetrievability(value: Double?): Double? {
-            if (value == null || value < 0.0) {
+            if (value == null || !value.isFinite() || value < 0.0) {
                 return null
             }
             if (value > 1.0 && value <= 100.0) {

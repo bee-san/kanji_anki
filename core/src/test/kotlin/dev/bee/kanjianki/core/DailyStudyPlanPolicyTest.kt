@@ -145,6 +145,22 @@ class DailyStudyPlanPolicyTest {
         }
     }
 
+    @Test
+    fun estimateSaturatesWhenUntrustedCountsAndDurationsAreHuge() {
+        withUtcZone {
+            val plan = DailyStudyPlanPolicy.plan(
+                DailyStudyPlanRequest(
+                    nowMillis = utc(2026, Calendar.MAY, 15, 8, 0),
+                    newProblemKanjiAvailable = Int.MAX_VALUE,
+                    lastSuccessfulSyncAtMillis = utc(2026, Calendar.MAY, 15, 7, 0),
+                    estimatedSecondsPerItem = Int.MAX_VALUE,
+                ),
+            )
+
+            assertEquals(Int.MAX_VALUE, plan.estimatedMinutes)
+        }
+    }
+
     private fun withUtcZone(body: () -> Unit) {
         val original = TimeZone.getDefault()
         try {

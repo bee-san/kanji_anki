@@ -181,7 +181,7 @@ object DailyStudyPlanPolicy {
             return if (hasUsefulEvidence) SyncStatus.NO_MANUAL_SYNC_YET else SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS
         }
         val freshnessMillis = syncFreshnessMillis?.takeIf { it > 0L } ?: return SyncStatus.UNKNOWN
-        return if (nowMillis - lastSync <= freshnessMillis) {
+        return if (nonNegativeDifference(nowMillis, lastSync) <= freshnessMillis) {
             SyncStatus.CURRENT
         } else {
             SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS
@@ -203,12 +203,14 @@ object DailyStudyPlanPolicy {
     }
 
     private fun estimateMinutes(dueNow: Int, newProblemKanjiAvailable: Int, secondsPerItem: Int): Int {
-        val totalLoad = (dueNow + newProblemKanjiAvailable).coerceAtLeast(0)
+        val totalLoad = dueNow.coerceAtLeast(0).toLong() + newProblemKanjiAvailable.coerceAtLeast(0).toLong()
         if (totalLoad <= 0) {
             return 0
         }
         val safeSecondsPerItem = if (secondsPerItem > 0) secondsPerItem else DEFAULT_SECONDS_PER_ITEM
-        return maxOf(1, ceil(totalLoad * safeSecondsPerItem / 60.0).toInt())
+        return ceil(totalLoad.toDouble() * safeSecondsPerItem.toDouble() / 60.0)
+            .coerceIn(1.0, Int.MAX_VALUE.toDouble())
+            .toInt()
     }
 
     private fun reasons(
@@ -262,7 +264,7 @@ object DailyStudyPlanPolicy {
 
     private fun dueLaterCluster(dueLaterTimes: List<Long>, clusterWindowMillis: Long): DueLaterCluster {
         val nextClusterAtMillis = dueLaterTimes.firstOrNull() ?: return DueLaterCluster(0L, 0, 0L)
-        val clusterEndMillis = nextClusterAtMillis + clusterWindowMillis.coerceAtLeast(0L)
+        val clusterEndMillis = saturatingAdd(nextClusterAtMillis, clusterWindowMillis.coerceAtLeast(0L))
         val clusterTimes = dueLaterTimes.takeWhile { it <= clusterEndMillis }
         return DueLaterCluster(
             nextClusterAtMillis = nextClusterAtMillis,
@@ -283,7 +285,7 @@ object DailyStudyPlanPolicy {
         if (lookaheadMillis <= 0L) {
             return localDayEndMillis
         }
-        val lookaheadEndMillis = nowMillis + lookaheadMillis
+        val lookaheadEndMillis = saturatingAdd(nowMillis, lookaheadMillis)
         return min(localDayEndMillis, lookaheadEndMillis)
     }
 }

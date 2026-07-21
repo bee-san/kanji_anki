@@ -33,7 +33,10 @@ object ReviewHeatmapPolicy {
         val todayCalendar = Calendar.getInstance(zone).apply { timeInMillis = today }
         val trailing = (Calendar.SATURDAY - todayCalendar.get(Calendar.DAY_OF_WEEK) + 7) % 7
         val gridEnd = LocalDayPolicy.moveLocalDays(today, trailing, zone)
-        val byDay = summaries.orEmpty().associate { it.dayStartMillis to it.reviews.coerceAtLeast(0) }
+        val byDay = LinkedHashMap<Long, Int>()
+        for (summary in summaries.orEmpty()) {
+            byDay.merge(summary.dayStartMillis, summary.reviews.coerceAtLeast(0), ::saturatingAddNonNegative)
+        }
         val nonZero = byDay.filterKeys { it in firstDay..today }.values.filter { it > 0 }.sorted()
         val cells = ArrayList<Cell>()
         var cursor = gridStart
@@ -52,7 +55,9 @@ object ReviewHeatmapPolicy {
             previousMonth = month
             Week(weekCells, label)
         }
-        val total = byDay.filterKeys { it in firstDay..today }.values.sumOf { it.coerceAtLeast(0) }
+        val total = byDay.asSequence()
+            .filter { (day, _) -> day in firstDay..today }
+            .sumOf { (_, reviews) -> reviews.coerceAtLeast(0).toLong() }
         val studiedDays = byDay.count { (day, count) -> day in firstDay..today && count > 0 }
         val busiest = byDay.filterKeys { it in firstDay..today }.maxWithOrNull(compareBy<Map.Entry<Long, Int>> { it.value }.thenByDescending { it.key })
         val dayFormat = SimpleDateFormat("MMM d", locale).apply { timeZone = zone }

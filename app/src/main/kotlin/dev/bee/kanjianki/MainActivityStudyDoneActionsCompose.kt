@@ -186,7 +186,7 @@ private fun StudyDoneNavigation(model: StudyDoneScreenModel) {
 @Composable
 fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
     var requestedCount by rememberSaveable(model.initialCount) {
-        mutableStateOf(model.initialCount.toString())
+        mutableStateOf(model.requestText)
     }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = { model.onDismiss.run() },
@@ -196,7 +196,10 @@ fun StudyMoreNewCardsDialog(model: StudyMoreNewCardsDialogModel) {
                 Text(text = model.message)
                 OutlinedTextField(
                     value = requestedCount,
-                    onValueChange = { requestedCount = it },
+                    onValueChange = {
+                        requestedCount = it
+                        model.onRequestTextChanged(it)
+                    },
                     label = { Text(text = model.inputLabel) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)

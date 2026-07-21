@@ -11,3 +11,7 @@ passes `kanjiLiveMinimumNotes=1` in CI. Local release testing against the copied
 user collection must omit that argument so the default 7,000-note threshold
 remains in force. See `docs/local-ankidroid-provider-testing.md` for the local
 emulator wrapper, diagnostics, and real-collection privacy policy.
+
+`ankidroid-2.24.0.sha256` pins the release APKs used by the x86_64 CI emulator
+and supported local emulator architectures. Update it only from the SHA-256
+digests published with the corresponding AnkiDroid GitHub release.

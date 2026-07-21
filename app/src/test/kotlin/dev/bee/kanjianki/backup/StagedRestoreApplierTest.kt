@@ -561,6 +561,40 @@ class StagedRestoreApplierTest {
     }
 
     @Test
+    fun truncatedReadyMarkerOnlyStatePreservesLiveDatabaseAndSidecars() {
+        val filesDir = temp.newFolder("truncated-ready-marker-files")
+        val databaseDir = temp.newFolder("truncated-ready-marker-database")
+        val databaseBytes = "current database".toByteArray()
+        val walBytes = "possibly current wal".toByteArray()
+        val shmBytes = "possibly current shm".toByteArray()
+        val database = File(databaseDir, DatabaseBackupPolicy.DB_NAME).apply { writeBytes(databaseBytes) }
+        val wal = File(database.absolutePath + "-wal").apply { writeBytes(walBytes) }
+        val shm = File(database.absolutePath + "-shm").apply { writeBytes(shmBytes) }
+        val marker = BackupRestoreStager.markerFile(filesDir)
+        marker.parentFile!!.mkdirs()
+        val markerBytes = "format=2\nphase=safety_ready\n".toByteArray()
+        marker.writeBytes(markerBytes)
+
+        try {
+            StagedRestoreApplier.applyOrThrow(
+                filesDir,
+                database,
+                NOW,
+                snapshotter = { _, _ -> throw AssertionError("truncated marker must not snapshot") },
+            )
+            throw AssertionError("truncated ready marker must block for manual recovery")
+        } catch (_: IOException) {
+            // Expected.
+        }
+
+        assertArrayEquals(databaseBytes, database.readBytes())
+        assertArrayEquals(walBytes, wal.readBytes())
+        assertArrayEquals(shmBytes, shm.readBytes())
+        assertArrayEquals(markerBytes, marker.readBytes())
+        assertEquals(StagedRestoreApplier.Result.BLOCK_STARTUP, StagedRestoreApplier.retryResult(filesDir))
+    }
+
+    @Test
     fun markerOnlyStateWithoutLiveDatabaseBlocksStartup() {
         val filesDir = temp.newFolder("missing-live-files")
         val marker = BackupRestoreStager.markerFile(filesDir)

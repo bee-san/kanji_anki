@@ -6,7 +6,6 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 _PROMPT_DIR = Path("scripts/prompts")
 _PLACEHOLDER_RE = re.compile(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}")

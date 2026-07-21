@@ -88,7 +88,7 @@ Suspension is part of the product, not just a background metric.
 
 - The app should make it easy to move trouble cards out of AnkiDroid and into the local suspended archive.
 - Suspended cards are one of the core signals that drive weak-kanji analysis.
-- Suspended kanji should be imported through a dedicated frequency-filtered rule set defined in [suspended-kanji-import.md](/home/bee/Documents/src/github/kanji_anki/new/suspended-kanji-import.md).
+- Suspended kanji should be imported through a dedicated frequency-filtered rule set defined in [suspended-kanji-import.md](suspended-kanji-import.md).
 - The app should show clearly which examples are in the local suspended archive and which are still active in AnkiDroid.
 - Once a card has been archived as suspended, the app owns that suspended state locally.
 - Sync should empty suspended cards out of AnkiDroid and preserve them in the local database.

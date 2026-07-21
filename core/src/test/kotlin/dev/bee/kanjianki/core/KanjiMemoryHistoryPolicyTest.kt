@@ -44,6 +44,22 @@ class KanjiMemoryHistoryPolicyTest {
     }
 
     @Test
+    fun nonFiniteStabilityIsSkippedAndHugeFiniteValuesStayFinite() {
+        val rows = listOf(
+            makeRow(day(1), "good", Double.NaN),
+            makeRow(day(2), "good", Double.POSITIVE_INFINITY),
+            makeRow(day(3), "good", Double.MAX_VALUE),
+            makeRow(day(4), "good", 8.0),
+        )
+
+        val result = KanjiMemoryHistoryPolicy.build(rows)
+
+        assertEquals(2, result.points.size)
+        assertEquals(Float.MAX_VALUE, result.points[0].stability, 0.0f)
+        assertTrue(result.points.all { it.stability.isFinite() })
+    }
+
+    @Test
     fun captionCountsReviewsAndMisses() {
         val rows = listOf(
             makeRow(day(1), "good", 5.0),

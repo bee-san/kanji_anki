@@ -382,6 +382,132 @@ class AdaptiveReviewTransitionEngineTest {
         assertNull(recovered.activeToken)
     }
 
+    @Test
+    fun corePassSaturatesReviewCountersAndDueTime() {
+        val now = Long.MAX_VALUE - 1L
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = Int.MAX_VALUE,
+        )
+        val item = adaptiveItem(route)
+            .withTaskMemory(StudyTaskTypes.WORD_READING, saturatedMemory(now - 1L))
+            .copyBuilder()
+            .dueAtMillis(now - 1L)
+            .totalReviews(Int.MAX_VALUE)
+            .lapses(Int.MAX_VALUE)
+            .realPassStreak(Int.MAX_VALUE)
+            .build()
+        val recognitionMemory = item.kanjiMeaningMemory
+        val adapter = CountingAdapter(5, 5)
+
+        val reviewed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.WORD_READING, null),
+            now,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        val reviewedRoute = AdaptiveStudyItemPolicy.routeState(reviewed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertEquals(recognitionMemory, reviewed.kanjiMeaningMemory)
+        assertEquals(Long.MAX_VALUE, reviewed.dueAtMillis)
+        assertEquals(Long.MAX_VALUE, reviewed.wordReadingMemory.dueAtMillis)
+        assertEquals(Int.MAX_VALUE, reviewed.totalReviews)
+        assertEquals(Int.MAX_VALUE, reviewed.wordReadingMemory.totalReviews)
+        assertEquals(Int.MAX_VALUE, reviewed.lapses)
+        assertEquals(Int.MAX_VALUE, reviewed.wordReadingMemory.lapses)
+        assertEquals(Int.MAX_VALUE, reviewed.realPassStreak)
+        assertEquals(0, reviewedRoute.recognitionReviewCount)
+        assertEquals(Int.MAX_VALUE, reviewedRoute.contextualReadingReviewCount)
+    }
+
+    @Test
+    fun coreFailSaturatesLapseRecurrenceAndRepairDueTime() {
+        val now = Long.MAX_VALUE - 1L
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            recognitionReviewCount = Int.MAX_VALUE,
+            recurringFailure = FailureKind.VISUAL_CONFUSION,
+            recurringFailureCount = Int.MAX_VALUE,
+            revalidationPending = true,
+        )
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .withTaskMemory(StudyTaskTypes.KANJI_MEANING, saturatedMemory(now - 1L))
+            .copyBuilder()
+            .dueAtMillis(now - 1L)
+            .totalReviews(Int.MAX_VALUE)
+            .lapses(Int.MAX_VALUE)
+            .realAgainStreak(Int.MAX_VALUE)
+            .build()
+        val contextualMemory = item.wordReadingMemory
+        val adapter = CountingAdapter(5, 5)
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION),
+            now,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertEquals(contextualMemory, failed.wordReadingMemory)
+        assertEquals(Long.MAX_VALUE, failed.dueAtMillis)
+        assertEquals(Long.MAX_VALUE, failedRoute.repairDueAtMillis)
+        assertEquals(Long.MAX_VALUE, failedRoute.coreDueAtMillis)
+        assertEquals(Int.MAX_VALUE, failed.totalReviews)
+        assertEquals(Int.MAX_VALUE, failed.kanjiMeaningMemory.totalReviews)
+        assertEquals(Int.MAX_VALUE, failed.lapses)
+        assertEquals(Int.MAX_VALUE, failed.kanjiMeaningMemory.lapses)
+        assertEquals(Int.MAX_VALUE, failed.realAgainStreak)
+        assertEquals(Int.MAX_VALUE, failedRoute.recognitionReviewCount)
+        assertEquals(0, failedRoute.contextualReadingReviewCount)
+        assertEquals(Int.MAX_VALUE, failedRoute.recurringFailureCount)
+    }
+
+    @Test
+    fun repairAdvanceSaturatesAttemptCounterAndDelay() {
+        val now = Long.MAX_VALUE - 1L
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI),
+            repairTaskIndex = 0,
+            repairStepMinutes = listOf(10, 20),
+            repairDueAtMillis = now - 1L,
+            coreDueAtMillis = Long.MAX_VALUE,
+            repairAttemptCount = Int.MAX_VALUE,
+        )
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .copyBuilder()
+            .state(StudyLadderRules.STATE_LEARNING)
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .dueAtMillis(now - 1L)
+            .build()
+
+        val advanced = AdaptiveReviewTransitionEngine(CountingAdapter(5, 5)).apply(
+            item,
+            request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+            now,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        )
+        val advancedRoute = AdaptiveStudyItemPolicy.routeState(advanced.item)!!
+
+        assertFalse(advanced.fsrsCalled)
+        assertEquals(1, advancedRoute.repairTaskIndex)
+        assertEquals(Int.MAX_VALUE, advancedRoute.repairAttemptCount)
+        assertEquals(Long.MAX_VALUE, advancedRoute.repairDueAtMillis)
+        assertEquals(Long.MAX_VALUE, advanced.item.dueAtMillis)
+    }
+
     private fun adaptiveItem(
         route: AdaptiveRouteState,
         hasSimilarKanji: Boolean = false,
@@ -417,6 +543,22 @@ class AdaptiveReviewTransitionEngineTest {
         4,
         0,
         0L,
+    )
+
+    private fun saturatedMemory(dueAt: Long) = RecordsStudyModels.TaskMemory.fromFields(
+        RecordsStudyModels.TaskMemory.Fields(
+            state = StudyLadderRules.STATE_REVIEW,
+            dueAtMillis = dueAt,
+            stability = 4.0,
+            difficulty = 5.0,
+            totalReviews = Int.MAX_VALUE,
+            lapses = Int.MAX_VALUE,
+            learningStep = 0,
+            lastRating = StudyRatings.GOOD,
+            matureIntervalDays = 4,
+            consecutivePasses = Int.MAX_VALUE,
+            lastReviewedAtMillis = dueAt - StudyLadderRules.DAY,
+        ),
     )
 
     private fun request(

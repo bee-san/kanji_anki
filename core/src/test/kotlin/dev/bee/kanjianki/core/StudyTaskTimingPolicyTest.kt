@@ -45,6 +45,18 @@ class StudyTaskTimingPolicyTest {
         assertEquals(50L, StudyTaskTimingPolicy.visibleSinceAfterResume(50L, 60L))
     }
 
+    @Test
+    fun elapsedAfterPauseSaturatesAndPreservesHiddenSentinel() {
+        assertEquals(
+            Long.MAX_VALUE,
+            StudyTaskTimingPolicy.elapsedAfterPause(Long.MAX_VALUE - 5L, 1L, 10L),
+        )
+        assertEquals(
+            1L,
+            StudyTaskTimingPolicy.elapsedAfterPause(1L, Long.MIN_VALUE, Long.MAX_VALUE),
+        )
+    }
+
     private fun withUtcZone(body: () -> Unit) {
         val original = TimeZone.getDefault()
         try {

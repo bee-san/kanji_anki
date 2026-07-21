@@ -92,6 +92,8 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     private fun renderSettingsRoute(route: String, preserveScroll: Boolean = false) {
         cancelPendingHomeRouteLoads()
+        currentRoute = route
+        currentHomeRouteRestoration = null
         activeUpdateUiRunToken = 0
         if (isScreenshotLaunchRequested()) {
             when (route) {

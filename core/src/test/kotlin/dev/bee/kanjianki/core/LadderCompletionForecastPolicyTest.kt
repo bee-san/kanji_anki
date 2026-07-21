@@ -73,6 +73,28 @@ class LadderCompletionForecastPolicyTest {
         assertFalse(result.beyondHorizon)
     }
 
+    @Test fun parkingRequiresIntervalPastMatureAwareThreshold() {
+        val ladder = RecordsBase.StudyLadderSettings.defaults()
+        val ceiling = ladder.highestRung(RecordsBase.RungAvailability.none())
+        val result = LadderCompletionForecastPolicy.forecast(
+            rows = emptyList(),
+            startingItems = listOf(
+                reviewItem("低", ceiling, 41),
+                reviewItem("境", ceiling, 100),
+                reviewItem("超", ceiling, 101),
+            ),
+            settings = settingsWithParkingThreshold(matureDays = 100, ladderPromotionIntervalDays = 10),
+            parameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
+            learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
+            ladder = ladder,
+            nowMillis = START,
+            horizonDays = 0,
+        )
+
+        assertEquals(3, result.alreadyAtCeiling)
+        assertEquals(1, result.alreadyParked)
+    }
+
     @Test fun emptyDeckHasStableZeroBurnDown() {
         val result = forecast(emptyList(), horizonDays = 0)
         assertEquals(0, result.totalItems)
@@ -204,6 +226,46 @@ class LadderCompletionForecastPolicyTest {
         "Kiku", "Mining", "Expression", "Reading", "Meaning", "Sentence",
         "Frequency", "FreqSort", 21, 2, 9000, activeCap, newPerDay,
     )
+
+    private fun settingsWithParkingThreshold(
+        matureDays: Int,
+        ladderPromotionIntervalDays: Int,
+    ): RecordsSyncModels.Settings {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        return RecordsSyncModels.Settings(
+            defaults.modelName,
+            defaults.templateName,
+            defaults.expressionField,
+            defaults.readingField,
+            defaults.meaningField,
+            defaults.sentenceField,
+            defaults.frequencyField,
+            defaults.frequencySortField,
+            matureDays,
+            defaults.matureSupportThreshold,
+            defaults.suspendedRankMin,
+            defaults.suspendedRankMax,
+            defaults.activeQueueCap,
+            defaults.newPerDay,
+            defaults.writingTriggerMissDays,
+            defaults.recognitionPromotionPasses,
+            defaults.realDueReviewsToMove,
+            defaults.importActiveCards,
+            defaults.importSuspendedCards,
+            defaults.importTaggedCards,
+            defaults.importTags,
+            defaults.importWeakCards,
+            defaults.importWeakFsrsDifficultyThreshold,
+            defaults.importWeakLapsesThreshold,
+            defaults.importMinMatchingCardsPerKanji,
+            defaults.importBrowserQueryCards,
+            defaults.importBrowserQuery,
+            defaults.newCardSortMode,
+            ladderPromotionIntervalDays,
+            defaults.ladderDemotionFailStreak,
+            defaults.ladderPromotionMinPasses,
+        )
+    }
 
     private fun reviewItem(kanji: String, rung: RecordsBase.LadderRung, interval: Int) =
         RecordsStudyModels.StudyItem(kanji, "new", START, 4.0, 5.0, 4, 0, 0, 0, 0, 0, 0L, false, null, START)

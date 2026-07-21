@@ -13,8 +13,8 @@ internal object StudyItemReconciliationPolicy {
         require(items.all { it.kanji == kanji }) { "Cannot reconcile different kanji" }
         val primary = items.maxWithOrNull(Comparator(::compareDurableEvidence))!!
         return primary.copyBuilder()
-            .totalReviews(items.maxOf { it.totalReviews })
-            .lapses(items.maxOf { it.lapses })
+            .totalReviews(items.maxOf { it.totalReviews }.coerceAtLeast(0))
+            .lapses(items.maxOf { it.lapses }.coerceAtLeast(0))
             .createdAtMillis(items.map { it.createdAtMillis }.filter { it > 0L }.minOrNull() ?: 0L)
             .typingMeaningMemory(mergeMemories(items.map { it.typingMeaningMemory }))
             .meaningKanjiMemory(mergeMemories(items.map { it.meaningKanjiMemory }))
@@ -37,10 +37,14 @@ internal object StudyItemReconciliationPolicy {
         left: RecordsStudyModels.StudyItem,
         right: RecordsStudyModels.StudyItem,
     ): Int {
-        compareValues(left.totalReviews, right.totalReviews).takeIf { it != 0 }?.let { return it }
+        compareValues(left.totalReviews.coerceAtLeast(0), right.totalReviews.coerceAtLeast(0))
+            .takeIf { it != 0 }
+            ?.let { return it }
         compareValues(taskReviewCount(left), taskReviewCount(right)).takeIf { it != 0 }?.let { return it }
         compareValues(latestTaskReview(left), latestTaskReview(right)).takeIf { it != 0 }?.let { return it }
-        compareValues(left.lapses, right.lapses).takeIf { it != 0 }?.let { return it }
+        compareValues(left.lapses.coerceAtLeast(0), right.lapses.coerceAtLeast(0))
+            .takeIf { it != 0 }
+            ?.let { return it }
         compareValues(left.lastRealReviewDueAtMillis, right.lastRealReviewDueAtMillis)
             .takeIf { it != 0 }
             ?.let { return it }
@@ -48,8 +52,8 @@ internal object StudyItemReconciliationPolicy {
         return itemFingerprint(left).compareTo(itemFingerprint(right))
     }
 
-    private fun taskReviewCount(item: RecordsStudyModels.StudyItem): Int {
-        return memories(item).sumOf { it.totalReviews }
+    private fun taskReviewCount(item: RecordsStudyModels.StudyItem): Long {
+        return memories(item).sumOf { it.totalReviews.coerceAtLeast(0).toLong() }
     }
 
     private fun latestTaskReview(item: RecordsStudyModels.StudyItem): Long {
@@ -72,21 +76,44 @@ internal object StudyItemReconciliationPolicy {
     }
 
     private fun mergeMemories(memories: List<RecordsStudyModels.TaskMemory>): RecordsStudyModels.TaskMemory {
-        return memories.maxWithOrNull(Comparator(::compareMemory))!!
+        return normalizeMemoryCounters(memories.maxWithOrNull(Comparator(::compareMemory))!!)
     }
 
     private fun compareMemory(
         left: RecordsStudyModels.TaskMemory,
         right: RecordsStudyModels.TaskMemory,
     ): Int {
-        compareValues(left.totalReviews, right.totalReviews).takeIf { it != 0 }?.let { return it }
+        compareValues(left.totalReviews.coerceAtLeast(0), right.totalReviews.coerceAtLeast(0))
+            .takeIf { it != 0 }
+            ?.let { return it }
         compareValues(left.lastReviewedAtMillis, right.lastReviewedAtMillis).takeIf { it != 0 }?.let { return it }
-        compareValues(left.lapses, right.lapses).takeIf { it != 0 }?.let { return it }
+        compareValues(left.lapses.coerceAtLeast(0), right.lapses.coerceAtLeast(0))
+            .takeIf { it != 0 }
+            ?.let { return it }
         compareValues(left.lastPassedDueAtMillis, right.lastPassedDueAtMillis)
             .takeIf { it != 0 }
             ?.let { return it }
         compareValues(left.dueAtMillis, right.dueAtMillis).takeIf { it != 0 }?.let { return it }
         return left.encode().compareTo(right.encode())
+    }
+
+    private fun normalizeMemoryCounters(memory: RecordsStudyModels.TaskMemory): RecordsStudyModels.TaskMemory {
+        return RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = memory.state,
+                dueAtMillis = memory.dueAtMillis,
+                stability = memory.stability,
+                difficulty = memory.difficulty,
+                totalReviews = memory.totalReviews.coerceAtLeast(0),
+                lapses = memory.lapses.coerceAtLeast(0),
+                learningStep = memory.learningStep,
+                lastRating = memory.lastRating,
+                matureIntervalDays = memory.matureIntervalDays.coerceAtLeast(0),
+                consecutivePasses = memory.consecutivePasses.coerceAtLeast(0),
+                lastPassedDueAtMillis = memory.lastPassedDueAtMillis,
+                lastReviewedAtMillis = memory.lastReviewedAtMillis,
+            ),
+        )
     }
 
     private fun mergeRouteStates(items: List<RecordsStudyModels.StudyItem>): String {
@@ -129,8 +156,9 @@ internal object StudyItemReconciliationPolicy {
         }
     }
 
-    private fun routeReviews(route: AdaptiveRouteState): Int {
-        return route.recognitionReviewCount + route.contextualReadingReviewCount
+    private fun routeReviews(route: AdaptiveRouteState): Long {
+        return route.recognitionReviewCount.coerceAtLeast(0).toLong() +
+            route.contextualReadingReviewCount.coerceAtLeast(0).toLong()
     }
 
     private fun routeLatestTime(route: AdaptiveRouteState): Long {

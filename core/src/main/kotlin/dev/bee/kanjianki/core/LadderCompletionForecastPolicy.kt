@@ -152,7 +152,7 @@ object LadderCompletionForecastPolicy {
             item,
             CoreSkill.CONTEXTUAL_READING,
         ).matureIntervalDays else item.matureIntervalDays
-        return intervalDays > settings.ladderPromotionIntervalDays * RecordsBase.CEILING_PARK_INTERVAL_MULTIPLIER
+        return CeilingParkingPolicy.isPastThreshold(intervalDays, settings)
     }
 
     private fun monthPoints(start: Long, horizon: Long, total: Int, completions: List<Long>): List<MonthPoint> {

@@ -153,6 +153,16 @@ class StudyCueFormatterTest {
     }
 
     @Test
+    fun compactDoesNotSplitSupplementaryCodePoints() {
+        val supplementary = "\uD840\uDC00"
+
+        assertEquals("a", StudyCueFormatter.compact("a${supplementary}bc", 2))
+        assertEquals("a$supplementary", StudyCueFormatter.compact("a${supplementary}bc", 3))
+        assertEquals("ab...", StudyCueFormatter.compact("ab${supplementary}cdef", 6))
+        assertEquals("a$supplementary...", StudyCueFormatter.compact("a${supplementary}bcdef", 6))
+    }
+
+    @Test
     fun hiraganaReadingHandlesNullEmptyKatakanaAndMixedText() {
         assertEquals("", StudyCueFormatter.hiraganaReading(null))
         assertEquals("", StudyCueFormatter.hiraganaReading(""))

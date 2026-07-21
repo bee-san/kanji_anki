@@ -33,4 +33,14 @@ class SettingValuePolicyTest {
     fun parseDoubleUsesFallbackWhenInvalid() {
         assertEquals(7.0, SettingValuePolicy.parseDouble("wide", 7.0), 0.001)
     }
+
+    @Test
+    fun parsersUseFallbackForNullAndNonFiniteValues() {
+        assertEquals(7, SettingValuePolicy.parseInt(null, 7))
+        assertEquals(7L, SettingValuePolicy.parseLong(null, 7L))
+        assertEquals(7.0, SettingValuePolicy.parseDouble(null, 7.0), 0.0)
+        assertEquals(7.0, SettingValuePolicy.parseDouble("NaN", 7.0), 0.0)
+        assertEquals(7.0, SettingValuePolicy.parseDouble("Infinity", 7.0), 0.0)
+        assertEquals(7.0, SettingValuePolicy.parseDouble("-Infinity", 7.0), 0.0)
+    }
 }

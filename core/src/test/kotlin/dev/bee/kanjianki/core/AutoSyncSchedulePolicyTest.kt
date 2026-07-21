@@ -72,6 +72,14 @@ class AutoSyncSchedulePolicyTest {
     }
 
     @Test
+    fun planAtSaturatesLatencyAndDeadlineAtLongMaximum() {
+        val plan = AutoSyncSchedulePolicy.planAt(Long.MAX_VALUE, Long.MIN_VALUE)
+
+        assertEquals(Long.MAX_VALUE, plan.minimumLatencyMillis)
+        assertEquals(Long.MAX_VALUE, plan.overrideDeadlineMillis)
+    }
+
+    @Test
     fun localDayStartUsesCurrentTimeZoneMidnight() {
         withUtcZone {
             assertEquals(

@@ -149,6 +149,25 @@ class ReminderThrottlePolicyTest {
         assertFalse(base == ReminderThrottlePolicy.signatureFor(3, 12 * HOUR))
     }
 
+    @Test
+    fun gapAndGraceDeadlinesSaturateInsteadOfWrapping() {
+        val decision = ReminderThrottlePolicy.decide(
+            ReminderThrottlePolicy.Request(
+                nowMillis = Long.MAX_VALUE - 1L,
+                lastPostedAtMillis = Long.MAX_VALUE - 2L,
+                lastPostedSignature = "",
+                currentSignature = "new",
+                lastReviewAtMillis = Long.MAX_VALUE - 3L,
+                minGapMillis = 10L,
+                activityGraceMillis = 20L,
+            ),
+        )
+
+        assertFalse(decision.allow)
+        assertEquals(Long.MAX_VALUE, decision.nextEligibleAtMillis)
+        assertEquals(ReminderThrottlePolicy.REASON_ACTIVITY_GRACE, decision.reasonId)
+    }
+
     private fun request(
         now: Long,
         lastPostedAt: Long = 0L,

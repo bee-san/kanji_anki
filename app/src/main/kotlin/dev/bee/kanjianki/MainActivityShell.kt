@@ -17,6 +17,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -157,6 +159,12 @@ private fun MainActivityScrollableRouteColumn(
     content: @Composable () -> Unit,
     footerContent: @Composable () -> Unit = {},
 ) {
+    val saveableStateHolder = rememberSaveableStateHolder()
+    val saveableContentKey = saveableRouteContentKey(contentKey)
+    val saveableStatePruner = remember { RouteSaveableStatePruner() }
+    LaunchedEffect(saveableContentKey) {
+        saveableStatePruner.activate(saveableContentKey, saveableStateHolder::removeState)
+    }
     val backgroundColor = if (MainActivityBase.NAV_STUDY == model.selectedRoute) {
         KaniTheme.colors.studyBg
     } else {
@@ -206,7 +214,11 @@ private fun MainActivityScrollableRouteColumn(
                                 .weight(1f)
                                 .verticalScroll(scrollState),
                         ) {
-                            key(contentKey) { content() }
+                            key(contentKey) {
+                                saveableStateHolder.SaveableStateProvider(saveableContentKey) {
+                                    content()
+                                }
+                            }
                         }
                         key(contentKey) { footerContent() }
                     }
@@ -219,7 +231,11 @@ private fun MainActivityScrollableRouteColumn(
                             .weight(1f)
                             .verticalScroll(scrollState),
                     ) {
-                        key(contentKey) { content() }
+                        key(contentKey) {
+                            saveableStateHolder.SaveableStateProvider(saveableContentKey) {
+                                content()
+                            }
+                        }
                     }
                     key(contentKey) { footerContent() }
                     if (showNav) {
@@ -232,5 +248,25 @@ private fun MainActivityScrollableRouteColumn(
                 }
             }
         }
+    }
+}
+
+internal class RouteSaveableStatePruner {
+    private var activeKey: Any? = null
+
+    fun activate(key: Any, removeState: (Any) -> Unit) {
+        val departedKey = activeKey
+        activeKey = key
+        if (departedKey != null && departedKey != key) {
+            removeState(departedKey)
+        }
+    }
+}
+
+private fun saveableRouteContentKey(contentKey: Any?): Any {
+    return when (contentKey) {
+        null -> "main-activity-route-default"
+        is MainActivityRouteStateKey -> contentKey.saveableStateKey()
+        else -> contentKey
     }
 }

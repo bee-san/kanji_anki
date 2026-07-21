@@ -73,6 +73,7 @@ internal class MainActivityShellHost(
             publishRoute(
                 HostedRoute(
                     revision = nextRevision(),
+                    stateKey = routeStateKey(selected),
                     publishedAtNanos = shellHostMonotonicNanos(),
                     model = shellModel(selected, scrollPositionLabel, studySessionActive),
                     initialScrollY = initialScrollY,
@@ -108,6 +109,7 @@ internal class MainActivityShellHost(
             publishRoute(
                 HostedRoute(
                     revision = nextRevision(),
+                    stateKey = routeStateKey(selected),
                     publishedAtNanos = shellHostMonotonicNanos(),
                     model = shellModel(selected, scrollPositionLabel, studySessionActive),
                     initialScrollY = initialScrollY,
@@ -140,6 +142,25 @@ internal class MainActivityShellHost(
     private fun nextRevision(): Long {
         nextRouteRevision += 1L
         return nextRouteRevision
+    }
+
+    private fun routeStateKey(selected: String): MainActivityRouteStateKey {
+        if (selected == MainActivityBase.NAV_HOME_ROUTE) {
+            return MainActivityRouteStateKey(
+                selectedRoute = selected,
+                homeRoute = activity.currentHomeRouteRestoration,
+            )
+        }
+        if (selected == MainActivityBase.NAV_STUDY) {
+            val studyRoute = activity.studySessionViewModel.acceptedRouteSnapshot()
+            return MainActivityRouteStateKey(
+                selectedRoute = selected,
+                studySessionGeneration = studyRoute.sessionGeneration.value,
+                studySessionToken = studyRoute.sessionToken,
+                studyComplete = studyRoute.isComplete,
+            )
+        }
+        return MainActivityRouteStateKey(selectedRoute = selected)
     }
 
     /**
@@ -205,7 +226,7 @@ internal class MainActivityShellHost(
                 navActions = route.navActions,
                 themeChoice = route.themeChoice,
                 isSystemDarkTheme = route.isSystemDarkTheme,
-                contentKey = route.revision,
+                contentKey = route.stateKey,
                 content = route.content,
             )
         } else {
@@ -216,7 +237,7 @@ internal class MainActivityShellHost(
                 navActions = route.navActions,
                 themeChoice = route.themeChoice,
                 isSystemDarkTheme = route.isSystemDarkTheme,
-                contentKey = route.revision,
+                contentKey = route.stateKey,
                 content = route.content,
                 actionBar = actionBar,
             )
@@ -288,6 +309,7 @@ internal class MainActivityShellHost(
 
     private data class HostedRoute(
         val revision: Long,
+        val stateKey: MainActivityRouteStateKey,
         val publishedAtNanos: Long,
         val model: MainActivityShellModel,
         val initialScrollY: Int,
@@ -299,6 +321,35 @@ internal class MainActivityShellHost(
         val actionBar: (@Composable () -> Unit)?,
     )
 
+}
+
+internal data class MainActivityRouteStateKey(
+    val selectedRoute: String,
+    val homeRoute: HomeRouteRestoration? = null,
+    val studySessionGeneration: Long? = null,
+    val studySessionToken: String? = null,
+    val studyComplete: Boolean = false,
+) {
+    fun saveableStateKey(): String = buildString {
+        appendStateKeyPart(selectedRoute)
+        appendStateKeyPart(homeRoute?.destination?.wireName)
+        appendStateKeyPart(homeRoute?.query)
+        appendStateKeyPart(homeRoute?.kanji)
+        appendStateKeyPart(homeRoute?.onlySimilarKanji?.toString())
+        appendStateKeyPart(homeRoute?.allKanjiScope?.toString())
+        appendStateKeyPart(homeRoute?.fromBrowse?.toString())
+        appendStateKeyPart(studySessionGeneration?.toString())
+        appendStateKeyPart(studySessionToken)
+        appendStateKeyPart(studyComplete.toString())
+    }
+}
+
+private fun StringBuilder.appendStateKeyPart(value: String?) {
+    if (value == null) {
+        append("-;")
+        return
+    }
+    append(value.length).append(':').append(value).append(';')
 }
 
 private fun shellHostMonotonicNanos(): Long {

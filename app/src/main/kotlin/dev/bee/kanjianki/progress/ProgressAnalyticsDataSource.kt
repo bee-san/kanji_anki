@@ -56,7 +56,7 @@ fun progressAnalyticsDemoSnapshot(nowMillis: Long = currentTimeMillis()): Progre
             totalReviews = ProgressCountMetricState(2_842, text.integer(2_842), copy.deltaVsPreviousSeven("+18%")),
             accuracy = ProgressCountMetricState(92, "92%", copy.deltaVsPreviousThirty("+4%")),
             currentStreak = ProgressStreakMetricState(6, 14, copy.days(6), copy.bestDays(14)),
-            kanjiLearned = ProgressCountMetricState(126, text.integer(126), copy.thisWeekDelta("7")),
+            kanjiLearned = ProgressCountMetricState(135, text.integer(135), copy.thisWeekDelta("7")),
             focusSessions = ProgressCountMetricState(9, text.integer(9), detailLabel = copy.thisWeek),
             studyTime = ProgressDurationMetricState(16_320_000L, StatsValueFormatter.duration(16_320_000L, locale), detailLabel = copy.thisWeek),
             reviewsToday = ProgressCountMetricState(42, text.integer(42)),

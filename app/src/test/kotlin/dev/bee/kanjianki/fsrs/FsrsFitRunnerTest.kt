@@ -124,6 +124,34 @@ class FsrsFitRunnerTest {
         assertEquals(12_345L, summary.fittedAtMillis)
     }
 
+    @Test
+    fun nonFiniteLossesAreOmittedFromPersistedSummary() {
+        store.saveFsrsPersonalizationEnabled(true)
+        val nonFinite = fitResult(
+            customWeights(),
+            adopted = false,
+            reason = FsrsWeightFitter.REASON_INSUFFICIENT_IMPROVEMENT,
+        ).copy(
+            defaultTrainingLoss = Double.NaN,
+            defaultValidationLoss = Double.POSITIVE_INFINITY,
+            fittedTrainingLoss = Double.NEGATIVE_INFINITY,
+            fittedValidationLoss = Double.NaN,
+        )
+
+        FsrsFitRunner.run(
+            store,
+            98_765L,
+            FsrsFitRunner.FitOperation { _, _ -> nonFinite },
+        )
+
+        val summary = FsrsFitSummaryCodec.decode(store.fsrsFitSummaryJson())!!
+        assertNull(summary.defaultTrainingLoss)
+        assertNull(summary.defaultValidationLoss)
+        assertNull(summary.fittedTrainingLoss)
+        assertNull(summary.fittedValidationLoss)
+        assertEquals(98_765L, summary.fittedAtMillis)
+    }
+
     private fun reviewWith(scheduler: BridgeScheduler): Long {
         val item = RecordsStudyModels.StudyItem(
             "裂", "review", 0L, 5.0, 5.0, 1,

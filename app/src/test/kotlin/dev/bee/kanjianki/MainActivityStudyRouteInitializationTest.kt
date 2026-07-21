@@ -869,6 +869,52 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun pendingStudyLoadsPublishRestorableRouteIdentityImmediately() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = {},
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+        activity.currentHomeRouteRestoration = HomeRouteRestoration.browse("old", false, false)
+
+        activity.renderStudy()
+
+        assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
+        assertNull(activity.currentHomeRouteRestoration)
+        assertTrue(activity.shouldRestoreStudyRouteAfterRecreation())
+        assertEquals(1, backgroundTasks.size)
+    }
+
+    @Test
+    fun pendingTargetedStudyLoadsPublishRestorableRouteIdentityImmediately() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = {},
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+        activity.currentHomeRouteRestoration = HomeRouteRestoration.browse("old", false, false)
+
+        activity.renderStudyForKanji("裂")
+
+        assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
+        assertNull(activity.currentHomeRouteRestoration)
+        assertTrue(activity.shouldRestoreStudyRouteAfterRecreation())
+        assertEquals(1, backgroundTasks.size)
+    }
+
+    @Test
     fun trackerRevisionRejectionRetriesCurrentStudyLoad() {
         val activity = createActivity()
         val backgroundTasks = ArrayDeque<Runnable>()

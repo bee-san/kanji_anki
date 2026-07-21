@@ -15,6 +15,21 @@ COMMAND_RE = re.compile(r"[AaCcHhLlMmQqSsTtVvZz]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:
 KVG_NS = "{http://kanjivg.tagaini.net}"
 VIEWBOX_SIZE = 109.0
 SAMPLES_PER_CURVE = 4
+KANJI_RANGES = (
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2A6DF),
+    (0x2A700, 0x2B73F),
+    (0x2B740, 0x2B81F),
+    (0x2B820, 0x2CEAF),
+    (0x2CEB0, 0x2EBEF),
+    (0x2EBF0, 0x2EE5F),
+    (0x2F800, 0x2FA1F),
+    (0x30000, 0x3134F),
+    (0x31350, 0x323AF),
+    (0x323B0, 0x3347F),
+)
 
 
 def tokenize_path(data: str) -> list[str]:
@@ -248,10 +263,7 @@ def read_kanjivg(input_path: Path) -> list[tuple[str, list[list[tuple[float, flo
 def should_include(char: str) -> bool:
     code = ord(char)
     return (
-        0x3400 <= code <= 0x4DBF
-        or 0x4E00 <= code <= 0x9FFF
-        or 0xF900 <= code <= 0xFAFF
-        or 0x20000 <= code <= 0x2FA1F
+        any(start <= code <= end for start, end in KANJI_RANGES)
         or 0x3005 <= code <= 0x3007
         or 0x30A0 <= code <= 0x30FF
     )

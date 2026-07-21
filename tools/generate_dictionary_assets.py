@@ -33,8 +33,16 @@ KANJI_RANGES = (
     (0x3400, 0x4DBF),
     (0x4E00, 0x9FFF),
     (0xF900, 0xFAFF),
-    (0x20000, 0x2FA1F),
+    (0x20000, 0x2A6DF),
+    (0x2A700, 0x2B73F),
+    (0x2B740, 0x2B81F),
+    (0x2B820, 0x2CEAF),
+    (0x2CEB0, 0x2EBEF),
+    (0x2EBF0, 0x2EE5F),
+    (0x2F800, 0x2FA1F),
     (0x30000, 0x3134F),
+    (0x31350, 0x323AF),
+    (0x323B0, 0x3347F),
 )
 
 
@@ -149,7 +157,12 @@ def int_or_zero(value: str) -> int:
 def parse_integer(value: str) -> int | None:
     if not INTEGER_PATTERN.fullmatch(value):
         return None
-    parsed = int(value)
+    try:
+        parsed = int(value)
+    except ValueError:
+        # Python limits decimal conversion length; malformed source rows must
+        # be ignored rather than aborting the entire asset build.
+        return None
     return parsed if INT32_MIN <= parsed <= INT32_MAX else None
 
 

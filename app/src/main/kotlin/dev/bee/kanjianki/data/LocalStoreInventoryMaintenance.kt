@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 import dev.bee.kanjianki.core.KanjiInventoryBuilder
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -159,7 +160,10 @@ internal class LocalStoreInventoryMaintenance(
                 LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_STABILITY, example.fsrsStability)
                 LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_DIFFICULTY, example.fsrsDifficulty)
                 LocalStoreBase.putNullableDouble(ex, LocalStoreBase.COLUMN_FSRS_RETRIEVABILITY, example.fsrsRetrievability)
-                db.insert(LocalStoreBase.TABLE_KANJI_EXAMPLES, null, ex)
+                val inserted = db.insertOrThrow(LocalStoreBase.TABLE_KANJI_EXAMPLES, null, ex)
+                if (inserted == -1L) {
+                    throw SQLiteException("Failed to insert required kanji example")
+                }
             }
         }
     }

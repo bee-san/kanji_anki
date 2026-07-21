@@ -92,7 +92,12 @@ class WritingAnalysis private constructor(
             0.0
         }
         val orderScore = orderConfidenceScore()
-        return maxOf(0.0, minOf(1.0, (recognitionScore * 0.55) + (orderScore * 0.45)))
+        val combinedScore = (recognitionScore * 0.55) + (orderScore * 0.45)
+        return if (combinedScore.isFinite()) {
+            maxOf(0.0, minOf(1.0, combinedScore))
+        } else {
+            0.0
+        }
     }
 
     private fun orderConfidenceScore(): Double {

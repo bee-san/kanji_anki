@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
+import androidx.lifecycle.ViewModelProvider
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.AnswerEvidence
 import dev.bee.kanjianki.core.RecordsBase
@@ -59,6 +60,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     val doneActions by lazy { MainActivityStudyDoneActions(this) }
+    internal val studyDoneViewModel by lazy(LazyThreadSafetyMode.NONE) {
+        ViewModelProvider(this)[StudyDoneViewModel::class.java]
+    }
 
     private val choiceSessions by lazy { MainActivityStudyChoiceSessions(this) }
     private val studyProgress by lazy { MainActivityStudyProgress(this) }
@@ -95,6 +99,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     override fun renderStudy() {
         cancelPendingHomeRouteLoads()
+        currentRoute = MainActivityBase.NAV_STUDY
+        currentHomeRouteRestoration = null
+        doneActions.clearRetainedStudyDone()
         if (isScreenshotLaunchRequested()) {
             doneActions.renderEmptyStudyQueue(studySessionViewModel.acceptedRouteSnapshot())
             return
@@ -104,6 +111,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     internal open fun renderStudyRecoveryOnly() {
         cancelPendingHomeRouteLoads()
+        currentRoute = MainActivityBase.NAV_STUDY
+        currentHomeRouteRestoration = null
         studyQueueCoordinator.renderStudy(recoveryOnly = true)
     }
 
@@ -177,6 +186,9 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     override fun renderStudyForKanji(kanji: String?) {
         cancelPendingHomeRouteLoads()
+        currentRoute = MainActivityBase.NAV_STUDY
+        currentHomeRouteRestoration = null
+        doneActions.clearRetainedStudyDone()
         if (isScreenshotLaunchRequested()) {
             doneActions.renderStudyForKanjiNotAvailable(studySessionViewModel.acceptedRouteSnapshot())
             return
@@ -720,11 +732,31 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         studyRecoveryStore.shouldResumeOnOrdinaryLaunch()
 
     override fun shouldRestoreStudyRouteAfterRecreation(): Boolean =
-        studyRecoveryRouteActive && hasStudyRecoveryPayload() &&
-            !isScreenshotLaunchRequested() && !preserveStudyRecoveryForHarnessRoute
+        !isScreenshotLaunchRequested() &&
+            !preserveStudyRecoveryForHarnessRoute &&
+            (
+                currentRoute == MainActivityBase.NAV_STUDY ||
+                    (studyRecoveryRouteActive && hasStudyRecoveryPayload())
+            )
+
+    internal fun restoreStudyRouteAfterRecreation(): Boolean {
+        if (doneActions.restoreRetainedStudyDone()) {
+            return true
+        }
+        if (shouldResumeStudyOnOrdinaryLaunch()) {
+            renderStudyRecoveryOnly()
+            return true
+        }
+        if (hasStudyRecoveryPayload()) {
+            return false
+        }
+        renderStudy()
+        return true
+    }
 
     override fun disableStudyOrdinaryResume() {
         if (preserveStudyRecoveryForHarnessRoute) return
+        doneActions.clearRetainedStudyDone()
         studyRecoveryStore.disableOrdinaryResume()
         activeStudyRecovery = null
         studyRecoveryRouteActive = false

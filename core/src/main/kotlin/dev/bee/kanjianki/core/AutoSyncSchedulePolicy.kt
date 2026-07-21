@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.core
 
 import java.util.Calendar
-import kotlin.math.max
 
 object AutoSyncSchedulePolicy {
     const val MIN_DELAY_MILLIS: Long = 10_000L
@@ -19,13 +18,16 @@ object AutoSyncSchedulePolicy {
             return SchedulePlan.disabled()
         }
         val triggerAt = nextTriggerMillis(hour, minute, nowMillis, alreadySyncedToday)
-        val minimumLatency = max(MIN_DELAY_MILLIS, triggerAt - nowMillis)
+        val minimumLatency = maxOf(MIN_DELAY_MILLIS, nonNegativeDifference(triggerAt, nowMillis))
         return planWithLatency(triggerAt, minimumLatency)
     }
 
     @JvmStatic
     fun planAt(triggerAtMillis: Long, nowMillis: Long): SchedulePlan {
-        return planWithLatency(triggerAtMillis, max(MIN_DELAY_MILLIS, triggerAtMillis - nowMillis))
+        return planWithLatency(
+            triggerAtMillis,
+            maxOf(MIN_DELAY_MILLIS, nonNegativeDifference(triggerAtMillis, nowMillis)),
+        )
     }
 
     @JvmStatic
@@ -59,7 +61,7 @@ object AutoSyncSchedulePolicy {
             true,
             triggerAtMillis,
             minimumLatencyMillis,
-            minimumLatencyMillis + DEADLINE_WINDOW_MILLIS,
+            saturatingAdd(minimumLatencyMillis, DEADLINE_WINDOW_MILLIS),
         )
     }
 

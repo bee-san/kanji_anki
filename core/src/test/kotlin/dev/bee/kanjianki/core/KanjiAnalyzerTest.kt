@@ -269,6 +269,127 @@ class KanjiAnalyzerTest {
     }
 
     @Test
+    fun negativeMinimumSupportThresholdIsNormalizedBeforeDeficitSubtraction() {
+        val settings = settingsWithMatureSupport(Int.MIN_VALUE)
+        val ranks = JitenKanjiRanks.parseCsv(StringReader("深,1600\n"))
+        val source = RecordsImportModels.SuspendedSource(
+            "深",
+            10,
+            1,
+            "深い",
+            "ふかい",
+            "deep",
+            activePracticeDetails("深い。"),
+        )
+
+        val row = KanjiAnalyzer().rebuildSelectedSources(
+            RecordsSyncModels.CollectionSnapshot(
+                listOf(note(1, "深い", "ふかい", "deep", "深い。")),
+                listOf(card(10, 1, 45, 12, 0, 60.0, 3.0, 0.95)),
+            ),
+            listOf(RecordsImportModels.SuspendedImport("深", 1600, true, 3000, listOf(source))),
+            ranks,
+            settings,
+        ).single()
+
+        assertEquals(1, row.matureSupportCount)
+        assertEquals(0, row.weaknessScore)
+        assertEquals("watch", row.reasonCode)
+    }
+
+    @Test
+    fun largeCounterInputsSaturateWithoutWrappingAnalyzerOutput() {
+        val ranks = JitenKanjiRanks.parseCsv(StringReader("深,1600\n"))
+        val notes = listOf(
+            note(1, "深い", "ふかい", "deep", "深い。"),
+            note(2, "深み", "ふかみ", "depth", "深み。"),
+        )
+        val saturatedLapses = RecordsSyncModels.CollectionSnapshot(
+            notes,
+            listOf(
+                card(10, 1, 45, Int.MAX_VALUE, Int.MAX_VALUE, null, null, null),
+                card(20, 2, 45, Int.MAX_VALUE, Int.MAX_VALUE, null, null, null),
+            ),
+        )
+
+        val weakness = KanjiAnalyzer().rebuild(
+            saturatedLapses,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            ranks,
+            settingsWithMatureSupport(Int.MAX_VALUE),
+        ).single()
+        assertEquals(Int.MAX_VALUE, weakness.weaknessScore)
+
+        val lapses = KanjiAnalyzer().rebuild(
+            saturatedLapses,
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            ranks,
+            settingsWithMatureSupport(0),
+        ).single()
+        assertEquals("anki_lapses", lapses.reasonCode)
+        assertTrue(lapses.reasonText.contains(Int.MAX_VALUE.toString()))
+
+        val reps = KanjiAnalyzer().rebuild(
+            RecordsSyncModels.CollectionSnapshot(
+                notes,
+                listOf(
+                    card(10, 1, 0, Int.MAX_VALUE, 0, null, null, null),
+                    card(20, 2, 0, Int.MAX_VALUE, 0, null, null, null),
+                ),
+            ),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            ranks,
+            settingsWithMatureSupport(0),
+        ).single()
+        assertEquals("anki_scheduler_weakness", reps.reasonCode)
+        assertTrue(reps.reasonText.contains(Int.MAX_VALUE.toString()))
+    }
+
+    @Test
+    fun nonFiniteFsrsValuesDoNotCreateMemoryPressure() {
+        val settings = settingsWithMatureSupport(1)
+        val ranks = JitenKanjiRanks.parseCsv(StringReader("深,1600\n浅,1700\n"))
+        val rows = KanjiAnalyzer().rebuild(
+            RecordsSyncModels.CollectionSnapshot(
+                listOf(
+                    note(1, "深い", "ふかい", "deep", "深い。"),
+                    note(2, "浅い", "あさい", "shallow", "浅い。"),
+                ),
+                listOf(
+                    card(
+                        10,
+                        1,
+                        0,
+                        6,
+                        0,
+                        Double.NEGATIVE_INFINITY,
+                        Double.POSITIVE_INFINITY,
+                        Double.NaN,
+                    ),
+                    card(
+                        20,
+                        2,
+                        0,
+                        6,
+                        0,
+                        Double.NaN,
+                        Double.NaN,
+                        Double.POSITIVE_INFINITY,
+                    ),
+                ),
+            ),
+            emptyList<RecordsImportModels.SuspendedImport>(),
+            ranks,
+            settings,
+        )
+
+        assertEquals("weak_support", find(rows, "深").reasonCode)
+        assertEquals("weak_support", find(rows, "浅").reasonCode)
+        assertEquals(5, find(rows, "深").weaknessScore)
+        assertEquals(5, find(rows, "浅").weaknessScore)
+    }
+
+    @Test
     fun selectedSourcesPreserveExistingForcePracticeAcrossMultipleCards() {
         val settings = settingsWithMatureSupport(1)
         val ranks = JitenKanjiRanks.parseCsv(StringReader("深,1600\n"))

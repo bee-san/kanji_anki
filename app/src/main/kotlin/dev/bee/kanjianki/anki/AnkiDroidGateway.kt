@@ -160,6 +160,8 @@ class AnkiDroidGateway private constructor(
             for ((key, value) in extraNotes) {
                 notes.putIfAbsent(key, value)
             }
+        } catch (error: OperationCanceledException) {
+            throw error
         } catch (error: Exception) {
             throw browserQueryFailure(error)
         }
@@ -399,7 +401,7 @@ class AnkiDroidGateway private constructor(
         val search = ProviderNotePolicy.browserQuerySearch(settings.normalizedBrowserQuery())
         val cursor = try {
             resolver.query(uriFor(target.authority, URI_SEGMENT_NOTES), null, search, null, null)
-        } catch (error: Exception) {
+        } catch (error: IllegalArgumentException) {
             throw browserQueryFailure(error)
         }
             // Real AnkiDroid returns a null cursor when a valid browser query
@@ -414,7 +416,7 @@ class AnkiDroidGateway private constructor(
                     }
                 }
             }
-        } catch (error: Exception) {
+        } catch (error: IllegalArgumentException) {
             throw browserQueryFailure(error)
         }
         return ids

@@ -125,7 +125,9 @@ internal abstract class LocalStoreStudy(
             when {
                 StudyItemComparators.samePersistedState(existing, candidate) ->
                     candidate.copyBuilder().schedulerRevision(existing.schedulerRevision).build()
-                else -> candidate.copyBuilder().schedulerRevision(existing.schedulerRevision + 1L).build()
+                else -> candidate.copyBuilder()
+                    .schedulerRevision(Math.addExact(existing.schedulerRevision, 1L))
+                    .build()
             }
         }
     }
@@ -342,7 +344,7 @@ internal abstract class LocalStoreStudy(
 
     fun undoLastAppliedReview(snapshot: AppliedReviewSnapshot): Boolean {
         val restored = snapshot.beforeReview.copyBuilder()
-            .schedulerRevision(snapshot.afterReview.schedulerRevision + 1L)
+            .schedulerRevision(Math.addExact(snapshot.afterReview.schedulerRevision, 1L))
             .build()
         val undone = try {
             writableDatabase.transaction {
@@ -788,19 +790,22 @@ internal abstract class LocalStoreStudy(
         activeElapsedMillis: Long,
         outcome: String?,
     ): Boolean {
-        val inserted = studyLog().recordStudyTaskAnswered(
-            taskKey,
-            kanji,
-            taskType,
-            startedAt,
-            answeredAt,
-            activeElapsedMillis,
-            outcome
-        )
-        if (inserted) {
-            StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty()
+        return writableDatabase.transaction {
+            val inserted = studyLog().recordStudyTaskAnswered(
+                taskKey,
+                kanji,
+                taskType,
+                startedAt,
+                answeredAt,
+                activeElapsedMillis,
+                outcome,
+                this,
+            )
+            if (inserted) {
+                StatsCacheStore(this@LocalStoreStudy as LocalStore).markDirty(this)
+            }
+            inserted
         }
-        return inserted
     }
 
     fun studyTaskTimeStats(nowMillis: Long): StudyStatsStore.StudyTaskTimeStats {

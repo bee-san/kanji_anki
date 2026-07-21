@@ -10,14 +10,23 @@ fi
 : "${SONAR_PROJECT_VERSION:?SONAR_PROJECT_VERSION is required}"
 
 sonar_args=()
-if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+github_event_name="${GITHUB_EVENT_NAME:-}"
+if [[ "${github_event_name}" == "pull_request" ]]; then
+  pr_number="${PR_NUMBER:-}"
+  pr_head_ref="${PR_HEAD_REF:-}"
+  pr_base_ref="${PR_BASE_REF:-}"
+  if [[ -z "${pr_number}" || -z "${pr_head_ref}" || -z "${pr_base_ref}" ]]; then
+    echo "PR_NUMBER, PR_HEAD_REF, and PR_BASE_REF are required for pull-request analysis." >&2
+    exit 2
+  fi
   sonar_args+=(
-    "-Dsonar.pullrequest.key=${PR_NUMBER}"
-    "-Dsonar.pullrequest.branch=${PR_HEAD_REF}"
-    "-Dsonar.pullrequest.base=${PR_BASE_REF}"
+    "-Dsonar.pullrequest.key=${pr_number}"
+    "-Dsonar.pullrequest.branch=${pr_head_ref}"
+    "-Dsonar.pullrequest.base=${pr_base_ref}"
   )
-elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-  pr_info="$(gh pr view "${GITHUB_REF_NAME}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
+elif [[ "${github_event_name}" == "workflow_dispatch" ]]; then
+  github_ref_name="${GITHUB_REF_NAME:-}"
+  pr_info="$(gh pr view "${github_ref_name}" --json number,baseRefName,headRefName --jq '[.number,.baseRefName,.headRefName] | @tsv' 2>/dev/null || true)"
   if [[ -n "${pr_info}" ]]; then
     IFS=$'\t' read -r pr_number pr_base pr_head <<< "${pr_info}"
     sonar_args+=(

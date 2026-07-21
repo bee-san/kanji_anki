@@ -1,43 +1,51 @@
 # Mutation Testing Baseline
 
 **Date:** 2026-07-15
+**Compatibility re-audited:** 2026-07-21
 **Tool:** PIT (pitest) — Gradle plugin `info.solidsoft.pitest`
-**Status:** Plugin integration deferred (Gradle 9.4.1 incompatibility)
+**Status:** Plugin integration pending; the former Gradle 9 compatibility blocker is cleared
 
 ## Target files
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `ReviewTransitionEngine.kt` | 819 | Legacy ladder state machine |
-| `StudyQueueSeeder.kt` | ~450 | Queue admission and seeding |
-| `BridgeScheduler.kt` | ~300 | Session scheduling bridge |
-| `KanjiRepairEvidencePolicy.kt` | ~200 | Repair admission/graduation |
-| `ReminderEligibilityPolicy.kt` | ~150 | Daily reminder filter |
+| `ReviewTransitionEngine.kt` | 843 | Legacy ladder state machine |
+| `StudyQueueSeeder.kt` | 763 | Queue admission and seeding |
+| `BridgeScheduler.kt` | 660 | Session scheduling bridge |
+| `KanjiRepairEvidencePolicy.kt` | 557 | Repair admission/graduation |
+| `ReminderEligibilityPolicy.kt` | 50 | Daily reminder filter |
 
-## Gradle 9.4.1 incompatibility
+## Gradle 9.4.1 compatibility update
 
-The latest `info.solidsoft.pitest` plugin (v1.15.0, February 2026) references
-`project.reporting.baseDir` which was removed in Gradle 9.0. The plugin fails
-at apply time with:
+The original attempt used plugin v1.15.0, which references
+`project.reporting.baseDir`; Gradle 9 removed that property, so that version
+failed at apply time with:
 
 ```
 Could not get unknown property 'baseDir' for extension 'reporting'
 of type org.gradle.api.reporting.ReportingExtension.
 ```
 
-No compatible version exists as of July 2026. Options:
-1. Wait for pitest plugin v1.16+ with Gradle 9 support.
-2. Run pitest via the Maven plugin in a standalone `pom.xml` targeting the
-   `:core` module's compiled classes.
-3. Downgrade to Gradle 8.x in a throwaway branch for baseline measurement.
+That result no longer applies to the current plugin. The
+[`info.solidsoft.pitest` plugin portal](https://plugins.gradle.org/plugin/info.solidsoft.pitest)
+lists v1.19.0 (2026-03-29) as latest, and its
+[changelog](https://github.com/szpak/gradle-pitest-plugin/blob/master/CHANGELOG.md)
+documents initial Gradle 9 support. On 2026-07-21, v1.19.0 applied successfully
+both in an isolated Gradle 9.4.1 project and to this repository's `:core`
+project, exposing the `pitest` task.
+
+This apply-time check does not complete Goal 142. Repository integration still
+needs the plugin and PIT artifacts added to dependency-verification metadata,
+the target configuration reviewed against the Kotlin/JUnit suite, and a real
+mutation run recorded.
 
 ## Planned configuration
 
-When a compatible plugin version is available, apply it to `:core`:
+Apply the current plugin to `:core`:
 
 ```kotlin
 plugins {
-    id("info.solidsoft.pitest") version "1.16.0" // hypothetical future version
+    id("info.solidsoft.pitest") version "1.19.0"
 }
 
 pitest {
@@ -58,7 +66,7 @@ pitest {
 
 ## Test strength improvements (preemptive)
 
-While awaiting the plugin, 5 test assertions were strengthened in this batch
+Before plugin integration, 5 test assertions were strengthened in this batch
 based on manual code inspection of likely surviving mutants:
 
 1. `AdaptiveReviewTransitionEngineTest.goldenHappyPath` — asserts specific rung
@@ -73,7 +81,7 @@ based on manual code inspection of likely surviving mutants:
 
 ## Next steps
 
-- Monitor pitest plugin releases for Gradle 9 compatibility.
-- When available, run `./gradlew :core:pitest` and record per-file mutation
-  scores (killed / total) below.
+- Add v1.19.0 and its artifacts to the checked dependency-verification metadata.
+- Run `./gradlew :core:pitest` and record per-file mutation scores
+  (killed / total) below.
 - Identify top 5 surviving mutants and add targeted assertions.

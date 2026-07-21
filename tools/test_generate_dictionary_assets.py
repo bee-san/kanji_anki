@@ -13,6 +13,23 @@ from pathlib import Path
 from tools import generate_dictionary_assets as generator
 
 
+EXPECTED_KANJI_RANGES = (
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2A6DF),
+    (0x2A700, 0x2B73F),
+    (0x2B740, 0x2B81F),
+    (0x2B820, 0x2CEAF),
+    (0x2CEB0, 0x2EBEF),
+    (0x2EBF0, 0x2EE5F),
+    (0x2F800, 0x2FA1F),
+    (0x30000, 0x3134F),
+    (0x31350, 0x323AF),
+    (0x323B0, 0x3347F),
+)
+
+
 KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
 <kanjidic2>
 <header><file_version>4</file_version><database_version>2026-129</database_version><date_of_creation>2026-05-09</date_of_creation></header>
@@ -42,6 +59,15 @@ KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
 
 
 class GenerateDictionaryAssetsTest(unittest.TestCase):
+    def test_kanji_literals_use_exact_unicode_block_bounds(self) -> None:
+        self.assertEqual(EXPECTED_KANJI_RANGES, generator.KANJI_RANGES)
+        for start, end in EXPECTED_KANJI_RANGES:
+            self.assertTrue(generator.is_kanji_literal(chr(start)))
+            self.assertTrue(generator.is_kanji_literal(chr(end)))
+        for codepoint in (0x2A6E0, 0x2EE60, 0x2FA20, 0x33480):
+            self.assertFalse(generator.is_kanji_literal(chr(codepoint)))
+        self.assertFalse(generator.is_kanji_literal("日本"))
+
     def test_parses_kanjidic2_kanji_fields_without_skip_codes(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp) / "kanjidic2.xml.gz"
@@ -87,6 +113,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
                         "日本,4",
                         "櫛,5",
                         "6,𰀀",
+                        f"木,{'9' * 5000}",
                     ]
                 ),
                 encoding="utf-8",

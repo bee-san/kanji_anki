@@ -158,11 +158,17 @@ class SimilarKanjiChoicePlanner {
             choices.add(targetKanji)
             if (pairs != null) {
                 for (pair in pairs) {
-                    if (pair == null) {
+                    if (pair == null || pair.kanjiA == pair.kanjiB) {
                         continue
                     }
-                    val other = if (pair.kanjiA == targetKanji) pair.kanjiB else pair.kanjiA
-                    choices.add(other)
+                    val other = when (targetKanji) {
+                        pair.kanjiA -> pair.kanjiB
+                        pair.kanjiB -> pair.kanjiA
+                        else -> continue
+                    }
+                    if (other.isNotBlank()) {
+                        choices.add(other)
+                    }
                     if (choices.size >= FALLBACK_CHOICE_LIMIT) {
                         break
                     }

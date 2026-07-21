@@ -25,6 +25,13 @@ class DateTextPolicyTest {
     }
 
     @Test
+    fun extremeFutureDueTimeDoesNotWrapToOneMinute() {
+        val text = DateTextPolicy.dueText(Long.MAX_VALUE, Long.MIN_VALUE)
+
+        assertFalse(text.contains("1 min"))
+    }
+
+    @Test
     fun formatsOlderDueDatesAndNonZeroAutoUpdateChecks() {
         val originalLocale = Locale.getDefault()
         val originalTimeZone = TimeZone.getDefault()

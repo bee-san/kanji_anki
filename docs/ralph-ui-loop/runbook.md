@@ -64,17 +64,18 @@ apply/commit, and `--commit-accepted` without `--apply-accepted`.
 1. Dispatch and validate screenshots in one shot:
 
    ```sh
-   GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh \
-     python3 scripts/ralph_loop/github_screenshots.py \
-       --repo-root . \
-       --workflow android-screenshots.yml \
-       --artifact android-screenshots \
-       --screenshot-route all \
-       --out .ralph-loop/current/remote-screenshots \
-       --push-pr-branch
+   python3 scripts/ralph_loop/github_screenshots.py \
+     --repo-root . \
+     --workflow android-screenshots.yml \
+     --artifact android-screenshots \
+     --screenshot-route all \
+     --out .ralph-loop/current/remote-screenshots \
+     --push-pr-branch
    ```
 
-   This helper wraps the raw GitHub steps below.
+   This helper wraps the raw GitHub steps below and uses the caller's normal
+   authenticated `gh` configuration. Set `GH_CONFIG_DIR` explicitly only when
+   selecting an alternate GitHub CLI configuration.
 
 2. Run the Ralph controller once the screenshots are present:
 
@@ -181,22 +182,22 @@ If you need the individual GitHub steps instead of the helper script, use this s
 root on a non-protected branch:
 
 ```sh
-GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh gh workflow run android-screenshots.yml \
+gh workflow run android-screenshots.yml \
   --repo bee-san/kanji_anki \
   --ref <branch> \
   -f screenshot_route=all
 
-GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh gh run list \
+gh run list \
   --repo bee-san/kanji_anki \
   --workflow 'Android Screenshots' \
   --branch <branch> \
   --json databaseId,headSha,status,conclusion
 
-GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh gh run watch <run_id> \
+gh run watch <run_id> \
   --repo bee-san/kanji_anki \
   --exit-status
 
-GH_CONFIG_DIR=/Users/autumnskerritt/.config/gh gh run download <run_id> \
+gh run download <run_id> \
   --repo bee-san/kanji_anki \
   --name android-screenshots \
   --dir .ralph-loop/current/remote-screenshots

@@ -62,12 +62,15 @@ class KanjiAnalyzer {
 
         fun build(ranks: JitenKanjiRanks, settings: RecordsSyncModels.Settings): RecordsImportModels.DashboardRow {
             val summary = summarize(settings)
-            val supportDeficit = maxOf(0, settings.matureSupportThreshold - summary.mature)
-            val weakness = summary.suspended * 12 +
-                supportDeficit * 5 +
-                minOf(8, summary.lapses * 2) +
-                minOf(6, summary.intervalPressure * 2) +
-                minOf(12, summary.fsrsPressure)
+            val supportThreshold = settings.matureSupportThreshold.coerceAtLeast(0)
+            val supportDeficit = maxOf(0, supportThreshold - summary.mature)
+            val weakness = listOf(
+                saturatingMultiplyNonNegative(summary.suspended, 12),
+                saturatingMultiplyNonNegative(supportDeficit, 5),
+                minOf(8, saturatingMultiplyNonNegative(summary.lapses, 2)),
+                minOf(6, saturatingMultiplyNonNegative(summary.intervalPressure, 2)),
+                minOf(12, summary.fsrsPressure.coerceAtLeast(0)),
+            ).fold(0, ::saturatingAddNonNegative)
             val reason = reasonFor(summary, supportDeficit)
             return RecordsImportModels.DashboardRow(
                 kanji,
@@ -131,15 +134,18 @@ class KanjiAnalyzer {
             if (retrievability != null && retrievability < 0.75) {
                 pressure += if (retrievability < 0.50) 6 else 3
             }
-            if (example.fsrsDifficulty != null && example.fsrsDifficulty >= 7.0) {
+            if (example.fsrsDifficulty?.isFinite() == true && example.fsrsDifficulty >= 7.0) {
                 pressure += 3
             }
-            if (example.fsrsStability != null && example.reps >= 5 && example.fsrsStability < settings.matureDays) {
+            if (example.fsrsStability?.isFinite() == true &&
+                example.reps >= 5 &&
+                example.fsrsStability < settings.matureDays
+            ) {
                 pressure += 3
             }
             if (
                 example.mature &&
-                example.fsrsStability != null &&
+                example.fsrsStability?.isFinite() == true &&
                 example.fsrsStability >= settings.matureDays * 2.0 &&
                 pressure == 0
             ) {
@@ -149,7 +155,7 @@ class KanjiAnalyzer {
         }
 
         private fun normalizedRetrievability(value: Double?): Double? {
-            if (value == null || value < 0.0) {
+            if (value == null || !value.isFinite() || value < 0.0) {
                 return null
             }
             if (value > 1.0 && value <= 100.0) {
@@ -180,7 +186,7 @@ class KanjiAnalyzer {
                 trimmed.add(example)
             }
             if (SOURCE_SUSPENDED == example.sourceType) {
-                suspended++
+                suspended = saturatingAddNonNegative(suspended, 1)
             } else {
                 addActiveExample(example, fsrsPressureValue)
             }
@@ -193,16 +199,16 @@ class KanjiAnalyzer {
         }
 
         private fun addActiveExample(example: RecordsImportModels.Example, fsrsPressureValue: Int) {
-            active++
+            active = saturatingAddNonNegative(active, 1)
             if (example.mature) {
-                mature++
+                mature = saturatingAddNonNegative(mature, 1)
             }
-            lapses += example.lapses
-            reps += example.reps
+            lapses = saturatingAddNonNegative(lapses, example.lapses)
+            reps = saturatingAddNonNegative(reps, example.reps)
             if (example.reps >= 8 && !example.mature) {
-                intervalPressure++
+                intervalPressure = saturatingAddNonNegative(intervalPressure, 1)
             }
-            fsrsPressure += fsrsPressureValue
+            fsrsPressure = saturatingAddNonNegative(fsrsPressure, fsrsPressureValue)
         }
     }
 

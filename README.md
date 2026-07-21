@@ -35,7 +35,7 @@ Highlights:
 
 * FSRS-6 scheduling (21-parameter), with opt-in on-device personalization of the weights from your own review history.
 * Specially designed to make you spend the least amount of time in app as possible.
-* Customised study ladders for each kanji, based on why you fail that kanji.
+* Two-core adaptive study with targeted repair tasks based on why you fail each kanji.
 * Kanji browser with per-kanji details, stroke-order diagrams, memory charts, and local mnemonic notes.
 * Quick practice games, study stats, streak-aware reminders, and a home-screen widget for due counts.
 * English and Japanese UI.
@@ -52,7 +52,7 @@ If you study vocab with no individual kanji study but find some kanji are hard, 
 | --- | --- | --- |
 | Source material | Uses your own cards and review evidence. | Reads AnkiDroid locally and turns weak kanji evidence into a focused repair queue. |
 | Scheduling | Uses FSRS-style spacing for review timing. | Schedules Kani practice items only; it does not replace or rewrite Anki's deck schedule. |
-| Card shape | Keeps recall practice deliberate and repeatable. | Uses a configurable ladder: handwriting, typed meaning, recognition, font variation, readings, and similar-kanji practice. |
+| Card shape | Keeps recall practice deliberate and repeatable. | Uses required recognition and contextual-reading checks, optional font/sentence variants, and targeted repair tasks such as handwriting, typing, and discrimination choices. |
 | Scope | Supports daily review habits. | Optimizes for kanji blindness, not general vocabulary, grammar, or sentence mining workflows. |
 | Suspended cards | Preserves evidence from cards you no longer actively review. | Archives suspended-card evidence locally by default so missed kanji can still be studied without unsuspending Anki cards. |
 | Progress evidence | Review history remains the source of truth. | Compare later AnkiDroid evidence with Kani reviews to show whether the repair work is helping. |
@@ -60,9 +60,9 @@ If you study vocab with no individual kanji study but find some kanji are hard, 
 ## Flashcards
 
 - FSRS scheduling for Kani study items.
-- A progressive ladder that starts with easier prompts and moves toward harder kanji recall as you improve.
+- Separate long-term recognition and contextual-reading memories, with practice-only repair after a failed core check.
 
-The study ladder can surface these prompt styles:
+Adaptive study can surface these prompt styles:
 
 - Handwriting practice with stroke guidance.
 - Typed meaning prompts.
@@ -73,7 +73,9 @@ The study ladder can surface these prompt styles:
 - Sentence reading practice using your own mined sentences when available.
 - Similar-kanji practice when Kani has comparison data for a card.
 
-You can enable, disable, and reorder ladder rungs in Settings. Study items move through the ladder according to review results, and `Study now` is the single entry point for practice.
+The two core checks remain required. In Settings you can enable or disable the
+optional font and sentence variants, choose repair tools, and reorder repair
+priority. `Study now` is the single entry point for practice.
 
 Kani uses the Pareto principle: focus on the kanji most worth studying today instead of reviewing everything. By default, the suspended-kanji import focuses on Jiten ranks `100` through `3000`, and you can change that range in Settings.
 
@@ -151,7 +153,12 @@ KANI_SIGNING_KEY_PASSWORD=...
 
 ## Release
 
-Push a semver tag such as `v0.3.0`, or create/publish a GitHub Release with that tag name. GitHub Actions builds the signed APK, writes a matching `.sha256`, and publishes both files to the release.
+Every successful `Android CI` run for a push to `main` triggers the automatic
+patch release. Deliberate versions can be started by pushing a semver tag such
+as `v0.3.0` or by dispatching `android-release.yml` with a release tag. The
+workflow builds the signed APK, writes a matching `.sha256`, and publishes both
+files. Creating or publishing a GitHub Release in the UI does not trigger the
+workflow.
 
 The download, validation, retry, permission, and cache invariants for updates installed from inside Kani are documented in the [in-app update security contract](docs/in-app-update-security.md).
 

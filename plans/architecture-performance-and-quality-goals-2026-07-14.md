@@ -50,8 +50,9 @@ this repo.
 - `LocalStoreSchema.DB_VERSION == 32`.
 - `STATS_CACHE_FORMAT_VERSION == 10`.
 - Goals 113–128 landed on `main` (PR #544).
-- Goals 98–112 pending on branch `goals-96-112` (authority remains
-  `plans/study-experience-settings-and-hardening-goals-2026-07-13.md`).
+- Goals 98–112 pending on the historical `goals-96-112` branch. The sibling
+  plan cited at authoring time was never tracked in this repository and is not
+  present in any currently reachable ref.
 - Single activity class hierarchy: `MainActivityBase` (747 lines) →
   `MainActivityHome` (746) → `MainActivityGames` → `MainActivityStudy` (993)
   → `MainActivitySettings` → `MainActivity`.
@@ -65,7 +66,7 @@ this repo.
 
 | Range | Plan | Status |
 |---|---|---|
-| 98–112 | `study-experience-settings-and-hardening-goals-2026-07-13.md` | Pending on branch `goals-96-112` |
+| 98–112 | Untracked sibling-branch plan (not available in this repository) | Pending on branch `goals-96-112` at authoring time |
 
 This plan is a **sibling queue** to Goals 98–112. It deliberately avoids
 touching the same files/surfaces until those goals land, except where
@@ -771,12 +772,15 @@ close the batch.
 > (fail→repair→revalidation), stuck repair escalation (threshold→write_kanji
 > added). All deterministic with specific state assertions.
 >
-> **2026-07-15:** Goal 142 PARTIALLY DONE — pitest plugin incompatible with
-> Gradle 9.4.1 (`reporting.baseDir` removed); `docs/mutation-testing-baseline.md`
-> documents the planned config, target files, the incompatibility, and 5
-> preemptive test-strength improvements. Plugin integration deferred until a
-> Gradle-9-compatible pitest release ships.
+> **2026-07-15:** Goal 142 PARTIALLY DONE — the original pitest v1.15.0 attempt
+> was incompatible with Gradle 9.4.1 (`reporting.baseDir` removed);
+> `docs/mutation-testing-baseline.md` documented the deferred integration and 5
+> preemptive test-strength improvements.
+>
+> **2026-07-21 audit:** The external compatibility blocker is cleared.
+> Pitest plugin v1.19.0 applies to this repository's `:core` project under
+> Gradle 9.4.1. Goal 142 remains partial until the plugin is integrated with
+> dependency-verification metadata and a mutation baseline is recorded.
 >
 > **All 16 goals addressed.** 15 fully implemented and passing `ciFast`; 1
-> (Goal 142) blocked on external tooling but documented with baseline and
-> workaround plan.
+> (Goal 142) remains incomplete with its integration steps documented.

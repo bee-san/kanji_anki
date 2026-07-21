@@ -50,4 +50,16 @@ class KanjiGameRoundStateTest {
         assertEquals(3, round.progress(false))
         assertFalse(round.roundComplete())
     }
+
+    @Test
+    fun completedRoundIgnoresExtraAnswersAndAccuracyStaysBounded() {
+        val complete = KanjiGameRoundState.newRound(1).answer(true)
+        val extra = complete.answer(false)
+
+        assertTrue(complete === extra)
+        assertEquals(1, extra.answered)
+        assertEquals(1, extra.correct)
+        assertEquals(100, KanjiGameRoundState.accuracyPercent(Int.MAX_VALUE, 1))
+        assertEquals(0, KanjiGameRoundState.accuracyPercent(Int.MIN_VALUE, 1))
+    }
 }

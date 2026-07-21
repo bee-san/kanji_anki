@@ -210,6 +210,21 @@ class SimilarKanjiChoicePlannerTest {
     }
 
     @Test
+    fun fallbackChoicesIgnorePairsUnrelatedToTheTarget() {
+        assertEquals(
+            listOf("裂", "列"),
+            SimilarKanjiChoicePlanner.fallbackChoices(
+                "裂",
+                listOf(
+                    pair("語", "話"),
+                    pair("裂", "列"),
+                    pair("提", "拉"),
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun sparsePairsAndMissingNeighborsAreSkipped() {
         val planner = SimilarKanjiChoicePlanner()
         val inventory = listOf(

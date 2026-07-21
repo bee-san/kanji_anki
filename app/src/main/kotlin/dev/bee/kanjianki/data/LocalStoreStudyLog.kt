@@ -15,6 +15,7 @@ internal class LocalStoreStudyLog(
         answeredAt: Long,
         activeElapsedMillis: Long,
         outcome: String?,
+        db: SQLiteDatabase = store.writableDatabase,
     ): Boolean {
         val normalizedKey = taskKey ?: ""
         if (normalizedKey.isEmpty()) {
@@ -31,7 +32,7 @@ internal class LocalStoreStudyLog(
             StudyTaskTimingPolicy.boundedElapsed(activeElapsedMillis, LocalStoreBase.MAX_STUDY_TASK_ELAPSED_MS),
         )
         values.put("outcome", outcome ?: "")
-        return store.writableDatabase.insertWithOnConflict(
+        return db.insertWithOnConflict(
             LocalStoreBase.TABLE_STUDY_TASK_LOG,
             null,
             values,

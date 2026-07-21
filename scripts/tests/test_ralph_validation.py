@@ -127,22 +127,20 @@ class RalphValidationTest(unittest.TestCase):
         self.assertEqual("needs_host", report["status"])
 
     def test_branch_guard_and_diff_size_guard_fail_on_protected_branch_and_large_diff(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            changed_files = [f"app/src/main/kotlin/dev/bee/kanjianki/Home{index}.kt" for index in range(6)]
-            report = validation.build_validation_report(
-                {
-                    "branch": "main",
-                    "default_branch": "main",
-                    "changed_files": changed_files,
-                    "dirty_paths": [],
-                    "diff_lines": 501,
-                    "commits_ahead": 0,
-                    "targeted_compose_tests": [],
-                    "reviewer_result": {"status": "passed", "model": "gpt5.4-codex-mini"},
-                    "require_remote_green": False,
-                }
-            )
+        changed_files = [f"app/src/main/kotlin/dev/bee/kanjianki/Home{index}.kt" for index in range(6)]
+        report = validation.build_validation_report(
+            {
+                "branch": "main",
+                "default_branch": "main",
+                "changed_files": changed_files,
+                "dirty_paths": [],
+                "diff_lines": 501,
+                "commits_ahead": 0,
+                "targeted_compose_tests": [],
+                "reviewer_result": {"status": "passed", "model": "gpt5.4-codex-mini"},
+                "require_remote_green": False,
+            }
+        )
 
         self.assertEqual("failed", report["status"])
         branch_guard = self._gate(report, "branch_guard")

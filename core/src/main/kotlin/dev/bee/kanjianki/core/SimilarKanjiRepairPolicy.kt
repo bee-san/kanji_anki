@@ -49,7 +49,7 @@ object SimilarKanjiRepairPolicy {
         if (passed) {
             return FinishUpdate("", nowMillis, STATUS_COMPLETE, nowMillis, null, null)
         }
-        val attempts = if (current == null) 1 else current.attempts + 1
+        val attempts = if (current == null) 1 else saturatingAddNonNegative(current.attempts, 1)
         return FinishUpdate("", nowMillis, null, null, attempts, nowMillis)
     }
 

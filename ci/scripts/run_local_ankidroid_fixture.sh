@@ -17,13 +17,20 @@ if [ -n "${collection_path}" ]; then
   collection_arg_provided=1
 fi
 
-android_home="${ANDROID_HOME:-}"
+android_home="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "${android_home}" ]; then
-  if [ -d "/opt/homebrew/share/android-commandlinetools" ]; then
-    android_home="/opt/homebrew/share/android-commandlinetools"
-  else
-    android_home="${HOME}/Library/Android/sdk"
-  fi
+  for candidate in \
+    "${HOME}/android-sdk" \
+    "/tmp/android-sdk" \
+    "/opt/homebrew/share/android-commandlinetools" \
+    "${HOME}/Library/Android/sdk" \
+    "${HOME}/Android/Sdk"; do
+    if [ -d "${candidate}" ]; then
+      android_home="${candidate}"
+      break
+    fi
+  done
+  android_home="${android_home:-${HOME}/Android/Sdk}"
 fi
 export ANDROID_HOME="${android_home}"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME}}"
@@ -116,18 +123,83 @@ raise SystemExit("No APK asset found in release metadata")
 PY
 }
 
+expected_ankidroid_sha256() {
+  local configured_sha256="${KANJI_ANKIDROID_APK_SHA256:-}"
+  if [ -n "${configured_sha256}" ]; then
+    if [[ ! "${configured_sha256}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+      echo "KANJI_ANKIDROID_APK_SHA256 must contain exactly 64 hexadecimal characters." >&2
+      return 2
+    fi
+    printf '%s\n' "${configured_sha256}" | tr '[:upper:]' '[:lower:]'
+    return 0
+  fi
+
+  if [ "${release_tag}" != "v2.24.0" ]; then
+    echo "KANJI_ANKIDROID_APK_SHA256 is required for unpinned release ${release_tag}." >&2
+    return 2
+  fi
+
+  local asset_name
+  case "${image_arch}" in
+    arm64-v8a) asset_name="AnkiDroid-2.24.0-arm64-v8a.apk" ;;
+    x86_64) asset_name="variant-abi-AnkiDroid-2.24.0-x86_64.apk" ;;
+  esac
+  local checksum_file="${repo_root}/ci/fixtures/ankidroid/ankidroid-2.24.0.sha256"
+  local expected
+  expected="$(awk -v name="${asset_name}" '$2 == name { print $1 }' "${checksum_file}")"
+  if [[ ! "${expected}" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "Pinned SHA-256 is missing for ${asset_name}." >&2
+    return 2
+  fi
+  printf '%s\n' "${expected}"
+}
+
+verify_apk_sha256() {
+  local apk_path="$1"
+  local expected_sha256="$2"
+  python3 - "${apk_path}" "${expected_sha256}" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+expected = sys.argv[2].lower()
+digest = hashlib.sha256()
+with path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+actual = digest.hexdigest()
+if actual != expected:
+    raise SystemExit(f"SHA-256 mismatch for {path}: expected {expected}, got {actual}")
+PY
+}
+
 download_ankidroid_apk() {
   if [ -n "${ANKIDROID_APK:-}" ]; then
+    if [ ! -s "${ANKIDROID_APK}" ]; then
+      echo "ANKIDROID_APK does not exist or is empty: ${ANKIDROID_APK}" >&2
+      return 2
+    fi
+    if [ -n "${KANJI_ANKIDROID_APK_SHA256:-}" ]; then
+      verify_apk_sha256 "${ANKIDROID_APK}" "$(expected_ankidroid_sha256)"
+    fi
     printf '%s\n' "${ANKIDROID_APK}"
     return 0
   fi
 
+  require_command python3
+  local expected_sha256
+  expected_sha256="$(expected_ankidroid_sha256)"
   local apk_dir="${work_dir}/ankidroid-${release_tag}-${image_arch}"
   local apk_path="${apk_dir}/AnkiDroid-${release_tag}-${image_arch}.apk"
   mkdir -p "${apk_dir}"
   if [ -s "${apk_path}" ]; then
-    printf '%s\n' "${apk_path}"
-    return 0
+    if verify_apk_sha256 "${apk_path}" "${expected_sha256}"; then
+      printf '%s\n' "${apk_path}"
+      return 0
+    fi
+    echo "Discarding cached AnkiDroid APK with an invalid SHA-256: ${apk_path}" >&2
+    rm -f "${apk_path}"
   fi
 
   require_command curl
@@ -138,16 +210,41 @@ download_ankidroid_apk() {
   local asset_url
   asset_url="$(pick_ankidroid_asset "${metadata_path}" "${image_arch}")"
   echo "Downloading AnkiDroid ${release_tag} asset for ${image_arch}: ${asset_url}" >&2
-  curl --fail --location --show-error "${asset_url}" --output "${apk_path}"
+  local partial_path="${apk_path}.partial"
+  rm -f "${partial_path}"
+  curl --fail --location --show-error "${asset_url}" --output "${partial_path}"
+  if ! verify_apk_sha256 "${partial_path}" "${expected_sha256}"; then
+    rm -f "${partial_path}"
+    return 1
+  fi
+  mv "${partial_path}" "${apk_path}"
   printf '%s\n' "${apk_path}"
+}
+
+require_emulator_target() {
+  local qemu
+  qemu="$(adb shell getprop ro.kernel.qemu 2>/dev/null | tr -d '\r' || true)"
+  if [ "${qemu}" != "1" ]; then
+    local serial
+    serial="$(adb get-serialno 2>/dev/null || printf 'unknown')"
+    echo "Refusing to overwrite AnkiDroid data on non-emulator ADB target ${serial}." >&2
+    return 2
+  fi
 }
 
 boot_emulator() {
   require_command adb
   require_command emulator
   adb start-server >/dev/null
-  if adb get-state >/dev/null 2>&1; then
-    echo "Using already-connected Android device/emulator: $(adb devices | sed -n '2p')" >&2
+  local connected_count
+  connected_count="$(adb devices | awk '$2 == "device" { count++ } END { print count + 0 }')"
+  if [ "${connected_count}" -gt 0 ]; then
+    if ! adb get-state >/dev/null 2>&1; then
+      echo "Unable to select one connected ADB target; set ANDROID_SERIAL explicitly." >&2
+      return 2
+    fi
+    require_emulator_target
+    echo "Using already-connected Android emulator: $(adb get-serialno)" >&2
     return 0
   fi
 
@@ -168,6 +265,7 @@ boot_emulator() {
   for _ in $(seq 1 120); do
     boot_completed="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
     if [ "${boot_completed}" = "1" ]; then
+      require_emulator_target
       adb shell settings put global window_animation_scale 0 || true
       adb shell settings put global transition_animation_scale 0 || true
       adb shell settings put global animator_duration_scale 0 || true

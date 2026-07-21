@@ -58,4 +58,20 @@ class ReviewHeatmapPolicyTest {
         val grid = ReviewHeatmapPolicy.build(listOf(ReviewHeatmapPolicy.DaySummary(yesterday, 4)), dstNow, zone, Locale.US)
         assertEquals(4, grid.weeks.flatMap { it.cells }.single { it.dayStartMillis == yesterday }.reviews)
     }
+
+    @Test fun duplicateDaySummariesAggregateWithoutOverflow() {
+        val today = LocalDayPolicy.localDayStart(now, utc)
+        val grid = ReviewHeatmapPolicy.build(
+            listOf(
+                ReviewHeatmapPolicy.DaySummary(today, Int.MAX_VALUE),
+                ReviewHeatmapPolicy.DaySummary(today, 10),
+            ),
+            now,
+            utc,
+            Locale.US,
+        )
+
+        assertEquals(Int.MAX_VALUE, grid.weeks.flatMap { it.cells }.single { it.dayStartMillis == today }.reviews)
+        assertTrue(grid.accessibilitySummary.startsWith("${Int.MAX_VALUE} reviews across 1 days"))
+    }
 }

@@ -352,9 +352,9 @@ object KaniOutcomePolicy {
                 return
             }
             supportGains.add(KanjiSupportGain(kanji, before.matureSupportCount(), after.matureSupportCount()))
-            matureSupportGainSum += supportGain
+            matureSupportGainSum = saturatingAddNonNegative(matureSupportGainSum, supportGain)
             if (before.matureSupportCount() == 0) {
-                firstSupportCount++
+                firstSupportCount = saturatingAddNonNegative(firstSupportCount, 1)
             }
         }
 

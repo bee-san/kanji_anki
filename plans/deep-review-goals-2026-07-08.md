@@ -388,7 +388,7 @@ Home.
 ### Goal 44: Eliminate destroy-race crashes on the review-write and route-load paths
 
 **Problem:** Three concrete crash/corruption paths introduced or exposed by
-#502/#506 (all reachable by rotating during normal use, since Goal 43 is not
+PRs #502/#506 (all reachable by rotating during normal use, since Goal 43 is not
 landed yet):
 
 - Nested submit to a dead executor: the #502 review-write task runs on `io`

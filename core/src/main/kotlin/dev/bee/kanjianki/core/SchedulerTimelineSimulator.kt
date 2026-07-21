@@ -3,7 +3,7 @@ package dev.bee.kanjianki.core
 import java.util.ArrayList
 import java.util.Collections
 import java.util.HashSet
-import kotlin.math.abs
+import java.math.BigInteger
 
 class SchedulerTimelineSnapshot(
     kanji: String?,
@@ -68,7 +68,13 @@ class SchedulerTimelineSimulator(
             null,
             emptyList(),
         )
-        val event = SchedulerTimelineEvent("seed", nowMillis - startMillis, trace, first?.let { snapshot(it) }, null)
+        val event = SchedulerTimelineEvent(
+            "seed",
+            saturatingSubtract(nowMillis, startMillis),
+            trace,
+            first?.let { snapshot(it) },
+            null,
+        )
         retain(event)
         return event
     }
@@ -76,7 +82,13 @@ class SchedulerTimelineSimulator(
     fun nextSession(): SchedulerTimelineEvent {
         val trace = scheduler.debugTraceNextSession(items, rows, nowMillis, 0L, null, settings, ladder)
         activeSession = scheduler.nextSession(items, rows, nowMillis, 0L, null, settings, ladder)
-        val event = SchedulerTimelineEvent("next", nowMillis - startMillis, trace, activeSession?.item?.let { snapshot(it) }, null)
+        val event = SchedulerTimelineEvent(
+            "next",
+            saturatingSubtract(nowMillis, startMillis),
+            trace,
+            activeSession?.item?.let { snapshot(it) },
+            null,
+        )
         retain(event)
         return event
     }
@@ -107,7 +119,13 @@ class SchedulerTimelineSimulator(
         )
         items = replaceReviewedItem(items, before, traced.result.item)
         activeSession = null
-        val event = SchedulerTimelineEvent("answer", nowMillis - startMillis, traced.trace, snapshot(traced.result.item), snapshot(before))
+        val event = SchedulerTimelineEvent(
+            "answer",
+            saturatingSubtract(nowMillis, startMillis),
+            traced.trace,
+            snapshot(traced.result.item),
+            snapshot(before),
+        )
         retain(event)
         return event
     }
@@ -142,15 +160,21 @@ class SchedulerTimelineSimulator(
         )
         items = replaceReviewedItem(items, before, traced.result.item)
         activeSession = null
-        val event = SchedulerTimelineEvent("answer", nowMillis - startMillis, traced.trace, snapshot(traced.result.item), snapshot(before))
+        val event = SchedulerTimelineEvent(
+            "answer",
+            saturatingSubtract(nowMillis, startMillis),
+            traced.trace,
+            snapshot(traced.result.item),
+            snapshot(before),
+        )
         retain(event)
         return event
     }
 
     fun advanceBy(millis: Long): SchedulerTimelineEvent {
-        nowMillis += millis.coerceAtLeast(0L)
+        nowMillis = saturatingAdd(nowMillis, millis.coerceAtLeast(0L))
         val trace = SchedulerDecisionTrace("advance", nowMillis, null, emptyList(), emptyList(), null, emptyList())
-        val event = SchedulerTimelineEvent("advance", nowMillis - startMillis, trace, null, null)
+        val event = SchedulerTimelineEvent("advance", saturatingSubtract(nowMillis, startMillis), trace, null, null)
         retain(event)
         return event
     }
@@ -158,7 +182,7 @@ class SchedulerTimelineSimulator(
     fun advanceTo(targetMillis: Long): SchedulerTimelineEvent {
         nowMillis = maxOf(nowMillis, targetMillis)
         val trace = SchedulerDecisionTrace("advance", nowMillis, null, emptyList(), emptyList(), null, emptyList())
-        val event = SchedulerTimelineEvent("advance", nowMillis - startMillis, trace, null, null)
+        val event = SchedulerTimelineEvent("advance", saturatingSubtract(nowMillis, startMillis), trace, null, null)
         retain(event)
         return event
     }
@@ -249,7 +273,7 @@ class SchedulerTimelineSimulator(
             item.phase,
             item.state,
             item.dueAtMillis,
-            item.dueAtMillis - startMillis,
+            saturatingSubtract(item.dueAtMillis, startMillis),
             item.matureIntervalDays,
             item.realPassStreak,
             item.realAgainStreak,
@@ -308,21 +332,22 @@ class SchedulerTimelineSimulator(
     }
 
     private fun absoluteOffsetText(absoluteMillis: Long): String {
-        return offsetText(absoluteMillis - startMillis)
+        return offsetText(saturatingSubtract(absoluteMillis, startMillis))
     }
 
     private fun offsetText(offsetMillis: Long): String {
         val prefix = if (offsetMillis < 0) "T-" else "T+"
-        val positive = abs(offsetMillis)
-        if (positive == 0L) {
+        val positive = BigInteger.valueOf(offsetMillis).abs()
+        if (positive == BigInteger.ZERO) {
             return "T+00:00"
         }
-        if (positive % BridgeScheduler.DAY == 0L) {
-            return prefix + positive / BridgeScheduler.DAY + "d"
+        val day = BigInteger.valueOf(BridgeScheduler.DAY)
+        if (positive.mod(day) == BigInteger.ZERO) {
+            return prefix + positive.divide(day) + "d"
         }
-        val totalMinutes = positive / 60_000L
-        val hours = totalMinutes / 60L
-        val minutes = totalMinutes % 60L
+        val totalMinutes = positive.divide(BigInteger.valueOf(60_000L))
+        val hours = totalMinutes.divide(BigInteger.valueOf(60L))
+        val minutes = totalMinutes.mod(BigInteger.valueOf(60L))
         return prefix + hours.toString().padStart(2, '0') + ":" + minutes.toString().padStart(2, '0')
     }
 

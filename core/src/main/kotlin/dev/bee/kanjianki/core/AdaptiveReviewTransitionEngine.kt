@@ -60,14 +60,14 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             elapsedReviewDays(beforeMemory, nowMillis),
             parameters.targetRetention,
         )
-        val nextTotalReviews = beforeMemory.totalReviews + 1
-        val nextItemTotalReviews = item.totalReviews + 1
-        val nextCoreReviewCount = route.reviewCount(core) + 1
+        val nextTotalReviews = saturatingAddNonNegative(beforeMemory.totalReviews, 1)
+        val nextItemTotalReviews = saturatingAddNonNegative(item.totalReviews, 1)
+        val nextCoreReviewCount = saturatingAddNonNegative(route.reviewCount(core), 1)
         val evidence = evidenceFor(request, core)
 
         if (rating == StudyRatings.AGAIN) {
-            val nextLapses = beforeMemory.lapses + 1
-            val coreDue = nowMillis + result.intervalMillis
+            val nextLapses = saturatingAddNonNegative(beforeMemory.lapses, 1)
+            val coreDue = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L))
             val postLapseMemory = RecordsStudyModels.TaskMemory.fromFields(
                 RecordsStudyModels.TaskMemory.Fields(
                     state = StudyLadderRules.STATE_REVIEW,
@@ -97,7 +97,11 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 activeRepairTasks = schedule.taskTypes,
                 repairTaskIndex = 0,
                 repairStepMinutes = schedule.delayMinutes,
-                repairDueAtMillis = if (schedule.taskTypes.isEmpty()) 0L else nowMillis + stepDelay(schedule.delayMinutes.first()),
+                repairDueAtMillis = if (schedule.taskTypes.isEmpty()) {
+                    0L
+                } else {
+                    saturatingAdd(nowMillis, stepDelay(schedule.delayMinutes.first()))
+                },
                 coreDueAtMillis = coreDue,
                 recurringFailure = recurrence.kind,
                 recurringFailureCount = recurrence.count,
@@ -107,7 +111,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 answerEvidence = evidence,
             )
             val due = if (schedule.taskTypes.isEmpty()) {
-                min(coreDue, nowMillis + StudyLadderRules.DAY)
+                min(coreDue, saturatingAdd(nowMillis, StudyLadderRules.DAY))
             } else {
                 nextRoute.repairDueAtMillis
             }
@@ -128,23 +132,31 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 dueAtMillis = due,
                 phase = phase,
                 totalReviews = nextItemTotalReviews,
-                lapses = item.lapses + 1,
+                lapses = saturatingAddNonNegative(item.lapses, 1),
                 realPassStreak = 0,
-                realAgainStreak = if (realDue) item.realAgainStreak + 1 else item.realAgainStreak,
+                realAgainStreak = if (realDue) {
+                    saturatingAddNonNegative(item.realAgainStreak, 1)
+                } else {
+                    item.realAgainStreak
+                },
                 lastRealDue = if (realDue) item.dueAtMillis else item.lastRealReviewDueAtMillis,
-                writingLevel = item.writingLevel,
+                writingLevel = item.writingLevel.coerceIn(0, 3),
             )
         }
 
-        val passStreak = if (realDue) item.realPassStreak + 1 else item.realPassStreak
+        val passStreak = if (realDue) {
+            saturatingAddNonNegative(item.realPassStreak, 1)
+        } else {
+            item.realPassStreak
+        }
         var memory = RecordsStudyModels.TaskMemory.fromFields(
             RecordsStudyModels.TaskMemory.Fields(
                 state = StudyLadderRules.STATE_REVIEW,
-                dueAtMillis = nowMillis + result.intervalMillis,
+                dueAtMillis = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L)),
                 stability = result.stability,
                 difficulty = result.difficulty,
                 totalReviews = nextTotalReviews,
-                lapses = beforeMemory.lapses,
+                lapses = beforeMemory.lapses.coerceAtLeast(0),
                 learningStep = 0,
                 lastRating = rating,
                 matureIntervalDays = result.intervalDays(),
@@ -165,7 +177,10 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             nextPassStreak = 0
             val capDays = max(1, settings.ladderPromotionIntervalDays / PROMOTION_REVALIDATION_DIVISOR)
             if (memory.matureIntervalDays > capDays) {
-                memory = memory.withSchedule(nowMillis + capDays * StudyLadderRules.DAY, capDays)
+                memory = memory.withSchedule(
+                    saturatingAdd(nowMillis, capDays.toLong() * StudyLadderRules.DAY),
+                    capDays,
+                )
             }
             nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), memory)
         }
@@ -193,11 +208,11 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             dueAtMillis = memory.dueAtMillis,
             phase = RecordsBase.SchedulerPhase.REVIEW,
             totalReviews = nextItemTotalReviews,
-            lapses = item.lapses,
+            lapses = item.lapses.coerceAtLeast(0),
             realPassStreak = nextPassStreak,
             realAgainStreak = 0,
             lastRealDue = if (realDue) item.dueAtMillis else item.lastRealReviewDueAtMillis,
-            writingLevel = item.writingLevel,
+            writingLevel = item.writingLevel.coerceIn(0, 3),
         )
     }
 
@@ -208,12 +223,13 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         nowMillis: Long,
     ): Transition {
         val taskType = route.activeRepairTask() ?: error("repair transition requires an active task")
-        var writingLevel = item.writingLevel
+        var writingLevel = item.writingLevel.coerceIn(0, 3)
         var rating = repairRating(request, taskType)
         if (taskType == StudyTaskTypes.WRITE_KANJI) {
             writingLevel = when {
                 rating == StudyRatings.AGAIN -> max(0, writingLevel - 1)
-                request.writingPassed && request.writingClean && request.hintsUsed <= 0 -> min(3, writingLevel + 1)
+                request.writingPassed && request.writingClean && request.hintsUsed <= 0 ->
+                    min(3, saturatingAddNonNegative(writingLevel, 1))
                 else -> writingLevel
             }
             if (rating == StudyRatings.GOOD && writingLevel < WRITING_REPAIR_CLEAN_LEVEL) {
@@ -228,7 +244,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val coreMemory = AdaptiveStudyItemPolicy.coreMemory(item, route.activeCore)
         if (nextIndex >= route.activeRepairTasks.size) {
             val coreDue = route.coreDueAtMillis.takeIf { it > 0L } ?: coreMemory.dueAtMillis
-            val validationDue = min(coreDue, nowMillis + StudyLadderRules.DAY)
+            val validationDue = min(coreDue, saturatingAdd(nowMillis, StudyLadderRules.DAY))
             val validationMemory = coreMemory.withSchedule(
                 validationDue,
                 intervalDaysPreservingLastReview(coreMemory, validationDue),
@@ -239,7 +255,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 repairStepMinutes = emptyList(),
                 repairDueAtMillis = 0L,
                 revalidationPending = true,
-                repairAttemptCount = route.repairAttemptCount + 1,
+                repairAttemptCount = saturatingAddNonNegative(route.repairAttemptCount, 1),
             )
             return Transition(updateItem(
                 item.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(route.activeCore), validationMemory),
@@ -258,11 +274,11 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val delay = route.repairStepMinutes.getOrElse(nextIndex) {
             route.repairStepMinutes.lastOrNull() ?: AdaptiveRepairPolicy.SYNTHETIC_REPAIR_STEP_MINUTES
         }
-        val nextDue = nowMillis + stepDelay(delay)
+        val nextDue = saturatingAdd(nowMillis, stepDelay(delay))
         val nextRoute = route.copy(
             repairTaskIndex = nextIndex,
             repairDueAtMillis = nextDue,
-            repairAttemptCount = route.repairAttemptCount + 1,
+            repairAttemptCount = saturatingAddNonNegative(route.repairAttemptCount, 1),
         )
         return Transition(updateItem(
             item,
@@ -336,28 +352,49 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         writingLevel: Int,
     ): RecordsStudyModels.StudyItem {
         val anchor = AdaptiveCorePolicy.memoryOwnerRung(route.activeCore)
-        return item.copyBuilder()
+        val normalizedMemory = normalizeMemoryCounters(memory)
+        return item.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(route.activeCore), normalizedMemory)
+            .copyBuilder()
             .state(if (phase == RecordsBase.SchedulerPhase.RELEARNING) StudyLadderRules.STATE_LEARNING else StudyLadderRules.STATE_REVIEW)
             .dueAtMillis(dueAtMillis)
-            .stability(memory.stability)
-            .difficulty(memory.difficulty)
-            .totalReviews(totalReviews)
-            .lapses(lapses)
+            .stability(normalizedMemory.stability)
+            .difficulty(normalizedMemory.difficulty)
+            .totalReviews(totalReviews.coerceAtLeast(0))
+            .lapses(lapses.coerceAtLeast(0))
             .learningStep(if (phase == RecordsBase.SchedulerPhase.RELEARNING) route.repairTaskIndex else 0)
-            .writingLevel(writingLevel)
+            .writingLevel(writingLevel.coerceIn(0, 3))
             .recognitionStage(StudyLadderRules.rungToLegacyStage(anchor))
             .writingRemediationPending(false)
-            .matureIntervalDays(if (phase == RecordsBase.SchedulerPhase.RELEARNING) 0 else memory.matureIntervalDays)
+            .matureIntervalDays(if (phase == RecordsBase.SchedulerPhase.RELEARNING) 0 else normalizedMemory.matureIntervalDays)
             .rung(anchor)
             .phase(phase)
-            .realPassStreak(realPassStreak)
-            .realAgainStreak(realAgainStreak)
+            .realPassStreak(realPassStreak.coerceAtLeast(0))
+            .realAgainStreak(realAgainStreak.coerceAtLeast(0))
             .lastRealReviewDueAtMillis(lastRealDue)
             .activeToken(null)
             .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
             .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
             .build()
     }
+
+    private fun normalizeMemoryCounters(
+        memory: RecordsStudyModels.TaskMemory,
+    ): RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory.fromFields(
+        RecordsStudyModels.TaskMemory.Fields(
+            state = memory.state,
+            dueAtMillis = memory.dueAtMillis,
+            stability = memory.stability,
+            difficulty = memory.difficulty,
+            totalReviews = memory.totalReviews.coerceAtLeast(0),
+            lapses = memory.lapses.coerceAtLeast(0),
+            learningStep = memory.learningStep,
+            lastRating = memory.lastRating,
+            matureIntervalDays = memory.matureIntervalDays.coerceAtLeast(0),
+            consecutivePasses = memory.consecutivePasses.coerceAtLeast(0),
+            lastPassedDueAtMillis = memory.lastPassedDueAtMillis,
+            lastReviewedAtMillis = memory.lastReviewedAtMillis,
+        ),
+    )
 
     private fun usableCoreMemory(item: RecordsStudyModels.StudyItem, core: CoreSkill): RecordsStudyModels.TaskMemory {
         val memory = AdaptiveStudyItemPolicy.coreMemory(item, core)
@@ -384,8 +421,11 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
     private fun elapsedReviewDays(memory: RecordsStudyModels.TaskMemory, nowMillis: Long): Int {
         val previousIntervalMillis = max(0L, memory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
         val lastReviewAt = memory.lastReviewedAtMillis.takeIf { it > 0L }
-            ?: max(0L, memory.dueAtMillis - previousIntervalMillis)
-        return min(Int.MAX_VALUE.toLong(), max(0L, nowMillis - lastReviewAt) / StudyLadderRules.DAY).toInt()
+            ?: max(0L, saturatingSubtract(memory.dueAtMillis, previousIntervalMillis))
+        return min(
+            Int.MAX_VALUE.toLong(),
+            nonNegativeDifference(nowMillis, lastReviewAt) / StudyLadderRules.DAY,
+        ).toInt()
     }
 
     private fun repairRating(request: RecordsSchedulerModels.ReviewRequest, taskType: String): String {
@@ -439,8 +479,9 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
     )
 
     private fun scheduledIntervalDays(nowMillis: Long, dueAtMillis: Long): Int {
-        val intervalMillis = max(1L, dueAtMillis - nowMillis)
-        return min(Int.MAX_VALUE.toLong(), (intervalMillis + StudyLadderRules.DAY - 1L) / StudyLadderRules.DAY).toInt()
+        val intervalMillis = max(1L, nonNegativeDifference(dueAtMillis, nowMillis))
+        val days = 1L + (intervalMillis - 1L) / StudyLadderRules.DAY
+        return min(Int.MAX_VALUE.toLong(), days).toInt()
     }
 
     private fun intervalDaysPreservingLastReview(
@@ -449,7 +490,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
     ): Int {
         val priorIntervalMillis = max(0L, memory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
         val lastReviewAt = memory.lastReviewedAtMillis.takeIf { it > 0L }
-            ?: max(0L, memory.dueAtMillis - priorIntervalMillis)
+            ?: max(0L, saturatingSubtract(memory.dueAtMillis, priorIntervalMillis))
         return scheduledIntervalDays(lastReviewAt, dueAtMillis)
     }
 

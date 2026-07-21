@@ -79,7 +79,7 @@ and also the in-memory "family key" (`StudyQueueSeeder.familyKey`,
   accumulating (see §7) so `LadderHealthPolicy` can report chronic failers.
 - Writing: `writingLevel` (0–3), `writingRemediationPending` (legacy flag,
   kept in sync with `rung == WRITE_KANJI`).
-- Seven per-rung `TaskMemory` slots (see 2.2).
+- Ten per-rung `TaskMemory` slots (see 2.2).
 - `hasSimilarKanji`: **derived, never persisted.** Recomputed at read time
   from the `similar_kanji_pairs` table by `kanjiWithSimilarNeighbors`, which
   (Goal 69) counts a kanji only when it participates in a pair whose **both**
@@ -110,10 +110,11 @@ learningStep, lastRating, matureIntervalDays, consecutivePasses,
 lastPassedDueAtMillis
 ```
 
-Encoded as a tab-separated string (`encode()`, `:82-94`) into one of seven
+Encoded as a tab-separated string (`encode()`, `:82-94`) into one of ten
 `study_items` text columns: `typing_meaning_memory`, `meaning_kanji_memory`,
 `kanji_meaning_memory`, `font_meaning_memory`, `word_reading_memory`,
-`writing_remediation_memory`, `similar_kanji_memory`. Rung-to-slot routing:
+`writing_remediation_memory`, `similar_kanji_memory`, `kanji_reading_memory`,
+`reading_kanji_memory`, and `sentence_reading_memory`. Rung-to-slot routing:
 `memoryForRung` (`RecordsStudyModels.kt:371-382`). Initial memory is
 `("new", 0, stability 0.4, difficulty 5.0)` (`TaskMemory.initial()`, `:97`).
 
@@ -153,9 +154,9 @@ storage compatibility only (new constants are appended at the end); the
 least-scaffolded top) and `enabledRungs`. The order is a **scaffolding
 gradient, not a difficulty gradient** (P9): the bottom rung (`write_kanji`) is
 the most *supported* — guided handwriting with hints and stroke guides — and
-also the most *demanding* skill, while the top rung (`word_reading`) offers
-the least support. Demotion adds scaffolding; promotion removes it. See §13
-for P9/P10.
+also the most *demanding* skill, while the top rung (`sentence_reading` when
+available, otherwise `word_reading`) offers the least support. Demotion adds
+scaffolding; promotion removes it. See §13 for P9/P10.
 
 Default order (`defaultsOrder()`), most-scaffolded (bottom) to
 least-scaffolded (top):
@@ -195,17 +196,18 @@ Invariants and behaviors:
 
 - **At least one always-available rung must stay enabled.** Every rung
   except the conditional rungs (`similar_kanji`, `kanji_reading`,
-  `reading_kanji` — `StudyLadderSettings.CONDITIONAL_RUNGS`) is "always
-  available"
+  `reading_kanji`, `sentence_reading` —
+  `StudyLadderSettings.CONDITIONAL_RUNGS`) is "always available"
   (`alwaysAvailable`). The constructor force-adds `KANJI_MEANING` if the
   enabled set has none; `withRungEnabled` refuses to disable the last one;
   `fromStored` falls back to full defaults on invalid stored combos.
 - **Per-item availability.** `isValidForItem(rung, availability)`: a rung is
   valid if enabled and `availability.isAvailable(rung)` — always-available
   rungs unconditionally, conditional rungs per their `RungAvailability` flag
-  (`hasSimilarKanji`, `hasKanjiReading`). The single `hasSimilarKanji: Boolean`
-  parameter that used to thread through every movement method was generalized
-  into the `RungAvailability` value object (Goal 75).
+  (`hasSimilarKanji`, `hasKanjiReading`, `hasReadingKanji`,
+  `hasSentenceReading`). The single `hasSimilarKanji: Boolean` parameter that
+  used to thread through every movement method was generalized into the
+  `RungAvailability` value object (Goal 75).
 - **`effectiveRung(current, availability)`**: if the stored rung is invalid
   for the item (disabled, or a conditional rung without content), walk outward
   by distance in the ordered list, checking the lower neighbor before the
@@ -239,9 +241,15 @@ Session `taskType` is always derived from the item's rung
 (`StudySessionSelector.kt:36`), and routing to a UI surface is decided by
 `StudySessionRoute.destination` (`core/.../StudySessionRoute.kt:12-17`):
 `writingRequired → WRITING`; `similar_kanji → SIMILAR_KANJI`;
-`meaning_kanji → MEANING_KANJI`; everything else → `FLASHCARD`. The
-four-way switch is `MainActivityStudy.renderSession`
+`meaning_kanji → MEANING_KANJI`; `kanji_reading → KANJI_READING`;
+`reading_kanji → READING_KANJI`; everything else → `FLASHCARD`. The
+six-way switch is `MainActivityStudy.renderSession`
 (`app/.../MainActivityStudy.kt:130-137`).
+
+Sections 4.1–4.7 preserve the original DB25 rung walkthrough. DB27–29 added
+`kanji_reading`, `reading_kanji`, and `sentence_reading`; their ordering and
+availability are summarized in section 3 and their decisions in the
+reading-aware log near the end of section 14.
 
 ### 4.1 `write_kanji` — handwriting production (most-scaffolded rung / demotion floor)
 
@@ -352,28 +360,24 @@ four-way switch is `MainActivityStudy.renderSession`
   `random()`), to break reliance on one typeface's shapes.
 - **Legacy mapping**: `recognition_stage = 1`.
 
-### 4.7 `word_reading` — contextual reading (least-scaffolded rung / promotion ceiling)
+### 4.7 `word_reading` — contextual reading (original DB25 ceiling)
 
 - **Memory slot**: `word_reading_memory`.
 - **UI**: flashcard whose hero is the whole source word (44sp) with the
   question "What is the reading?" (`StudyTextCopy.wordPrompt`,
   `StudyExampleSelector.wordReadingExample` prefers the suspended/missed
   source word).
-- **Ladder role**: promotion ceiling; further passes keep the card here.
+- **Ladder role**: the DB25 promotion ceiling. In DB30, cards with sentence
+  data can promote to `sentence_reading`; otherwise this remains their
+  effective ceiling.
 - **Legacy mapping**: `recognition_stage = 2`.
-- **The meaning→reading seam.** Rungs 1–6 all test *meaning* knowledge in
-  some form; `word_reading` switches the tested dimension to *pronunciation*.
-  This is deliberate: `word_reading` is the **contextual exit check** — the
-  card demonstrates it can be read in a real word before it leaves the
-  ladder's active practice. A reading lapse demotes back into
-  `font_meaning` (more *meaning* practice), which does not directly
-  remediate a reading miss; that is accepted because Kani remediates
-  recognition, not readings, and true retirement is Anki-evidence-driven
+- **The meaning→reading seam.** The original lower rungs test *meaning*
+  knowledge; `word_reading` switches the tested dimension to
+  *pronunciation*. DB30 later added reading-discrimination rungs below it and
+  sentence reading above it, superseding the DB25 decision that reading-focused
+  remediation was out of scope. True retirement remains Anki-evidence-driven
   (P1: retirement fires on Anki-side `matureSupportCount`, not the ladder
-  ceiling). Goal 63's min-pass gate guarantees `word_reading` is validated
-  more than once before it is treated as passed. A reading-focused rung or
-  failure-dimension tracking is an explicit non-goal (see §14) unless the
-  product direction changes.
+  ceiling).
 
 ### 4.8 Rating boundary summary
 
@@ -583,7 +587,8 @@ never move the ladder.
   post-demotion pass. When the rung actually changes, the newly promoted
   rung's first review is capped at `max(1, promotionDays / 3)` days (7 at
   the default 21) — `capPromotedRungFirstReview` — so the new skill is
-  validated soon after unlocking. At the ceiling (`word_reading`)
+  validated soon after unlocking. At the item's highest valid rung
+  (`sentence_reading` when available, otherwise `word_reading`),
   `nextRung` returns the same rung and no cap applies. When the interval
   qualifies but the min-pass gate blocks the move, the trace records
   `promotion_blocked_min_passes`. On the `write_kanji` rung a third gate
@@ -873,11 +878,12 @@ before-item (`LocalStoreStudy.undoLastAppliedReview`, `:93-106`).
 
 ## 10. Legacy Persistence Summary
 
-DB `kanji_anki_simple.db`, version **25** (`LocalStoreSchema.kt:6-7`).
+The final legacy ladder schema is DB version **30**. DB31 adds adaptive routing
+state while retaining these columns for lazy conversion and compatibility.
 
 | Table | Role |
 | --- | --- |
-| `study_items` | Scheduler source of truth: PK `(kanji, answer_signature)`, item FSRS mirror, rung/phase/streaks, 7 task-memory text columns, `active_token` |
+| `study_items` | Scheduler source of truth: PK `(kanji, answer_signature)`, item FSRS mirror, rung/phase/streaks, 10 task-memory text columns, `active_token` |
 | `review_log` | Durable review evidence, consumed-token set, before/after snapshots |
 | `learning_repeats` | Practice-repeat ordering data (not a scheduler queue) |
 | `study_task_log` | Per-answer timing/outcome |
@@ -962,19 +968,20 @@ settings and stats semantics.
    decision traces exist for both selection and application.
 6. **P9 — The ladder is a scaffolding gradient, not a difficulty gradient.**
    Bottom = maximum support and deliberate practice (guided handwriting with
-   hints and stroke guides); top = minimum support and contextual use (raw
-   word reading). Demotion adds scaffolding; promotion removes it. Describing
-   `write_kanji` as the low or easy end of the ladder is misleading —
-   production is the most *demanding* skill; it is the most *supported* rung.
+   hints and stroke guides); top = minimum support and contextual use (mined
+   sentence reading when available, otherwise raw word reading). Demotion adds
+   scaffolding; promotion removes it. Describing `write_kanji` as the low or
+   easy end of the ladder is misleading — production is the most *demanding*
+   skill; it is the most *supported* rung.
    Prefer
    scaffolding language ("most-scaffolded rung", "the more-scaffolded
    neighbor") over easier/harder throughout code, docs, and settings copy.
 7. **P10 — Grading objectivity decreases as trust increases.** Bottom rungs
    grade objectively (ML-Kit ink evaluation, forced-choice correctness,
    typed-answer matching); top rungs are self-graded reveal cards
-   (`kanji_meaning`, `font_meaning`, `word_reading`). The ladder hands
-   grading back to the learner as the card earns trust; movement rules
-   should not undermine this (e.g. the clean-write exit gate, Goal 67,
+   (`kanji_meaning`, `font_meaning`, `word_reading`, `sentence_reading`). The
+   ladder hands grading back to the learner as the card earns trust; movement
+   rules should not undermine this (e.g. the clean-write exit gate, Goal 67,
    keeps objective evidence in charge of leaving `write_kanji`).
 
 ---
@@ -1159,21 +1166,18 @@ evidence can establish mature support and retire a repair. The forecast never
 claims that ladder completion changes Anki scheduling state or proves repair
 outcomes (decision D-S4 / Goal 88).
 
-### DB30 non-goals superseded by DB31
+### Earlier non-goals superseded by DB30 and DB31
 
-- **The meaning→reading seam at `word_reading` (Goal 72).** The top rung
-  switches the tested dimension from meaning to pronunciation and a reading
-  lapse demotes back into meaning practice. This is intentional:
-  `word_reading` is the contextual exit check, Kani remediates recognition
-  (not readings), and true retirement is Anki-evidence-driven (P1). A
-  reading-focused rung or per-dimension failure tracking is an explicit
-  non-goal unless the product direction changes. Documented in §4.7 and the
-  AGENTS.md ladder notes.
+- **The original meaning→reading seam at `word_reading` (Goal 72).** DB25
+  treated reading-focused remediation as a non-goal. DB27–29 superseded that
+  decision by adding `kanji_reading`, `reading_kanji`, and
+  `sentence_reading`; the default DB30 ceiling is sentence reading when data
+  exists and word reading otherwise.
 
-DB31 deliberately changes that decision: contextual reading is its own
-long-term core, never demotes into recognition, and records per-dimension
-failure causes for inline repair. This legacy non-goal must not be used to
-remove the adaptive contextual-reading core or its failure evidence.
+DB31 changes the routing model again: contextual reading is its own long-term
+core, never demotes into recognition, and records per-dimension failure causes
+for inline repair. The earlier non-goal must not be used to remove the adaptive
+contextual-reading core or its failure evidence.
 
 ### Improvement ideas (non-defect)
 

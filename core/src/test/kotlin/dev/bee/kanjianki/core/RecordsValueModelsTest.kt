@@ -124,6 +124,8 @@ class RecordsValueModelsTest {
         assertSame(RecordsStudyModels.TaskMemory.initial().state, RecordsStudyModels.TaskMemory.decode("", null).state)
         assertSame(fallback, RecordsStudyModels.TaskMemory.decode("too\tshort", fallback))
         assertSame(fallback, RecordsStudyModels.TaskMemory.decode("new\tbad\t0.4\t5.0\t0\t0\t0\t\t0", fallback))
+        assertSame(fallback, RecordsStudyModels.TaskMemory.decode("new\t1\tNaN\t5.0\t0\t0\t0\t\t0", fallback))
+        assertSame(fallback, RecordsStudyModels.TaskMemory.decode("new\t1\t0.4\tInfinity\t0\t0\t0\t\t0", fallback))
         assertEquals("new", emptyState.state)
 
         val decoded = RecordsStudyModels.TaskMemory.decode(
@@ -155,6 +157,19 @@ class RecordsValueModelsTest {
 
         assertEquals(1.0, RecordsSchedulerModels.ReviewStats(0, 0, 0, 0, 0, 0, 0).retentionProxy(), 0.001)
         assertEquals(0.25, RecordsSchedulerModels.ReviewStats(4, 1, 1, 1, 1, 4, 1).writingFailureRate(), 0.001)
+        assertEquals(
+            1.0,
+            RecordsSchedulerModels.ReviewStats(
+                Int.MAX_VALUE, 0, Int.MAX_VALUE, Int.MAX_VALUE, Int.MAX_VALUE, 0, 0,
+            ).retentionProxy(),
+            0.0,
+        )
+        assertEquals(
+            0.0,
+            RecordsSchedulerModels.ReviewStats(-1, -1, -1, -1, -1, -1, Int.MAX_VALUE)
+                .writingFailureRate(),
+            0.0,
+        )
     }
 
     @Test

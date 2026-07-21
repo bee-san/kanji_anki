@@ -2,13 +2,18 @@ package dev.bee.kanjianki.data
 
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 
 internal class SqliteSyncRunStorage(
     private val store: LocalStoreSync,
     private val transactionDb: SQLiteDatabase? = null,
 ) : SyncRunStorage {
     override fun insert(record: SyncRunRecord): Long {
-        return writableDatabase().insert(LocalStoreBase.TABLE_SYNC_RUNS, null, values(record))
+        val inserted = writableDatabase().insertOrThrow(LocalStoreBase.TABLE_SYNC_RUNS, null, values(record))
+        if (inserted == -1L) {
+            throw SQLiteException("Failed to insert required sync run")
+        }
+        return inserted
     }
 
     override fun updateRemovalMessage(syncId: Long, message: String) {

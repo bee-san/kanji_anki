@@ -24,7 +24,7 @@ class ProgressAnalyticsDemoDataSourceTest {
         assertEquals("+4% vs previous 30d", overview.accuracy.deltaLabel)
         assertEquals(6, overview.currentStreak.currentDays)
         assertEquals(14, overview.currentStreak.bestDays)
-        assertEquals(126, overview.kanjiLearned.value)
+        assertEquals(135, overview.kanjiLearned.value)
         assertEquals("+7 this week", overview.kanjiLearned.deltaLabel)
         assertEquals(9, overview.focusSessions.value)
         assertEquals("This week", overview.focusSessions.detailLabel)

@@ -112,7 +112,11 @@ internal object AdaptiveLoadFocusPolicy {
         currentStreakDays: Int,
         recoveryDue: Int,
     ): Int {
-        val target = if (stats.total == 0) min(3, ceiling) else max(1, (ceiling * 0.65f).roundToInt())
+        val target = if (stats.total.coerceAtLeast(0) == 0) {
+            min(3, ceiling)
+        } else {
+            max(1, (ceiling * 0.65f).roundToInt())
+        }
         return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue)
     }
 
@@ -123,7 +127,7 @@ internal object AdaptiveLoadFocusPolicy {
         currentStreakDays: Int,
         recoveryDue: Int,
     ): Int {
-        val target = if (stats.total == 0) min(3, autoTarget) else autoTarget
+        val target = if (stats.total.coerceAtLeast(0) == 0) min(3, autoTarget) else autoTarget
         return adjustedTargetFromBase(target, ceiling, stats, currentStreakDays, recoveryDue)
     }
 
@@ -135,8 +139,9 @@ internal object AdaptiveLoadFocusPolicy {
         recoveryDue: Int,
     ): Int {
         var target = baseTarget
-        val missRate = if (stats.total == 0) 0.0 else stats.again.toDouble() / stats.total.toDouble()
-        val hardRate = if (stats.total == 0) 0.0 else stats.hard.toDouble() / stats.total.toDouble()
+        val total = stats.total.coerceAtLeast(0)
+        val missRate = if (total == 0) 0.0 else stats.again.coerceIn(0, total).toDouble() / total.toDouble()
+        val hardRate = if (total == 0) 0.0 else stats.hard.coerceIn(0, total).toDouble() / total.toDouble()
         val writingFailureRate = stats.writingFailureRate()
         if (missRate >= 0.50) {
             target -= 2
@@ -149,10 +154,10 @@ internal object AdaptiveLoadFocusPolicy {
         if (writingFailureRate >= 0.30) {
             target -= 1
         }
-        if (recoveryDue >= target) {
+        if (recoveryDue.coerceAtLeast(0) >= target) {
             target = max(1, target - 1)
         }
-        if (stats.total >= 3 &&
+        if (total >= 3 &&
             currentStreakDays >= 3 &&
             missRate <= 0.10 &&
             hardRate <= 0.25 &&

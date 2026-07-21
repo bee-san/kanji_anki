@@ -10,15 +10,14 @@ object ReminderSnoozePolicy {
         quietStartMinuteOfDay: Int,
         quietEndMinuteOfDay: Int,
     ): Long {
-        val raw = snoozeMillis + SNOOZE_DURATION_MILLIS
+        val raw = saturatingAdd(snoozeMillis, SNOOZE_DURATION_MILLIS)
         if (!ReminderAntiSpamPolicy.quietHoursActive(quietStartMinuteOfDay, quietEndMinuteOfDay)) {
             return raw
         }
         val rawMinuteOfDay = minuteOfDay(raw)
         if (isInsideQuietWindow(rawMinuteOfDay, quietStartMinuteOfDay, quietEndMinuteOfDay)) {
-            val minutesPastStart = (rawMinuteOfDay - quietEndMinuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY
             val minutesToEnd = (quietEndMinuteOfDay - rawMinuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY
-            return raw + minutesToEnd.toLong() * 60L * 1000L
+            return saturatingAdd(raw, minutesToEnd.toLong() * 60L * 1000L)
         }
         return raw
     }

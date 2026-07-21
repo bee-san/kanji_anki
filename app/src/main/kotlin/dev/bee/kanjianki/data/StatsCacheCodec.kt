@@ -27,6 +27,7 @@ object StatsCacheCodec {
         wrongPickCounts: Map<String, Map<String, Int>>? = null,
         confusionMeanings: Map<String, String>? = null,
         ladderForecast: LadderCompletionForecastPolicy.Forecast? = null,
+        timeZoneId: String? = null,
     ): String {
         val safe = stats ?: StudyStatsStore.KaniOutcomeStats.empty()
         val root = JSONObject()
@@ -37,7 +38,7 @@ object StatsCacheCodec {
         val hasExtras = studyImpactStats != null || recentMistakes != null || studyStreak != null ||
             studyTaskTimeStats != null || reviewDaySummaries != null || kanjiRepairEvidence != null ||
             taskTypeDaySummaries != null || cumulativeKanjiPracticed != null || wrongPickCounts != null ||
-            confusionMeanings != null || ladderForecast != null
+            confusionMeanings != null || ladderForecast != null || timeZoneId != null
         if (hasExtras) {
             root.put("cacheFormatVersion", STATS_CACHE_FORMAT_VERSION)
             root.put("studyImpactStats", studyImpactStatsToJson(studyImpactStats ?: StudyStatsStore.StudyImpactStats(0, 0, 0, 0, 0, 0)))
@@ -50,6 +51,7 @@ object StatsCacheCodec {
             root.put("cumulativeKanjiPracticed", cumulativeKanjiToJson(cumulativeKanjiPracticed ?: emptyList()))
             root.put("wrongPickCounts", wrongPickCountsToJson(wrongPickCounts ?: emptyMap()))
             root.put("confusionMeanings", stringMapToJson(confusionMeanings ?: emptyMap()))
+            root.put("timeZoneId", timeZoneId.orEmpty())
             ladderForecast?.let { root.put("ladderForecast", forecastToJson(it)) }
         } else {
             root.put("cacheFormatVersion", 1)

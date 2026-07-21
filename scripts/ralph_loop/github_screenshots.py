@@ -271,7 +271,22 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
                 )
         if not manifest_routes:
             manifest_routes = _unique_routes(str(entry["route"]) for entry in capture_entries)
-        manifest_files = [cast(Path, entry["path"]) for entry in capture_entries]
+        capture_files = [cast(Path, entry["path"]) for entry in capture_entries]
+        if manifest_files and (
+            len(manifest_files) != len(capture_files)
+            or any(
+                manifest_files[index].resolve() != capture_path.resolve()
+                for index, capture_path in enumerate(capture_files)
+            )
+        ):
+            return _status(
+                "missing_artifact",
+                "Artifact manifest files must exactly match capture paths in order.",
+                manifest=str(manifests[0]),
+                files=[str(path) for path in manifest_files],
+                capture_paths=[str(path) for path in capture_files],
+            )
+        manifest_files = capture_files
     if not manifest_routes:
         return _status("missing_artifact", f"Artifact manifest at {manifests[0]} does not declare any routes.", manifest=str(manifests[0]))
 
@@ -322,16 +337,8 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
             )
 
         validated_pngs: list[Path] = []
-        for index, (entry, expected_file) in enumerate(zip(capture_entries, manifest_files)):
+        for index, entry in enumerate(capture_entries):
             capture_path = cast(Path, entry["path"])
-            if capture_path.resolve() != expected_file.resolve():
-                return _status(
-                    "missing_artifact",
-                    f"Artifact manifest capture entry {index} points to {capture_path} but expected {expected_file}.",
-                    manifest=str(manifests[0]),
-                    capture_path=str(capture_path),
-                    file_path=str(expected_file),
-                )
             if not capture_path.exists():
                 return _status(
                     "missing_artifact",
@@ -391,7 +398,8 @@ def validate_artifact(out_dir: Path, expected_route: str | None = None) -> dict[
 
     if expected_route is not None:
         expected_canonical = _canonical_screenshot_route(expected_route)
-        assert expected_canonical is not None
+        if expected_canonical is None:
+            return _status("missing_artifact", "Expected screenshot route must not be blank.")
         if expected_canonical == "all":
             if manifest_requested_route != "all":
                 return _status(
@@ -481,7 +489,8 @@ def run_remote_screenshots(
     branch, branch_error = _current_branch(repo_root, runner)
     if branch_error:
         return _status("failed", branch_error)
-    assert branch is not None
+    if branch is None:
+        return _status("failed", "Unable to determine the current branch.")
     default_branch = _default_branch(repo_root, runner)
     if _is_protected_branch(branch, default_branch):
         return _status("failed", f"Refusing to run on protected branch {branch!r}; use a non-main PR branch.")
@@ -489,7 +498,8 @@ def run_remote_screenshots(
     sha, sha_error = _current_sha(repo_root, runner)
     if sha_error:
         return _status("failed", sha_error)
-    assert sha is not None
+    if sha is None:
+        return _status("failed", "Unable to determine the current commit SHA.")
 
     gh_error = _gh_ready(repo_root, runner, require_remote_screenshots)
     if gh_error:
@@ -508,7 +518,8 @@ def run_remote_screenshots(
 
     run_id, run = _find_run_for_sha(repo_root, runner, workflow, branch, sha, run_lookup_attempts, run_lookup_sleep_seconds)
     if run_id is None:
-        assert run is not None
+        if run is None:
+            run = _status("remote_visual_pending", f"No {workflow} run was found for {sha}.")
         if require_remote_screenshots:
             run["status"] = "failed"
         return run

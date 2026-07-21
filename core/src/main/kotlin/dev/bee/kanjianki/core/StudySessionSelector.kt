@@ -14,7 +14,7 @@ class StudySessionSelector {
         ladder: RecordsBase.StudyLadderSettings?,
     ): RecordsSchedulerModels.StudySession? {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         val rowByKanji = HashMap<String, RecordsImportModels.DashboardRow>()
         for (row in rows) {
             rowByKanji[row.kanji] = row
@@ -51,7 +51,7 @@ class StudySessionSelector {
         ladder: RecordsBase.StudyLadderSettings?,
     ): SchedulerDecisionTrace {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         val rowByKanji = rowByKanji(rows)
         val activeByFamily = activeCandidatesByFamily(items, rows, allowedKanji, safeLadder)
         val activeItems = ArrayList<RecordsStudyModels.StudyItem>()
@@ -104,7 +104,7 @@ class StudySessionSelector {
         randomSeed: Long?,
     ): List<String> {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         val rowByKanji = rowByKanji(rows)
         val dueItems = dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
             .filter { it.dueAtMillis <= horizon }
@@ -158,7 +158,7 @@ class StudySessionSelector {
         ladder: RecordsBase.StudyLadderSettings?,
     ): Map<String, RecordsStudyModels.StudyItem> {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         val rowByKanji = rowByKanji(rows)
         val out = LinkedHashMap<String, RecordsStudyModels.StudyItem>()
         for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, allowedKanji, safeLadder)
@@ -197,7 +197,7 @@ class StudySessionSelector {
         studyAheadMillis: Long,
         ladder: RecordsBase.StudyLadderSettings?,
     ): Int {
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         var count = 0
         for (item in dueQueueItems(items, rows, nowMillis, studyAheadMillis, null, ladder)) {
             if (item.dueAtMillis <= horizon) {
@@ -250,7 +250,7 @@ class StudySessionSelector {
         preferDueEligible: Boolean,
     ): List<RecordsStudyModels.StudyItem> {
         val safeLadder = StudyLadderRules.safeLadder(ladder)
-        val horizon = nowMillis + StudyLadderRules.clampStudyAheadMillis(studyAheadMillis)
+        val horizon = saturatingAdd(nowMillis, StudyLadderRules.clampStudyAheadMillis(studyAheadMillis))
         val currentRows = HashSet<String>()
         val currentFamilies = HashSet<String>()
         for (row in rows) {

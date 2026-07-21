@@ -86,7 +86,7 @@ fi
 
 wait_for_pid() {
   local attempt
-  for attempt in $(seq 1 "${pid_attempts}"); do
+  for ((attempt = 1; attempt <= pid_attempts; attempt++)); do
     local pid
     pid="$(adb shell pidof -s "${package_name}" 2>/dev/null | tr -d '\r\n')"
     if [ -n "${pid}" ]; then

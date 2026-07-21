@@ -29,20 +29,20 @@ object SettingsInputRules {
         if (activeCards || suspendedCards || weakCards) {
             return true
         }
-        if (taggedCards && parsedTags!!.isNotEmpty()) {
+        if (taggedCards && !parsedTags.isNullOrEmpty()) {
             return true
         }
-        return browserQueryCards && queryText!!.isNotEmpty()
+        return browserQueryCards && !queryText.isNullOrBlank()
     }
 
     @JvmStatic
     fun rankSliderProgress(rank: Int): Int {
-        return max(0, min(MAX_RANK_SLIDER_PROGRESS, rank - 1))
+        return rank.coerceIn(FrequencyRetentionRanges.MIN_RANK, FrequencyRetentionRanges.MAX_RANK) - 1
     }
 
     @JvmStatic
     fun rankFromSliderProgress(progress: Int): Int {
-        return max(FrequencyRetentionRanges.MIN_RANK, min(FrequencyRetentionRanges.MAX_RANK, progress + 1))
+        return progress.coerceIn(0, MAX_RANK_SLIDER_PROGRESS) + 1
     }
 
     @JvmStatic

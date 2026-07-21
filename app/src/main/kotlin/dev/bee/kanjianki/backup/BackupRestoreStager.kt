@@ -132,7 +132,14 @@ internal object BackupRestoreStager {
             val separator = line.indexOf('=')
             if (separator <= 0) null else line.substring(0, separator) to line.substring(separator + 1)
         }.toMap()
-        if (values["format"] == READY_MARKER_FORMAT && values["phase"] == READY_MARKER_PHASE) {
+        val readySourceName = values["source_name"]?.trim()
+        val readyTimestamp = values["staged_at"]?.toLongOrNull()
+        if (values["format"] == READY_MARKER_FORMAT &&
+            values["phase"] == READY_MARKER_PHASE &&
+            !readySourceName.isNullOrEmpty() &&
+            readyTimestamp != null &&
+            readyTimestamp >= 0L
+        ) {
             return MarkerState.SAFETY_READY
         }
         val legacyTimestamp = values["staged_at"]?.toLongOrNull()

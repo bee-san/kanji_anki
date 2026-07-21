@@ -253,8 +253,9 @@ to 1 reproduces the pre-gate single-pass promotion. A
 due-review `Again` increments a consecutive fail streak and demotes the rung
 when it reaches `ladder_demotion_fail_streak` (default 3 fails). At
 `write_kanji` the demotion floor is reached and further `Again`s keep the
-card on that rung. At `word_reading` the promotion ceiling is reached and
-further passes keep the card on that rung.
+card on that rung. At the item's highest valid enabled rung, further passes
+keep the card there; in the default order that is `sentence_reading` when
+sentence data exists and otherwise `word_reading`.
 
 FSRS weights are default-neutral but may be personalized when the user opts
 in. `scheduler_fsrs_weights` stores all 21 values as a full-precision
@@ -372,14 +373,12 @@ The scheduler core keeps all four ratings (`again`, `hard`, `good`, `easy`).
 For ladder-streak counting, `hard`, `good`, and `easy` all count as a pass;
 only `again` counts as a fail.
 
-The top rung (`word_reading`) switches the tested dimension from meaning to
-pronunciation. This is deliberate: it is the contextual exit check — a card
-proves it can be read in a real word before leaving active ladder practice.
-A reading lapse deliberately demotes back through the meaning rungs because
-Kani remediates recognition, not readings, and true retirement remains
-Anki-evidence-driven (retirement fires on Anki-side `matureSupportCount`, not
-the ladder ceiling). A reading-focused rung or failure-dimension tracking is
-an explicit non-goal.
+`word_reading` switches the tested dimension from meaning to pronunciation.
+`sentence_reading` extends that contextual check into a mined sentence and is
+the default ceiling when sentence data exists. Reading lapses demote through
+the configured reading-focused rungs when they are available before reaching
+meaning practice. True retirement remains Anki-evidence-driven (it fires on
+Anki-side `matureSupportCount`, not the ladder ceiling).
 
 Study UI renders one current rung at a time. Rung rendering:
 
@@ -556,7 +555,7 @@ desktop collection directly.
 
    ```sh
    adb shell mkdir -p /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.media
-   adb push "/home/bee/.local/share/Anki2/User 1/collection.anki2" \
+   adb push "$HOME/.local/share/Anki2/User 1/collection.anki2" \
      /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid/collection.anki2
    ```
 
@@ -707,8 +706,8 @@ For a deliberate (non-patch or re-cut) version, use the manual flow:
    gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
    ```
 
-If you create a GitHub Release directly in the UI, publishing that release also
-triggers this same workflow automatically.
+Creating or publishing a GitHub Release directly in the UI does not trigger
+this workflow. Use a tag push or `workflow_dispatch` for a deliberate release.
 
 6. Fetch the release asset URLs.
 

@@ -15,6 +15,7 @@ WORKFLOW_DIRECTORY = ROOT / ".github/workflows"
 GRADLE_WRAPPER_PROPERTIES = ROOT / "gradle/wrapper/gradle-wrapper.properties"
 ANDROID_RELEASE_WORKFLOW = ROOT / ".github/workflows/android-release.yml"
 ANDROID_INSTRUMENTED_WORKFLOW = ROOT / ".github/workflows/android-instrumented.yml"
+ANKIDROID_CHECKSUMS = ROOT / "ci/fixtures/ankidroid/ankidroid-2.24.0.sha256"
 ANDROID_DEVICE_SMOKE_WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
 DEVICE_RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
 SONAR_WORKFLOW = ROOT / ".github/workflows/sonarqube.yml"
@@ -157,7 +158,8 @@ class WorkflowSupplyChainTest(unittest.TestCase):
                 if re.fullmatch(r"  [A-Za-z0-9_-]+:", line)
             ]
             job_starts.append(len(lines))
-            for start, end in zip(job_starts, job_starts[1:]):
+            for index, start in enumerate(job_starts[:-1]):
+                end = job_starts[index + 1]
                 block = lines[start:end]
                 gradle_indices = [
                     index
@@ -418,13 +420,20 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
         # The fixture must never rejoin the release path as a callable gate.
         self.assertNotIn("workflow_call:", self.workflow)
 
-    def test_pinned_ankidroid_download_prefers_x86_64_apk_then_falls_back(self) -> None:
-        self.assertIn("ankidroid-2.24.0-x86_64-v1", self.workflow)
-        self.assertIn("gh release download v2.24.0 --repo ankidroid/Anki-Android --pattern '*x86_64*.apk'", self.workflow)
-        self.assertIn("gh release download v2.24.0 --repo ankidroid/Anki-Android --pattern '*.apk'", self.workflow)
-        self.assertRegex(self.workflow, r"find \"\$\{RUNNER_TEMP\}/ankidroid\" -name '\*x86_64\*\.apk'")
-        self.assertRegex(self.workflow, r"find \"\$\{RUNNER_TEMP\}/ankidroid\" -name '\*universal\*\.apk'")
-        self.assertIn("::error::No AnkiDroid APK was downloaded.", self.workflow)
+    def test_pinned_ankidroid_download_verifies_exact_x86_64_apk(self) -> None:
+        apk_name = "variant-abi-AnkiDroid-2.24.0-x86_64.apk"
+        checksums = ANKIDROID_CHECKSUMS.read_text(encoding="utf-8")
+
+        self.assertIn("ankidroid-2.24.0-x86_64-sha256-v1", self.workflow)
+        self.assertIn(f"apk_name='{apk_name}'", self.workflow)
+        self.assertIn("gh release download v2.24.0", self.workflow)
+        self.assertIn('--pattern "${apk_name}"', self.workflow)
+        self.assertIn("sha256sum --check", self.workflow)
+        self.assertIn("ci/fixtures/ankidroid/ankidroid-2.24.0.sha256", self.workflow)
+        self.assertRegex(
+            checksums,
+            rf"(?m)^b8aaef8c8ed13e96b7bbafbc46e690490684192147ab445db8a193c4ef6989b0  {re.escape(apk_name)}$",
+        )
 
     def test_emulator_fixture_uses_minimum_and_current_api_x86_64_real_runner_scripts(self) -> None:
         self.assertIn("reactivecircus/android-emulator-runner@70f4dee990796918b78d040e3278474bdbd348a7", self.workflow)

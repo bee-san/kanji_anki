@@ -256,7 +256,9 @@ class StrokeOrderEvaluator private constructor() {
             return sqrt((dx * dx + dy * dy).toDouble()).toFloat()
         }
 
-        private fun clamp(value: Float): Float = max(0f, min(1f, value))
+        private fun clamp(value: Float): Float {
+            return if (value.isFinite()) max(0f, min(1f, value)) else 0f
+        }
 
         private fun boundsForGuide(guide: StrokeGuide): Bounds {
             val bounds = MutableBounds()

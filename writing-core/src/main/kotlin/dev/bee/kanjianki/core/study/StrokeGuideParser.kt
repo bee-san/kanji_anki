@@ -49,11 +49,9 @@ class StrokeGuideParser private constructor() {
                     if (xy.size != 2) {
                         throw IOException("Invalid point on stroke guide line $lineNumber: $pointValue")
                     }
-                    try {
-                        points.add(InkPoint(xy[0].toFloat(), xy[1].toFloat(), points.size.toLong()))
-                    } catch (error: NumberFormatException) {
-                        throw IOException("Invalid coordinate on stroke guide line $lineNumber: $pointValue", error)
-                    }
+                    val x = parseCoordinate(xy[0], pointValue, lineNumber)
+                    val y = parseCoordinate(xy[1], pointValue, lineNumber)
+                    points.add(InkPoint(x, y, points.size.toLong()))
                 }
                 if (points.size >= 2) {
                     strokes.add(InkStroke(points))
@@ -63,6 +61,15 @@ class StrokeGuideParser private constructor() {
                 throw IOException("Stroke guide line $lineNumber has no usable strokes.")
             }
             return strokes
+        }
+
+        @Throws(IOException::class)
+        private fun parseCoordinate(value: String, pointValue: String, lineNumber: Int): Float {
+            val coordinate = value.toFloatOrNull()
+            if (coordinate == null || !coordinate.isFinite()) {
+                throw IOException("Invalid coordinate on stroke guide line $lineNumber: $pointValue")
+            }
+            return coordinate
         }
     }
 }

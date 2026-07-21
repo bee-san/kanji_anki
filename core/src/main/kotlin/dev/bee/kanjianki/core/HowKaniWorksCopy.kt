@@ -43,10 +43,10 @@ object HowKaniWorksCopy {
             )
         ),
         Section(
-            localizedText("Pass, fail, and ladder movement", "合格・不合格とラダー移動"),
+            localizedText("Pass, fail, and revalidation", "合格・不合格と再確認"),
             localizedText(
-                "Pass and Fail are the two study answers. Passes build memory strength; repeated fails trigger demotion to more scaffolded tasks. Promotion to harder tasks happens only when memory strength crosses the threshold and you've passed enough times at the current level.",
-                "合格と不合格が2つの学習回答です。合格はメモリー強度を構築し、繰り返しの不合格はより足場のあるタスクへの降格を引き起こします。より難しいタスクへの昇格は、メモリー強度が閾値を超え、現在のレベルで十分に合格した場合にのみ発生します。"
+                "Pass and Fail are the two study answers. A due Fail updates that core memory once, starts practice-only repair, then rechecks the same core. Strong recognition unlocks contextual reading only after the memory-strength and pass-count gates; contextual reading never demotes back to recognition.",
+                "合格と不合格が2つの学習回答です。期日の不合格はコアメモリーを1回だけ更新し、練習専用の修復後に同じコアを再確認します。認識は記憶強度と合格回数の条件を満たした場合のみ文脈読みに進み、文脈読みから認識へ降格することはありません。"
             )
         ),
         Section(

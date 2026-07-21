@@ -9,7 +9,7 @@ object ConfusionInsightPolicy {
         val firstMeaning: String,
         val secondMeaning: String,
     ) {
-        val total: Int get() = firstToSecond + secondToFirst
+        val total: Int get() = saturatingAddNonNegative(firstToSecond, secondToFirst)
     }
 
     @JvmStatic
@@ -31,11 +31,15 @@ object ConfusionInsightPolicy {
                 val first = minOf(target, selected)
                 val second = maxOf(target, selected)
                 val counts = merged.getOrPut("$first\u0000$second") { Counts() }
-                if (target == first) counts.forward += count else counts.reverse += count
+                if (target == first) {
+                    counts.forward = saturatingAddNonNegative(counts.forward, count)
+                } else {
+                    counts.reverse = saturatingAddNonNegative(counts.reverse, count)
+                }
             }
         }
         return merged.mapNotNull { (key, counts) ->
-            val total = counts.forward + counts.reverse
+            val total = saturatingAddNonNegative(counts.forward, counts.reverse)
             if (total < ConfusionPairMiner.MIN_WRONG_PICKS) return@mapNotNull null
             val glyphs = key.split('\u0000')
             if (counts.reverse > counts.forward) {

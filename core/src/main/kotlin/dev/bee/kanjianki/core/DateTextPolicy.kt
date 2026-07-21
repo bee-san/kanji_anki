@@ -34,7 +34,7 @@ object DateTextPolicy {
         if (dueAt <= now) {
             return localizedText("due now", "今すぐ復習")
         }
-        val delta = dueAt - now
+        val delta = nonNegativeDifference(dueAt, now)
         val minutes = maxOf(1L, delta / 60_000L)
         if (minutes < 60L) {
             return localizedText("due in $minutes min", "${minutes}分後に復習")

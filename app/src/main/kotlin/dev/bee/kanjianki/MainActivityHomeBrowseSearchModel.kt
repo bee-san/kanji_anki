@@ -11,6 +11,7 @@ data class BrowseScreenModel(
     val onToggleAllKanjiScope: (String) -> Unit = {},
     val onSelectAllStudied: () -> Unit = {},
     val onDeselectAllStudied: () -> Unit = {},
+    val onQueryChange: (String) -> Unit = {},
     val onHome: () -> Unit,
     val onSearch: (String) -> Unit,
 )

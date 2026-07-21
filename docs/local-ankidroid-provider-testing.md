@@ -34,14 +34,11 @@ or reuse an API 35 emulator, download pinned AnkiDroid `v2.24.0`, generate the
 sanitized Kiku `.anki2` fixture, install Kani debug APKs, grant the provider
 permission, probe the real AnkiDroid provider, and run the live subset.
 
-On the macOS coding host:
+Run from the repository root. The wrapper detects common macOS and Linux
+Android SDK locations; set `JAVA_HOME`, `ANDROID_HOME`, and
+`ANDROID_SDK_ROOT` first only when the installed Java 17 or SDK is elsewhere.
 
 ```sh
-cd /Users/autumnskerritt/kanji_anki
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
-export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
-export ANDROID_SDK_ROOT=/opt/homebrew/share/android-commandlinetools
-
 # First run only: accepts Android licenses and installs emulator + API 35 image.
 KANJI_INSTALL_ANDROID_SDK_PACKAGES=1 ci/scripts/run_local_ankidroid_fixture.sh
 

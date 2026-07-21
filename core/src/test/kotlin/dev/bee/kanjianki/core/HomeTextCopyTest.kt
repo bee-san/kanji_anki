@@ -629,7 +629,7 @@ class HomeTextCopyTest {
     fun referenceSurfaceCopyPreservesNewEnglishStrings() {
         assertEquals("Choice 1 of 4", HomeTextCopy.choicePositionDescription(0, 4))
         assertEquals(
-            "Learn how Kani's two-core model, repair tasks, and promotion system work together.",
+            "Learn how Kani's two-core model, variants, repair tasks, and revalidation work together.",
             HomeTextCopy.howKaniWorksLinkBody()
         )
         assertEquals("Open", HomeTextCopy.howKaniWorksLinkAction())
@@ -657,7 +657,7 @@ class HomeTextCopyTest {
         withLocale(Locale.JAPANESE) {
             assertEquals("選択肢 1 / 4", HomeTextCopy.choicePositionDescription(0, 4))
             assertEquals(
-                "Kaniの2コアモデル、修復タスク、昇格システムがどのように連携するかを学びます。",
+                "Kaniの2コアモデル、バリエーション、修復タスク、再確認がどのように連携するかを学びます。",
                 HomeTextCopy.howKaniWorksLinkBody()
             )
             assertEquals("開く", HomeTextCopy.howKaniWorksLinkAction())

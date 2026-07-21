@@ -50,8 +50,8 @@ object TaskTypeAccuracyPolicy {
             val total = row.total.coerceAtLeast(0)
             val correct = row.correct.coerceIn(0, total)
             counts.getValue(group).also {
-                it[0] += correct
-                it[1] += total
+                it[0] = saturatingAddNonNegative(it[0], correct)
+                it[1] = saturatingAddNonNegative(it[1], total)
             }
         }
         return Group.entries.mapNotNull { group ->

@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.core.study
 
+import java.io.IOException
 import java.io.StringReader
 import java.util.Collections
 import org.junit.Assert.assertEquals
@@ -61,5 +62,16 @@ class StrokeGuideTest {
         assertTrue(missingColumn.message.orEmpty().contains("expected kanji<TAB>stroke data"))
         assertTrue(invalidCoordinate.message.orEmpty().contains("Invalid coordinate"))
         assertTrue(noUsableStroke.message.orEmpty().contains("no usable strokes"))
+    }
+
+    @Test
+    fun rejectsNonFiniteCoordinates() {
+        for (coordinate in listOf("NaN", "Infinity", "-Infinity", "1e100")) {
+            val error = assertThrows(IOException::class.java) {
+                StrokeGuideParser.parse(StringReader("拉\t$coordinate,0.2;0.3,0.4\n"))
+            }
+
+            assertTrue(error.message.orEmpty().contains("Invalid coordinate"))
+        }
     }
 }

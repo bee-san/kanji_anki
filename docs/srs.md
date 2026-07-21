@@ -66,7 +66,7 @@ Research basis:
 - Full gate:
 
 ```sh
-gradle :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug
+./gradlew :core:test :app:testDebugUnitTest :app:compileDebugAndroidTestJavaWithJavac :app:lintDebug
 ```
 
 ## Assumptions

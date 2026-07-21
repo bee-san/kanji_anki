@@ -534,8 +534,8 @@ object HomeTextCopy {
 
     @JvmStatic
     fun howKaniWorksLinkBody(): String = localizedText(
-        "Learn how Kani's two-core model, repair tasks, and promotion system work together.",
-        "Kaniの2コアモデル、修復タスク、昇格システムがどのように連携するかを学びます。"
+        "Learn how Kani's two-core model, variants, repair tasks, and revalidation work together.",
+        "Kaniの2コアモデル、バリエーション、修復タスク、再確認がどのように連携するかを学びます。"
     )
 
     @JvmStatic

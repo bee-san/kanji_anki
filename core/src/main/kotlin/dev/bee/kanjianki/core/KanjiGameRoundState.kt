@@ -12,6 +12,9 @@ class KanjiGameRoundState private constructor(
     @JvmField val streak: Int = maxOf(0, streak)
 
     fun answer(wasCorrect: Boolean): KanjiGameRoundState {
+        if (roundComplete()) {
+            return this
+        }
         return KanjiGameRoundState(
             totalQuestions,
             answered + 1,
@@ -40,7 +43,8 @@ class KanjiGameRoundState private constructor(
             if (answered <= 0) {
                 return 0
             }
-            return Math.round(correct * 100f / answered)
+            val safeCorrect = correct.coerceIn(0, answered)
+            return Math.round(safeCorrect.toDouble() * 100.0 / answered).toInt()
         }
     }
 }

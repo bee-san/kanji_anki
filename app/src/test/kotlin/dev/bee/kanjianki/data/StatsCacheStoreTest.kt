@@ -13,13 +13,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.Instant
 import java.util.Collections
+import java.util.TimeZone
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -72,6 +75,7 @@ class StatsCacheStoreTest {
         assertEquals(1, fresh.kanjiRepairEvidence.size)
         assertEquals("弱", fresh.kanjiRepairEvidence[0].kanji)
         assertEquals(KanjiRepairEvidencePolicy.Status.IMPROVING, fresh.kanjiRepairEvidence[0].status)
+        assertEquals(TimeZone.getDefault().id, fresh.timeZoneId)
     }
 
     @Test
@@ -250,10 +254,14 @@ class StatsCacheStoreTest {
     fun hasFreshSnapshotChecksVersionsWithoutDecodingSnapshot() {
         val now = LocalDayPolicy.localDayStart(1_234_567_890_000L)
         setSourceVersion(11L)
+        val metadataJson = JSONObject()
+            .put("timeZoneId", TimeZone.getDefault().id)
+            .toString()
         db.execSQL(
             "INSERT OR REPLACE INTO stats_screen_cache " +
-                "(id, source_version, generated_at, cache_format_version, outcome_json, impact_report_json) VALUES (1, 11, ?, ?, 'not-json', '{}')",
-            arrayOf<Any>(now + 12_000L, STATS_CACHE_FORMAT_VERSION),
+                "(id, source_version, generated_at, cache_format_version, outcome_json, impact_report_json) " +
+                "VALUES (1, 11, ?, ?, ?, '{}')",
+            arrayOf<Any>(now + 12_000L, STATS_CACHE_FORMAT_VERSION, metadataJson),
         )
 
         assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now + 6_000L))
@@ -292,6 +300,26 @@ class StatsCacheStoreTest {
         )
 
         assertNull(cacheStore.readFresh(db, nowMillis = today))
+    }
+
+    @Test
+    fun cacheGeneratedInDifferentTimeZoneIsNotFresh() {
+        val previousTimeZone = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val now = Instant.parse("2026-07-21T12:00:00Z").toEpochMilli()
+            setSourceVersion(12L)
+            cacheStore.write(db, snapshot(12L, now, 2, 5))
+            assertNotNull(cacheStore.readFresh(db, nowMillis = now))
+            assertTrue(cacheStore.hasFreshSnapshot(db, nowMillis = now))
+
+            TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"))
+
+            assertNull(cacheStore.readFresh(db, nowMillis = now))
+            assertFalse(cacheStore.hasFreshSnapshot(db, nowMillis = now))
+        } finally {
+            TimeZone.setDefault(previousTimeZone)
+        }
     }
 
     @Test
@@ -354,6 +382,37 @@ class StatsCacheStoreTest {
     }
 
     @Test
+    fun markDirtyAtMaximumSourceVersionFailsWithoutWrapping() {
+        setSourceVersion(Long.MAX_VALUE)
+
+        assertThrows(ArithmeticException::class.java) {
+            cacheStore.markDirty(db)
+        }
+
+        assertEquals(Long.MAX_VALUE, cacheStore.currentSourceVersion(db))
+    }
+
+    @Test
+    fun taskLogInsertRollsBackWhenStatsInvalidationOverflows() {
+        setSourceVersion(Long.MAX_VALUE)
+
+        assertThrows(ArithmeticException::class.java) {
+            localStore!!.recordStudyTaskAnswered(
+                taskKey = "task-overflow",
+                kanji = "痛",
+                taskType = "study",
+                startedAt = 1_000L,
+                answeredAt = 2_000L,
+                activeElapsedMillis = 1_000L,
+                outcome = "correct",
+            )
+        }
+
+        assertEquals(0, tableRowCount("study_task_log"))
+        assertEquals(Long.MAX_VALUE, cacheStore.currentSourceVersion(db))
+    }
+
+    @Test
     fun writeSnapshotReplacesSingleCacheRow() {
         setSourceVersion(9L)
         cacheStore.write(db, snapshot(9L, 111L, 1, 3))
@@ -388,7 +447,11 @@ class StatsCacheStoreTest {
     }
 
     private fun cacheRowCount(): Int {
-        val cursor = db.rawQuery("SELECT COUNT(*) FROM stats_screen_cache", null)
+        return tableRowCount("stats_screen_cache")
+    }
+
+    private fun tableRowCount(table: String): Int {
+        val cursor = db.rawQuery("SELECT COUNT(*) FROM $table", null)
         try {
             cursor.moveToFirst()
             return cursor.getInt(0)

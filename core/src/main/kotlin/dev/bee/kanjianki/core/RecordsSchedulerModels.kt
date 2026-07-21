@@ -369,17 +369,22 @@ abstract class RecordsSchedulerModels : RecordsStudyModels() {
         @JvmField val writingFailed: Int,
     ) {
         fun retentionProxy(): Double {
-            if (total == 0) {
+            val safeTotal = total.coerceAtLeast(0)
+            if (safeTotal == 0) {
                 return 1.0
             }
-            return (hard + good + easy) / total.toDouble()
+            val passes = hard.coerceAtLeast(0).toLong() +
+                good.coerceAtLeast(0).toLong() +
+                easy.coerceAtLeast(0).toLong()
+            return (passes.toDouble() / safeTotal.toDouble()).coerceIn(0.0, 1.0)
         }
 
         fun writingFailureRate(): Double {
-            if (writingRequired == 0) {
+            val required = writingRequired.coerceAtLeast(0)
+            if (required == 0) {
                 return 0.0
             }
-            return writingFailed / writingRequired.toDouble()
+            return (writingFailed.coerceAtLeast(0).toDouble() / required.toDouble()).coerceIn(0.0, 1.0)
         }
     }
 

@@ -65,27 +65,41 @@ class TextUtilTest {
     }
 
     @Test
-    fun identifiesKanjiAcrossSupportedUnicodeBlocks() {
+    fun meaningLineDoesNotSplitASurrogatePairAtTheTruncationBoundary() {
+        val longMeaning = "a".repeat(92) + "\uD840\uDC00" + "b".repeat(10)
+
+        val truncated = TextUtil.firstMeaningLine(longMeaning)
+
+        assertEquals("a".repeat(92) + "...", truncated)
+        assertFalse(truncated.any { Character.isSurrogate(it) })
+    }
+
+    @Test
+    fun identifiesExactUnicodeCjkIdeographBlockBounds() {
+        val ranges = listOf(
+            0x3400..0x4DBF,
+            0x4E00..0x9FFF,
+            0xF900..0xFAFF,
+            0x20000..0x2A6DF,
+            0x2A700..0x2B73F,
+            0x2B740..0x2B81F,
+            0x2B820..0x2CEAF,
+            0x2CEB0..0x2EBEF,
+            0x2EBF0..0x2EE5F,
+            0x2F800..0x2FA1F,
+            0x30000..0x3134F,
+            0x31350..0x323AF,
+            0x323B0..0x3347F,
+        )
+
         assertTrue(TextUtil.isKanji('裂'.code))
-        assertTrue(TextUtil.isKanji(0x3400))
-        assertTrue(TextUtil.isKanji(0x4DBF))
-        assertTrue(TextUtil.isKanji(0x4E00))
-        assertTrue(TextUtil.isKanji(0x9FFF))
-        assertTrue(TextUtil.isKanji(0xF900))
-        assertTrue(TextUtil.isKanji(0xFAFF))
-        assertTrue(TextUtil.isKanji(0x20000))
-        assertTrue(TextUtil.isKanji(0x2A6DF))
-        assertTrue(TextUtil.isKanji(0x2A700))
-        assertTrue(TextUtil.isKanji(0x2B73F))
-        assertTrue(TextUtil.isKanji(0x2B740))
-        assertTrue(TextUtil.isKanji(0x2B81F))
-        assertTrue(TextUtil.isKanji(0x2B820))
-        assertTrue(TextUtil.isKanji(0x2CEAF))
-        assertTrue(TextUtil.isKanji(0x2CEB0))
-        assertTrue(TextUtil.isKanji(0x2EBEF))
-        assertFalse(TextUtil.isKanji(0x2EBF0))
-        assertFalse(TextUtil.isKanji(0x30000))
-        assertFalse(TextUtil.isKanji('A'.code))
+        for (range in ranges) {
+            assertTrue("Expected block start U+${range.first.toString(16)}", TextUtil.isKanji(range.first))
+            assertTrue("Expected block end U+${range.last.toString(16)}", TextUtil.isKanji(range.last))
+        }
+        for (codePoint in listOf(0x33FF, 0x4DC0, 0xA000, 0xFB00, 0x1FFFF, 0x2A6E0, 0x2EE60, 0x2FA20, 0x2FFFF, 0x33480)) {
+            assertFalse("Expected gap U+${codePoint.toString(16)}", TextUtil.isKanji(codePoint))
+        }
     }
 
     @Test

@@ -11,9 +11,9 @@ object SimilarKanjiChoiceReviewPolicy {
         val correctCount = card?.correctCount ?: 0
         val wrongCount = card?.wrongCount ?: 0
         return if (correct) {
-            ReviewUpdate(nowMillis, nowMillis, null, correctCount + 1, null)
+            ReviewUpdate(nowMillis, nowMillis, null, saturatingAddNonNegative(correctCount, 1), null)
         } else {
-            ReviewUpdate(nowMillis, 0L, nowMillis, null, wrongCount + 1)
+            ReviewUpdate(nowMillis, 0L, nowMillis, null, saturatingAddNonNegative(wrongCount, 1))
         }
     }
 

@@ -1,13 +1,16 @@
 package dev.bee.kanjianki.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import org.junit.Assert.assertEquals
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -107,6 +110,75 @@ class SyncCommitWindowTest {
         val persisted = store.studyItemsForKanji(listOf("痛"))
         assertEquals(1, persisted.size)
         assertEquals(1_000L, persisted.single().dueAtMillis)
+    }
+
+    @Test
+    fun rejectedSyncRunInsertRollsBackMirrorPublication() {
+        val original = dashboardRow("旧", "old-expression")
+        publishRows(listOf(original), 1_000L, 2_000L)
+        store.writableDatabase.execSQL(
+            "CREATE TRIGGER reject_sync_run BEFORE INSERT ON sync_runs " +
+                "BEGIN SELECT RAISE(ABORT, 'rejected sync run'); END",
+        )
+
+        assertThrows(SQLiteException::class.java) {
+            publishRows(listOf(dashboardRow("新", "new-expression")), 3_000L, 4_000L)
+        }
+
+        val persisted = store.dashboardRows().single()
+        assertEquals("旧", persisted.kanji)
+        assertEquals("old-expression", persisted.examples.single().expression)
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SYNC_RUNS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_KANJI_EXAMPLES))
+    }
+
+    @Test
+    fun rejectedExampleInsertRollsBackDashboardPublication() {
+        val original = dashboardRow("旧", "old-expression")
+        publishRows(listOf(original), 1_000L, 2_000L)
+        store.writableDatabase.execSQL(
+            "CREATE TRIGGER reject_example BEFORE INSERT ON kanji_examples " +
+                "BEGIN SELECT RAISE(ABORT, 'rejected example'); END",
+        )
+
+        assertThrows(SQLiteException::class.java) {
+            publishRows(listOf(dashboardRow("新", "new-expression")), 3_000L, 4_000L)
+        }
+
+        val persisted = store.dashboardRows().single()
+        assertEquals("旧", persisted.kanji)
+        assertEquals("old-expression", persisted.examples.single().expression)
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SYNC_RUNS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_KANJI_EXAMPLES))
+    }
+
+    @Test
+    fun ignoredRequiredInsertsRollBackPublication() {
+        val original = dashboardRow("旧", "old-expression")
+        publishRows(listOf(original), 1_000L, 2_000L)
+
+        store.writableDatabase.execSQL(
+            "CREATE TRIGGER ignore_sync_run BEFORE INSERT ON sync_runs " +
+                "BEGIN SELECT RAISE(IGNORE); END",
+        )
+        assertThrows(SQLiteException::class.java) {
+            publishRows(listOf(dashboardRow("新", "new-expression")), 3_000L, 4_000L)
+        }
+        store.writableDatabase.execSQL("DROP TRIGGER ignore_sync_run")
+
+        store.writableDatabase.execSQL(
+            "CREATE TRIGGER ignore_example BEFORE INSERT ON kanji_examples " +
+                "BEGIN SELECT RAISE(IGNORE); END",
+        )
+        assertThrows(SQLiteException::class.java) {
+            publishRows(listOf(dashboardRow("新", "new-expression")), 5_000L, 6_000L)
+        }
+
+        val persisted = store.dashboardRows().single()
+        assertEquals("旧", persisted.kanji)
+        assertEquals("old-expression", persisted.examples.single().expression)
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SYNC_RUNS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_KANJI_EXAMPLES))
     }
 
     @Test
@@ -350,8 +422,62 @@ class SyncCommitWindowTest {
         LocalStoreBase.STATUS_PENDING,
     )
 
+    private fun publishRows(
+        rows: List<RecordsImportModels.DashboardRow>,
+        startedAt: Long,
+        finishedAt: Long,
+    ): Long = store.saveSuccessfulSync(
+        emptySnapshot(),
+        emptyList(),
+        rows,
+        RecordsSyncModels.Settings.kikuDefaults(),
+        LocalStoreBase.SyncTiming(startedAt, finishedAt),
+        null,
+        null,
+    )
+
+    private fun dashboardRow(kanji: String, expression: String): RecordsImportModels.DashboardRow {
+        val example = RecordsImportModels.Example(
+            "active",
+            1L,
+            2L,
+            expression,
+            "reading",
+            "meaning",
+            "sentence",
+            false,
+            0,
+            1,
+            1,
+            null,
+            null,
+            null,
+        )
+        return RecordsImportModels.DashboardRow(
+            kanji,
+            null,
+            "meaning",
+            "reading",
+            "browser",
+            1,
+            "reason",
+            "reason text",
+            1,
+            0,
+            0,
+            listOf(example),
+        )
+    }
+
     private fun studyItem(kanji: String, dueAt: Long): RecordsStudyModels.StudyItem =
         RecordsStudyModels.StudyItem(kanji, "review", dueAt, 1.0, 5.0, 1, 0, 0, 0, null, 1L)
+
+    private fun rowCount(table: String): Int {
+        return store.readableDatabase.rawQuery("SELECT COUNT(*) FROM $table", null).use { cursor ->
+            cursor.moveToFirst()
+            cursor.getInt(0)
+        }
+    }
 
     private fun insertHistoricalRows(syncId: Long, kanji: String) {
         val db = store.writableDatabase

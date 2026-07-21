@@ -76,7 +76,12 @@ captured_system_modes=()
 
 original_accelerometer_rotation="$(adb shell settings get system accelerometer_rotation 2>/dev/null | tr -d '\r' || true)"
 original_user_rotation="$(adb shell settings get system user_rotation 2>/dev/null | tr -d '\r' || true)"
-original_fixed_to_user_rotation="$(adb shell wm fixed-to-user-rotation 2>/dev/null | tr -d '\r' || true)"
+original_fixed_to_user_rotation="$(
+  adb shell wm fixed-to-user-rotation 2>/dev/null \
+    | tr -d '\r' \
+    | awk '{ value = $NF } END { if (value ~ /^(enabled|disabled|default)$/) print value }' \
+    || true
+)"
 original_ui_night_mode="$(adb shell settings get secure ui_night_mode 2>/dev/null | tr -d '\r' || true)"
 
 restore_setting() {
@@ -282,7 +287,7 @@ wait_for_orientation() {
       ;;
   esac
   local attempt
-  for attempt in $(seq 1 30); do
+  for ((attempt = 1; attempt <= 30; attempt++)); do
     if [ "$(current_display_rotation)" = "${expected_rotation}" ]; then
       return 0
     fi
@@ -411,6 +416,7 @@ capture_route_variant() {
   local -a expected_terms=("$@")
   local scroll_y
   local output_path
+  local ui_dump_path
   scroll_y="$(scroll_y_for_position "${orientation}" "${scroll_position}")"
   if [[ "${route_name}" == "settings" && "${scroll_position}" == "bottom" ]]; then
     scroll_y="$((scroll_y + settings_bottom_scroll_extra))"
@@ -516,30 +522,33 @@ case "${requested_route}" in
     ;;
 esac
 
-export APK_PATH="${apk_path}"
-export PACKAGE_NAME="${package_name}"
-export REQUESTED_ROUTE="${requested_route}"
-export REQUESTED_THEME="${requested_theme}"
-export REQUESTED_LOCALE="${requested_locale}"
-export REQUESTED_THEME_CHOICE="${capture_theme_choice}"
-export REQUESTED_SYSTEM_MODE="${capture_theme_system_mode}"
-export CAPTURED_ROUTES_RAW="$(printf '%s\n' "${captured_routes[@]}")"
-export CAPTURED_FILES_RAW="$(printf '%s\n' "${captured_files[@]}")"
-export CAPTURED_ORIENTATIONS_RAW="$(printf '%s\n' "${captured_orientations[@]}")"
-export CAPTURED_LAUNCH_TARGETS_RAW="$(printf '%s\n' "${captured_launch_targets[@]}")"
-export CAPTURED_SCROLL_POSITIONS_RAW="$(printf '%s\n' "${captured_scroll_positions[@]}")"
-export CAPTURED_SCROLL_YS_RAW="$(printf '%s\n' "${captured_scroll_ys[@]}")"
-export CAPTURED_THEMES_RAW="$(printf '%s\n' "${captured_themes[@]}")"
-export CAPTURED_THEME_CHOICES_RAW="$(printf '%s\n' "${captured_theme_choices[@]}")"
-export CAPTURED_UIAUTOMATOR_DUMPS_RAW="$(printf '%s\n' "${captured_uiautomator_dumps[@]}")"
-export CAPTURED_SYSTEM_MODES_RAW="$(printf '%s\n' "${captured_system_modes[@]}")"
-export CAPTURE_SCRIPT_PATH="${0}"
+APK_PATH="${apk_path}"
+PACKAGE_NAME="${package_name}"
+REQUESTED_ROUTE="${requested_route}"
+REQUESTED_THEME="${requested_theme}"
+REQUESTED_LOCALE="${requested_locale}"
+REQUESTED_THEME_CHOICE="${capture_theme_choice}"
+REQUESTED_SYSTEM_MODE="${capture_theme_system_mode}"
+CAPTURE_SCRIPT_PATH="${0}"
+export APK_PATH PACKAGE_NAME REQUESTED_ROUTE REQUESTED_THEME REQUESTED_LOCALE
+export REQUESTED_THEME_CHOICE REQUESTED_SYSTEM_MODE CAPTURE_SCRIPT_PATH
 
-python3 - <<'PY'
+python3 - "${#captured_routes[@]}" \
+  "${captured_routes[@]}" \
+  "${captured_files[@]}" \
+  "${captured_orientations[@]}" \
+  "${captured_launch_targets[@]}" \
+  "${captured_scroll_positions[@]}" \
+  "${captured_scroll_ys[@]}" \
+  "${captured_themes[@]}" \
+  "${captured_theme_choices[@]}" \
+  "${captured_uiautomator_dumps[@]}" \
+  "${captured_system_modes[@]}" <<'PY'
 import hashlib
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -558,36 +567,40 @@ def run(command):
     except Exception:
         return ""
 
-captured_routes = [line for line in os.environ.get("CAPTURED_ROUTES_RAW", "").splitlines() if line]
-captured_files = [line for line in os.environ.get("CAPTURED_FILES_RAW", "").splitlines() if line]
-captured_orientations = [line for line in os.environ.get("CAPTURED_ORIENTATIONS_RAW", "").splitlines() if line]
-captured_launch_targets = [line for line in os.environ.get("CAPTURED_LAUNCH_TARGETS_RAW", "").splitlines() if line]
-captured_scroll_positions = [line for line in os.environ.get("CAPTURED_SCROLL_POSITIONS_RAW", "").splitlines() if line]
-captured_scroll_ys = [line for line in os.environ.get("CAPTURED_SCROLL_YS_RAW", "").splitlines() if line]
-captured_themes = [line for line in os.environ.get("CAPTURED_THEMES_RAW", "").splitlines() if line]
-captured_theme_choices = [line for line in os.environ.get("CAPTURED_THEME_CHOICES_RAW", "").splitlines() if line]
-captured_uiautomator_dumps = [line for line in os.environ.get("CAPTURED_UIAUTOMATOR_DUMPS_RAW", "").splitlines() if line]
-captured_system_modes = [line for line in os.environ.get("CAPTURED_SYSTEM_MODES_RAW", "").splitlines() if line]
-if not captured_routes:
-    captured_routes = [path.stem for path in sorted(screenshots_dir.glob("*.png"))]
-if not captured_files:
-    captured_files = [str(path) for path in sorted(screenshots_dir.glob("*.png"))]
-if not captured_orientations:
-    captured_orientations = [""] * len(captured_routes)
-if not captured_launch_targets:
-    captured_launch_targets = [""] * len(captured_routes)
-if not captured_scroll_positions:
-    captured_scroll_positions = [""] * len(captured_routes)
-if not captured_scroll_ys:
-    captured_scroll_ys = [""] * len(captured_routes)
-if not captured_themes:
-    captured_themes = [os.environ.get("REQUESTED_THEME", "")] * len(captured_routes)
-if not captured_theme_choices:
-    captured_theme_choices = [os.environ.get("REQUESTED_THEME_CHOICE", "")] * len(captured_routes)
-if not captured_uiautomator_dumps:
-    captured_uiautomator_dumps = [""] * len(captured_routes)
-if not captured_system_modes:
-    captured_system_modes = [os.environ.get("REQUESTED_SYSTEM_MODE", "")] * len(captured_routes)
+capture_count = int(sys.argv[1])
+field_names = (
+    "routes",
+    "files",
+    "orientations",
+    "launch_targets",
+    "scroll_positions",
+    "scroll_ys",
+    "themes",
+    "theme_choices",
+    "uiautomator_dumps",
+    "system_modes",
+)
+serialized_fields = sys.argv[2:]
+expected_field_count = capture_count * len(field_names)
+if capture_count < 1 or len(serialized_fields) != expected_field_count:
+    raise SystemExit(
+        f"Captured screenshot metadata is out of sync: expected {expected_field_count} "
+        f"fields for {capture_count} captures, got {len(serialized_fields)}."
+    )
+fields = {
+    name: serialized_fields[index * capture_count : (index + 1) * capture_count]
+    for index, name in enumerate(field_names)
+}
+captured_routes = fields["routes"]
+captured_files = fields["files"]
+captured_orientations = fields["orientations"]
+captured_launch_targets = fields["launch_targets"]
+captured_scroll_positions = fields["scroll_positions"]
+captured_scroll_ys = fields["scroll_ys"]
+captured_themes = fields["themes"]
+captured_theme_choices = fields["theme_choices"]
+captured_uiautomator_dumps = fields["uiautomator_dumps"]
+captured_system_modes = fields["system_modes"]
 
 
 def sha256(path):
@@ -608,10 +621,6 @@ def unique_routes(values):
     return routes
 
 
-if len(captured_routes) != len(captured_files):
-    raise SystemExit("Captured screenshot routes and files are out of sync.")
-
-capture_count = len(captured_routes)
 captures = []
 for index in range(capture_count):
     route = captured_routes[index]

@@ -7,8 +7,8 @@ graph, and effort estimates for breaking up the monolithic `:app` module.
 
 | Module | Type | Files | Purpose |
 |--------|------|-------|---------|
-| `:app` | Android application | 335 Kotlin | UI, data layer, sync, update, backup, reminders, widget, study |
-| `:core` | Kotlin JVM library | 163 Kotlin | Domain policies, text copy, scheduler engine, models |
+| `:app` | Android application | 365 Kotlin | UI, data layer, sync, update, backup, reminders, widget, study |
+| `:core` | Kotlin JVM library | 170 Kotlin | Domain policies, text copy, scheduler engine, models |
 | `:dictionary-core` | Kotlin JVM library | 7 Kotlin | Dictionary lookup interface + asset loader |
 | `:writing-core` | Kotlin JVM library | 29 Kotlin | Handwriting analysis, stroke model, recognition types |
 | `:update-core` | Kotlin JVM library | 18 Kotlin | Update policies, version parsing, artifact validation |
@@ -36,19 +36,20 @@ and `:writing-core`. All other modules are pulled transitively through `:core`
 
 ## Problem statement
 
-The `:app` module contains 335 Kotlin files spanning:
-- **Data layer** (49 files in `data/`): `LocalStore*`, settings, migrations, schema
+The `:app` module contains 365 tracked Kotlin files spanning:
+- **Data layer** (65 files in `data/`): `LocalStore*`, settings, migrations, schema
 - **Study UI** (~70 files): `MainActivityStudy*`, writing session, choice rendering
 - **Home UI** (~50 files): `MainActivityHome*`, dashboard, focus queue, browse
-- **Sync** (9 files in `sync/`): auto-sync, manual engine, retry workers
-- **Backup** (8 files in `backup/`): WAL-safe snapshots, restore, validation
+- **Sync** (8 files in `sync/`): auto-sync, manual engine, retry workers
+- **Backup** (7 files in `backup/`): WAL-safe snapshots, restore, validation
 - **Update** (6 files in `update/`): GitHub updater, workers, notification
-- **Widget** (4 files in `widget/`): Glance home-screen widget
+- **Widget** (18 files in `widget/`): four Glance widgets, snapshot loaders, configuration, refresh, and receivers
 - **Reminders** (4 files in `reminders/`): scheduler, receivers, policies
 - **Settings UI** (~30 files): all settings screens and panels
 - **Top-level** (~100 files): activity hierarchy, theme, compose utilities, charts
 
-Build times scale with module size (all 331 files recompile on any change),
+Build times scale with module size (all 365 files can share one app compilation
+boundary),
 and test isolation requires the full app classpath.
 
 ## Proposed extraction targets
@@ -58,7 +59,7 @@ Ranked by independence (fewest inbound dependencies) and build-time impact
 
 ### 1. `:data` — LocalStore and persistence layer
 
-**Files:** 49 files from `app/src/main/kotlin/.../data/`
+**Files:** 65 files from `app/src/main/kotlin/.../data/`
 **Contains:** `LocalStoreBase`, `LocalStoreStudy`, `LocalStoreInventory`,
 `LocalStoreSync`, `LocalStoreSchema`, `LocalStoreMigrations`, `DictionaryStore`,
 `StudyStatsStore`, `SettingsRepository`, `SqliteSettingsStorage`
@@ -78,10 +79,10 @@ store instances into the activity without the activity needing to be the
 **Contains:** Study session rendering, writing session flow, choice cards,
 flashcard rendering, study queue coordinator, review flow
 **Dependencies needed:** `:core`, `:data`, `:writing-core`, Compose
-**Effort:** Large — deeply coupled to `MainActivityStudy` (993 lines) via
-mutable activity fields. Requires ViewModel extraction (Goal 136) first.
-**Prerequisite:** Goal 136 (StudySessionViewModel) must land before this
-extraction is viable.
+**Effort:** Large — still coupled to `MainActivityStudy` (over 1,000 lines) via
+mutable activity fields. Goal 136's `StudySessionViewModel` has landed, but the
+remaining activity-owned state and host interfaces must move behind it before
+module extraction is viable.
 
 ### 3. `:ui-home` — Home composables and models
 
@@ -91,8 +92,8 @@ metrics, browse/detail navigation
 **Dependencies needed:** `:core`, `:data`, Compose
 **Effort:** Medium — less mutable state than study, but the activity hierarchy
 (`MainActivityBase → MainActivityHome → ...`) makes extraction non-trivial.
-**Prerequisite:** Goal 137 (HomeViewModel) plus interface extraction from
-`MainActivityBase`.
+**Prerequisite:** Goal 137's `HomeViewModel` has landed; interface extraction
+from `MainActivityBase` remains.
 
 ### 4. `:reminders` — Reminder scheduling and receivers
 
@@ -107,21 +108,24 @@ its own `LocalStore` instance directly).
 
 ### 5. `:widget` — Home-screen widget
 
-**Files:** 4 files from `app/src/main/kotlin/.../widget/`
-**Contains:** `KaniWidget`, `KaniWidgetReceiver`, `KaniWidgetSnapshotLoader`,
-`KaniWidgetUpdater`
+**Files:** 18 files from `app/src/main/kotlin/.../widget/`
+**Contains:** overview, quick-study, activity, and focus widgets; their three
+snapshot loaders; `WidgetLocalStoreReader`; configuration, registry, refresh,
+and receiver infrastructure
 **Dependencies needed:** `:core` (text copy), `:data` (store for due count),
 AndroidX Glance
-**Effort:** Small — already well-isolated. The `KaniWidgetSnapshotLoader`
-directly opens a `LocalStore`; only that coupling needs an interface.
+**Effort:** Medium — the family is isolated from activity state, but
+`WidgetLocalStoreReader` directly opens a `LocalStore` and the extraction must
+move all widget receivers, configuration, and refresh scheduling together.
 **Prerequisite:** Minimal (store interface only).
 
 ### 6. `:backup` — Database backup and restore
 
-**Files:** 8 files from `app/src/main/kotlin/.../backup/`
+**Files:** 7 files from `app/src/main/kotlin/.../backup/`
 **Contains:** `DatabaseBackupWorker`, `DatabaseBackupScheduler`,
-`BackupRestoreValidator`, `StagedRestoreApplier`, `WalSafeSnapshotOperations`
-**Dependencies needed:** `:data` (for `LocalStore.snapshotInto`), Android API
+`BackupRestoreValidator`, `StagedRestoreApplier`, `DirectoryDurability`
+**Dependencies needed:** `:data` (for `LocalStore.snapshotInto` and
+`WalSafeSnapshotOperations`), Android API
 **Effort:** Small-Medium — mostly self-contained but `StagedRestoreApplier` is
 called from `KaniApplication.onCreate()` which creates a tight coupling.
 **Prerequisite:** Restore API extraction (the applier can be called from the
@@ -130,13 +134,13 @@ application class via an interface).
 ## Recommended extraction order
 
 ```
-Phase 1 (Quick wins, no DI needed):
-  ├── :widget          (4 files, small effort, store-interface only)
+Phase 1 (Isolated Android surfaces):
+  ├── :widget          (18 files, medium effort, store-interface only)
   └── :reminders       (4 files, small effort, store-interface only)
 
-Phase 2 (After ViewModels land — Goals 136/137):
-  ├── :data            (49 files, large effort, needs DI)
-  └── :backup          (8 files, small-medium, needs restore-API interface)
+Phase 2 (ViewModels landed; remaining host boundaries required):
+  ├── :data            (65 files, large effort, needs DI)
+  └── :backup          (7 files, small-medium, needs restore-API interface)
 
 Phase 3 (After :data extraction):
   ├── :ui-home         (50 files, medium effort)
@@ -147,10 +151,10 @@ Phase 3 (After :data extraction):
 
 | Target | Files | Effort | Prerequisites |
 |--------|-------|--------|---------------|
-| `:widget` | 4 | Small (1–2 days) | Store read interface |
+| `:widget` | 18 | Medium (3–5 days) | Store read interface |
 | `:reminders` | 4 | Small (1–2 days) | Store read interface |
-| `:backup` | 8 | Small-Medium (2–3 days) | Restore API interface |
-| `:data` | 49 | Large (1–2 weeks) | DI framework, interface extraction |
+| `:backup` | 7 | Small-Medium (2–3 days) | Restore API interface |
+| `:data` | 65 | Large (1–2 weeks) | DI framework, interface extraction |
 | `:ui-home` | 50 | Medium (3–5 days) | HomeViewModel, :data extracted |
 | `:ui-study` | 70 | Large (1–2 weeks) | StudySessionViewModel, :data extracted |
 
@@ -160,14 +164,15 @@ Phase 3 (After :data extraction):
    creates stores directly. A factory or constructor-injection pattern is needed
    before stores can live in a separate module.
 
-2. **Interface extraction from `MainActivityBase`.** The 747-line base activity
+2. **Interface extraction from `MainActivityBase`.** The 834-line base activity
    exposes `store`, `io`, `main`, `postToMainIfActive`, and theme methods that
    UI modules reference directly. An activity-hosted interface (or ViewModel
    access pattern) must replace direct field access.
 
-3. **ViewModel-first.** Goals 136 and 137 decouple state from the activity.
-   Without ViewModels, UI modules would still need to reach into activity fields
-   for session state, effectively negating the extraction.
+3. **Finish the ViewModel boundary.** Goals 136 and 137 have landed
+   `StudySessionViewModel` and `HomeViewModel`. Remaining activity-owned state
+   and direct host/store access still need to move behind those boundaries
+   before the UI modules can be extracted cleanly.
 
 ## Enforced boundaries today
 

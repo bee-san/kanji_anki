@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.OperationCanceledException
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.core.RecordsBase
@@ -584,6 +585,22 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     }
 
     @Test
+    fun browserQueryCursorCancellationMapsToRetryableTimeout() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "deferBrowserQueryCancellation", null, null)
+
+        try {
+            gateway.readCollection(browserQueryOnlySettings())
+            assertTrue("Expected deferred browser query cancellation", false)
+        } catch (error: AnkiDroidGateway.SyncFailure) {
+            assertFalse(error.permanentFailure)
+            assertEquals("Timed out while reading AnkiDroid.", error.message)
+            assertTrue(error.cause is OperationCanceledException)
+        }
+        assertEquals(1, providerInt("browserQueryQueries"))
+    }
+
+    @Test
     fun browserQueryMarksMatchingActiveCardForImport() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         val settings = browserQueryOnlySettings()
@@ -662,6 +679,23 @@ class AnkiDroidGatewayProviderInstrumentedTest {
                 "AnkiDroid could not run the browser query. Check the query in Import filters.",
                 error.message,
             )
+            assertEquals(2, providerInt("browserQueryQueries"))
+        }
+    }
+
+    @Test
+    fun browserQueryRereadCancellationMapsToRetryableTimeout() {
+        val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
+        context.contentResolver.call(providerUri(), "browserQueryMatchesMissingNote", null, null)
+        context.contentResolver.call(providerUri(), "cancelBrowserQueryReread", null, null)
+
+        try {
+            gateway.readCollection(browserQueryOnlySettings())
+            assertTrue("Expected browser query re-read cancellation", false)
+        } catch (error: AnkiDroidGateway.SyncFailure) {
+            assertFalse(error.permanentFailure)
+            assertEquals("Timed out while reading AnkiDroid.", error.message)
+            assertTrue(error.cause is OperationCanceledException)
             assertEquals(2, providerInt("browserQueryQueries"))
         }
     }

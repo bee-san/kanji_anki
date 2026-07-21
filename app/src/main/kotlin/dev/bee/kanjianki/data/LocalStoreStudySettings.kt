@@ -169,7 +169,7 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
 
     fun recordReviewReminderNotificationShown(nowMillis: Long) {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        val count = reviewReminderNotificationsToday(nowMillis) + 1
+        val count = saturatingIncrement(reviewReminderNotificationsToday(nowMillis))
         inTransaction {
             putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
             putIntSetting(KEY_REVIEW_REMINDER_COUNT, count)
@@ -259,8 +259,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
             "SYNC" -> KEY_REMINDER_SYNC_SHOWN
             else -> KEY_REMINDER_DUE_SHOWN
         }
-        putIntSetting(key, getIntSetting(key, 0).coerceAtLeast(0) + 1)
+        putIntSetting(key, saturatingIncrement(getIntSetting(key, 0)))
     }
+
+    private fun saturatingIncrement(value: Int): Int = value.coerceIn(0, Int.MAX_VALUE - 1) + 1
 
     fun autoSyncSettings(): LocalStoreBase.AutoSyncSettings {
         return LocalStoreBase.AutoSyncSettings(

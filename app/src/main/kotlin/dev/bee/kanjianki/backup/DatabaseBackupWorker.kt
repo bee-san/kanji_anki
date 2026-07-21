@@ -171,13 +171,14 @@ class DatabaseBackupWorker(
         @Throws(IOException::class)
         fun gzipFile(src: File, dest: File) {
             FileInputStream(src).use { input ->
-                val fileOut = FileOutputStream(dest)
-                GZIPOutputStream(fileOut).use { gzip ->
-                    input.copyTo(gzip)
-                    gzip.finish()
-                    // Flush compressed bytes to disk before GZIPOutputStream.close()
-                    // closes the underlying stream.
-                    fileOut.fd.sync()
+                FileOutputStream(dest).use { fileOut ->
+                    GZIPOutputStream(fileOut).use { gzip ->
+                        input.copyTo(gzip)
+                        gzip.finish()
+                        // Flush compressed bytes to disk before GZIPOutputStream.close()
+                        // closes the underlying stream.
+                        fileOut.fd.sync()
+                    }
                 }
             }
         }

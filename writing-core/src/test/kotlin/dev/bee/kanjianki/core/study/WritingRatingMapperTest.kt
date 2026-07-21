@@ -74,6 +74,27 @@ class WritingRatingMapperTest {
     }
 
     @Test
+    fun nonFiniteRecognitionConfidenceFailsClosed() {
+        val mapper = WritingRatingMapper()
+
+        for (score in listOf(Float.NaN, Float.POSITIVE_INFINITY)) {
+            val analysis = WritingAnalysis(
+                WritingAnalysis.Status.PASS,
+                "easy",
+                true,
+                "invalid confidence",
+                listOf(RecognitionCandidate("拉", score)),
+                cleanStrokeOrder(),
+            )
+
+            assertEquals(0.0, analysis.confidenceScore(), 0.0)
+            assertEquals(StudyRating.HARD, mapper.suggestedRating(analysis))
+            assertEquals(StudyRating.HARD, mapper.maxAllowedRating(analysis))
+            assertEquals(StudyRating.HARD, mapper.applyRequestedRating(StudyRating.EASY, true, analysis, false))
+        }
+    }
+
+    @Test
     fun blindHighConfidenceWritingCanBeEasy() {
         val mapper = WritingRatingMapper()
         val blind = WritingAnalysis(

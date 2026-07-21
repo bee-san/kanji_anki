@@ -196,6 +196,25 @@ class StudySessionViewModelTest {
     }
 
     @Test
+    fun persistedTerminalPresentationRestoresOnlyWithoutAnActiveSession() {
+        val restored = StudySessionViewModel()
+
+        assertTrue(restored.restoreTerminalPresentation(StudyRouteCompletionReason.HARD_CAP))
+        assertTrue(restored.acceptedRouteSnapshot().isComplete)
+        assertEquals(
+            StudyRouteCompletionReason.HARD_CAP,
+            restored.acceptedRouteSnapshot().completionReason,
+        )
+
+        val active = StudySessionViewModel()
+        active.mountSession(session("active-token"))
+        val activeRoute = active.acceptedRouteSnapshot()
+
+        assertFalse(active.restoreTerminalPresentation(StudyRouteCompletionReason.HARD_CAP))
+        assertEquals(activeRoute, active.acceptedRouteSnapshot())
+    }
+
+    @Test
     fun presentationTransitionMatrixAllowsOnlyLoading() {
         val active = StudySessionUiState(
             phase = StudySessionPhase.ACTIVE,

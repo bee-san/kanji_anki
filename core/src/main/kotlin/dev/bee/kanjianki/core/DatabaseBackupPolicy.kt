@@ -1,10 +1,12 @@
 package dev.bee.kanjianki.core
 
 import java.io.File
-import java.text.ParseException
+import java.text.ParsePosition
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 object DatabaseBackupPolicy {
     const val DB_NAME: String = "kanji_anki_simple.db"
@@ -25,7 +27,6 @@ object DatabaseBackupPolicy {
     private const val COMPRESSED_SUFFIX = ".db.gz"
 
     private const val TIMESTAMP_PATTERN = "yyyyMMdd_HHmmss"
-    private const val WEEK_MILLIS = 7L * 86_400_000L
 
     @JvmStatic
     fun backupDir(filesDir: File): File = File(filesDir, BACKUP_DIR)
@@ -52,11 +53,13 @@ object DatabaseBackupPolicy {
         if (files.size <= KEEP_DAILY) {
             return emptyList()
         }
+        val zone = TimeZone.getDefault()
+        val parsedByFile = files.associateWith { parseTimestamp(it, zone) }
         // Newest first by timestamp; entries without a parseable timestamp sort last
         // (treated as oldest) so they are pruned first.
-        val sorted = files.sortedByDescending { parseTimestampMillis(it) ?: Long.MIN_VALUE }
+        val sorted = files.sortedByDescending { parsedByFile[it]?.millis ?: Long.MIN_VALUE }
         val keep = LinkedHashSet<File>()
-        val keptWeeks = LinkedHashSet<Long>()
+        val keptWeeks = LinkedHashSet<CalendarWeek>()
         for ((index, file) in sorted.withIndex()) {
             if (index < KEEP_DAILY) {
                 keep.add(file)
@@ -65,9 +68,8 @@ object DatabaseBackupPolicy {
             if (keptWeeks.size >= KEEP_WEEKLY) {
                 continue
             }
-            val millis = parseTimestampMillis(file) ?: continue
-            val week = millis / WEEK_MILLIS
-            if (keptWeeks.add(week)) {
+            val parsed = parsedByFile[file] ?: continue
+            if (keptWeeks.add(parsed.week)) {
                 keep.add(file)
             }
         }
@@ -80,7 +82,7 @@ object DatabaseBackupPolicy {
         return "$action Diagnostic: $type"
     }
 
-    private fun parseTimestampMillis(file: File): Long? {
+    private fun parseTimestamp(file: File, zone: TimeZone): ParsedTimestamp? {
         val name = file.name
         if (!name.startsWith(BACKUP_PREFIX)) {
             return null
@@ -92,12 +94,34 @@ object DatabaseBackupPolicy {
                 name.substring(BACKUP_PREFIX.length, name.length - BACKUP_SUFFIX.length)
             else -> return null
         }
+        if (!hasTimestampShape(stamp)) {
+            return null
+        }
         val format = SimpleDateFormat(TIMESTAMP_PATTERN, Locale.US)
         format.isLenient = false
-        return try {
-            format.parse(stamp)?.time
-        } catch (_: ParseException) {
-            null
+        format.timeZone = zone
+        format.calendar.firstDayOfWeek = Calendar.MONDAY
+        format.calendar.minimalDaysInFirstWeek = ISO_MINIMAL_DAYS_IN_FIRST_WEEK
+        val position = ParsePosition(0)
+        val parsed = format.parse(stamp, position) ?: return null
+        if (position.index != stamp.length) {
+            return null
+        }
+        return ParsedTimestamp(
+            parsed.time,
+            CalendarWeek(
+                format.calendar.weekYear,
+                format.calendar.get(Calendar.WEEK_OF_YEAR),
+            ),
+        )
+    }
+
+    private fun hasTimestampShape(stamp: String): Boolean {
+        if (stamp.length != TIMESTAMP_PATTERN.length || stamp[8] != '_') {
+            return false
+        }
+        return stamp.indices.all { index ->
+            index == 8 || stamp[index] in '0'..'9'
         }
     }
 
@@ -106,4 +130,9 @@ object DatabaseBackupPolicy {
             name.startsWith(BACKUP_PREFIX) && (name.endsWith(BACKUP_SUFFIX) || name.endsWith(COMPRESSED_SUFFIX))
         }
     }
+
+    private data class ParsedTimestamp(val millis: Long, val week: CalendarWeek)
+    private data class CalendarWeek(val year: Int, val week: Int)
+
+    private const val ISO_MINIMAL_DAYS_IN_FIRST_WEEK = 4
 }

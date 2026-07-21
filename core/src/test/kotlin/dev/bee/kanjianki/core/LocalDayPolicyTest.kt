@@ -5,7 +5,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
+import java.util.Date
 import java.util.GregorianCalendar
+import java.util.SimpleTimeZone
 import java.util.TimeZone
 
 class LocalDayPolicyTest {
@@ -180,10 +182,231 @@ class LocalDayPolicyTest {
         )
     }
 
+    @Test
+    fun localDaysBetweenSupportsCustomSimpleTimeZoneIds() {
+        val custom = SimpleTimeZone(9 * 60 * 60 * 1000, "Kani/CustomTokyo")
+
+        assertEquals(
+            2,
+            LocalDayPolicy.localDaysBetween(
+                zoned(custom, 2026, Calendar.MAY, 15, 23, 0),
+                zoned(custom, 2026, Calendar.MAY, 17, 1, 0),
+                custom,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenUsesSimpleTimeZoneRulesEvenWhenItsIdExists() {
+        val customUtc = SimpleTimeZone(0, "Pacific/Apia")
+
+        assertEquals(
+            2,
+            LocalDayPolicy.localDaysBetween(
+                zoned(customUtc, 2011, Calendar.DECEMBER, 29, 12, 0),
+                zoned(customUtc, 2011, Calendar.DECEMBER, 31, 12, 0),
+                customUtc,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenUsesArbitraryCustomTimeZoneRulesEvenWhenItsIdExists() {
+        val customUtc = FixedOffsetTimeZone(0, "Asia/Tokyo")
+
+        assertEquals(
+            1,
+            LocalDayPolicy.localDaysBetween(
+                utc(2026, Calendar.MAY, 15, 23, 0),
+                utc(2026, Calendar.MAY, 16, 1, 0),
+                customUtc,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenUsesUnknownCustomTimeZoneTransitions() {
+        val custom = DelegatingTimeZone(longJumpSimpleTimeZone(24), "Kani/UnknownTransition")
+
+        assertEquals(
+            1,
+            LocalDayPolicy.localDaysBetween(
+                zoned(custom, 2026, Calendar.FEBRUARY, 28, 12, 0),
+                zoned(custom, 2026, Calendar.MARCH, 2, 12, 0),
+                custom,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenUsesCustomTransitionsWhenCustomTimeZoneIdExists() {
+        val custom = DelegatingTimeZone(longJumpSimpleTimeZone(24), "Asia/Tokyo")
+
+        assertEquals(
+            1,
+            LocalDayPolicy.localDaysBetween(
+                zoned(custom, 2026, Calendar.FEBRUARY, 28, 12, 0),
+                zoned(custom, 2026, Calendar.MARCH, 2, 12, 0),
+                custom,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenUsesTimeZoneHistoricalRulesInsteadOfZoneIdRules() {
+        val rarotonga = TimeZone.getTimeZone("Pacific/Rarotonga")
+
+        assertEquals(
+            4,
+            LocalDayPolicy.localDaysBetween(
+                zoned(rarotonga, 1899, Calendar.DECEMBER, 24, 12, 0),
+                zoned(rarotonga, 1899, Calendar.DECEMBER, 28, 12, 0),
+                rarotonga,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenCountsOnlyExistingMidnightsAcrossApiaSkippedDate() {
+        val apia = TimeZone.getTimeZone("Pacific/Apia")
+        val beforeSkip = zoned(apia, 2011, Calendar.DECEMBER, 29, 12, 0)
+
+        assertEquals(
+            1,
+            LocalDayPolicy.localDaysBetween(
+                beforeSkip,
+                zoned(apia, 2011, Calendar.DECEMBER, 31, 12, 0),
+                apia,
+            ),
+        )
+        assertEquals(
+            2,
+            LocalDayPolicy.localDaysBetween(
+                beforeSkip,
+                zoned(apia, 2012, Calendar.JANUARY, 1, 12, 0),
+                apia,
+            ),
+        )
+    }
+
+    @Test(timeout = 1_000L)
+    fun localDaysBetweenDoesNotWalkLongRangeForFullDaySimpleTimeZoneDst() {
+        val fullDayDst = SimpleTimeZone(
+            0,
+            "Kani/FullDayDst",
+            Calendar.MARCH,
+            1,
+            0,
+            0,
+            Calendar.OCTOBER,
+            1,
+            0,
+            0,
+            24 * 60 * 60 * 1000,
+        )
+
+        assertEquals(
+            Int.MAX_VALUE,
+            LocalDayPolicy.localDaysBetween(Long.MIN_VALUE, Long.MAX_VALUE, fullDayDst),
+        )
+        assertEquals(
+            2,
+            LocalDayPolicy.localDaysBetween(
+                zoned(fullDayDst, 2026, Calendar.FEBRUARY, 28, 12, 0),
+                zoned(fullDayDst, 2026, Calendar.MARCH, 3, 12, 0),
+                fullDayDst,
+            ),
+        )
+
+        fullDayDst.setStartYear(2020)
+        assertEquals(
+            4_373,
+            LocalDayPolicy.localDaysBetween(
+                zoned(fullDayDst, 2018, Calendar.JANUARY, 1, 12, 0),
+                zoned(fullDayDst, 2030, Calendar.JANUARY, 1, 12, 0),
+                fullDayDst,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenCountsSkippedDatesForLongSimpleTimeZoneDstJumps() {
+        val twentyFiveHourDst = longJumpSimpleTimeZone(25)
+        assertEquals(
+            12,
+            LocalDayPolicy.localDaysBetween(
+                zoned(twentyFiveHourDst, 2026, Calendar.FEBRUARY, 25, 12, 0),
+                zoned(twentyFiveHourDst, 2026, Calendar.MARCH, 10, 12, 0),
+                twentyFiveHourDst,
+            ),
+        )
+
+        val fortyNineHourDst = longJumpSimpleTimeZone(49)
+        assertEquals(
+            11,
+            LocalDayPolicy.localDaysBetween(
+                zoned(fortyNineHourDst, 2026, Calendar.FEBRUARY, 25, 12, 0),
+                zoned(fortyNineHourDst, 2026, Calendar.MARCH, 10, 12, 0),
+                fortyNineHourDst,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenCountsSimpleTimeZoneSkippedDatesInProlepticYearZero() {
+        val fullDayDst = longJumpSimpleTimeZone(24)
+        assertEquals(
+            319,
+            LocalDayPolicy.localDaysBetween(
+                zonedEra(fullDayDst, GregorianCalendar.BC, 1, Calendar.FEBRUARY, 25, 12, 0),
+                zonedEra(fullDayDst, GregorianCalendar.AD, 1, Calendar.JANUARY, 10, 12, 0),
+                fullDayDst,
+            ),
+        )
+
+        val fortyNineHourDst = longJumpSimpleTimeZone(49)
+        assertEquals(
+            318,
+            LocalDayPolicy.localDaysBetween(
+                zonedEra(fortyNineHourDst, GregorianCalendar.BC, 1, Calendar.FEBRUARY, 25, 12, 0),
+                zonedEra(fortyNineHourDst, GregorianCalendar.AD, 1, Calendar.JANUARY, 10, 12, 0),
+                fortyNineHourDst,
+            ),
+        )
+    }
+
+    @Test
+    fun localDaysBetweenHandlesExtremeTimestampsWithoutWalkingEveryDay() {
+        assertEquals(
+            Int.MAX_VALUE,
+            LocalDayPolicy.localDaysBetween(Long.MIN_VALUE, Long.MAX_VALUE, TimeZone.getTimeZone("UTC")),
+        )
+    }
+
     private fun zoned(zone: TimeZone, year: Int, month: Int, day: Int, hour: Int, minute: Int): Long {
         val calendar = Calendar.getInstance(zone)
         calendar.clear()
         calendar.set(year, month, day, hour, minute, 0)
+        return calendar.timeInMillis
+    }
+
+    private fun zonedEra(
+        zone: TimeZone,
+        era: Int,
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+    ): Long {
+        val calendar = Calendar.getInstance(zone)
+        calendar.clear()
+        calendar.set(Calendar.ERA, era)
+        calendar.set(Calendar.YEAR, year)
+        calendar.set(Calendar.MONTH, month)
+        calendar.set(Calendar.DAY_OF_MONTH, day)
+        calendar.set(Calendar.HOUR_OF_DAY, hour)
+        calendar.set(Calendar.MINUTE, minute)
         return calendar.timeInMillis
     }
 
@@ -202,5 +425,80 @@ class LocalDayPolicyTest {
         calendar.set(year, month, day, hour, minute, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
+    }
+
+    private fun longJumpSimpleTimeZone(dstHours: Int): SimpleTimeZone {
+        return SimpleTimeZone(
+            0,
+            "Kani/${dstHours}HourDst",
+            Calendar.MARCH,
+            1,
+            0,
+            0,
+            Calendar.OCTOBER,
+            1,
+            0,
+            0,
+            dstHours * 60 * 60 * 1000,
+        )
+    }
+
+    private class DelegatingTimeZone(
+        private val delegate: TimeZone,
+        id: String,
+    ) : TimeZone() {
+        init {
+            setID(id)
+        }
+
+        override fun getOffset(date: Long): Int = delegate.getOffset(date)
+
+        override fun getOffset(
+            era: Int,
+            year: Int,
+            month: Int,
+            day: Int,
+            dayOfWeek: Int,
+            milliseconds: Int,
+        ): Int = delegate.getOffset(era, year, month, day, dayOfWeek, milliseconds)
+
+        override fun setRawOffset(offsetMillis: Int) {
+            delegate.rawOffset = offsetMillis
+        }
+
+        override fun getRawOffset(): Int = delegate.rawOffset
+
+        override fun useDaylightTime(): Boolean = delegate.useDaylightTime()
+
+        override fun inDaylightTime(date: Date): Boolean = delegate.inDaylightTime(date)
+
+        override fun getDSTSavings(): Int = delegate.dstSavings
+    }
+
+    private class FixedOffsetTimeZone(offsetMillis: Int, id: String) : TimeZone() {
+        private var offset = offsetMillis
+
+        init {
+            setID(id)
+        }
+
+        override fun getOffset(
+            era: Int,
+            year: Int,
+            month: Int,
+            day: Int,
+            dayOfWeek: Int,
+            milliseconds: Int,
+        ): Int = offset
+
+        override fun setRawOffset(offsetMillis: Int) {
+            offset = offsetMillis
+        }
+
+        override fun getRawOffset(): Int = offset
+
+        override fun useDaylightTime(): Boolean = false
+
+        override fun inDaylightTime(date: Date): Boolean = false
     }
 }

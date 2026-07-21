@@ -15,15 +15,20 @@ import dev.bee.kanjianki.core.TaskTypeAccuracyPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
+import java.text.NumberFormat
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 internal interface ProgressAnalyticsStatsSource {
-    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
+    fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot?
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
     fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
 }
+
+private const val CACHED_REVIEW_DAY_COUNT = 366
+private val FORECAST_TIME_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
 
 internal fun progressAnalyticsSnapshot(
     store: LocalStore,
@@ -31,7 +36,9 @@ internal fun progressAnalyticsSnapshot(
     scheduleRefresh: (() -> Unit)? = null,
 ): ProgressAnalyticsState = progressAnalyticsSnapshot(
     source = object : ProgressAnalyticsStatsSource {
-        override fun cachedStatsSnapshotOrNull() = store.cachedStatsSnapshotOrNull()
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long) =
+            StatsCacheStore(store).readFresh(nowMillis = nowMillis)
+
         override fun recomputeStatsSnapshotSynchronously(nowMillis: Long) = store.recomputeStatsSnapshotSynchronously(nowMillis)
         override fun reviewDaySummaries(nowMillis: Long, days: Int) =
             dev.bee.kanjianki.data.StudyStatsQueries(store).reviewDaySummaries(nowMillis, days).map { it.toReviewDaySummary() }
@@ -47,7 +54,9 @@ internal fun progressAnalyticsSnapshot(
     scheduleRefresh: (() -> Unit)? = null,
     ladderSettings: RecordsBase.StudyLadderSettings,
 ): ProgressAnalyticsState {
-    val fresh = source.cachedStatsSnapshotOrNull()
+    val locale = Locale.getDefault()
+    val timeZone = TimeZone.getDefault()
+    val fresh = source.cachedStatsSnapshotOrNull(nowMillis)
     val snapshot = if (fresh != null) {
         fresh
     } else {
@@ -55,13 +64,10 @@ internal fun progressAnalyticsSnapshot(
         // it would leave Stats disagreeing with live Home/Focus state until another refresh.
         source.recomputeStatsSnapshotSynchronously(nowMillis)
     }
-    val locale = Locale.getDefault()
     val copy = StatsDashboardCopy.forLocale(locale)
     if (fresh != null && snapshot.reviewDaySummaries.isEmpty()) scheduleRefresh?.invoke()
 
-    val reviewDaysYear = if (snapshot.reviewDaySummaries.isNotEmpty()) {
-        snapshot.reviewDaySummaries.map { it.toReviewDaySummary() }.takeLast(366)
-    } else emptyList()
+    val reviewDaysYear = canonicalReviewDays(snapshot.reviewDaySummaries, nowMillis, timeZone)
     val reviewDays90 = reviewDaysYear.takeLast(90)
     val reviewDays30 = reviewDays90.takeLast(30)
     val reviewDays14 = reviewDays30.takeLast(14)
@@ -78,33 +84,47 @@ internal fun progressAnalyticsSnapshot(
         AnalyticsRange.THIRTY_DAYS to reviewDays30,
         AnalyticsRange.NINETY_DAYS to reviewDays90,
     )
-    val reviewRangeData = rangeDays.mapValues { (range, days) -> reviewsRangeData(range, days, copy) }
-    val accuracyRangeData = rangeDays.mapValues { (range, days) -> accuracyTrendChart(range, days, nowMillis, copy) }
+    val reviewRangeData = rangeDays.mapValues { (range, days) ->
+        reviewsRangeData(range, days, copy, locale, timeZone)
+    }
+    val accuracyRangeData = rangeDays.mapValues { (range, days) ->
+        accuracyTrendChart(range, days, nowMillis, copy, locale, timeZone)
+    }
 
     val impactStats = snapshot.studyImpactStats
     val outcome = snapshot.outcomeStats
     val impact = snapshot.impactReport
     val streak = snapshot.studyStreak
     val taskTime = snapshot.studyTaskTimeStats
-    val total30 = reviewDays30.sumOf { it.total }
-    val correct30 = reviewDays30.sumOf { it.correct() }
+    val total30 = reviewDays30.saturatingLongCountSum { it.total }
+    val correct30 = reviewDays30.saturatingLongCountSum { it.correct() }
     val accuracy30 = percent(correct30, total30)
-    val previousAccuracy = percent(reviewDays30Previous.sumOf { it.correct() }, reviewDays30Previous.sumOf { it.total })
-    val accuracyDelta = if (reviewDays30Previous.sumOf { it.total } > 0) {
-        deltaLabel(accuracy30, previousAccuracy, copy, thirtyDayWindow = true)
+    val previousTotal30 = reviewDays30Previous.saturatingLongCountSum { it.total }
+    val previousAccuracy = percent(
+        reviewDays30Previous.saturatingLongCountSum { it.correct() },
+        previousTotal30,
+    )
+    val accuracyDelta = if (previousTotal30 > 0) {
+        accuracyDeltaLabel(accuracy30, previousAccuracy, copy, locale)
     } else null
-    val taskRows30 = snapshot.taskTypeDaySummaries.filter { it.dayStartMillis >= reviewDays30.firstOrNull()?.dayStart.orZero() }
+    val taskRangeStart = reviewDays30.first().dayStart
+    val taskRangeEnd = LocalDayPolicy.nextLocalDayStart(nowMillis, timeZone)
+    val taskRows30 = snapshot.taskTypeDaySummaries.filter {
+        it.dayStartMillis >= taskRangeStart && it.dayStartMillis < taskRangeEnd
+    }
     val groupedAccuracy = TaskTypeAccuracyPolicy.summarize(taskRows30.map {
         TaskTypeAccuracyPolicy.Summary(it.taskType, it.correct, it.total)
     })
     val reviewShare = distributionFromAccuracy(groupedAccuracy, copy)
-    val cumulative = snapshot.cumulativeKanjiPracticed
-    val cumulativeChart = cumulativeChart(cumulative, copy)
-    val practicedDelta = cumulativeSevenDayDelta(cumulative, nowMillis)
+    val cumulative = canonicalCumulative(snapshot.cumulativeKanjiPracticed, nowMillis, timeZone)
+    val cumulativeChart = cumulativeChart(cumulative, nowMillis, copy, locale, timeZone)
+    val practicedDelta = cumulativeSevenDayDelta(cumulative, nowMillis, timeZone)
     val adaptiveHealth = outcome.adaptiveHealth
-    val usesAdaptiveHealth = adaptiveHealth.totalAdaptiveItems > 0
-    val adaptiveProgressTotal = maxOf(adaptiveHealth.totalAdaptiveItems, outcome.ladderHealth.totalActiveItems)
-    val legacyTransitionCount = (adaptiveProgressTotal - adaptiveHealth.totalAdaptiveItems).coerceAtLeast(0)
+    val adaptiveItemCount = adaptiveHealth.totalAdaptiveItems.coerceAtLeast(0)
+    val legacyActiveTotal = outcome.ladderHealth.totalActiveItems.coerceAtLeast(0)
+    val usesAdaptiveHealth = adaptiveItemCount > 0
+    val adaptiveProgressTotal = maxOf(adaptiveItemCount, legacyActiveTotal)
+    val legacyTransitionCount = adaptiveProgressTotal - adaptiveItemCount
     val progressRows = if (usesAdaptiveHealth) {
         adaptiveRows(adaptiveHealth, adaptiveProgressTotal, legacyTransitionCount, copy)
     } else {
@@ -121,9 +141,24 @@ internal fun progressAnalyticsSnapshot(
         )
     }
     val heatmap = ReviewHeatmapPolicy.build(
-        reviewDaysYear.map { ReviewHeatmapPolicy.DaySummary(it.dayStart, it.total) },
+        reviewDaysYear.map { ReviewHeatmapPolicy.DaySummary(it.dayStart, it.total.toDisplayCount()) },
         nowMillis,
+        timeZone,
+        locale,
     )
+    val currentStreakDays = streak.currentDays.coerceAtLeast(0)
+    val bestStreakDays = streak.bestDays.coerceAtLeast(currentStreakDays)
+    val reviewsToday = streak.reviewsToday.coerceAtLeast(0)
+    val legacyProgressCount = outcome.ladderHealth.rungCounts.values.saturatingCountSum()
+    val contextualCompleteCount = adaptiveHealth.contextualCompleteCount.coerceIn(0, adaptiveProgressTotal)
+    val focusScore = focusScore(impact)
+    val focusScoreAvailable = impactCount(impact) > 0
+    val totalReviews = impactStats.totalReviews.coerceAtLeast(0)
+    val distinctReviewedKanji = impactStats.distinctReviewedKanji.coerceAtLeast(0)
+    val learnedKanji = cumulative.lastOrNull()?.cumulativeCount ?: distinctReviewedKanji
+    val answeredTasks = taskTime.answeredTasks.coerceAtLeast(0)
+    val lastSevenDaysMillis = taskTime.lastSevenDaysMillis.coerceAtLeast(0L)
+    val todayMillis = taskTime.todayMillis.coerceAtLeast(0L)
 
     val state = ProgressAnalyticsState(
         generatedAtMillis = snapshot.generatedAtMillis,
@@ -131,38 +166,50 @@ internal fun progressAnalyticsSnapshot(
             title = copy.statsOverview,
             subtitle = copy.overviewSubtitle,
             totalReviews = ProgressCountMetricState(
-                impactStats.totalReviews, formatInt(impactStats.totalReviews),
-                deltaLabel(reviewDays7.sumOf { it.total }, reviewDays7Previous.sumOf { it.total }, copy),
+                totalReviews, formatInt(totalReviews, locale),
+                deltaLabel(
+                    reviewDays7.saturatingLongCountSum { it.total },
+                    reviewDays7Previous.saturatingLongCountSum { it.total },
+                    copy,
+                    locale,
+                ),
                 copy.allReviews,
             ),
             accuracy = ProgressCountMetricState(
                 accuracy30, "$accuracy30%", accuracyDelta, copy.thirtyDayAccuracy,
             ),
             currentStreak = ProgressStreakMetricState(
-                streak.currentDays, streak.bestDays, copy.days(streak.currentDays),
+                currentStreakDays, bestStreakDays, copy.days(currentStreakDays),
                 if (streak.studiedToday) copy.studiedToday else copy.keepStreakAlive,
             ),
             kanjiLearned = ProgressCountMetricState(
-                cumulative.lastOrNull()?.cumulativeCount ?: impactStats.distinctReviewedKanji,
-                formatInt(cumulative.lastOrNull()?.cumulativeCount ?: impactStats.distinctReviewedKanji),
-                practicedDelta.takeIf { it > 0 }?.let { copy.thisWeekDelta(formatInt(it)) },
+                learnedKanji,
+                formatInt(learnedKanji, locale),
+                practicedDelta.takeIf { it > 0 }?.let { copy.thisWeekDelta(formatInt(it, locale)) },
                 copy.distinctKanjiPracticed,
             ),
-            focusSessions = ProgressCountMetricState(taskTime.answeredTasks, formatInt(taskTime.answeredTasks), detailLabel = copy.lastSevenDays),
-            studyTime = ProgressDurationMetricState(
-                taskTime.lastSevenDaysMillis, StatsValueFormatter.duration(taskTime.lastSevenDaysMillis),
-                taskTime.todayMillis.takeIf { it > 0 }?.let { copy.todayDelta(StatsValueFormatter.duration(it, locale)) }, copy.thisWeek,
+            focusSessions = ProgressCountMetricState(
+                answeredTasks,
+                formatInt(answeredTasks, locale),
+                detailLabel = copy.lastSevenDays,
             ),
-            reviewsToday = ProgressCountMetricState(streak.reviewsToday, formatInt(streak.reviewsToday)),
-            reviewsOverTime = volumeChart(reviewDays30, copy),
+            studyTime = ProgressDurationMetricState(
+                lastSevenDaysMillis,
+                StatsValueFormatter.duration(lastSevenDaysMillis, locale),
+                todayMillis.takeIf { it > 0 }?.let { copy.todayDelta(StatsValueFormatter.duration(it, locale)) },
+                copy.thisWeek,
+            ),
+            reviewsToday = ProgressCountMetricState(reviewsToday, formatInt(reviewsToday, locale)),
+            reviewsOverTime = volumeChart(reviewDays30, copy, locale, timeZone),
             cardTypeBreakdown = ProgressDistributionChartState(
                 copy.reviewShare, reviewShare,
-                distributionSummary(copy.reviewShare, reviewShare, copy),
+                distributionSummary(copy.reviewShare, reviewShare, copy, locale),
             ),
             correctIncorrectBreakdown = distribution(
                 copy.correctVsIncorrect,
-                listOf(copy.correct to correct30, copy.incorrect to (total30 - correct30).coerceAtLeast(0)),
+                listOf(copy.correct to correct30, copy.incorrect to (total30 - correct30).coerceAtLeast(0L)),
                 copy,
+                locale,
             ),
         ),
         reviewsAnalytics = ProgressReviewsAnalyticsState(
@@ -175,10 +222,15 @@ internal fun progressAnalyticsSnapshot(
             correct = range7.correct,
             incorrect = range7.incorrect,
             bestDayLabel = range7.bestDayLabel,
-            currentStreak = ProgressStreakMetricState(streak.currentDays, streak.bestDays, copy.days(streak.currentDays), copy.bestDays(streak.bestDays)),
+            currentStreak = ProgressStreakMetricState(
+                currentStreakDays,
+                bestStreakDays,
+                copy.days(currentStreakDays),
+                copy.bestDays(bestStreakDays),
+            ),
             tip = when {
                 streak.studiedToday -> copy.streakSafeTip
-                streak.currentDays > 0 -> copy.keepStreakTip
+                currentStreakDays > 0 -> copy.keepStreakTip
                 else -> copy.startMomentumTip
             },
             accessibilitySummary = range7.accessibilitySummary,
@@ -193,7 +245,9 @@ internal fun progressAnalyticsSnapshot(
             retentionByCardType = groupedAccuracy.map {
                 ProgressRetentionRowState(copy.group(it.group), it.percent, "${it.correct}/${it.total} · ${it.percent}%")
             },
-            retentionSummary = groupedAccuracy.joinToString { "${copy.group(it.group)} ${it.correct}/${it.total}" },
+            retentionSummary = groupedAccuracy.joinToString(localizedListSeparator(locale)) {
+                "${copy.group(it.group)} ${it.correct}/${it.total}"
+            },
             categoryStatuses = groupedAccuracy.map { ProgressCategoryStatusState(copy.group(it.group), copy.status(it.percent)) },
             rangeData = accuracyRangeData,
         ),
@@ -209,17 +263,17 @@ internal fun progressAnalyticsSnapshot(
                 )
             } else "",
             overallLearned = ProgressFractionMetricState(
-                if (usesAdaptiveHealth) adaptiveHealth.contextualCompleteCount else outcome.ladderHealth.rungCounts.values.sum(),
-                if (usesAdaptiveHealth) adaptiveProgressTotal else outcome.ladderHealth.totalActiveItems,
+                if (usesAdaptiveHealth) contextualCompleteCount else legacyProgressCount,
+                if (usesAdaptiveHealth) adaptiveProgressTotal else legacyActiveTotal,
                 if (usesAdaptiveHealth) {
-                    percent(adaptiveHealth.contextualCompleteCount, adaptiveProgressTotal)
+                    percent(contextualCompleteCount, adaptiveProgressTotal)
                 } else {
-                    percent(outcome.ladderHealth.rungCounts.values.sum(), outcome.ladderHealth.totalActiveItems)
+                    percent(legacyProgressCount, legacyActiveTotal)
                 },
                 if (usesAdaptiveHealth) {
-                    copy.contextualComplete(adaptiveHealth.contextualCompleteCount)
+                    copy.contextualComplete(contextualCompleteCount)
                 } else {
-                    copy.activeItems(outcome.ladderHealth.totalActiveItems)
+                    copy.activeItems(legacyActiveTotal)
                 },
                 if (usesAdaptiveHealth) {
                     copy.adaptiveHealthSummary(
@@ -230,7 +284,7 @@ internal fun progressAnalyticsSnapshot(
                         adaptiveHealth.stuckRepairCount,
                     )
                 } else {
-                    copy.activeItemsSummary(outcome.ladderHealth.totalActiveItems)
+                    copy.activeItemsSummary(legacyActiveTotal)
                 },
             ),
             levelRows = progressRows,
@@ -239,95 +293,238 @@ internal fun progressAnalyticsSnapshot(
         weaknessInsights = ProgressWeaknessInsightsState(
             title = copy.weaknessInsights,
             focusScore = ProgressScoreMetricState(
-                focusScore(impact), 100, copy.focusStatus(focusScore(impact)),
-                "${focusScore(impact)} / 100 · ${copy.focusStatus(focusScore(impact))}",
+                focusScore, 100, copy.focusStatus(focusScore),
+                "$focusScore / 100 · ${copy.focusStatus(focusScore)}",
             ),
             weaknessRows = weaknessRows(impact, copy),
             mostMissedKanji = mostMissedKanji(snapshot.recentMistakes),
             supportNeeded = supportNeeded(outcome, copy),
             confusionPairs = confusionPairs,
-            focusScoreAvailable = impact.helpedCount + impact.notHelpingCount + impact.needsMoreCardsCount > 0,
+            focusScoreAvailable = focusScoreAvailable,
         ),
-        forecast = forecastState(snapshot, copy),
+        forecast = forecastState(snapshot, copy, locale),
     )
     return state
 }
 
 internal data class ReviewDaySummary(
     val dayStart: Long,
-    val total: Int,
-    val again: Int,
-    val hard: Int,
-    val good: Int,
-    val easy: Int,
-    val writingRequired: Int,
-    val writingFailed: Int,
+    val total: Long,
+    val again: Long,
+    val hard: Long,
+    val good: Long,
+    val easy: Long,
+    val writingRequired: Long,
+    val writingFailed: Long,
 ) {
-    fun correct(): Int = (total - again).coerceAtLeast(0)
-    fun accuracyPercent(): Int = percent(correct(), total)
+    fun correct(): Long {
+        val safeTotal = total.coerceAtLeast(0L)
+        return safeTotal - again.coerceIn(0, safeTotal)
+    }
+
+    fun accuracyPercent(): Int = percent(correct(), total.coerceAtLeast(0L))
 }
 
-private fun StatsCacheStore.ReviewDaySummarySnapshot.toReviewDaySummary() = ReviewDaySummary(
-    dayStartMillis, total, again, hard, good, easy, writingRequired, writingFailed,
+private fun StatsCacheStore.ReviewDaySummarySnapshot.toReviewDaySummary(
+    normalizedDayStart: Long = dayStartMillis,
+): ReviewDaySummary {
+    val safeTotal = total.coerceAtLeast(0)
+    val safeWritingRequired = writingRequired.coerceIn(0, safeTotal)
+    return ReviewDaySummary(
+        normalizedDayStart,
+        safeTotal.toLong(),
+        again.coerceIn(0, safeTotal).toLong(),
+        hard.coerceIn(0, safeTotal).toLong(),
+        good.coerceIn(0, safeTotal).toLong(),
+        easy.coerceIn(0, safeTotal).toLong(),
+        safeWritingRequired.toLong(),
+        writingFailed.coerceIn(0, safeWritingRequired).toLong(),
+    )
+}
+
+private fun canonicalReviewDays(
+    snapshots: List<StatsCacheStore.ReviewDaySummarySnapshot>,
+    nowMillis: Long,
+    timeZone: TimeZone,
+): List<ReviewDaySummary> {
+    val today = LocalDayPolicy.localDayStart(nowMillis, timeZone)
+    val firstDay = LocalDayPolicy.moveLocalDays(today, -(CACHED_REVIEW_DAY_COUNT - 1), timeZone)
+    val endExclusive = LocalDayPolicy.nextLocalDayStart(nowMillis, timeZone)
+    val byDay = HashMap<Long, ReviewDaySummary>()
+    snapshots.forEach { snapshot ->
+        if (snapshot.dayStartMillis < firstDay || snapshot.dayStartMillis >= endExclusive) return@forEach
+        val dayStart = LocalDayPolicy.localDayStart(snapshot.dayStartMillis, timeZone)
+        val normalized = snapshot.toReviewDaySummary(dayStart)
+        byDay[dayStart] = byDay[dayStart]?.merge(normalized) ?: normalized
+    }
+    return (0 until CACHED_REVIEW_DAY_COUNT).map { offset ->
+        val dayStart = LocalDayPolicy.moveLocalDays(firstDay, offset, timeZone)
+        byDay[dayStart] ?: ReviewDaySummary(dayStart, 0L, 0L, 0L, 0L, 0L, 0L, 0L)
+    }
+}
+
+private fun ReviewDaySummary.merge(other: ReviewDaySummary): ReviewDaySummary = ReviewDaySummary(
+    dayStart = dayStart,
+    total = saturatingLongAdd(total, other.total),
+    again = saturatingLongAdd(again, other.again),
+    hard = saturatingLongAdd(hard, other.hard),
+    good = saturatingLongAdd(good, other.good),
+    easy = saturatingLongAdd(easy, other.easy),
+    writingRequired = saturatingLongAdd(writingRequired, other.writingRequired),
+    writingFailed = saturatingLongAdd(writingFailed, other.writingFailed),
 )
 
-private fun Long?.orZero(): Long = this ?: 0L
-
-private fun reviewsRangeData(range: AnalyticsRange, days: List<ReviewDaySummary>, copy: StatsDashboardCopy): ProgressReviewsRangeData {
-    val total = days.sumOf { it.total }
-    val correct = days.sumOf { it.correct() }
-    val incorrect = (total - correct).coerceAtLeast(0)
-    val average = if (days.isEmpty()) 0 else (total / days.size.toDouble()).roundToInt()
-    val labelPattern = if (range == AnalyticsRange.SEVEN_DAYS) "EEE" else "MMM d"
+private fun reviewsRangeData(
+    range: AnalyticsRange,
+    days: List<ReviewDaySummary>,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+    timeZone: TimeZone,
+): ProgressReviewsRangeData {
+    val total = days.saturatingLongCountSum { it.total }
+    val correct = days.saturatingLongCountSum { it.correct() }
+    val incorrect = (total - correct).coerceAtLeast(0L)
+    val average = if (days.isEmpty()) 0 else (total / days.size.toDouble()).roundToInt().coerceAtLeast(0)
+    val labelPattern = if (range == AnalyticsRange.SEVEN_DAYS) "EEE" else monthDayPattern(locale)
     val chartDays = if (range == AnalyticsRange.SEVEN_DAYS) days else bucketSummaries(days, 10)
     val best = days.maxWithOrNull(compareBy<ReviewDaySummary> { it.total }.thenByDescending { it.dayStart })
-    val summary = copy.reviewSummary(range.days, formatInt(total), formatInt(average), formatInt(correct), formatInt(incorrect))
+    val summary = copy.reviewSummary(
+        range.days,
+        formatCount(total, locale),
+        formatInt(average, locale),
+        formatCount(correct, locale),
+        formatCount(incorrect, locale),
+    )
     return ProgressReviewsRangeData(
-        reviewsPerDay = ProgressBarChartState(copy.reviewsPerDay, chartDays.map { dayLabel(it.dayStart, labelPattern) }, chartDays.map { it.total }, summary, range),
-        totalReviews = ProgressCountMetricState(total, formatInt(total)),
-        averagePerDay = ProgressCountMetricState(average, formatInt(average)),
-        correct = ProgressCountMetricState(correct, formatInt(correct)),
-        incorrect = ProgressCountMetricState(incorrect, formatInt(incorrect)),
-        bestDayLabel = best?.takeIf { it.total > 0 }?.let { dayLabel(it.dayStart, labelPattern) } ?: copy.noData,
+        reviewsPerDay = ProgressBarChartState(
+            copy.reviewsPerDay,
+            chartDays.map { dayLabel(it.dayStart, labelPattern, locale, timeZone) },
+            chartDays.map { it.total.toDisplayCount() },
+            summary,
+            range,
+        ),
+        totalReviews = ProgressCountMetricState(total.toDisplayCount(), formatCount(total, locale)),
+        averagePerDay = ProgressCountMetricState(average, formatInt(average, locale)),
+        correct = ProgressCountMetricState(correct.toDisplayCount(), formatCount(correct, locale)),
+        incorrect = ProgressCountMetricState(incorrect.toDisplayCount(), formatCount(incorrect, locale)),
+        bestDayLabel = best?.takeIf { it.total > 0 }
+            ?.let { dayLabel(it.dayStart, labelPattern, locale, timeZone) }
+            ?: copy.noData,
         accessibilitySummary = summary,
     )
 }
 
-private fun accuracyTrendChart(range: AnalyticsRange, days: List<ReviewDaySummary>, nowMillis: Long, copy: StatsDashboardCopy): ProgressLineChartState {
+private fun accuracyTrendChart(
+    range: AnalyticsRange,
+    days: List<ReviewDaySummary>,
+    nowMillis: Long,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+    timeZone: TimeZone,
+): ProgressLineChartState {
     val buckets = bucketSummaries(days, if (range == AnalyticsRange.SEVEN_DAYS) 7 else 6)
     val values = buckets.map { it.accuracyPercent() }
-    val total = days.sumOf { it.total }
-    val accuracy = percent(days.sumOf { it.correct() }, total)
+    val total = days.saturatingLongCountSum { it.total }
+    val accuracy = percent(days.saturatingLongCountSum { it.correct() }, total)
+    val pattern = monthDayPattern(locale)
     return lineChart(
         title = copy.accuracyOverTime,
-        labels = buckets.map { dayLabel(it.dayStart, "MMM d") },
-        series = if (total == 0) emptyList() else listOf(ProgressSeriesState(copy.accuracyPercent, values)),
-        summary = copy.accuracySummary(range.days, accuracy, dayLabel(days.lastOrNull()?.dayStart ?: nowMillis, "MMM d")),
+        labels = buckets.map { dayLabel(it.dayStart, pattern, locale, timeZone) },
+        series = if (total == 0L) emptyList() else listOf(ProgressSeriesState(copy.accuracyPercent, values)),
+        summary = copy.accuracySummary(
+            range.days,
+            accuracy,
+            dayLabel(days.lastOrNull()?.dayStart ?: nowMillis, pattern, locale, timeZone),
+        ),
         range = range,
-        tooltip = buckets.lastOrNull()?.let { "${dayLabel(it.dayStart, "MMM d")}, ${it.accuracyPercent()}%" },
+        tooltip = buckets.lastOrNull()?.let {
+            accuracyTooltip(dayLabel(it.dayStart, pattern, locale, timeZone), it.accuracyPercent(), locale)
+        },
     )
 }
 
-private fun volumeChart(days: List<ReviewDaySummary>, copy: StatsDashboardCopy): ProgressLineChartState {
+private fun volumeChart(
+    days: List<ReviewDaySummary>,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+    timeZone: TimeZone,
+): ProgressLineChartState {
     val buckets = bucketSummaries(days, 6)
+    val pattern = monthDayPattern(locale)
     return lineChart(
-        copy.reviewsOverTime, buckets.map { dayLabel(it.dayStart, "MMM d") },
-        if (buckets.sumOf { it.total } == 0) emptyList() else listOf(ProgressSeriesState(copy.reviews, buckets.map { it.total })),
+        copy.reviewsOverTime, buckets.map { dayLabel(it.dayStart, pattern, locale, timeZone) },
+        if (buckets.saturatingLongCountSum { it.total } == 0L) {
+            emptyList()
+        } else {
+            listOf(ProgressSeriesState(copy.reviews, buckets.map { it.total.toDisplayCount() }))
+        },
         copy.volumeSummary(), AnalyticsRange.THIRTY_DAYS,
-        buckets.lastOrNull()?.let { copy.reviewsTooltip(dayLabel(it.dayStart, "MMM d"), it.total) },
+        buckets.lastOrNull()?.let {
+            copy.reviewsTooltip(
+                dayLabel(it.dayStart, pattern, locale, timeZone),
+                it.total.toDisplayCount(),
+            )
+        },
     )
 }
 
-private fun cumulativeChart(points: List<StatsCacheStore.CumulativeKanjiSnapshot>, copy: StatsDashboardCopy): ProgressLineChartState {
-    val shown = points.takeLast(12)
+private fun cumulativeChart(
+    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    nowMillis: Long,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+    timeZone: TimeZone,
+): ProgressLineChartState {
+    val rangeStart = LocalDayPolicy.moveLocalDays(
+        LocalDayPolicy.localDayStart(nowMillis, timeZone),
+        -(AnalyticsRange.NINETY_DAYS.days - 1),
+        timeZone,
+    )
+    val shown = sampleCumulativeLocalDays(
+        points = points,
+        rangeStart = rangeStart,
+        dayCount = AnalyticsRange.NINETY_DAYS.days,
+        maximumSize = 12,
+        timeZone = timeZone,
+    )
+    val pattern = monthDayPattern(locale)
     return lineChart(
         copy.cumulativePracticed,
-        shown.map { dayLabel(it.dayStartMillis, "MMM d") },
+        shown.map { dayLabel(it.dayStartMillis, pattern, locale, timeZone) },
         if (shown.isEmpty()) emptyList() else listOf(ProgressSeriesState(copy.practicedKanji, shown.map { it.cumulativeCount })),
         copy.cumulativeSummary(),
         AnalyticsRange.NINETY_DAYS,
-        shown.lastOrNull()?.let { copy.practicedTooltip(dayLabel(it.dayStartMillis, "MMM d"), it.cumulativeCount) },
+        shown.lastOrNull()?.let {
+            copy.practicedTooltip(dayLabel(it.dayStartMillis, pattern, locale, timeZone), it.cumulativeCount)
+        },
     )
+}
+
+private fun sampleCumulativeLocalDays(
+    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    rangeStart: Long,
+    dayCount: Int,
+    maximumSize: Int,
+    timeZone: TimeZone,
+): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+    if (maximumSize <= 0 || dayCount <= 0 || points.isEmpty()) return emptyList()
+    val sampleCount = minOf(maximumSize, dayCount)
+    val lastDayOffset = dayCount - 1L
+    var pointIndex = 0
+    var cumulativeCount = 0
+    return List(sampleCount) { sampleIndex ->
+        val dayOffset = if (sampleCount == 1) {
+            lastDayOffset
+        } else {
+            sampleIndex.toLong() * lastDayOffset / (sampleCount - 1L)
+        }
+        val sampleDay = LocalDayPolicy.moveLocalDays(rangeStart, dayOffset.toInt(), timeZone)
+        while (pointIndex < points.size && points[pointIndex].dayStartMillis <= sampleDay) {
+            cumulativeCount = points[pointIndex].cumulativeCount
+            pointIndex += 1
+        }
+        StatsCacheStore.CumulativeKanjiSnapshot(sampleDay, cumulativeCount)
+    }
 }
 
 private fun lineChart(
@@ -347,45 +544,66 @@ private fun bucketSummaries(days: List<ReviewDaySummary>, bucketCount: Int): Lis
     val size = ceil(days.size / bucketCount.coerceAtLeast(1).toDouble()).toInt().coerceAtLeast(1)
     return days.chunked(size).map { slice ->
         ReviewDaySummary(
-            slice.last().dayStart, slice.sumOf { it.total }, slice.sumOf { it.again },
-            slice.sumOf { it.hard }, slice.sumOf { it.good }, slice.sumOf { it.easy },
-            slice.sumOf { it.writingRequired }, slice.sumOf { it.writingFailed },
+            slice.last().dayStart,
+            slice.saturatingLongCountSum { it.total },
+            slice.saturatingLongCountSum { it.again },
+            slice.saturatingLongCountSum { it.hard },
+            slice.saturatingLongCountSum { it.good },
+            slice.saturatingLongCountSum { it.easy },
+            slice.saturatingLongCountSum { it.writingRequired },
+            slice.saturatingLongCountSum { it.writingFailed },
         )
     }
 }
 
 private fun distributionFromAccuracy(groups: List<TaskTypeAccuracyPolicy.Accuracy>, copy: StatsDashboardCopy): List<ProgressDistributionSegmentState> {
-    val total = groups.sumOf { it.total }
-    if (total == 0) return emptyList()
-    return groups.map { ProgressDistributionSegmentState(copy.group(it.group), it.total, percent(it.total, total)) }
+    val total = groups.saturatingLongCountSum { it.total.toLong() }
+    if (total == 0L) return emptyList()
+    return groups.map {
+        val count = it.total.coerceAtLeast(0)
+        ProgressDistributionSegmentState(copy.group(it.group), count, percent(count.toLong(), total))
+    }
 }
 
 private fun distribution(
     title: String,
-    values: List<Pair<String, Int>>,
+    values: List<Pair<String, Long>>,
     copy: StatsDashboardCopy,
+    locale: Locale,
 ): ProgressDistributionChartState {
-    val total = values.sumOf { it.second.coerceAtLeast(0) }
-    val segments = if (total == 0) emptyList() else values.filter { it.second > 0 }.map {
-        ProgressDistributionSegmentState(it.first, it.second, percent(it.second, total))
+    val total = values.saturatingLongCountSum { it.second }
+    val segments = if (total == 0L) emptyList() else values.filter { it.second > 0L }.map {
+        ProgressDistributionSegmentState(it.first, it.second.toDisplayCount(), percent(it.second, total))
     }
-    return ProgressDistributionChartState(title, segments, distributionSummary(title, segments, copy))
+    return ProgressDistributionChartState(title, segments, distributionSummary(title, segments, copy, locale))
 }
 
 private fun distributionSummary(
     title: String,
     segments: List<ProgressDistributionSegmentState>,
     copy: StatsDashboardCopy,
-): String = "$title. " + segments.joinToString { "${it.label} ${it.value}, ${it.percent} ${copy.percentWord}" }
+    locale: Locale,
+): String {
+    if (segments.isEmpty()) return if (isJapanese(locale)) "$title。" else "$title."
+    return if (isJapanese(locale)) {
+        "$title。" + segments.joinToString("、") {
+            "${it.label} ${formatInt(it.value, locale)}、${it.percent}${copy.percentWord}"
+        }
+    } else {
+        "$title. " + segments.joinToString {
+            "${it.label} ${formatInt(it.value, locale)}, ${it.percent} ${copy.percentWord}"
+        }
+    }
+}
 
 private fun ladderRows(
     metric: StudyStatsStore.LadderHealthMetric,
     ladderSettings: RecordsBase.StudyLadderSettings,
     copy: StatsDashboardCopy,
 ): List<ProgressLevelRowState> {
-    val total = metric.rungCounts.values.sum()
+    val total = metric.rungCounts.values.saturatingCountSum()
     return ladderSettings.orderedRungs.map { rung ->
-        val count = metric.countFor(rung)
+        val count = metric.countFor(rung).coerceIn(0, total)
         ProgressLevelRowState(copy.rung(rung.wireName()), count, total, percent(count, total))
     }
 }
@@ -396,18 +614,20 @@ private fun adaptiveRows(
     legacyTransitionCount: Int,
     copy: StatsDashboardCopy,
 ): List<ProgressLevelRowState> {
+    val recognitionCount = metric.countFor(CoreSkill.RECOGNITION).coerceIn(0, total)
+    val contextualCount = metric.countFor(CoreSkill.CONTEXTUAL_READING).coerceIn(0, total)
     val rows = mutableListOf(
         ProgressLevelRowState(
             copy.coreSkill(CoreSkill.RECOGNITION),
-            metric.countFor(CoreSkill.RECOGNITION),
+            recognitionCount,
             total,
-            percent(metric.countFor(CoreSkill.RECOGNITION), total),
+            percent(recognitionCount, total),
         ),
         ProgressLevelRowState(
             copy.coreSkill(CoreSkill.CONTEXTUAL_READING),
-            metric.countFor(CoreSkill.CONTEXTUAL_READING),
+            contextualCount,
             total,
-            percent(metric.countFor(CoreSkill.CONTEXTUAL_READING), total),
+            percent(contextualCount, total),
         ),
     )
     listOf(
@@ -417,36 +637,78 @@ private fun adaptiveRows(
         "stuck_repair" to metric.stuckRepairCount,
         "legacy_transition" to legacyTransitionCount,
     ).filter { it.second > 0 }.forEach { (status, count) ->
-        rows += ProgressLevelRowState(copy.adaptiveStatus(status), count, total, percent(count, total))
+        val normalized = count.coerceIn(0, total)
+        rows += ProgressLevelRowState(copy.adaptiveStatus(status), normalized, total, percent(normalized, total))
     }
     return rows
 }
 
-private fun cumulativeSevenDayDelta(points: List<StatsCacheStore.CumulativeKanjiSnapshot>, nowMillis: Long): Int {
+private fun canonicalCumulative(
+    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    nowMillis: Long,
+    timeZone: TimeZone,
+): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+    val endExclusive = LocalDayPolicy.nextLocalDayStart(nowMillis, timeZone)
+    val byDay = HashMap<Long, Int>()
+    points.forEach { point ->
+        if (point.dayStartMillis >= endExclusive) return@forEach
+        val dayStart = LocalDayPolicy.localDayStart(point.dayStartMillis, timeZone)
+        byDay[dayStart] = maxOf(byDay[dayStart] ?: 0, point.cumulativeCount.coerceAtLeast(0))
+    }
+    var runningMaximum = 0
+    return byDay.entries.sortedBy { it.key }.map { (dayStart, count) ->
+        runningMaximum = maxOf(runningMaximum, count)
+        StatsCacheStore.CumulativeKanjiSnapshot(dayStart, runningMaximum)
+    }
+}
+
+private fun cumulativeSevenDayDelta(
+    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    nowMillis: Long,
+    timeZone: TimeZone,
+): Int {
     if (points.isEmpty()) return 0
-    val cutoff = LocalDayPolicy.moveLocalDays(LocalDayPolicy.localDayStart(nowMillis), -7)
+    val cutoff = LocalDayPolicy.moveLocalDays(
+        LocalDayPolicy.localDayStart(nowMillis, timeZone),
+        -(AnalyticsRange.SEVEN_DAYS.days - 1),
+        timeZone,
+    )
     val current = points.last().cumulativeCount
     val before = points.lastOrNull { it.dayStartMillis < cutoff }?.cumulativeCount ?: 0
-    return (current - before).coerceAtLeast(0)
+    return (current.toLong() - before.toLong()).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
 }
 
 private fun forecastState(
     snapshot: StatsCacheStore.Snapshot,
     dashboardCopy: StatsDashboardCopy,
+    locale: Locale,
 ): ProgressForecastState? {
     val forecast = snapshot.ladderForecast ?: return null
     if (forecast.totalItems < 1) return null
-    val copy = ForecastTextCopy.forLocale()
-    val completion = forecast.projectedCompletionMonthMillis?.let { StatsValueFormatter.date(it, "MMMM yyyy") } ?: copy.beyondHorizon
-    val shown = forecast.burnDown
+    val copy = ForecastTextCopy.forLocale(locale)
+    val completion = forecast.projectedCompletionMonthMillis?.let {
+        StatsValueFormatter.date(it, forecastCompletionPattern(locale), locale, FORECAST_TIME_ZONE)
+    } ?: copy.beyondHorizon
+    val shown = forecast.burnDown.map {
+        it.copy(
+            completedItems = it.completedItems.coerceIn(0, forecast.totalItems),
+            remainingItems = it.remainingItems.coerceIn(0, forecast.totalItems),
+        )
+    }
     return ProgressForecastState(
         totalItems = forecast.totalItems,
-        headline = copy.headline.format(forecast.totalItems, completion),
+        headline = String.format(locale, copy.headline, forecast.totalItems, completion),
         assumption = copy.assumption,
         burnDown = lineChart(
             dashboardCopy.itemsRemaining,
-            shown.map { StatsValueFormatter.date(it.monthStartMillis, "MMM") },
-            listOf(ProgressSeriesState(dashboardCopy.remaining, shown.map { it.remainingItems })),
+            shown.map {
+                StatsValueFormatter.date(it.monthStartMillis, forecastMonthPattern(locale), locale, FORECAST_TIME_ZONE)
+            },
+            if (shown.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(ProgressSeriesState(dashboardCopy.remaining, shown.map { it.remainingItems }))
+            },
             dashboardCopy.forecastSummary(
                 forecast.totalItems,
                 shown.lastOrNull()?.remainingItems ?: forecast.totalItems,
@@ -460,7 +722,9 @@ private fun weaknessRows(
     copy: StatsDashboardCopy,
 ): List<ProgressWeaknessRowState> {
     if (impact.rows.isNotEmpty()) return impact.rows.take(4).map { row ->
-        val accuracy = (row.currentRetention * 100).roundToInt().coerceIn(0, 100)
+        val accuracy = ((row.currentRetention.takeIf { it.isFinite() } ?: 0.0) * 100)
+            .roundToInt()
+            .coerceIn(0, 100)
         ProgressWeaknessRowState(
             row.kanji,
             accuracy,
@@ -484,21 +748,100 @@ private fun supportNeeded(
         ProgressSupportNeedState(it.kanji, copy.matureSupport, it.afterMatureSupport.coerceAtLeast(0))
     }
 
+private fun impactCount(impact: KanjiImpactAnalyzer.Report): Int = listOf(
+    impact.helpedCount,
+    impact.notHelpingCount,
+    impact.needsMoreCardsCount,
+).saturatingCountSum()
+
 private fun focusScore(impact: KanjiImpactAnalyzer.Report): Int {
-    val total = impact.helpedCount + impact.notHelpingCount + impact.needsMoreCardsCount
+    val total = impactCount(impact)
     return if (total == 0) 0 else percent(impact.helpedCount, total)
 }
 
 private fun percent(value: Int, total: Int): Int =
     if (total <= 0) 0 else (value * 100.0 / total).roundToInt().coerceIn(0, 100)
 
-private fun deltaLabel(current: Int, previous: Int, copy: StatsDashboardCopy, thirtyDayWindow: Boolean = false): String? {
-    if (current == 0 && previous == 0) return null
-    if (previous == 0) return if (thirtyDayWindow) copy.deltaVsPreviousThirty("+${formatInt(current)}") else copy.deltaVsPreviousSeven("+${formatInt(current)}")
-    val delta = ((current - previous) * 100.0 / previous).roundToInt()
-    val value = "${if (delta >= 0) "+" else ""}${formatInt(delta)}%"
-    return if (thirtyDayWindow) copy.deltaVsPreviousThirty(value) else copy.deltaVsPreviousSeven(value)
+private fun percent(value: Long, total: Long): Int {
+    if (total <= 0L) return 0
+    val normalized = value.coerceIn(0L, total)
+    return (normalized.toDouble() * 100.0 / total.toDouble()).roundToInt().coerceIn(0, 100)
 }
 
-private fun formatInt(value: Int): String = StatsValueFormatter.integer(value, Locale.getDefault())
-private fun dayLabel(millis: Long, pattern: String): String = StatsValueFormatter.date(millis, pattern, Locale.getDefault())
+private fun accuracyDeltaLabel(
+    current: Int,
+    previous: Int,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+): String {
+    val delta = current - previous
+    val value = "${if (delta >= 0) "+" else ""}${formatInt(delta, locale)}%"
+    return copy.deltaVsPreviousThirty(value)
+}
+
+private fun deltaLabel(
+    current: Long,
+    previous: Long,
+    copy: StatsDashboardCopy,
+    locale: Locale,
+): String? {
+    if (current == 0L && previous == 0L) return null
+    if (previous == 0L) return copy.deltaVsPreviousSeven("+${formatCount(current, locale)}")
+    val delta = ((current.toDouble() - previous.toDouble()) * 100.0 / previous.toDouble()).roundToInt()
+    val value = "${if (delta >= 0) "+" else ""}${formatInt(delta, locale)}%"
+    return copy.deltaVsPreviousSeven(value)
+}
+
+private fun saturatingLongAdd(left: Long, right: Long): Long {
+    val safeLeft = left.coerceAtLeast(0L)
+    val safeRight = right.coerceAtLeast(0L)
+    return if (safeLeft > Long.MAX_VALUE - safeRight) Long.MAX_VALUE else safeLeft + safeRight
+}
+
+private inline fun <T> Iterable<T>.saturatingLongCountSum(selector: (T) -> Long): Long {
+    var sum = 0L
+    for (item in this) {
+        sum = saturatingLongAdd(sum, selector(item))
+        if (sum == Long.MAX_VALUE) break
+    }
+    return sum
+}
+
+private fun saturatingCountAdd(left: Int, right: Int): Int =
+    (left.coerceAtLeast(0).toLong() + right.coerceAtLeast(0).toLong())
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
+
+private inline fun <T> Iterable<T>.saturatingCountSum(selector: (T) -> Int): Int {
+    var sum = 0
+    for (item in this) {
+        sum = saturatingCountAdd(sum, selector(item))
+        if (sum == Int.MAX_VALUE) break
+    }
+    return sum
+}
+
+private fun Iterable<Int>.saturatingCountSum(): Int = saturatingCountSum { it }
+
+private fun Long.toDisplayCount(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+
+private fun formatInt(value: Int, locale: Locale): String = StatsValueFormatter.integer(value, locale)
+
+private fun formatCount(value: Long, locale: Locale): String =
+    NumberFormat.getIntegerInstance(locale).format(value.coerceAtLeast(0L))
+
+private fun dayLabel(millis: Long, pattern: String, locale: Locale, timeZone: TimeZone): String =
+    StatsValueFormatter.date(millis, pattern, locale, timeZone)
+
+private fun monthDayPattern(locale: Locale): String = if (isJapanese(locale)) "M月d日" else "MMM d"
+
+private fun forecastCompletionPattern(locale: Locale): String = if (isJapanese(locale)) "yyyy年M月" else "MMMM yyyy"
+
+private fun forecastMonthPattern(locale: Locale): String = if (isJapanese(locale)) "M月" else "MMM"
+
+private fun accuracyTooltip(date: String, accuracy: Int, locale: Locale): String =
+    if (isJapanese(locale)) "$date、$accuracy%" else "$date, $accuracy%"
+
+private fun localizedListSeparator(locale: Locale): String = if (isJapanese(locale)) "、" else ", "
+
+private fun isJapanese(locale: Locale): Boolean = locale.language == Locale.JAPANESE.language

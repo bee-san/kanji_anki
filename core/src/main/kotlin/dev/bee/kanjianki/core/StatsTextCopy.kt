@@ -676,7 +676,7 @@ object StatsTextCopy {
     }
 
     private fun elapsedSinceLabel(nowMillis: Long, pastMillis: Long): String {
-        val elapsed = max(0L, nowMillis - pastMillis)
+        val elapsed = nonNegativeDifference(nowMillis, pastMillis)
         return if (elapsed == 0L) {
             localizedText("just now", "たった今")
         } else {

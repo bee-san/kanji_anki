@@ -7,10 +7,13 @@ object KanjiMemoryHistoryPolicy {
     fun build(
         rows: List<MemoryHistoryRow>?,
     ): MemoryHistoryResult {
-        val usable = rows.orEmpty().filter { it.stability > 0.0 }
+        val usable = rows.orEmpty().filter { it.stability.isFinite() && it.stability > 0.0 }
         if (usable.size < 2) return MemoryHistoryResult.EMPTY
         val points = usable.map { row ->
-            MemoryHistoryPoint(dayLabel(row.reviewedAtMillis), row.stability.toFloat())
+            MemoryHistoryPoint(
+                dayLabel(row.reviewedAtMillis),
+                row.stability.coerceAtMost(Float.MAX_VALUE.toDouble()).toFloat(),
+            )
         }
         val failCount = usable.count { it.rating == "again" || it.rating == "hard" }
         return MemoryHistoryResult(

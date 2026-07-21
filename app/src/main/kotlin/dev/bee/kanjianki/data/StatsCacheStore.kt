@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import org.json.JSONObject
+import java.util.TimeZone
 
 internal const val STATS_CACHE_FORMAT_VERSION: Int = 11
 internal const val STATS_REVIEW_DAY_SUMMARY_LIMIT: Int = 366
@@ -53,6 +54,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val wrongPickCounts: Map<String, Map<String, Int>> = emptyMap(),
         val confusionMeanings: Map<String, String> = emptyMap(),
         val ladderForecast: LadderCompletionForecastPolicy.Forecast? = null,
+        val timeZoneId: String = TimeZone.getDefault().id,
     )
 
     fun currentSourceVersion(db: SQLiteDatabase = store.readableDatabase): Long {
@@ -66,7 +68,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
     }
 
     fun markDirty(db: SQLiteDatabase = store.writableDatabase): Long {
-        val next = currentSourceVersion(db) + 1L
+        val next = Math.addExact(currentSourceVersion(db), 1L)
         db.execSQL(
             "UPDATE ${LocalStoreBase.TABLE_STATS_CACHE_STATE} SET value=? WHERE key=?",
             arrayOf<Any>(next, LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY),
@@ -78,6 +80,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
         val snapshot = readLatest(db) ?: return null
         return if (snapshot.sourceVersion == currentSourceVersion(db) &&
             snapshot.cacheFormatVersion == STATS_CACHE_FORMAT_VERSION &&
+            snapshot.timeZoneId == TimeZone.getDefault().id &&
             LocalDayPolicy.sameLocalDay(snapshot.generatedAtMillis, nowMillis)
         ) {
             snapshot
@@ -88,7 +91,8 @@ internal class StatsCacheStore(private val store: LocalStore) {
 
     fun hasFreshSnapshot(db: SQLiteDatabase = store.readableDatabase, nowMillis: Long = System.currentTimeMillis()): Boolean {
         val cursor = db.rawQuery(
-            "SELECT source_version, generated_at, cache_format_version FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
+            "SELECT source_version, generated_at, cache_format_version, outcome_json " +
+                "FROM ${LocalStoreBase.TABLE_STATS_SCREEN_CACHE} WHERE id=1",
             null,
         )
         cursor.use {
@@ -98,8 +102,17 @@ internal class StatsCacheStore(private val store: LocalStore) {
             val snapshotSourceVersion = it.getLong(0)
             val generatedAtMillis = it.getLong(1)
             val cacheFormatVersion = it.getInt(2)
-            return snapshotSourceVersion == currentSourceVersion(db) &&
-                cacheFormatVersion == STATS_CACHE_FORMAT_VERSION &&
+            if (snapshotSourceVersion != currentSourceVersion(db) ||
+                cacheFormatVersion != STATS_CACHE_FORMAT_VERSION
+            ) {
+                return false
+            }
+            val timeZoneId = try {
+                JSONObject(it.getString(3)).optString("timeZoneId", "")
+            } catch (_: Exception) {
+                ""
+            }
+            return timeZoneId == TimeZone.getDefault().id &&
                 LocalDayPolicy.sameLocalDay(generatedAtMillis, nowMillis)
         }
     }
@@ -140,6 +153,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                     snapshot.wrongPickCounts,
                     snapshot.confusionMeanings,
                     snapshot.ladderForecast,
+                    snapshot.timeZoneId,
                 )
             )
             put("impact_report_json", StatsCacheCodec.impactReportToJson(snapshot.impactReport))
@@ -177,6 +191,7 @@ internal class StatsCacheStore(private val store: LocalStore) {
                 wrongPickCounts = StatsCacheCodec.wrongPickCountsFromJson(outcomeRoot.optJSONObject("wrongPickCounts")),
                 confusionMeanings = StatsCacheCodec.stringMapFromJson(outcomeRoot.optJSONObject("confusionMeanings")),
                 ladderForecast = StatsCacheCodec.forecastFromJson(outcomeRoot.optJSONObject("ladderForecast")),
+                timeZoneId = outcomeRoot.optString("timeZoneId", ""),
             )
         } catch (_: Exception) {
             null

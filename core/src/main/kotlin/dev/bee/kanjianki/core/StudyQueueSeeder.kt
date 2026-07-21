@@ -387,7 +387,7 @@ class StudyQueueSeeder {
         return item.copyBuilder()
             .state(restoredState)
             .activeToken(null)
-            .schedulerRevision(item.schedulerRevision + 1L)
+            .schedulerRevision(saturatingAdd(item.schedulerRevision, 1L))
             .build()
     }
 
@@ -395,7 +395,7 @@ class StudyQueueSeeder {
         return item.copyBuilder()
             .state(StudyLadderRules.STATE_RETIRED)
             .activeToken(null)
-            .schedulerRevision(item.schedulerRevision + 1L)
+            .schedulerRevision(saturatingAdd(item.schedulerRevision, 1L))
             .build()
     }
 
@@ -551,7 +551,7 @@ class StudyQueueSeeder {
             .lastRealReviewDueAtMillis(0L)
             .routingVersion(1)
             .adaptiveRouteStateJson("")
-            .schedulerRevision(item.schedulerRevision + 1L)
+            .schedulerRevision(saturatingAdd(item.schedulerRevision, 1L))
             .build()
     }
 
@@ -657,11 +657,7 @@ class StudyQueueSeeder {
             if (!atValidatedCeiling) {
                 return false
             }
-            val threshold = max(
-                request.settings.matureDays,
-                request.settings.ladderPromotionIntervalDays * RecordsBase.CEILING_PARK_INTERVAL_MULTIPLIER,
-            )
-            return item.matureIntervalDays >= threshold
+            return CeilingParkingPolicy.isPastThreshold(item.matureIntervalDays, request.settings)
         }
 
         fun hasAdmissionRoom(request: SeedQueueRequest): Boolean {

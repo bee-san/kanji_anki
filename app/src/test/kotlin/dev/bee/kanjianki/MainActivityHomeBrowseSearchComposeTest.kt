@@ -1,9 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsImportModels
-import java.util.ArrayDeque
 import java.util.Locale
-import java.util.concurrent.Executor
 import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -80,24 +78,48 @@ class MainActivityHomeBrowseSearchComposeTest {
     }
 
     @Test
-    fun browseSelectionWritesOffMainThenQueuesRerender() {
-        val background = ArrayDeque<Runnable>()
-        val main = ArrayDeque<() -> Unit>()
-        val events = mutableListOf<String>()
-
-        runBrowseSelectionWrite(
-            background = Executor(background::addLast),
-            write = { events.add("write") },
-            postToMain = main::addLast,
-            onComplete = { events.add("render") },
+    fun committedBrowseWriteRefreshesWhicheverBrowseRouteIsCurrent() {
+        val completedRoute = HomeRouteRestoration.browse(
+            query = "裂",
+            onlySimilarKanji = true,
+            allKanjiScope = false,
         )
+        val newerRoute = HomeRouteRestoration.browse("語", false, false)
 
-        assertEquals(emptyList<String>(), events)
-        background.removeFirst().run()
-        assertEquals(listOf("write"), events)
-        assertEquals(1, main.size)
-        main.removeFirst().invoke()
-        assertEquals(listOf("write", "render"), events)
+        assertEquals(
+            completedRoute,
+            currentBrowseRouteAfterSelectionWrite(
+                currentRoute = MainActivityBase.NAV_HOME_ROUTE,
+                currentHomeRoute = completedRoute,
+            ),
+        )
+        assertEquals(
+            newerRoute,
+            currentBrowseRouteAfterSelectionWrite(
+                currentRoute = MainActivityBase.NAV_HOME_ROUTE,
+                currentHomeRoute = newerRoute,
+            ),
+        )
+        assertEquals(
+            null,
+            currentBrowseRouteAfterSelectionWrite(
+                currentRoute = MainActivityBase.NAV_STATS_ROUTE,
+                currentHomeRoute = completedRoute,
+            ),
+        )
+        assertEquals(
+            null,
+            currentBrowseRouteAfterSelectionWrite(
+                currentRoute = MainActivityBase.NAV_HOME_ROUTE,
+                currentHomeRoute = HomeRouteRestoration.detail(
+                    kanji = "裂",
+                    fromBrowse = true,
+                    query = "裂",
+                    onlySimilarKanji = true,
+                    allKanjiScope = false,
+                ),
+            ),
+        )
     }
 
     private fun legacyBrowseScreenData(

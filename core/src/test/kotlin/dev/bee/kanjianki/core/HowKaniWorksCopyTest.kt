@@ -1,7 +1,9 @@
 package dev.bee.kanjianki.core
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class HowKaniWorksCopyTest {
     @Test
@@ -32,5 +34,20 @@ class HowKaniWorksCopyTest {
     @Test
     fun atLeastFourSections() {
         assertTrue(HowKaniWorksCopy.sections().size >= 4)
+    }
+
+    @Test
+    fun adaptiveCopyDoesNotDescribeLegacyLadderDemotion() {
+        val original = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.ENGLISH)
+            val copy = HowKaniWorksCopy.sections().joinToString(" ") { "${it.title} ${it.body}" }.lowercase()
+
+            assertFalse(copy.contains("ladder movement"))
+            assertFalse(copy.contains("trigger demotion"))
+            assertTrue(copy.contains("revalidation"))
+        } finally {
+            Locale.setDefault(original)
+        }
     }
 }

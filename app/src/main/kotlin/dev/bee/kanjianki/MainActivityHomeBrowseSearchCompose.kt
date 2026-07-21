@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
-import java.util.concurrent.Executor
 
 internal fun browseKanjiRowTestTag(kanji: String): String = "browse-kanji-row-$kanji"
 internal fun browseKanjiStudiedToggleTestTag(kanji: String): String = "browse-kanji-studied-$kanji"
@@ -94,8 +93,13 @@ internal fun browseScreenModel(
     onlySimilarKanji: Boolean = false,
     allKanjiScope: Boolean = false,
 ): BrowseScreenModel {
+    val browseRoute = HomeRouteRestoration.browse(
+        query = query,
+        onlySimilarKanji = onlySimilarKanji,
+        allKanjiScope = allKanjiScope,
+    )
     val screenData = buildBrowseScreenData(items) { item ->
-        browseKanjiRowModel(activity, query, onlySimilarKanji, item)
+        browseKanjiRowModel(activity, browseRoute, item)
     }
     return BrowseScreenModel(
         initialQuery = query,
@@ -107,31 +111,26 @@ internal fun browseScreenModel(
         onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
         onToggleAllKanjiScope = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, true) },
         onSelectAllStudied = {
-            runBrowseSelectionWrite(
-                activity = activity,
-                write = {
-                    activity.store.setKanjiLocallySuspendedForKanji(
-                        screenData.kanjiList,
-                        false,
-                        System.currentTimeMillis(),
-                    )
-                },
-                onComplete = { activity.renderBrowseKanji(query, onlySimilarKanji) },
+            activity.submitBrowseSelectionWrite(
+                browseRoute = browseRoute,
+                mutation = BrowseSelectionMutation.Bulk(
+                    kanji = screenData.kanjiList,
+                    suspended = false,
+                    changedAtMillis = System.currentTimeMillis(),
+                ),
             )
         },
         onDeselectAllStudied = {
-            runBrowseSelectionWrite(
-                activity = activity,
-                write = {
-                    activity.store.setKanjiLocallySuspendedForKanji(
-                        screenData.kanjiList,
-                        true,
-                        System.currentTimeMillis(),
-                    )
-                },
-                onComplete = { activity.renderBrowseKanji(query, onlySimilarKanji) },
+            activity.submitBrowseSelectionWrite(
+                browseRoute = browseRoute,
+                mutation = BrowseSelectionMutation.Bulk(
+                    kanji = screenData.kanjiList,
+                    suspended = true,
+                    changedAtMillis = System.currentTimeMillis(),
+                ),
             )
         },
+        onQueryChange = { activity.updateBrowseQueryDraft(browseRoute, it) },
         onHome = activity::renderHome,
         onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji) }
     )
@@ -141,6 +140,11 @@ internal fun allKanjiBrowseScreenModel(
     activity: MainActivityHome,
     query: String,
 ): BrowseScreenModel {
+    val browseRoute = HomeRouteRestoration.browse(
+        query = query,
+        onlySimilarKanji = false,
+        allKanjiScope = true,
+    )
     val dictionary = activity.warmDictionaryLookup()
     val entries = dictionary.searchKanji(query, 300)
     val inventoryKanji = activity.store.searchKanjiInventory("", false).map { it.kanji }.toSet()
@@ -175,6 +179,7 @@ internal fun allKanjiBrowseScreenModel(
         rows = rows,
         allKanjiScope = true,
         onToggleAllKanjiScope = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, false) },
+        onQueryChange = { activity.updateBrowseQueryDraft(browseRoute, it) },
         onHome = activity::renderHome,
         onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, false, true) }
     )
@@ -182,8 +187,7 @@ internal fun allKanjiBrowseScreenModel(
 
 private fun browseKanjiRowModel(
     activity: MainActivityHome,
-    browseQuery: String,
-    onlySimilarKanji: Boolean,
+    browseRoute: HomeRouteRestoration,
     item: RecordsImportModels.KanjiInventoryItem
 ): BrowseKanjiRowModel {
     val meaning = HomeTextCopy.browseItemMeaning(item)
@@ -204,45 +208,17 @@ private fun browseKanjiRowModel(
         suspended = item.suspended,
         studied = !item.suspended,
         onStudiedChange = { studied ->
-            runBrowseSelectionWrite(
-                activity = activity,
-                write = {
-                    activity.store.setKanjiLocallySuspended(
-                        item.kanji,
-                        !studied,
-                        System.currentTimeMillis(),
-                    )
-                },
-                onComplete = { activity.renderBrowseKanji(browseQuery, onlySimilarKanji) },
+            activity.submitBrowseSelectionWrite(
+                browseRoute = browseRoute,
+                mutation = BrowseSelectionMutation.Single(
+                    kanji = item.kanji,
+                    suspended = !studied,
+                    changedAtMillis = System.currentTimeMillis(),
+                ),
             )
         },
-        onClick = { activity.renderDetail(item.kanji, true, browseQuery) }
+        onClick = { activity.renderDetail(item.kanji, true, browseRoute.query) }
     )
-}
-
-private fun runBrowseSelectionWrite(
-    activity: MainActivityHome,
-    write: () -> Unit,
-    onComplete: () -> Unit,
-) {
-    runBrowseSelectionWrite(
-        background = activity.io,
-        write = write,
-        postToMain = activity::postToMainIfActive,
-        onComplete = onComplete,
-    )
-}
-
-internal fun runBrowseSelectionWrite(
-    background: Executor,
-    write: () -> Unit,
-    postToMain: (() -> Unit) -> Unit,
-    onComplete: () -> Unit,
-) {
-    background.execute {
-        write()
-        postToMain(onComplete)
-    }
 }
 
 @Composable
@@ -264,7 +240,10 @@ fun BrowseScreen(model: BrowseScreenModel) {
         )
         OutlinedTextField(
             value = query,
-            onValueChange = { query = it },
+            onValueChange = {
+                query = it
+                model.onQueryChange(it)
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text(HomeTextCopy.browseSearchHint()) },

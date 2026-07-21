@@ -159,6 +159,40 @@ class ButtonLatencyInventoryTest(unittest.TestCase):
         self.assertEqual("measured", study["timing_status"])
         self.assertIn("1.5 -> 0.25 ms", button_latency_inventory.render_markdown(inventory))
 
+    def test_inventory_rejects_non_finite_negative_and_boolean_timings(self) -> None:
+        invalid_values = (
+            float("nan"),
+            float("inf"),
+            "Infinity",
+            -1,
+            True,
+            "9" * 309,
+            10**309,
+        )
+        for invalid_value in invalid_values:
+            with self.subTest(value=invalid_value):
+                inventory = button_latency_inventory.build_inventory(
+                    Path("/"),
+                    self._manifest(),
+                    self._button_contract(),
+                    {
+                        "schema": "button-latency-measurements-v1",
+                        "rows": [
+                            {
+                                "id": "home-study-cta",
+                                "baseline_ms": invalid_value,
+                                "after_ms": 10,
+                            }
+                        ],
+                    },
+                )
+
+                study = cast(list[dict[str, object]], inventory["rows"])[0]
+                self.assertIsNone(study["baseline_ms"])
+                self.assertEqual(10, study["after_ms"])
+                self.assertEqual("pending_baseline_ms", study["timing_status"])
+                self.assertIsNone(study["timing_delta_ms"])
+
     def test_cli_writes_json_and_markdown_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

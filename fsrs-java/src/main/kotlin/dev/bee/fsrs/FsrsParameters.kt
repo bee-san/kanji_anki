@@ -50,7 +50,7 @@ class FsrsParameters private constructor(
 
     fun decay(): Double = -values[20]
 
-    fun factor(): Double = Math.pow(0.9, 1.0 / decay()) - 1.0
+    fun factor(): Double = factorFor(decayMagnitude())
 
     override fun toString(): String = "FsrsParameters" + Arrays.toString(values)
 
@@ -83,7 +83,18 @@ class FsrsParameters private constructor(
                 require(copy[index].isFinite()) { "parameter $index must be finite" }
             }
             require(copy[20] > 0.0) { "decay magnitude parameter must be positive" }
+            val factor = factorFor(copy[20])
+            require(factor.isFinite() && factor > 0.0 && factor <= MAX_SAFE_FACTOR) {
+                "decay magnitude parameter must produce a finite operational factor"
+            }
             return FsrsParameters(copy)
         }
+
+        private fun factorFor(decayMagnitude: Double): Double {
+            return Math.pow(0.9, -1.0 / decayMagnitude) - 1.0
+        }
+
+        private val MAX_SAFE_FACTOR: Double =
+            Double.MAX_VALUE / Int.MAX_VALUE.toDouble() * Fsrs.STABILITY_MIN / 2.0
     }
 }

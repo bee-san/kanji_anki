@@ -29,7 +29,10 @@ object StudyTaskTimingPolicy {
         if (visibleSinceElapsedMillis <= 0L) {
             return max(0L, activeElapsedMillis)
         }
-        return max(0L, activeElapsedMillis) + max(0L, nowElapsedMillis - visibleSinceElapsedMillis)
+        return saturatingAdd(
+            max(0L, activeElapsedMillis),
+            nonNegativeDifference(nowElapsedMillis, visibleSinceElapsedMillis),
+        )
     }
 
     @JvmStatic

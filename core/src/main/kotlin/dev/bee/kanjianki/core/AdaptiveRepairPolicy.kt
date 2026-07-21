@@ -92,7 +92,7 @@ object AdaptiveRepairPolicy {
             return current
         }
         return if (current.kind == observed) {
-            FailureRecurrence(observed, current.count.coerceAtLeast(0) + 1)
+            FailureRecurrence(observed, saturatingAddNonNegative(current.count, 1))
         } else {
             FailureRecurrence(observed, 1)
         }

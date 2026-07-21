@@ -2,7 +2,6 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -65,8 +64,8 @@ class SettingsInputRulesTest {
         assertTrue(SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, leeches, null))
         assertFalse(SettingsInputRules.hasSelectedImportSource(false, false, false, false, true, emptyList, ""))
         assertTrue(SettingsInputRules.hasSelectedImportSource(false, false, false, false, true, emptyList, "deck:Kiku"))
-        assertThrows(NullPointerException::class.java) { SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, null, "") }
-        assertThrows(NullPointerException::class.java) { SettingsInputRules.hasSelectedImportSource(false, false, false, false, true, emptyList, null) }
+        assertFalse(SettingsInputRules.hasSelectedImportSource(false, false, true, false, false, null, ""))
+        assertFalse(SettingsInputRules.hasSelectedImportSource(false, false, false, false, true, emptyList, null))
     }
 
     @Test
@@ -87,5 +86,13 @@ class SettingsInputRulesTest {
         assertEquals(15, SettingsInputRules.normalizeStudyAheadMinutes(15))
         assertEquals(1440, SettingsInputRules.normalizeStudyAheadMinutes(1440))
         assertEquals(1440, SettingsInputRules.normalizeStudyAheadMinutes(99_999))
+    }
+
+    @Test
+    fun sliderConversionsClampBeforeOffsetArithmetic() {
+        assertEquals(0, SettingsInputRules.rankSliderProgress(Int.MIN_VALUE))
+        assertEquals(19999, SettingsInputRules.rankSliderProgress(Int.MAX_VALUE))
+        assertEquals(1, SettingsInputRules.rankFromSliderProgress(Int.MIN_VALUE))
+        assertEquals(20000, SettingsInputRules.rankFromSliderProgress(Int.MAX_VALUE))
     }
 }

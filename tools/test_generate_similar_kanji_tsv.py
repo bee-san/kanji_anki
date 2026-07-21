@@ -13,14 +13,35 @@ from pathlib import Path
 from tools import generate_similar_kanji_tsv as generator
 
 
+EXPECTED_KANJI_RANGES = (
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2A6DF),
+    (0x2A700, 0x2B73F),
+    (0x2B740, 0x2B81F),
+    (0x2B820, 0x2CEAF),
+    (0x2CEB0, 0x2EBEF),
+    (0x2EBF0, 0x2EE5F),
+    (0x2F800, 0x2FA1F),
+    (0x30000, 0x3134F),
+    (0x31350, 0x323AF),
+    (0x323B0, 0x3347F),
+)
+
+
 def compact_entry(visually_similar: list[str]) -> list[object]:
     return [[], [], "", [], "", [], "", "", visually_similar, []]
 
 
 class GenerateSimilarKanjiTsvTest(unittest.TestCase):
-    def test_accepts_supplementary_cjk_ranges_used_by_dictionary_assets(self) -> None:
-        self.assertTrue(generator.is_kanji("櫛"))
-        self.assertTrue(generator.is_kanji("𰀀"))
+    def test_uses_exact_unicode_cjk_ideograph_block_bounds(self) -> None:
+        self.assertEqual(EXPECTED_KANJI_RANGES, generator.KANJI_RANGES)
+        for start, end in EXPECTED_KANJI_RANGES:
+            self.assertTrue(generator.is_kanji(chr(start)))
+            self.assertTrue(generator.is_kanji(chr(end)))
+        for codepoint in (0x2A6E0, 0x2EE60, 0x2FA20, 0x33480):
+            self.assertFalse(generator.is_kanji(chr(codepoint)))
         self.assertFalse(generator.is_kanji("日本"))
         self.assertFalse(generator.is_kanji("A"))
 

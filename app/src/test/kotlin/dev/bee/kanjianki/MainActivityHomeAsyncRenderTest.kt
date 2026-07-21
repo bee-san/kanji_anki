@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.os.Bundle
 import android.os.Looper
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
@@ -31,6 +32,56 @@ import java.util.concurrent.TimeUnit
 class MainActivityHomeAsyncRenderTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun pendingStatsLoadSavesStatsInsteadOfPreviousHomeSubroute() {
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+        }
+        val controller = Robolectric.buildActivity(MainActivity::class.java, intent)
+            .create()
+            .start()
+            .resume()
+        try {
+            val activity = controller.get()
+            activity.cancelPendingHomeRouteLoads()
+            activity.intent.removeExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE)
+            replaceLazyDelegate(
+                activity,
+                "asyncHomeRouteLoader",
+                AsyncHomeRouteLoader(
+                    background = Executor { backgroundTasks.addLast(it) },
+                    postToMain = {},
+                    loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+                ),
+            )
+            activity.currentHomeRouteRestoration = HomeRouteRestoration.browse(
+                query = "old query",
+                onlySimilarKanji = false,
+                allKanjiScope = false,
+            )
+
+            activity.renderStats()
+
+            assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+            assertEquals(null, activity.currentHomeRouteRestoration)
+            assertEquals(1, backgroundTasks.size)
+
+            val savedState = Bundle()
+            controller.pause().saveInstanceState(savedState)
+            assertEquals(
+                MainActivityBase.NAV_STATS_ROUTE,
+                savedState.getString("kani.restore-route"),
+            )
+            assertEquals(null, savedState.getBundle("kani.restore-home-route"))
+        } finally {
+            controller.stop().destroy()
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+        }
+    }
 
     @Test
     fun renderHomeShowsLoadingScreenBeforeBackgroundLoadCompletes() {

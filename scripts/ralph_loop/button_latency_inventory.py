@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 from typing import Mapping, Sequence, cast
@@ -233,20 +234,27 @@ def _strings(value: object) -> list[str]:
 
 
 def _number_or_none(value: object) -> int | float | None:
-    if value is None:
+    if value is None or isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return value
+        try:
+            return value if math.isfinite(value) and value >= 0 else None
+        except OverflowError:
+            return None
     if isinstance(value, float):
-        return value
+        return value if math.isfinite(value) and value >= 0 else None
     if isinstance(value, str) and value.strip():
         try:
-            return int(value.strip())
+            parsed: int | float = int(value.strip())
         except ValueError:
             try:
-                return float(value.strip())
+                parsed = float(value.strip())
             except ValueError:
                 return None
+        try:
+            return parsed if math.isfinite(parsed) and parsed >= 0 else None
+        except OverflowError:
+            return None
     return None
 
 

@@ -72,7 +72,7 @@ object ReminderReviewBatchPolicy {
         var dueCount = 1
         for (index in 1 until futureItems.size) {
             val item = futureItems[index]
-            if (item.dueAtMillis - triggerAtMillis <= REVIEW_BATCH_GAP_MILLIS) {
+            if (nonNegativeDifference(item.dueAtMillis, triggerAtMillis) <= REVIEW_BATCH_GAP_MILLIS) {
                 triggerAtMillis = item.dueAtMillis
                 dueCount++
             } else {

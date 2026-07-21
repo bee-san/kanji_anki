@@ -50,7 +50,8 @@ def parse_tag(tag: str) -> Version:
         raise ValueError("release tag must match vMAJOR.MINOR.PATCH")
     components = tuple(int(value) for value in match.groups())
     names = ("major", "minor", "patch")
-    for name, value in zip(names, components):
+    for index, name in enumerate(names):
+        value = components[index]
         if value > VERSION_COMPONENT_MAX:
             suffix = "; bump minor before releasing again" if name == "patch" else ""
             raise ValueError(

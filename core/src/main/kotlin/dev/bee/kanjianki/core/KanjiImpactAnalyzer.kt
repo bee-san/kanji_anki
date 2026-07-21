@@ -303,7 +303,7 @@ class KanjiImpactAnalyzer {
         val matureCards: Int = max(0, matureCards)
 
         @JvmField
-        val averageIntervalDays: Double = max(0.0, averageIntervalDays)
+        val averageIntervalDays: Double = finiteOrZero(averageIntervalDays).coerceAtLeast(0.0)
 
         @JvmField
         val reps: Int = max(0, reps)
@@ -386,7 +386,7 @@ class KanjiImpactAnalyzer {
             arrayOf(fsrsStability, fsrsDifficulty, fsrsRetrievability)
         )
 
-        fun totalCards(): Int = activeCards + suspendedCards
+        fun totalCards(): Int = saturatingAddNonNegative(activeCards, suspendedCards)
 
         fun retentionScore(): Double {
             if (fsrsRetrievability != null) {
@@ -417,7 +417,11 @@ class KanjiImpactAnalyzer {
             }
 
             private fun fsrsAt(values: Array<Double?>?, index: Int): Double? {
-                return if (values == null || values.size <= index) null else values[index]
+                return if (values == null || values.size <= index) {
+                    null
+                } else {
+                    values[index]?.takeIf { it.isFinite() }
+                }
             }
         }
     }
@@ -465,6 +469,9 @@ class KanjiImpactAnalyzer {
             return "Immerse and mine more flashcards for this kanji before judging Kani."
         }
 
-        private fun clamp(value: Double, min: Double, max: Double): Double = max(min, min(max, value))
+        private fun finiteOrZero(value: Double): Double = if (value.isFinite()) value else 0.0
+
+        private fun clamp(value: Double, min: Double, max: Double): Double =
+            max(min, min(max, finiteOrZero(value)))
     }
 }

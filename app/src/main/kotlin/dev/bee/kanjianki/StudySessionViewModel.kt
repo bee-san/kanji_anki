@@ -86,6 +86,10 @@ internal sealed interface StudySessionEvent {
         val reason: StudyRouteCompletionReason,
     ) : StudySessionEvent
 
+    data class TerminalPresentationRestored(
+        val reason: StudyRouteCompletionReason,
+    ) : StudySessionEvent
+
     data object RouteActionClaimed : StudySessionEvent
 
     data object Reset : StudySessionEvent
@@ -100,6 +104,7 @@ internal object StudySessionReducer {
         is StudySessionEvent.TargetReconciled -> reduceTargetReconciliation(state, event.progress)
         is StudySessionEvent.CompletionEvidenceAccepted -> reduceCompletionEvidence(state, event.reason)
         is StudySessionEvent.CompletionAccepted -> reduceCompletion(state, event.reason)
+        is StudySessionEvent.TerminalPresentationRestored -> reduceTerminalPresentationRestored(state, event.reason)
         StudySessionEvent.RouteActionClaimed -> if (state.phase == StudySessionPhase.COMPLETE) {
             state
         } else {
@@ -221,6 +226,20 @@ internal object StudySessionReducer {
         return state.copy(
             phase = StudySessionPhase.COMPLETE,
             routeVersion = state.routeVersion.next(),
+            completionReason = reason,
+        )
+    }
+
+    private fun reduceTerminalPresentationRestored(
+        state: StudySessionUiState,
+        reason: StudyRouteCompletionReason,
+    ): StudySessionUiState {
+        if (state.currentSession != null || !state.routeSnapshot.canComplete) return state
+        if (state.routeSnapshot.isComplete && state.completionReason == reason) return state
+        return state.copy(
+            phase = StudySessionPhase.COMPLETE,
+            routeVersion = state.routeVersion.next(),
+            completionEvidenceReason = reason,
             completionReason = reason,
         )
     }
@@ -427,6 +446,24 @@ internal class StudySessionViewModel : ViewModel(), StudyAnswerStateStore {
         } else {
             dispatchLocked(StudySessionEvent.CompletionAccepted(reason))
         }
+    }
+
+    fun restoreTerminalPresentation(reason: StudyRouteCompletionReason): Boolean = synchronized(routeStateLock) {
+        if (_uiState.value.currentSession != null) {
+            return@synchronized false
+        }
+        clearFeedbackLocked()
+        val restored = StudySessionReducer.reduce(
+            _uiState.value,
+            StudySessionEvent.TerminalPresentationRestored(reason),
+        )
+        if (restored == _uiState.value) {
+            return@synchronized restored.routeSnapshot.isComplete &&
+                restored.completionReason == reason
+        }
+        clearFeedbackLocked()
+        _uiState.value = restored
+        restored.routeSnapshot.isComplete
     }
 
     fun reset() {

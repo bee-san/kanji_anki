@@ -90,6 +90,15 @@ class FsrsEngineReferenceTest {
         val badDecay = FsrsParameters.latestDefaultValues()
         badDecay[20] = 0.0
         expectIllegalArgument { FsrsParameters.of(badDecay) }
+        val overflowingFactor = FsrsParameters.latestDefaultValues()
+        overflowingFactor[20] = Double.MIN_VALUE
+        expectIllegalArgument { FsrsParameters.of(overflowingFactor) }
+        val zeroFactor = FsrsParameters.latestDefaultValues()
+        zeroFactor[20] = Double.MAX_VALUE
+        expectIllegalArgument { FsrsParameters.of(zeroFactor) }
+        val operationallyUnsafeFactor = FsrsParameters.latestDefaultValues()
+        operationallyUnsafeFactor[20] = 0.00015
+        expectIllegalArgument { FsrsParameters.of(operationallyUnsafeFactor) }
     }
 
     @Test

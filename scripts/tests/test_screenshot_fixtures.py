@@ -49,6 +49,11 @@ class ScreenshotFixturesTest(unittest.TestCase):
             self.assertTrue(cast(list[str], fixture["screenshot_names"]))
             self.assertTrue(cast(list[str], fixture["expected_terms"]))
             self.assertTrue(cast(list[str], fixture["known_invariants"]))
+            route = str(fixture["route"])
+            self.assertEqual(
+                [f"{route}-top.png", f"{route}-middle.png", f"{route}-bottom.png"],
+                fixture["screenshot_names"],
+            )
 
     def test_bucket_mapping_returns_expected_view_fixtures(self) -> None:
         self.assertEqual(

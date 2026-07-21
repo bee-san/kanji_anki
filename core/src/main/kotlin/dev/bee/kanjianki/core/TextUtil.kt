@@ -137,7 +137,13 @@ object TextUtil {
         }
         var result = StudyCueFormatter.cleanMeaningText(stripped.substring(0, cut).trim())
         if (result.length > 96) {
-            result = result.substring(0, 93).trim() + "..."
+            var truncationEnd = 93
+            if (Character.isHighSurrogate(result[truncationEnd - 1]) &&
+                Character.isLowSurrogate(result[truncationEnd])
+            ) {
+                truncationEnd--
+            }
+            result = result.substring(0, truncationEnd).trim() + "..."
         }
         return result
     }
@@ -162,7 +168,16 @@ object TextUtil {
         return (cp in 0x3400..0x4DBF) ||
             (cp in 0x4E00..0x9FFF) ||
             (cp in 0xF900..0xFAFF) ||
-            (cp in 0x20000..0x2EBEF)
+            (cp in 0x20000..0x2A6DF) ||
+            (cp in 0x2A700..0x2B73F) ||
+            (cp in 0x2B740..0x2B81F) ||
+            (cp in 0x2B820..0x2CEAF) ||
+            (cp in 0x2CEB0..0x2EBEF) ||
+            (cp in 0x2EBF0..0x2EE5F) ||
+            (cp in 0x2F800..0x2FA1F) ||
+            (cp in 0x30000..0x3134F) ||
+            (cp in 0x31350..0x323AF) ||
+            (cp in 0x323B0..0x3347F)
     }
 
     @JvmStatic

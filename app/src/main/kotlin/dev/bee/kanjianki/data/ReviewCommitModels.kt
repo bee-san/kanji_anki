@@ -85,6 +85,6 @@ class ReviewCommitCommand(
     }
 
     fun persistedItem(): RecordsStudyModels.StudyItem = afterReview.copyBuilder()
-        .schedulerRevision(expectedRevision + 1L)
+        .schedulerRevision(Math.addExact(expectedRevision, 1L))
         .build()
 }

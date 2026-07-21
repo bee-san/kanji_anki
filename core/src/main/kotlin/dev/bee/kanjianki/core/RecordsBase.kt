@@ -275,7 +275,7 @@ abstract class RecordsBase protected constructor() {
             if (from < 0) {
                 return this
             }
-            val to = max(0, min(order.size - 1, from + delta))
+            val to = (from.toLong() + delta.toLong()).coerceIn(0L, order.lastIndex.toLong()).toInt()
             if (to == from) {
                 return this
             }
@@ -325,7 +325,7 @@ abstract class RecordsBase protected constructor() {
             if (from < 0) {
                 return this
             }
-            val to = max(0, min(order.lastIndex, from + delta))
+            val to = (from.toLong() + delta.toLong()).coerceIn(0L, order.lastIndex.toLong()).toInt()
             if (to == from) {
                 return this
             }

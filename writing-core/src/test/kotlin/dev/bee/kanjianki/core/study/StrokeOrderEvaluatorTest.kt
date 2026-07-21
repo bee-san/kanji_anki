@@ -238,6 +238,17 @@ class StrokeOrderEvaluatorTest {
     }
 
     @Test
+    fun nonFiniteInkCoordinatesProduceFiniteFailureScore() {
+        val result = StrokeOrderEvaluator.evaluate(
+            singleStrokeGuide(0.1f, 0.1f, 0.9f, 0.1f),
+            sample(stroke(Float.NaN, 10f, 90f, 10f)),
+        )
+
+        assertTrue(result.score.isFinite())
+        assertFalse(result.clean)
+    }
+
+    @Test
     fun shortStrokeDoesNotReportWrongDirectionWhenDirectMatchIsStronger() {
         val result = StrokeOrderEvaluator.evaluate(
             singleStrokeGuide(0.1f, 0.1f, 0.2f, 0.1f),
@@ -372,9 +383,20 @@ class StrokeOrderEvaluatorTest {
             emptyList(),
             0.7,
         )
+        val nonFiniteScore = StrokeOrderEvaluation(
+            1,
+            1,
+            1,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            Double.NaN,
+        )
 
         assertEquals(0, normalized.expectedCount())
         assertEquals(1.0, normalized.score(), 0.001)
+        assertEquals(0.0, nonFiniteScore.score(), 0.0)
         assertFalse(normalized.complete())
         assertTrue(exact.complete())
         assertTrue(exact.exactOrder())

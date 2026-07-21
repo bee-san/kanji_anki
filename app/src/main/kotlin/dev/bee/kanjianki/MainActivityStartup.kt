@@ -97,16 +97,13 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.preserveStudyRecoveryForHarnessRoute = false
         activity.screenshotThemeChoiceOverride = null
         val study = activity as? MainActivityStudy
-        val recreatedStudy = study?.takeIf {
-            activity.restoreStudyRouteOnCreate && it.shouldResumeStudyOnOrdinaryLaunch()
-        }
+        val restoreStudyRoute = activity.restoreStudyRouteOnCreate
         val recreatedRoute = activity.restoreRouteOnCreate
         val recreatedHomeRoute = activity.restoreHomeRouteOnCreate
         activity.restoreStudyRouteOnCreate = false
         activity.restoreRouteOnCreate = null
         activity.restoreHomeRouteOnCreate = null
-        if (recreatedStudy != null) {
-            recreatedStudy.renderStudyRecoveryOnly()
+        if (restoreStudyRoute && study?.restoreStudyRouteAfterRecreation() == true) {
             return
         }
         if (recreatedRoute != null) {

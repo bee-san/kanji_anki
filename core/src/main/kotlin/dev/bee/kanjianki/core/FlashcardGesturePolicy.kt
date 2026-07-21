@@ -24,7 +24,10 @@ object FlashcardGesturePolicy {
         if (absX <= safeTouchSlop && absY <= safeTouchSlop) {
             return if (answerRevealed) Decision.none() else Decision.reveal()
         }
-        val swipeThreshold = max(max(0, minimumSwipeDistance), safeTouchSlop * 6)
+        val swipeThreshold = max(
+            max(0, minimumSwipeDistance),
+            saturatingMultiplyNonNegative(safeTouchSlop, 6),
+        )
         if (absX >= swipeThreshold && absX > absY * HORIZONTAL_DOMINANCE && answerRevealed) {
             return Decision.review(if (dx > 0) StudyRatings.GOOD else StudyRatings.AGAIN)
         }

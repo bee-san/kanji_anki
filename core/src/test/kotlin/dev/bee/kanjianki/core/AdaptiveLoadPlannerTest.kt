@@ -866,6 +866,111 @@ class AdaptiveLoadPlannerTest {
     }
 
     @Test
+    fun candidateScoringNormalizesMalformedExtremeEvidence() {
+        val defaults = RecordsSyncModels.Settings.kikuDefaults()
+        val settings = RecordsSyncModels.Settings(
+            defaults.modelName,
+            defaults.templateName,
+            defaults.expressionField,
+            defaults.readingField,
+            defaults.meaningField,
+            defaults.sentenceField,
+            defaults.frequencyField,
+            defaults.frequencySortField,
+            Int.MAX_VALUE,
+            Int.MAX_VALUE,
+            defaults.suspendedRankMin,
+            defaults.suspendedRankMax,
+            defaults.activeQueueCap,
+            defaults.newPerDay,
+            defaults.writingTriggerMissDays,
+        )
+        val extremeExample = RecordsImportModels.Example(
+            "active",
+            1L,
+            1L,
+            "裂ける",
+            "さける",
+            "split",
+            "",
+            false,
+            Int.MIN_VALUE,
+            Int.MIN_VALUE,
+            Int.MAX_VALUE,
+            1.0,
+            Double.POSITIVE_INFINITY,
+            Double.NaN,
+        )
+        val row = RecordsImportModels.DashboardRow(
+            "裂",
+            1,
+            "split",
+            "さく",
+            "search",
+            Int.MAX_VALUE,
+            "weak_support",
+            "reason",
+            1,
+            Int.MIN_VALUE,
+            Int.MIN_VALUE,
+            listOf(extremeExample),
+        )
+        val item = item("裂", StudyLadderRules.STATE_REVIEW, Long.MIN_VALUE, Int.MAX_VALUE, Int.MAX_VALUE)
+            .copyBuilder()
+            .writingLevel(Int.MIN_VALUE)
+            .build()
+
+        val candidate = AdaptiveLoadCandidate(
+            row,
+            item,
+            Long.MAX_VALUE,
+            settings,
+            ReadingExposureModels.ExposureIndex.EMPTY,
+        )
+
+        assertEquals(Int.MAX_VALUE, candidate.supportDeficit)
+        assertEquals(Int.MAX_VALUE, candidate.kaniLapseScore)
+        assertEquals(Long.MAX_VALUE, candidate.overdueMillis)
+        assertTrue(candidate.fsrsRisk.isFinite())
+        assertTrue(candidate.fsrsRisk > 1_000_000_000.0)
+        assertTrue(candidate.priorityScore.isFinite())
+    }
+
+    @Test
+    fun malformedReviewStatsAreClampedBeforeFocusAdjustment() {
+        val malformed = plan(
+            rows(20),
+            emptyList(),
+            RecordsSchedulerModels.ReviewStats(4, Int.MAX_VALUE, Int.MIN_VALUE, 0, 0, 1, Int.MAX_VALUE),
+            5,
+            emptySet(),
+            50,
+            1_000L,
+        )
+        val normalized = plan(
+            rows(20),
+            emptyList(),
+            RecordsSchedulerModels.ReviewStats(4, 4, 0, 0, 0, 1, 1),
+            5,
+            emptySet(),
+            50,
+            1_000L,
+        )
+        val negativeHistory = plan(
+            rows(20),
+            emptyList(),
+            RecordsSchedulerModels.ReviewStats(Int.MIN_VALUE, Int.MAX_VALUE, Int.MAX_VALUE, 0, 0, 0, 0),
+            5,
+            emptySet(),
+            50,
+            1_000L,
+        )
+
+        assertEquals(normalized.target, malformed.target)
+        assertEquals(3, negativeHistory.target)
+    }
+
+    @Test
     fun typedPlanRequestBuilderShapesPolicyAndSettings() {
         val settings = RecordsSyncModels.Settings.kikuDefaults();
         val request = AdaptiveLoadPlanner.PlanRequest.builder(

@@ -41,6 +41,7 @@ object StuckCardPolicy {
             return false
         }
         val failStreak = maxOf(1, ladderDemotionFailStreak)
-        return maxOf(0, realAgainStreak) >= STUCK_FAIL_STREAK_MULTIPLIER * failStreak
+        return maxOf(0, realAgainStreak) >=
+            saturatingMultiplyNonNegative(STUCK_FAIL_STREAK_MULTIPLIER, failStreak)
     }
 }

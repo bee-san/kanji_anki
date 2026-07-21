@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence, TextIO, cast
+from typing import Iterable, Mapping, Sequence, cast
 
 from scripts.ralph_loop import screenshot_fixtures
 

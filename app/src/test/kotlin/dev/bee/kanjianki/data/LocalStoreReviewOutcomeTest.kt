@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -120,6 +121,47 @@ class LocalStoreReviewOutcomeTest {
         assertEquals(ReviewCommitDisposition.STALE, stale.disposition)
         assertEquals(2, store.studyItemsForKanji(listOf("痛")).single().totalReviews)
         assertEquals(0, reviewRowCount("token-stale"))
+    }
+
+    @Test
+    fun reviewRevisionOverflowLeavesItemAndReviewLogUnchanged() {
+        val before = studyItem("痛", totalReviews = 1).copyBuilder()
+            .schedulerRevision(Long.MAX_VALUE)
+            .build()
+        store.saveStudyItem(before)
+
+        assertThrows(ArithmeticException::class.java) {
+            store.saveReviewOutcome(
+                before.copyBuilder().totalReviews(2).build(),
+                reviewRequest("痛", "token-overflow"),
+                "good",
+                2_000L,
+                before,
+            )
+        }
+
+        val persisted = store.studyItemsForKanji(listOf("痛")).single()
+        assertEquals(1, persisted.totalReviews)
+        assertEquals(Long.MAX_VALUE, persisted.schedulerRevision)
+        assertEquals(0, reviewRowCount("token-overflow"))
+    }
+
+    @Test
+    fun queueRevisionOverflowLeavesPersistedItemUnchanged() {
+        val original = studyItem("痛", totalReviews = 1).copyBuilder()
+            .schedulerRevision(Long.MAX_VALUE)
+            .build()
+        store.saveStudyItem(original)
+
+        assertThrows(ArithmeticException::class.java) {
+            store.replaceStudyItems(
+                listOf(original.copyBuilder().dueAtMillis(9_000L).build()),
+            )
+        }
+
+        val persisted = store.studyItemsForKanji(listOf("痛")).single()
+        assertEquals(1_000L, persisted.dueAtMillis)
+        assertEquals(Long.MAX_VALUE, persisted.schedulerRevision)
     }
 
     @Test
@@ -269,6 +311,36 @@ class LocalStoreReviewOutcomeTest {
         assertEquals(2L, restored.schedulerRevision)
         assertEquals(0, reviewRowCount("token-undo"))
         assertEquals(1, scalarCount("study_task_log", "task_key=?", arrayOf("task-undo")))
+    }
+
+    @Test
+    fun undoRevisionOverflowPreservesAppliedReviewAndItem() {
+        val before = studyItem("痛", totalReviews = 1).copyBuilder()
+            .schedulerRevision(Long.MAX_VALUE - 1L)
+            .build()
+        val after = before.copyBuilder()
+            .totalReviews(2)
+            .schedulerRevision(Long.MAX_VALUE)
+            .build()
+        store.saveStudyItem(after)
+        store.saveReview(
+            reviewRequest("痛", "token-undo-overflow"),
+            "good",
+            2_000L,
+            before,
+            after,
+        )
+
+        assertThrows(ArithmeticException::class.java) {
+            store.undoLastAppliedReview(
+                dev.bee.kanjianki.core.AppliedReviewSnapshot("token-undo-overflow", before, after),
+            )
+        }
+
+        val persisted = store.studyItemsForKanji(listOf("痛")).single()
+        assertEquals(2, persisted.totalReviews)
+        assertEquals(Long.MAX_VALUE, persisted.schedulerRevision)
+        assertEquals(1, reviewRowCount("token-undo-overflow"))
     }
 
     @Test

@@ -82,6 +82,14 @@ class FakeAnkiDroidProvider : ContentProvider() {
                 deferBrowserQueryFailure = true
                 result.putBoolean("ok", true)
             }
+            "deferBrowserQueryCancellation" -> {
+                deferBrowserQueryCancellation = true
+                result.putBoolean("ok", true)
+            }
+            "cancelBrowserQueryReread" -> {
+                cancelBrowserQueryReread = true
+                result.putBoolean("ok", true)
+            }
             "failConfiguredSearch" -> {
                 failConfiguredSearch = true
                 result.putBoolean("ok", true)
@@ -350,6 +358,15 @@ class FakeAnkiDroidProvider : ContentProvider() {
                     arrayOf("_id", "mid", "flds", "tags"),
                     "Invalid search: deferred browser query failure",
                 )
+            }
+            if (deferBrowserQueryCancellation) {
+                return ThrowingCursor(
+                    arrayOf("_id", "mid", "flds", "tags"),
+                    OperationCanceledException("deferred browser query cancellation"),
+                )
+            }
+            if (cancelBrowserQueryReread && browserQueryQueries > 1) {
+                throw OperationCanceledException("browser query reread cancellation")
             }
             if (failBrowserQueryReread && browserQueryQueries > 1) {
                 throw IllegalArgumentException("second browser query failed")
@@ -676,8 +693,12 @@ class FakeAnkiDroidProvider : ContentProvider() {
         return legacyWrappedQuery || (!isConfiguredModelSearch(trimmed) && !isSuspendedModelSearch(trimmed))
     }
 
-    private class ThrowingCursor(columns: Array<String>, message: String) : MatrixCursor(columns) {
-        private val error: RuntimeException = IllegalArgumentException(message)
+    private class ThrowingCursor(
+        columns: Array<String>,
+        private val error: RuntimeException,
+    ) : MatrixCursor(columns) {
+        constructor(columns: Array<String>, message: String) :
+            this(columns, IllegalArgumentException(message))
 
         init {
             addRow(arrayOfNulls<Any>(columns.size))
@@ -768,6 +789,12 @@ class FakeAnkiDroidProvider : ContentProvider() {
         var deferBrowserQueryFailure = false
 
         @JvmField
+        var deferBrowserQueryCancellation = false
+
+        @JvmField
+        var cancelBrowserQueryReread = false
+
+        @JvmField
         var failConfiguredSearch = false
 
         @JvmField
@@ -850,6 +877,8 @@ class FakeAnkiDroidProvider : ContentProvider() {
             browserQueryMatchesSuspended = false
             failBrowserQuery = false
             deferBrowserQueryFailure = false
+            deferBrowserQueryCancellation = false
+            cancelBrowserQueryReread = false
             failConfiguredSearch = false
             secondTemplateCard = false
             browserQueryMatchesMissingNote = false

@@ -91,6 +91,8 @@ class StrokeOrderEvaluation(
             return Collections.unmodifiableList(if (values == null) ArrayList() else ArrayList(values))
         }
 
-        private fun clamp(value: Double): Double = maxOf(0.0, minOf(1.0, value))
+        private fun clamp(value: Double): Double {
+            return if (value.isFinite()) maxOf(0.0, minOf(1.0, value)) else 0.0
+        }
     }
 }

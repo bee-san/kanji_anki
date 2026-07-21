@@ -62,8 +62,37 @@ class KanjiGameEngineTest {
         assertNotNull(question)
         assertEquals("裂", question!!.targetKanji)
         assertEquals("分裂", question.prompt)
-        assertEquals("れつ", question.correctAnswer)
+        assertEquals("ぶんれつ", question.correctAnswer)
         assertTrue(question.choices.contains("ご"))
+    }
+
+    @Test
+    fun readingRushKeepsExpressionAndReadingFromTheSameExample() {
+        val rows = listOf(
+            rowWithExample(
+                "裂",
+                "split",
+                "れつ",
+                example("分割", "", "division"),
+                example("分裂", "ぶんれつ", "fission"),
+            ),
+        )
+        val inventory = listOf(
+            inventory("語", "language", "ご"),
+            inventory("提", "present", "てい"),
+        )
+
+        val question = engine.nextQuestion(
+            KanjiGameEngine.GameMode.READING_RUSH,
+            rows,
+            inventory,
+            emptyList(),
+            Random(9L),
+        )
+
+        assertNotNull(question)
+        assertEquals("分裂", question!!.prompt)
+        assertEquals("ぶんれつ", question.correctAnswer)
     }
 
     @Test
@@ -225,7 +254,7 @@ class KanjiGameEngineTest {
         kanji: String,
         meaning: String,
         reading: String,
-        example: RecordsImportModels.Example
+        vararg examples: RecordsImportModels.Example,
     ): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(
             kanji,
@@ -239,7 +268,7 @@ class KanjiGameEngineTest {
             1,
             0,
             0,
-            listOf(example)
+            examples.toList()
         )
     }
 

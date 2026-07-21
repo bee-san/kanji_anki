@@ -174,12 +174,17 @@ abstract class RecordsStudyModels protected constructor() : RecordsImportModels(
                     return safeFallback
                 }
                 return try {
+                    val stability = parts[2].toDouble()
+                    val difficulty = parts[3].toDouble()
+                    if (!stability.isFinite() || !difficulty.isFinite()) {
+                        return safeFallback
+                    }
                     fromFields(
                         Fields(
                             state = parts[0],
                             dueAtMillis = parts[1].toLong(),
-                            stability = parts[2].toDouble(),
-                            difficulty = parts[3].toDouble(),
+                            stability = stability,
+                            difficulty = difficulty,
                             totalReviews = parts[4].toInt(),
                             lapses = parts[5].toInt(),
                             learningStep = parts[6].toInt(),

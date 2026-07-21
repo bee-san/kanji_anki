@@ -1,10 +1,14 @@
 package dev.bee.kanjianki
 
 import android.content.Intent
+import android.os.Bundle
 import android.os.SystemClock
 import androidx.core.net.toUri
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.bee.kanjianki.anki.AnkiDroidGateway
@@ -50,6 +54,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val focusQueue by lazy { MainActivityHomeFocusQueue(this) }
     private val browseDetail by lazy { MainActivityHomeBrowseDetail(this) }
     private val homeStudyPlanProvider by lazy { MainActivityStudyPlanProvider(this) }
+    private val browseSelectionWriteViewModel by lazy(LazyThreadSafetyMode.NONE) {
+        ViewModelProvider(this)[BrowseSelectionWriteViewModel::class.java]
+    }
     private val asyncHomeRouteLoader by lazy {
         AsyncHomeRouteLoader(
             background = io,
@@ -83,8 +90,25 @@ internal abstract class MainActivityHome : MainActivityBase() {
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
     internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
     private var confirmedRepairedNoteIds: Set<Long> = emptySet()
+    private var lastObservedBrowseSelectionWriteId = 0L
 
     abstract fun renderGames()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                browseSelectionWriteViewModel.latestCompletion.collect { completion ->
+                    completion ?: return@collect
+                    if (completion.writeId <= lastObservedBrowseSelectionWriteId) {
+                        return@collect
+                    }
+                    lastObservedBrowseSelectionWriteId = completion.writeId
+                    handleBrowseSelectionWriteCompletion()
+                }
+            }
+        }
+    }
 
     override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
@@ -666,6 +690,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         render: (T) -> Unit,
         traceName: String = "home-route",
     ) {
+        currentRoute = MainActivityBase.NAV_HOME_ROUTE
         asyncHomeRouteLoader.load(
             showLoading = {
                 renderHomeRoute {
@@ -700,6 +725,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         traceName: String = "route",
         showLoadingAfterMs: Long = 120,
     ) {
+        currentHomeRouteRestoration = null
         asyncHomeRouteLoader.load(
             showLoading = showLoading,
             load = warmThemeThen(load),
@@ -750,6 +776,36 @@ internal abstract class MainActivityHome : MainActivityBase() {
         asyncHomeRouteLoader.cancelPending()
     }
 
+    internal fun submitBrowseSelectionWrite(
+        browseRoute: HomeRouteRestoration,
+        mutation: BrowseSelectionMutation,
+    ): Boolean = browseSelectionWriteViewModel.submit(browseRoute, mutation)
+
+    internal fun browseQueryDraft(
+        browseRoute: HomeRouteRestoration,
+        defaultText: String,
+    ): String = browseSelectionWriteViewModel.draftFor(browseRoute, defaultText)
+
+    internal fun updateBrowseQueryDraft(
+        browseRoute: HomeRouteRestoration,
+        text: String,
+    ) {
+        browseSelectionWriteViewModel.updateDraft(browseRoute, text)
+    }
+
+    private fun handleBrowseSelectionWriteCompletion() {
+        store.clearLocallySuspendedCache()
+        val route = currentBrowseRouteAfterSelectionWrite(
+            currentRoute = currentRoute,
+            currentHomeRoute = currentHomeRouteRestoration,
+        ) ?: return
+        renderBrowseKanji(
+            route.query,
+            route.onlySimilarKanji,
+            route.allKanjiScope,
+        )
+    }
+
     fun scheduleStatsPrecomputeIfStale(): Boolean {
         return statsPrecomputeScheduler.scheduleIfStale()
     }
@@ -784,6 +840,14 @@ internal abstract class MainActivityHome : MainActivityBase() {
     fun renderDetail(kanji: String, fromBrowse: Boolean, browseQuery: String?, customBackAction: Runnable?) {
         browseDetail.renderDetail(kanji, fromBrowse, browseQuery, customBackAction)
     }
+}
+
+internal fun currentBrowseRouteAfterSelectionWrite(
+    currentRoute: String,
+    currentHomeRoute: HomeRouteRestoration?,
+): HomeRouteRestoration? = currentHomeRoute?.takeIf {
+    currentRoute == MainActivityBase.NAV_HOME_ROUTE &&
+        it.destination == HomeRouteRestoration.Destination.BROWSE
 }
 
 /** Capture-gated release timing for cold Home phases; the disabled path only invokes [action]. */

@@ -27,10 +27,29 @@ class ReleaseVersionTest {
     }
 
     @Test
+    fun comparesNumericComponentsWithoutIntegerOverflow() {
+        assertTrue(ReleaseVersion.isNewerSemver("2147483647.0.0", "v2147483648.0.0"))
+        assertTrue(
+            ReleaseVersion.isNewerSemver(
+                "999999999999999999999.9.9",
+                "v1000000000000000000000.0.0",
+            ),
+        )
+        assertFalse(
+            ReleaseVersion.isNewerSemver(
+                "1000000000000000000000.0.0",
+                "v999999999999999999999.9.9",
+            ),
+        )
+        assertFalse(ReleaseVersion.isNewerSemver("00000000001.02.003", "v1.2.3"))
+    }
+
+    @Test
     fun validSemverRecognisesReleaseTags() {
         assertTrue(ReleaseVersion.isValidSemver("0.4.204"))
         assertTrue(ReleaseVersion.isValidSemver("v0.4.204"))
         assertTrue(ReleaseVersion.isValidSemver("1.0.0"))
+        assertTrue(ReleaseVersion.isValidSemver("v999999999999999999999.0.0"))
     }
 
     @Test

@@ -154,6 +154,33 @@ class StudyItemReconciliationPolicyTest {
     }
 
     @Test
+    fun malformedNegativeMemoryCountersDoNotErasePositiveReviewEvidence() {
+        val malformed = baseItem()
+            .withTaskMemory(StudyTaskTypes.TYPING_MEANING, memory(totalReviews = Int.MIN_VALUE, lapses = Int.MIN_VALUE))
+            .withTaskMemory(StudyTaskTypes.WORD_READING, memory(totalReviews = 1, lapses = Int.MIN_VALUE))
+            .copyBuilder()
+            .totalReviews(Int.MIN_VALUE)
+            .lapses(Int.MIN_VALUE)
+            .realPassStreak(1)
+            .build()
+        val empty = baseItem()
+            .copyBuilder()
+            .totalReviews(0)
+            .lapses(0)
+            .realPassStreak(2)
+            .build()
+
+        val merged = StudyItemReconciliationPolicy.merge(malformed, empty)
+
+        assertEquals(1, merged.realPassStreak)
+        assertEquals(0, merged.totalReviews)
+        assertEquals(0, merged.lapses)
+        assertEquals(1, merged.wordReadingMemory.totalReviews)
+        assertEquals(0, merged.wordReadingMemory.lapses)
+        assertEquals(0, merged.typingMeaningMemory.totalReviews)
+    }
+
+    @Test
     fun taskMemoryDonorUsesReviewRecencyAndSchedulingEvidenceInOrder() {
         assertMemoryDonor(memory(totalReviews = 1), memory(totalReviews = 2))
         assertMemoryDonor(

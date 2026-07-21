@@ -81,6 +81,66 @@ class StudyQueueSeederIngestionTest {
     }
 
     @Test
+    fun ceilingParkingRequiresIntervalPastThreshold() {
+        val settings = settingsWithQueue(
+            activeQueueCap = 1,
+            newPerDay = 5,
+            ladderPromotionIntervalDays = 20,
+        )
+        val rows = listOf(suspendedRow("裂"), suspendedRow("新"))
+
+        val atThreshold = seeder.seedQueue(
+            rows,
+            listOf(ceilingItem("裂", matureIntervalDays = 80)),
+            settings,
+            2_000L,
+            1_000L,
+            ladder = null,
+        )
+        val pastThreshold = seeder.seedQueue(
+            rows,
+            listOf(ceilingItem("裂", matureIntervalDays = 81)),
+            settings,
+            2_000L,
+            1_000L,
+            ladder = null,
+        )
+
+        assertNull("an item at the threshold still consumes the queue slot", find(atThreshold, "新"))
+        assertTrue("an item past the threshold is parked", find(pastThreshold, "新") != null)
+    }
+
+    @Test
+    fun saturatedCeilingParkingThresholdCannotBePassed() {
+        val settings = settingsWithQueue(
+            activeQueueCap = 1,
+            newPerDay = 5,
+            ladderPromotionIntervalDays = Int.MAX_VALUE,
+        )
+        val rows = listOf(suspendedRow("裂"), suspendedRow("新"))
+
+        val belowThreshold = seeder.seedQueue(
+            rows,
+            listOf(ceilingItem("裂", matureIntervalDays = Int.MAX_VALUE - 1)),
+            settings,
+            2_000L,
+            1_000L,
+            ladder = null,
+        )
+        val atThreshold = seeder.seedQueue(
+            rows,
+            listOf(ceilingItem("裂", matureIntervalDays = Int.MAX_VALUE)),
+            settings,
+            2_000L,
+            1_000L,
+            ladder = null,
+        )
+
+        assertNull("saturated threshold must not wrap and park an item early", find(belowThreshold, "新"))
+        assertNull("an item cannot grow past a saturated threshold", find(atThreshold, "新"))
+    }
+
+    @Test
     fun adaptiveContextualCeilingParksEvenWhenSentenceVariantIsAvailable() {
         val items = seeder.seedQueue(
             listOf(suspendedRow("裂"), suspendedRow("新")),
@@ -374,7 +434,11 @@ class StudyQueueSeederIngestionTest {
         )
     }
 
-    private fun settingsWithQueue(activeQueueCap: Int, newPerDay: Int): RecordsSyncModels.Settings {
+    private fun settingsWithQueue(
+        activeQueueCap: Int,
+        newPerDay: Int,
+        ladderPromotionIntervalDays: Int = RecordsSyncModels.Settings.kikuDefaults().ladderPromotionIntervalDays,
+    ): RecordsSyncModels.Settings {
         val defaults = RecordsSyncModels.Settings.kikuDefaults()
         return RecordsSyncModels.Settings(
             defaults.modelName,
@@ -394,6 +458,20 @@ class StudyQueueSeederIngestionTest {
             defaults.writingTriggerMissDays,
             defaults.recognitionPromotionPasses,
             defaults.realDueReviewsToMove,
+            defaults.importActiveCards,
+            defaults.importSuspendedCards,
+            defaults.importTaggedCards,
+            defaults.importTags,
+            defaults.importWeakCards,
+            defaults.importWeakFsrsDifficultyThreshold,
+            defaults.importWeakLapsesThreshold,
+            defaults.importMinMatchingCardsPerKanji,
+            defaults.importBrowserQueryCards,
+            defaults.importBrowserQuery,
+            defaults.newCardSortMode,
+            ladderPromotionIntervalDays,
+            defaults.ladderDemotionFailStreak,
+            defaults.ladderPromotionMinPasses,
         )
     }
 }

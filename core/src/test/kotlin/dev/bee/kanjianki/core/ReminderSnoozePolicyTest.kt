@@ -32,6 +32,14 @@ class ReminderSnoozePolicyTest {
     }
 
     @Test
+    fun rearmTimeSaturatesInsteadOfWrappingIntoThePast() {
+        assertEquals(
+            Long.MAX_VALUE,
+            ReminderSnoozePolicy.rearmTime(Long.MAX_VALUE - 1L, 8 * 60, 8 * 60),
+        )
+    }
+
+    @Test
     fun repostAllowedUnderDailyLimit() {
         assertTrue(ReminderSnoozePolicy.isRepostAllowed(0, 2))
         assertTrue(ReminderSnoozePolicy.isRepostAllowed(1, 2))

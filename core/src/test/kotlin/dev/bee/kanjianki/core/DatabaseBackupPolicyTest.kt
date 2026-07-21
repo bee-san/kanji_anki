@@ -8,6 +8,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.IOException
+import java.util.SimpleTimeZone
 import java.util.TimeZone
 
 class DatabaseBackupPolicyTest {
@@ -75,8 +76,53 @@ class DatabaseBackupPolicyTest {
         val pruned = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
         // Legacy .db files are matched and subject to tiered pruning.
         assertTrue(pruned.isNotEmpty())
-        assertTrue(pruned.contains("kanji_anki_simple_20260301_120000.db"))
+        assertTrue(pruned.contains("kanji_anki_simple_20260302_120000.db"))
+        assertFalse(pruned.contains("kanji_anki_simple_20260301_120000.db"))
         assertFalse(pruned.contains("kanji_anki_simple_20260310_120000.db"))
+    }
+
+    @Test
+    fun oldBackupsToPruneUsesIsoCalendarWeeksInsteadOfEpochBuckets() {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+            val dir = temp.newFolder("iso-weeks")
+            val stamps = listOf(
+                "20260115_120000",
+                "20260114_120000",
+                "20260113_120000",
+                "20260112_120000",
+                "20260111_120000",
+                "20260110_120000",
+                "20260109_120000",
+                "20260108_120000",
+                "20260105_120000",
+            )
+            for (stamp in stamps) {
+                assertTrue(File(dir, "kanji_anki_simple_$stamp.db.gz").createNewFile())
+            }
+
+            val pruned = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
+
+            assertFalse(pruned.contains("kanji_anki_simple_20260108_120000.db.gz"))
+            assertTrue(pruned.contains("kanji_anki_simple_20260105_120000.db.gz"))
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun oldBackupsToPruneSupportsUnknownCustomDefaultTimeZoneIds() {
+        withDefaultTimeZone(SimpleTimeZone(0, "Kani/Unknown")) {
+            assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(createWeekBoundaryBackups("unknown-zone")).isEmpty())
+        }
+    }
+
+    @Test
+    fun oldBackupsToPruneUsesCustomDefaultRulesInsteadOfKnownIdRules() {
+        withDefaultTimeZone(SimpleTimeZone(0, "Asia/Tokyo")) {
+            assertTrue(DatabaseBackupPolicy.oldBackupsToPrune(createWeekBoundaryBackups("misleading-zone")).isEmpty())
+        }
     }
 
     @Test
@@ -88,6 +134,7 @@ class DatabaseBackupPolicyTest {
         }
         // A matching prefix/suffix but an unparseable timestamp (parse returns null).
         assertTrue(File(dir, "kanji_anki_simple_not-a-timestamp.db.gz").createNewFile())
+        assertTrue(File(dir, "kanji_anki_simple_20260301_120000junk.db.gz").createNewFile())
         // A file that does not start with the backup prefix (filtered out).
         assertTrue(File(dir, "unrelated_20260301_120000.db.gz").createNewFile())
         // Prefixed but neither .db nor .db.gz suffix: matched by neither branch, so
@@ -99,8 +146,26 @@ class DatabaseBackupPolicyTest {
 
         // The unparseable-timestamp backup sorts oldest and is pruned first.
         assertTrue(pruned.contains("kanji_anki_simple_not-a-timestamp.db.gz"))
+        assertTrue(pruned.contains("kanji_anki_simple_20260301_120000junk.db.gz"))
         // The non-prefixed file is never a backup candidate.
         assertFalse(pruned.contains("unrelated_20260301_120000.db.gz"))
+    }
+
+    @Test
+    fun oldBackupsToPruneRejectsVariableWidthDateAndTimeFields() {
+        val dir = temp.newFolder("variable-width")
+        for (day in 1..7) {
+            assertTrue(File(dir, String.format("kanji_anki_simple_202601%02d_120000.db.gz", day)).createNewFile())
+        }
+        val shortDate = "kanji_anki_simple_2026031_120000.db.gz"
+        val shortTime = "kanji_anki_simple_20260301_12000.db.gz"
+        assertTrue(File(dir, shortDate).createNewFile())
+        assertTrue(File(dir, shortTime).createNewFile())
+
+        val pruned = DatabaseBackupPolicy.oldBackupsToPrune(dir).map { it.name }.toSet()
+
+        assertTrue(pruned.contains(shortDate))
+        assertTrue(pruned.contains(shortTime))
     }
 
     @Test
@@ -124,6 +189,35 @@ class DatabaseBackupPolicyTest {
             "Database backup failed. Diagnostic: IOExceptionWithPath",
             DatabaseBackupPolicy.sanitizedDiagnosticLine("Database backup failed.", error),
         )
+    }
+
+    private fun createWeekBoundaryBackups(directoryName: String): File {
+        val dir = temp.newFolder(directoryName)
+        val stamps = listOf(
+            "20260112_120000",
+            "20260111_120000",
+            "20260110_120000",
+            "20260109_120000",
+            "20260108_120000",
+            "20260107_120000",
+            "20260106_120000",
+            "20260105_003000",
+            "20260104_200000",
+        )
+        for (stamp in stamps) {
+            assertTrue(File(dir, "kanji_anki_simple_$stamp.db.gz").createNewFile())
+        }
+        return dir
+    }
+
+    private fun withDefaultTimeZone(zone: TimeZone, body: () -> Unit) {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(zone)
+            body()
+        } finally {
+            TimeZone.setDefault(original)
+        }
     }
 
     private class IOExceptionWithPath(message: String) : IOException(message)

@@ -6,7 +6,7 @@ Renovate owns:
 
 - GitHub Actions updates, grouped into one weekly PR and configured to pin action references by digest.
 - Gradle wrapper updates, kept separate from library/plugin updates.
-- Gradle dependency and plugin updates from `*.gradle.kts`, `gradle.properties`, and any future Gradle version catalog files.
+- Gradle dependency and plugin updates from `*.gradle.kts`, `gradle.properties`, and the `gradle/libs.versions.toml` version catalog.
 
 Dependabot version-update PRs are intentionally not configured. Running Dependabot and Renovate against the same Gradle and GitHub Actions files would create duplicate update PRs. Dependabot security alerts can still be enabled in repository settings without adding `.github/dependabot.yml` version-update schedules.
 
