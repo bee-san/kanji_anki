@@ -187,8 +187,14 @@ class StudyCueFormatter private constructor() {
             if (value == null) {
                 return ""
             }
+            if (maxChars <= 0) {
+                return ""
+            }
             if (value.length <= maxChars) {
                 return value
+            }
+            if (maxChars <= 3) {
+                return value.substring(0, maxChars)
             }
             var cut = value.lastIndexOf(' ', maxChars - 3)
             if (cut < 32) {

@@ -47,19 +47,31 @@ class JitenKanjiRanks(ranks: Map<String, Int>) {
             }
             val first = cells[0].trim()
             val second = cells[1].trim()
-            if (isInteger(first)) {
-                return rankEntry(second, first.toInt())
+            val firstRank = parseInteger(first)
+            if (firstRank != null) {
+                return rankEntry(second, firstRank)
             }
-            return if (isInteger(second)) rankEntry(first, second.toInt()) else null
+            val secondRank = parseInteger(second)
+            return if (secondRank != null) rankEntry(first, secondRank) else null
         }
 
         private fun rankEntry(kanji: String, rank: Int): RankEntry? {
-            return if (kanji.isNotEmpty() && DictionaryTextUtil.isKanji(kanji.codePointAt(0))) RankEntry(kanji, rank) else null
+            if (kanji.isEmpty()) {
+                return null
+            }
+            val codePoint = kanji.codePointAt(0)
+            val isSingleKanji = Character.charCount(codePoint) == kanji.length &&
+                DictionaryTextUtil.isKanji(codePoint)
+            return if (isSingleKanji) RankEntry(kanji, rank) else null
         }
 
-        private fun isInteger(value: String): Boolean {
+        private fun parseInteger(value: String): Int? {
             if (value.isEmpty()) {
-                return false
+                return null
+            }
+            val digitStart = if (value[0] == '-') 1 else 0
+            if (digitStart == value.length) {
+                return null
             }
             for (index in value.indices) {
                 val c = value[index]
@@ -67,10 +79,10 @@ class JitenKanjiRanks(ranks: Map<String, Int>) {
                     continue
                 }
                 if (!Character.isDigit(c)) {
-                    return false
+                    return null
                 }
             }
-            return true
+            return value.toIntOrNull()
         }
     }
 

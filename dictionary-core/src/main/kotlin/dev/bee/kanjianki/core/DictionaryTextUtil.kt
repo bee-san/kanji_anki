@@ -19,7 +19,8 @@ internal object DictionaryTextUtil {
         return (cp in 0x3400..0x4DBF) ||
             (cp in 0x4E00..0x9FFF) ||
             (cp in 0xF900..0xFAFF) ||
-            (cp in 0x20000..0x2EBEF)
+            (cp in 0x20000..0x2FA1F) ||
+            (cp in 0x30000..0x3134F)
     }
 
     private fun stripHtmlTags(value: String): String {

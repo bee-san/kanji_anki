@@ -29,14 +29,22 @@ class JitenKanjiRanksTest {
                 2,A
                 ,3
                 -1,提
+                櫛,5
+                6,𰀀
+                -,日
+                999999999999,大
+                日本,4
                 """.trimIndent(),
             ),
         )
 
-        assertEquals(3, ranks.size())
+        assertEquals(5, ranks.size())
         assertEquals(1, ranks.rankOf("日"))
         assertEquals(824, ranks.rankOf("裂"))
         assertEquals(-1, ranks.rankOf("提"))
+        assertEquals(5, ranks.rankOf("櫛"))
+        assertEquals(6, ranks.rankOf("𰀀"))
         assertNull(ranks.rankOf("A"))
+        assertNull(ranks.rankOf("日本"))
     }
 }

@@ -16,18 +16,20 @@ KIKU_DB_MANIFEST = "apps/docs/public/_kiku_db_main_manifest.json"
 KIKU_COMPACT_JSON_GZ = "kiku_db_kanji_compact.json.gz"
 VISUALLY_SIMILAR_INDEX = 8
 SOURCE = "kiku:wk-visually-similar"
+KANJI_RANGES = (
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2FA1F),
+    (0x30000, 0x3134F),
+)
 
 
 def is_kanji(value: str) -> bool:
     if len(value) != 1:
         return False
     cp = ord(value)
-    return (
-        0x3400 <= cp <= 0x4DBF
-        or 0x4E00 <= cp <= 0x9FFF
-        or 0xF900 <= cp <= 0xFAFF
-        or 0x20000 <= cp <= 0x2EBEF
-    )
+    return any(start <= cp <= end for start, end in KANJI_RANGES)
 
 
 def load_compact_db(kiku_root: Path) -> dict[str, Any]:

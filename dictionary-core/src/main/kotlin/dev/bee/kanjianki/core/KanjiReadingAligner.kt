@@ -56,8 +56,9 @@ object KanjiReadingAligner {
         }
         val units = expressionUnits(expr) ?: return null
         val out = ArrayList<ReadingPair>()
-        val memo = HashMap<Long, Boolean>()
-        return if (solve(units, 0, reading, 0, dictionary, out, memo)) out else null
+        val failedStates = HashSet<Long>()
+        val inventoryCache = HashMap<String, List<Pair<String, String>>>()
+        return if (solve(units, 0, reading, 0, dictionary, out, failedStates, inventoryCache)) out else null
     }
 
     /**
@@ -81,6 +82,7 @@ object KanjiReadingAligner {
         }
         val matcher = FURIGANA_SEGMENT.matcher(raw)
         val out = ArrayList<ReadingPair>()
+        val reconstructedExpression = StringBuilder()
         var matchedAny = false
         var lastEnd = 0
         while (matcher.find()) {
@@ -92,9 +94,11 @@ object KanjiReadingAligner {
             if (containsKanji(between)) {
                 return null
             }
+            reconstructedExpression.append(between)
             lastEnd = matcher.end()
             matchedAny = true
             val base = matcher.group(1) ?: return null
+            reconstructedExpression.append(base)
             val segReading = normalizeKana(matcher.group(2))
             val pairs = alignPlain(base, segReading, dictionary) ?: return null
             out.addAll(pairs)
@@ -102,7 +106,12 @@ object KanjiReadingAligner {
         if (!matchedAny) {
             return null
         }
-        if (containsKanji(raw.substring(lastEnd))) {
+        val trailing = raw.substring(lastEnd)
+        if (containsKanji(trailing)) {
+            return null
+        }
+        reconstructedExpression.append(trailing)
+        if (normalizeExpression(reconstructedExpression.toString()) != normalizeExpression(expression)) {
             return null
         }
         return if (out.isEmpty()) null else out
@@ -111,17 +120,13 @@ object KanjiReadingAligner {
     // ---- expression segmentation ----
 
     /**
-     * An expression unit: either a kanji occurrence (carrying its reading
-     * inventory) or a literal kana/other char that must be consumed verbatim.
-     * The iteration mark 々 is expanded to a kanji unit reusing the previous
-     * kanji's inventory and literal.
+     * An expression unit: either a kanji occurrence or a literal kana/other
+     * char that must be consumed verbatim. The iteration mark 々 is expanded
+     * to a kanji unit using the previous kanji's literal.
      */
     private class ExprUnit(
         val literal: String,
         val isKanji: Boolean,
-        // For kanji units: variant reading (as it may surface in the word) →
-        // canonical reading. Sorted longest-variant-first for determinism.
-        val variants: List<Pair<String, String>>,
     )
 
     private fun expressionUnits(expr: String): List<ExprUnit>? {
@@ -132,19 +137,18 @@ object KanjiReadingAligner {
             val cp = expr.codePointAt(i)
             val ch = expr.substring(i, i + Character.charCount(cp))
             if (cp == ITERATION_MARK.code) {
-                // 々 repeats the previous kanji: reuse its inventory + literal.
+                // 々 repeats the previous kanji; its literal shares the cached inventory.
                 val prev = previousKanji ?: return null
-                units.add(ExprUnit(prev.literal, true, prev.variants))
+                units.add(ExprUnit(prev.literal, true))
                 i += ch.length
                 continue
             }
             if (DictionaryTextUtil.isKanji(cp)) {
-                val unit = ExprUnit(ch, true, emptyList())
+                val unit = ExprUnit(ch, true)
                 units.add(unit)
-                // The inventory is filled lazily below (needs the dictionary).
                 previousKanji = unit
             } else {
-                units.add(ExprUnit(ch, false, emptyList()))
+                units.add(ExprUnit(ch, false))
             }
             i += ch.length
         }
@@ -160,7 +164,8 @@ object KanjiReadingAligner {
         kanaIndex: Int,
         dictionary: DictionaryLookup,
         out: ArrayList<ReadingPair>,
-        memo: HashMap<Long, Boolean>,
+        failedStates: HashSet<Long>,
+        inventoryCache: HashMap<String, List<Pair<String, String>>>,
     ): Boolean {
         if (unitIndex == units.size) {
             return kanaIndex == kana.length
@@ -169,22 +174,32 @@ object KanjiReadingAligner {
             return false
         }
         val key = unitIndex.toLong() * (kana.length + 1L) + kanaIndex
-        val cached = memo[key]
-        if (cached == false) {
+        if (failedStates.contains(key)) {
             return false
         }
         val unit = units[unitIndex]
         if (!unit.isKanji) {
             // Literal char must match exactly.
             if (kana.regionMatches(kanaIndex, unit.literal, 0, unit.literal.length)) {
-                if (solve(units, unitIndex + 1, kana, kanaIndex + unit.literal.length, dictionary, out, memo)) {
+                if (
+                    solve(
+                        units,
+                        unitIndex + 1,
+                        kana,
+                        kanaIndex + unit.literal.length,
+                        dictionary,
+                        out,
+                        failedStates,
+                        inventoryCache,
+                    )
+                ) {
                     return true
                 }
             }
-            memo[key] = false
+            failedStates.add(key)
             return false
         }
-        val variants = inventoryFor(unit, dictionary)
+        val variants = inventoryFor(unit, dictionary, inventoryCache)
         for ((surface, canonical) in variants) {
             if (surface.isEmpty() || kanaIndex + surface.length > kana.length) {
                 continue
@@ -193,26 +208,36 @@ object KanjiReadingAligner {
                 continue
             }
             out.add(ReadingPair(unit.literal, canonical))
-            if (solve(units, unitIndex + 1, kana, kanaIndex + surface.length, dictionary, out, memo)) {
+            if (
+                solve(
+                    units,
+                    unitIndex + 1,
+                    kana,
+                    kanaIndex + surface.length,
+                    dictionary,
+                    out,
+                    failedStates,
+                    inventoryCache,
+                )
+            ) {
                 return true
             }
             out.removeAt(out.size - 1)
         }
-        memo[key] = false
+        failedStates.add(key)
         return false
     }
 
     // ---- reading inventory ----
 
-    private fun inventoryFor(unit: ExprUnit, dictionary: DictionaryLookup): List<Pair<String, String>> {
-        if (unit.variants.isNotEmpty()) {
-            return unit.variants
+    private fun inventoryFor(
+        unit: ExprUnit,
+        dictionary: DictionaryLookup,
+        inventoryCache: HashMap<String, List<Pair<String, String>>>,
+    ): List<Pair<String, String>> =
+        inventoryCache.getOrPut(unit.literal) {
+            buildInventory(dictionary.lookupKanji(unit.literal))
         }
-        val entry = dictionary.lookupKanji(unit.literal)
-        val built = buildInventory(entry)
-        // Cache on the unit so repeated occurrences (々) reuse it.
-        return built
-    }
 
     /**
      * Build the surface→canonical reading map for a kanji, longest-surface-first.
@@ -319,8 +344,7 @@ object KanjiReadingAligner {
     // ---- normalization ----
 
     private fun normalizeExpression(value: String?): String {
-        val stripped = DictionaryTextUtil.stripHtml(value)
-        return stripPunctuation(stripped)
+        return normalizeKana(value)
     }
 
     /** Katakana → hiragana; strip HTML, punctuation, and whitespace. */
@@ -335,20 +359,6 @@ object KanjiReadingAligner {
                 cp in 0x30A1..0x30F6 -> sb.appendCodePoint(cp - 0x60) // katakana → hiragana
                 isDropped(cp) -> {} // strip punctuation/space
                 else -> sb.appendCodePoint(cp)
-            }
-            i += count
-        }
-        return sb.toString()
-    }
-
-    private fun stripPunctuation(value: String): String {
-        val sb = StringBuilder(value.length)
-        var i = 0
-        while (i < value.length) {
-            val cp = value.codePointAt(i)
-            val count = Character.charCount(cp)
-            if (!isDropped(cp)) {
-                sb.appendCodePoint(cp)
             }
             i += count
         }

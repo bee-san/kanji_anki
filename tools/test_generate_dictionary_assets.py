@@ -33,6 +33,10 @@ KANJIDIC_FIXTURE = """<?xml version="1.0" encoding="UTF-8"?>
 <literal>𠂉</literal>
 <misc><stroke_count>2</stroke_count></misc>
 </character>
+<character>
+<literal>日本</literal>
+<misc><stroke_count>4</stroke_count></misc>
+</character>
 </kanjidic2>
 """
 
@@ -66,6 +70,41 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
             self.assertEqual(824, ranks["裂"])
             self.assertEqual(1, ranks["日"])
             self.assertNotIn("word", ranks)
+
+    def test_jiten_ranks_require_single_kanji_and_signed_int32_rank(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "jiten.csv"
+            source.write_text(
+                "\n".join(
+                    [
+                        "Kanji,Rank",
+                        "日,2147483647",
+                        "-2147483648,提",
+                        "大,2147483648",
+                        "-2147483649,小",
+                        "中,1_000",
+                        "+7,上",
+                        "日本,4",
+                        "櫛,5",
+                        "6,𰀀",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            ranks = generator.parse_jiten_ranks(source)
+
+            self.assertEqual(
+                {
+                    "日": generator.INT32_MAX,
+                    "提": generator.INT32_MIN,
+                    "櫛": 5,
+                    "𰀀": 6,
+                },
+                ranks,
+            )
+            self.assertEqual(0, generator.int_or_zero("2147483648"))
+            self.assertEqual(0, generator.int_or_zero("-1"))
 
     def test_writes_database_schema_metadata_and_jiten_join(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -166,15 +205,28 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
 
     def test_bundled_database_contains_all_kanjidic2_literals(self) -> None:
         db_path = Path("app/src/main/assets/dictionaries/kanji_dictionary.db")
+        checksum_path = db_path.with_suffix(".db.sha256")
+        manifest_path = db_path.with_name("dictionary_sources.json")
+        jiten_path = Path("tools/data/jiten_kanji_rank.csv")
         if not db_path.exists():
             self.fail("Bundled SQLite dictionary is missing. Run tools/generate_dictionary_assets.py before release validation.")
 
         with closing(sqlite3.connect(db_path)) as db:
+            integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
             count = db.execute("SELECT COUNT(*) FROM kanji").fetchone()[0]
             jiten_count = db.execute("SELECT COUNT(*) FROM jiten_ranks").fetchone()[0]
             meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
             ranked = db.execute("SELECT COUNT(*) FROM kanji WHERE jiten_rank IS NOT NULL").fetchone()[0]
+            bundled_ranks = dict(db.execute("SELECT literal, rank FROM jiten_ranks"))
+            bundled_literals = db.execute("SELECT literal FROM kanji").fetchall()
 
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest_assets = {asset["path"]: asset for asset in manifest["assets"]}
+        source_ranks = generator.parse_jiten_ranks(jiten_path)
+        db_hash = generator.sha256(db_path)
+        checksum_hash = generator.sha256(checksum_path)
+
+        self.assertEqual("ok", integrity)
         self.assertEqual(13108, count)
         self.assertEqual(10666, jiten_count)
         self.assertEqual("1", meta["schema_version"])
@@ -182,6 +234,47 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
         self.assertEqual("10666", meta["jiten_rank_count"])
         self.assertEqual("8031", meta["jiten_rank_join_count"])
         self.assertEqual(8031, ranked)
+        self.assertEqual([], [literal for (literal,) in bundled_literals if not generator.is_kanji_literal(literal)])
+        self.assertEqual(source_ranks, bundled_ranks)
+        self.assertEqual(f"{db_hash}  {db_path.name}\n", checksum_path.read_text(encoding="utf-8"))
+        self.assertEqual(db_hash, manifest_assets[db_path.name]["sha256"])
+        self.assertEqual(checksum_hash, manifest_assets[checksum_path.name]["sha256"])
+        self.assertEqual(generator.sha256(jiten_path), manifest["sources"][1]["source_sha256"])
+
+    def test_bundled_stroke_guides_are_complete_and_well_formed(self) -> None:
+        stroke_path = Path("app/src/main/res/raw/kanji_strokes.tsv")
+        lines = stroke_path.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(
+            [
+                "# Compact normalized stroke guides generated from KanjiVG.",
+                "# Source: kanjivg-20250816.xml.gz",
+                "# Format: kanji<TAB>x,y;x,y|x,y;x,y",
+            ],
+            lines[:3],
+        )
+
+        literals: list[str] = []
+        for line_number, line in enumerate(lines[3:], start=4):
+            cells = line.split("\t")
+            if len(cells) != 2 or len(cells[0]) != 1:
+                self.fail(f"Malformed stroke guide key on line {line_number}")
+            literal, encoded_strokes = cells
+            literals.append(literal)
+            for encoded_stroke in encoded_strokes.split("|"):
+                points = encoded_stroke.split(";")
+                if len(points) < 2:
+                    self.fail(f"Stroke with fewer than two points on line {line_number}")
+                for point in points:
+                    coordinates = point.split(",")
+                    if len(coordinates) != 2:
+                        self.fail(f"Malformed stroke point on line {line_number}")
+                    x, y = (float(value) for value in coordinates)
+                    if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
+                        self.fail(f"Out-of-range stroke point on line {line_number}")
+
+        self.assertEqual(6526, len(literals))
+        self.assertEqual(len(literals), len(set(literals)))
+        self.assertEqual(sorted(literals, key=ord), literals)
 
 
 if __name__ == "__main__":

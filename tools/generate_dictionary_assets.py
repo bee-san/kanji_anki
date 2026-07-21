@@ -26,6 +26,16 @@ KANJIVG_URL = "https://github.com/KanjiVG/kanjivg"
 DB_ASSET_NAME = "kanji_dictionary.db"
 DB_SHA256_ASSET_NAME = "kanji_dictionary.db.sha256"
 MANIFEST_ASSET_NAME = "dictionary_sources.json"
+INT32_MIN = -(2**31)
+INT32_MAX = 2**31 - 1
+INTEGER_PATTERN = re.compile(r"-?[0-9]+")
+KANJI_RANGES = (
+    (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF),
+    (0xF900, 0xFAFF),
+    (0x20000, 0x2FA1F),
+    (0x30000, 0x3134F),
+)
 
 
 @dataclass(frozen=True)
@@ -84,7 +94,7 @@ def parse_kanjidic2(path: Path) -> tuple[dict[str, str], list[KanjiRecord]]:
             for meaning in character.findall("reading_meaning/rmgroup/meaning")
             if "m_lang" not in meaning.attrib and meaning.get(XML_LANG, "eng") in ("", "eng")
         )
-        if not literal:
+        if not is_kanji_literal(literal):
             continue
         records.append(
             KanjiRecord(
@@ -99,7 +109,7 @@ def parse_kanjidic2(path: Path) -> tuple[dict[str, str], list[KanjiRecord]]:
                 int_or_zero(text(character, "misc/freq")),
             )
         )
-    return metadata, sorted(records, key=lambda item: ord(item.literal[0]))
+    return metadata, sorted(records, key=lambda item: ord(item.literal))
 
 
 def parse_jiten_ranks(path: Path) -> dict[str, int]:
@@ -113,13 +123,12 @@ def parse_jiten_ranks(path: Path) -> dict[str, int]:
             if len(cells) < 2:
                 continue
             kanji = ""
-            rank = None
-            if is_integer(cells[0]):
-                rank = int(cells[0])
+            rank = parse_integer(cells[0])
+            if rank is not None:
                 kanji = cells[1]
-            elif is_integer(cells[1]):
+            else:
+                rank = parse_integer(cells[1])
                 kanji = cells[0]
-                rank = int(cells[1])
             if rank is not None and is_kanji_literal(kanji):
                 ranks[kanji] = rank
     return ranks
@@ -133,33 +142,22 @@ def text(elem: ET.Element | None, path: str) -> str:
 
 
 def int_or_zero(value: str) -> int:
-    try:
-        return int(value)
-    except ValueError:
-        return 0
+    parsed = parse_integer(value)
+    return parsed if parsed is not None and parsed >= 0 else 0
 
 
-def is_integer(value: str) -> bool:
-    if not value:
-        return False
-    try:
-        int(value)
-        return True
-    except ValueError:
-        return False
+def parse_integer(value: str) -> int | None:
+    if not INTEGER_PATTERN.fullmatch(value):
+        return None
+    parsed = int(value)
+    return parsed if INT32_MIN <= parsed <= INT32_MAX else None
 
 
 def is_kanji_literal(value: str) -> bool:
     if len(value) != 1:
         return False
     codepoint = ord(value)
-    return (
-        0x3400 <= codepoint <= 0x4DBF
-        or 0x4E00 <= codepoint <= 0x9FFF
-        or 0xF900 <= codepoint <= 0xFAFF
-        or 0x20000 <= codepoint <= 0x2FA1F
-        or 0x30000 <= codepoint <= 0x3134F
-    )
+    return any(start <= codepoint <= end for start, end in KANJI_RANGES)
 
 
 def list_cell(values: Iterable[str]) -> str:

@@ -143,6 +143,11 @@ class StudyCueFormatterTest {
     @Test
     fun compactHandlesNullShortWordBoundariesAndHardLimit() {
         assertEquals("", StudyCueFormatter.compact(null, 12))
+        assertEquals("", StudyCueFormatter.compact("long", -1))
+        assertEquals("", StudyCueFormatter.compact("long", 0))
+        assertEquals("l", StudyCueFormatter.compact("long", 1))
+        assertEquals("lon", StudyCueFormatter.compact("long", 3))
+        assertEquals("l...", StudyCueFormatter.compact("longer", 4))
         assertEquals("short", StudyCueFormatter.compact("short", 12))
         assertEquals("a very long s...", StudyCueFormatter.compact("a very long sentence that should be shortened", 16))
     }

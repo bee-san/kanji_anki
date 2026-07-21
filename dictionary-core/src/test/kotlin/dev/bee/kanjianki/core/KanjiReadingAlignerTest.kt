@@ -27,6 +27,7 @@ class KanjiReadingAlignerTest {
             kanji("日", on = listOf("ニチ", "ジツ"), kun = listOf("ひ", "び", "か")),
             kanji("見", on = listOf("ケン"), kun = listOf("み.る", "み.える", "み.せる")),
             kanji("中", on = listOf("チュウ"), kun = listOf("なか", "うち")),
+            kanji("缶", on = listOf("カン"), kun = emptyList()),
             kanji("知", on = listOf("チ"), kun = listOf("し.る", "し.らせる")),
             kanji("合", on = listOf("ゴウ", "ガッ", "カッ"), kun = listOf("あ.う", "あ.わせる")),
             kanji("低", on = listOf("テイ"), kun = listOf("ひく.い", "ひく.める")),
@@ -80,6 +81,10 @@ class KanjiReadingAlignerTest {
         assertAlign("時間", "ジカン", listOf("時" to "じ", "間" to "かん"))
 
     @Test
+    fun katakanaInExpressionMatchesNormalizedReading() =
+        assertAlign("缶ビール", "かんびーる", listOf("缶" to "かん"))
+
+    @Test
     fun furiganaBracketForm() =
         assertAlignFurigana(
             "勉強中",
@@ -94,6 +99,12 @@ class KanjiReadingAlignerTest {
             "知[し]り 合[あ]い",
             listOf("知" to "し", "合" to "あ"),
         )
+
+    @Test
+    fun bracketFuriganaMustDescribeTheSuppliedExpression() {
+        assertNull(KanjiReadingAligner.alignFurigana("別", "勉強[べんきょう]", dictionary))
+        assertNull(KanjiReadingAligner.alignFurigana("知る", "知[し]り", dictionary))
+    }
 
     @Test
     fun furiganaWithoutBracketDelegatesToPlain() =
@@ -124,6 +135,24 @@ class KanjiReadingAlignerTest {
         for (i in 0 until 20) {
             assertEquals(ambiguous, align("好き", "すき"))
         }
+    }
+
+    @Test
+    fun repeatedKanjiShareOneDictionaryInventoryLookup() {
+        var lookups = 0
+        val countingDictionary = object : DictionaryLookup() {
+            override fun lookupKanji(literal: String?): KanjiEntry? {
+                lookups++
+                return dictionary.lookupKanji(literal)
+            }
+
+            override fun kanjiCount(): Int = dictionary.kanjiCount()
+        }
+
+        val result = KanjiReadingAligner.alignPlain("人々", "ひとびと", countingDictionary)
+
+        assertNotNull(result)
+        assertEquals(1, lookups)
     }
 
     @Test
