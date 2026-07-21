@@ -116,7 +116,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     private fun triggerManualUpdateCheck() {
-        io.execute {
+        // Network checks can consume the full HTTP timeout. Keep them off the
+        // single-threaded route executor so navigation remains responsive while
+        // GitHub is slow or unreachable.
+        maintenance.execute {
             val updater = dev.bee.kanjianki.update.GitHubUpdater(this)
             updater.checkDownloadAndInstall(dev.bee.kanjianki.update.GitHubUpdater.UpdateSource.MANUAL)
             postToMainIfActive(::renderHome)
