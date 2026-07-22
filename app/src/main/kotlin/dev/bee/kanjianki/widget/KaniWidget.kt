@@ -142,6 +142,7 @@ internal fun KaniWidgetContent(
     val cardModifier = GlanceModifier
         .fillMaxSize()
         .background(palette.background.toProvider())
+        .cornerRadius(16.dp)
         .padding(if (isExpanded) 12.dp else 8.dp)
     Row(
         modifier = cardModifier,
@@ -199,6 +200,7 @@ internal fun LegacyActivityWidgetContent(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(palette.background.toProvider())
+            .cornerRadius(16.dp)
             .clickable(statsAction)
             .padding(12.dp)
             .semantics { contentDescription = activityHeaderLine(snapshot) },
@@ -466,11 +468,14 @@ internal fun overviewVisibleCopy(
  * unit-testable without a Glance host.
  */
 internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
-    KaniWidgetState.NOT_SET_UP,
-    KaniWidgetState.ERROR,
-    -> KaniWidgetCopy(
+    KaniWidgetState.NOT_SET_UP -> KaniWidgetCopy(
         WidgetTextCopy.notSetUpTitle(),
         WidgetTextCopy.notSetUpBody(),
+        WidgetTextCopy.openKaniLabel(),
+    )
+    KaniWidgetState.ERROR -> KaniWidgetCopy(
+        WidgetTextCopy.errorTitle(),
+        WidgetTextCopy.errorBody(),
         WidgetTextCopy.openKaniLabel(),
     )
     KaniWidgetState.NOTHING_DUE -> KaniWidgetCopy(
@@ -480,7 +485,7 @@ internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): Kani
         extraLine = if (isExpanded) WidgetTextCopy.bestStreakLabel(snapshot.bestStreakDays) else "",
     )
     KaniWidgetState.DUE_NOW -> {
-        val reviewCount = snapshot.dueCount - snapshot.newDueCount
+        val reviewCount = (snapshot.dueCount - snapshot.newDueCount).coerceAtLeast(0)
         val title = if (isExpanded && snapshot.newDueCount > 0 && reviewCount > 0) {
             WidgetTextCopy.dueSplitLabel(reviewCount, snapshot.newDueCount)
         } else {

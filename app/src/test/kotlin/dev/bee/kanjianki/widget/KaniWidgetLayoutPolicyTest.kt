@@ -33,7 +33,8 @@ class KaniWidgetLayoutPolicyTest {
         assertFalse(quick.showSeparateAction)
         assertFalse(activity.showBestStreak)
         assertEquals(FocusKanjiLayoutTier.GLYPH_ONLY, focus.tier)
-        assertTrue(focus.glyphFontSp >= 40)
+        assertTrue(activity.useVisualCount)
+        assertEquals(30, focus.glyphFontSp)
     }
 
     @Test

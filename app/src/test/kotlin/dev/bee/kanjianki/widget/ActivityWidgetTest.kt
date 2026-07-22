@@ -47,25 +47,56 @@ class ActivityWidgetTest {
         assertFalse(compact.useCompactHero)
         assertTrue(compact.stackAction)
         assertTrue(compact.showStreak)
-        assertTrue(enlargedCompact.showAction)
+        assertFalse(enlargedCompact.showAction)
         assertTrue(enlargedCompact.useCompactHero)
-        assertTrue(regular.showBestStreak)
-        assertTrue(regular.showStreak)
+        assertFalse(regular.showBestStreak)
+        assertFalse(regular.showStreak)
         assertTrue(regular.showAction)
-        assertTrue(regular.stackAction)
+        assertFalse(regular.stackAction)
         assertTrue(activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f).showAction)
         assertTrue(regular.useCompactHero)
         assertFalse(enlarged.showStreak)
         assertTrue(enlarged.showGrid)
         assertTrue(enlarged.useSevenDayGrid)
         assertTrue(enlarged.useCompactHero)
+        assertTrue(enlarged.stackAction)
         assertFalse(enlarged.showBestStreak)
         assertFalse(accessibility.showBestStreak)
         assertFalse(accessibility.showStreak)
         assertFalse(accessibility.showGrid)
         assertTrue(accessibility.useCompactHero)
+        assertTrue(accessibility.useVisualCount)
+        assertFalse(accessibility.stackAction)
         assertTrue(accessibility.actionFontSp >= 13f)
         assertTrue(accessibility.supportFontSp >= 12f)
+    }
+
+    @Test
+    fun regularHistoryUsesOneHeaderRowWhenRenderingAllThirtyFiveCells() {
+        val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1f)
+        val presentation = activityWidgetPresentation(history, ActivityWidgetTier.REGULAR)
+
+        assertFalse(layout.stackAction)
+        assertFalse(layout.showStreak)
+        assertFalse(layout.showBestStreak)
+        assertFalse(layout.useSevenDayGrid)
+        assertEquals(35, activityWidgetVisibleCells(presentation, layout).size)
+    }
+
+    @Test
+    fun twoXCompactHistoryUsesOneNumericHeaderRowWithoutAGrid() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.COMPACT, fontScale = 2f)
+            val presentation = activityWidgetPresentation(history, ActivityWidgetTier.COMPACT)
+            val copy = activityWidgetVisibleCopy(history, presentation, layout)
+
+            assertFalse(layout.stackAction)
+            assertTrue(layout.showAction)
+            assertTrue(layout.useVisualCount)
+            assertFalse(layout.showGrid)
+            assertEquals("87", copy.title)
+            assertEquals(WidgetTextCopy.statsLabel(), copy.action)
+        }
     }
 
     @Test

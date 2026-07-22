@@ -53,7 +53,10 @@ class KaniWidgetProviderInfoTest {
         assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
         assertEquals("4", provider.androidAttribute("targetCellWidth"))
         assertEquals("1", provider.androidAttribute("targetCellHeight"))
+        assertTrue(preview.contains("android:orientation=\"horizontal\""))
+        assertTrue(preview.contains("android:padding=\"8dp\""))
         assertTrue(preview.contains("android:minWidth=\"80dp\""))
+        assertTrue(preview.contains("android:layout_width=\"80dp\""))
         assertTrue(preview.contains("android:layout_height=\"56dp\""))
     }
 
@@ -87,6 +90,7 @@ class KaniWidgetProviderInfoTest {
         assertTrue(preview.contains("@string/quick_study_widget_preview_action"))
         assertTrue(preview.contains("@drawable/widget_preview_primary_action"))
         assertTrue(preview.contains("@color/widget_preview_on_primary"))
+        assertTrue(preview.contains("android:padding=\"4dp\""))
         assertTrue(english.contains("name=\"quick_study_widget_preview_count\">12</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_preview_status\">Due</string>"))
         assertTrue(english.contains("name=\"quick_study_widget_preview_action\">Study</string>"))
@@ -175,6 +179,7 @@ class KaniWidgetProviderInfoTest {
             "src/main/res/drawable/quick_study_widget_preview_image.xml",
             "src/main/res/drawable/activity_widget_preview_image.xml",
             "src/main/res/drawable/focus_kanji_widget_preview_image.xml",
+            "src/main/res/drawable/widget_preview_card_background.xml",
             "src/main/res/drawable/widget_preview_primary_action.xml",
         )
         resourcePaths.forEach { path ->
@@ -182,6 +187,23 @@ class KaniWidgetProviderInfoTest {
             assertFalse("$path must not hard-code colors", Regex("#[0-9A-Fa-f]{6,8}").containsMatchIn(resource))
             assertTrue("$path must use semantic preview colors", resource.contains("@color/widget_preview_"))
         }
+        listOf(
+            "src/main/res/layout/kani_widget_loading.xml",
+            "src/main/res/layout/kani_widget_preview.xml",
+            "src/main/res/layout/quick_study_widget_loading.xml",
+            "src/main/res/layout/quick_study_widget_preview.xml",
+            "src/main/res/layout/activity_widget_loading.xml",
+            "src/main/res/layout/activity_widget_preview.xml",
+            "src/main/res/layout/focus_kanji_widget_loading.xml",
+            "src/main/res/layout/focus_kanji_widget_preview.xml",
+        ).forEach { path ->
+            assertTrue(
+                "$path must use the rounded shared card",
+                File(path).readText().contains("@drawable/widget_preview_card_background"),
+            )
+        }
+        val cardBackground = File("src/main/res/drawable/widget_preview_card_background.xml").readText()
+        assertTrue(cardBackground.contains("android:radius=\"16dp\""))
         val day = File("src/main/res/values/widget_preview_colors.xml").readText()
         val night = File("src/main/res/values-night/widget_preview_colors.xml").readText()
         listOf("background", "ink", "muted", "primary", "on_primary", "track", "heat_low", "heat_medium").forEach { role ->

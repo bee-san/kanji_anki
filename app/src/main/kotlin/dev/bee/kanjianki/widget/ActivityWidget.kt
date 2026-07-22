@@ -96,6 +96,7 @@ internal data class ActivityWidgetLayout(
     val showAction: Boolean,
     val stackAction: Boolean,
     val useCompactHero: Boolean,
+    val useVisualCount: Boolean,
     val titleFontSp: Float,
     val actionFontSp: Float,
     val supportFontSp: Float,
@@ -109,18 +110,26 @@ internal data class ActivityWidgetVisibleCopy(
 internal fun activityWidgetLayout(
     tier: ActivityWidgetTier,
     fontScale: Float,
-) = ActivityWidgetLayout(
-    showBestStreak = tier != ActivityWidgetTier.COMPACT && fontScale < 1.3f,
-    showStreak = fontScale < 1.3f,
-    showGrid = fontScale < 2f,
-    useSevenDayGrid = tier == ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
-    showAction = tier != ActivityWidgetTier.COMPACT || fontScale >= 1.3f,
-    stackAction = tier != ActivityWidgetTier.WIDE,
-    useCompactHero = tier == ActivityWidgetTier.REGULAR || fontScale >= 1.3f,
-    titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
-    actionFontSp = 13f,
-    supportFontSp = 12f,
-)
+): ActivityWidgetLayout {
+    val largeFont = fontScale >= 1.3f
+    val veryLargeFont = fontScale >= 1.8f
+    return ActivityWidgetLayout(
+        showBestStreak = tier == ActivityWidgetTier.WIDE && !largeFont,
+        showStreak = tier != ActivityWidgetTier.REGULAR && !largeFont,
+        showGrid = !veryLargeFont,
+        useSevenDayGrid = tier == ActivityWidgetTier.COMPACT || largeFont,
+        showAction = tier != ActivityWidgetTier.COMPACT || veryLargeFont,
+        // One header row leaves the regular tier enough height for all 35 cells.
+        stackAction = tier != ActivityWidgetTier.WIDE &&
+            !veryLargeFont &&
+            (tier != ActivityWidgetTier.REGULAR || largeFont),
+        useCompactHero = tier == ActivityWidgetTier.REGULAR || largeFont,
+        useVisualCount = veryLargeFont,
+        titleFontSp = if (tier == ActivityWidgetTier.COMPACT) 14f else 16f,
+        actionFontSp = 13f,
+        supportFontSp = 12f,
+    )
+}
 
 internal fun activityWidgetTier(widthDp: Float, heightDp: Float): ActivityWidgetTier = when {
     heightDp < 96f -> ActivityWidgetTier.COMPACT
@@ -271,12 +280,23 @@ private fun compactActivityTitle(
     snapshot: ActivityWidgetSnapshot,
     layout: ActivityWidgetLayout,
 ): String = when (snapshot.state) {
-    ActivityWidgetState.HISTORY -> if (layout.useSevenDayGrid && layout.showGrid) {
-        WidgetTextCopy.reviewCountLabel(snapshot.last7DayTotal)
-    } else {
-        WidgetTextCopy.reviewCountLabel(snapshot.last35DayTotal)
+    ActivityWidgetState.HISTORY -> {
+        val count = if (layout.useSevenDayGrid && layout.showGrid) {
+            snapshot.last7DayTotal
+        } else {
+            snapshot.last35DayTotal
+        }
+        if (layout.useVisualCount) {
+            WidgetTextCopy.visualCountLabel(count)
+        } else {
+            WidgetTextCopy.reviewCountLabel(count)
+        }
     }
-    ActivityWidgetState.NO_HISTORY -> WidgetTextCopy.reviewCountLabel(0)
+    ActivityWidgetState.NO_HISTORY -> if (layout.useVisualCount) {
+        "0"
+    } else {
+        WidgetTextCopy.reviewCountLabel(0)
+    }
     ActivityWidgetState.NOT_SET_UP -> "—"
     ActivityWidgetState.ERROR -> "!"
 }

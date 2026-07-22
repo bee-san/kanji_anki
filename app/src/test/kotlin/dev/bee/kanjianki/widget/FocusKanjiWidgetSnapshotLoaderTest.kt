@@ -2,6 +2,7 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -31,6 +32,14 @@ class FocusKanjiWidgetSnapshotLoaderTest {
     fun tearDown() {
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
         context.getDatabasePath(LocalStoreSchema.DB_NAME).deleteRecursively()
+    }
+
+    @Test
+    fun missingDatabaseUsesSystemDayNightFallbackWithoutCreatingData() {
+        val snapshot = FocusKanjiWidgetSnapshotLoader.load(context, NOW)
+
+        assertEquals(FocusKanjiWidgetState.NOT_SET_UP, snapshot.state)
+        assertEquals(KaniThemeChoice.SYSTEM, snapshot.themeChoice)
     }
 
     @Test
