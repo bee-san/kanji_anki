@@ -51,6 +51,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
     @JvmField
     var activeBrowseAllKanji: Boolean = false
 
+    @JvmField
+    var activeBrowseShowSuspended: Boolean = false
+
     private val focusQueue by lazy { MainActivityHomeFocusQueue(this) }
     private val browseDetail by lazy { MainActivityHomeBrowseDetail(this) }
     private val homeStudyPlanProvider by lazy { MainActivityStudyPlanProvider(this) }
@@ -398,12 +401,13 @@ internal abstract class MainActivityHome : MainActivityBase() {
             HomeRouteRestoration.Destination.BROWSE -> renderBrowseKanji(
                 route.query,
                 route.onlySimilarKanji,
-                route.allKanjiScope,
+                route.showSuspended,
             )
             HomeRouteRestoration.Destination.DETAIL -> {
                 activeBrowseQuery = route.query
                 activeBrowseSimilarOnly = route.onlySimilarKanji
                 activeBrowseAllKanji = route.allKanjiScope
+                activeBrowseShowSuspended = route.showSuspended
                 renderDetail(route.kanji, route.fromBrowse, route.query)
             }
             HomeRouteRestoration.Destination.READ_ONLY_DETAIL ->
@@ -673,11 +677,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean) {
-        browseDetail.renderBrowseKanji(query, onlySimilarKanji, false)
+        browseDetail.renderBrowseKanji(query, onlySimilarKanji)
     }
 
-    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean, allKanjiScope: Boolean) {
-        browseDetail.renderBrowseKanji(query, onlySimilarKanji, allKanjiScope)
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean, showSuspended: Boolean) {
+        browseDetail.renderBrowseKanji(query, onlySimilarKanji, showSuspended)
     }
 
     fun renderReadOnlyDetail(kanji: String, browseQuery: String?) {
@@ -802,7 +806,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderBrowseKanji(
             route.query,
             route.onlySimilarKanji,
-            route.allKanjiScope,
+            route.showSuspended,
         )
     }
 

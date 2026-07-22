@@ -343,6 +343,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         home.activeBrowseQuery = ""
         home.activeBrowseSimilarOnly = false
         home.activeBrowseAllKanji = true
+        home.activeBrowseShowSuspended = false
         home.renderDetail(kanji, true, "")
         return true
     }

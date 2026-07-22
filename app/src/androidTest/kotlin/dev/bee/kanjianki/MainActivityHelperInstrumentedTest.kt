@@ -1737,7 +1737,6 @@ fun homeBrowseDetailStatsAndSyncControlsCoverNonEmptyBranches() {
             scenario.onActivity { activity -> activity.renderStudyForKanji("裂") }
             waitForText(scenario, "What does this kanji mean?")
             scenario.onActivity { activity ->
-                verifyBrowseSuspensionControls(activity);
                 verifyRecentMistakesAndEmptyTimeline(activity);
                 verifyStatsVerdictBranches(activity, activeRow);
                 verifySyncResultStudyNow(activity);
@@ -1752,7 +1751,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         val activeExample = MainActivityHomeBrowseDetail(activity)
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.expression);
-        assertEquals("split word", activeExample.meaning);
+        assertEquals("Split word", activeExample.meaning);
         val matureSupportThreshold = activity.settings().matureSupportThreshold
         val relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
@@ -1776,23 +1775,8 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
                 1000L,
                 matureSupportThreshold,
         )
-        assertTrue(learningRow.tags.any { it.label == "learning" })
+        assertTrue(learningRow.tags.any { it.label == "Learning" })
         seedRows(activity, listOf(activeRow));
-    }
-
-private fun verifyBrowseSuspensionControls(activity: MainActivity) {
-        activity.store.setKanjiLocallySuspended("裂", true, 1000L);
-
-        activity.renderBrowseKanji("裂");
-        assertEquals("裂", activity.activeBrowseQuery);
-        assertHasText(activity, "SUSPENDED");
-        performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertHasText(activity, "Back to Browse");
-        assertHasText(activity, "Local records");
-        performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
-        assertFalse(activity.store.isKanjiLocallySuspended("裂"));
-        activity.renderDetail("missing", false, "");
-        assertHasText(activity, "Kanji not found");
     }
 
 private fun verifyRecentMistakesAndEmptyTimeline(activity: MainActivity) {

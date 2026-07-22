@@ -15,6 +15,7 @@ internal data class HomeRouteRestoration(
     val kanji: String = "",
     val onlySimilarKanji: Boolean = false,
     val allKanjiScope: Boolean = false,
+    val showSuspended: Boolean = false,
     val fromBrowse: Boolean = false,
 ) {
     enum class Destination(val wireName: String) {
@@ -32,6 +33,7 @@ internal data class HomeRouteRestoration(
         putString(KEY_KANJI, kanji)
         putBoolean(KEY_ONLY_SIMILAR, onlySimilarKanji)
         putBoolean(KEY_ALL_KANJI, allKanjiScope)
+        putBoolean(KEY_SHOW_SUSPENDED, showSuspended)
         putBoolean(KEY_FROM_BROWSE, fromBrowse)
     }
 
@@ -44,11 +46,13 @@ internal data class HomeRouteRestoration(
             query: String,
             onlySimilarKanji: Boolean,
             allKanjiScope: Boolean,
+            showSuspended: Boolean = false,
         ) = HomeRouteRestoration(
             destination = Destination.BROWSE,
             query = query.take(MAX_SAVED_QUERY_CHARS),
             onlySimilarKanji = onlySimilarKanji,
             allKanjiScope = allKanjiScope,
+            showSuspended = showSuspended,
         )
 
         fun detail(
@@ -57,12 +61,14 @@ internal data class HomeRouteRestoration(
             query: String,
             onlySimilarKanji: Boolean,
             allKanjiScope: Boolean,
+            showSuspended: Boolean = false,
         ) = HomeRouteRestoration(
             destination = Destination.DETAIL,
             query = query.take(MAX_SAVED_QUERY_CHARS),
             kanji = kanji,
             onlySimilarKanji = onlySimilarKanji,
             allKanjiScope = allKanjiScope,
+            showSuspended = showSuspended,
             fromBrowse = fromBrowse,
         )
 
@@ -98,6 +104,7 @@ internal data class HomeRouteRestoration(
                     kanji = normalizedKanji,
                     onlySimilarKanji = bundle.getBoolean(KEY_ONLY_SIMILAR, false),
                     allKanjiScope = bundle.getBoolean(KEY_ALL_KANJI, false),
+                    showSuspended = bundle.getBoolean(KEY_SHOW_SUSPENDED, false),
                     fromBrowse = bundle.getBoolean(KEY_FROM_BROWSE, false),
                 )
             } catch (_: Exception) {
@@ -111,6 +118,7 @@ internal data class HomeRouteRestoration(
         private const val KEY_KANJI = "kanji"
         private const val KEY_ONLY_SIMILAR = "only-similar"
         private const val KEY_ALL_KANJI = "all-kanji"
+        private const val KEY_SHOW_SUSPENDED = "show-suspended"
         private const val KEY_FROM_BROWSE = "from-browse"
     }
 }

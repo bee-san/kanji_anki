@@ -26,31 +26,36 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val missingModel: BrowseDetailMissingModel?,
     )
 
-    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, allKanjiScope: Boolean = false) {
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, showSuspended: Boolean = false) {
         val requestedQuery = query ?: ""
         val browseRoute = HomeRouteRestoration.browse(
             requestedQuery,
             onlySimilarKanji,
-            allKanjiScope,
+            false,
+            showSuspended,
         )
         home.currentHomeRouteRestoration = browseRoute
         home.activeBrowseQuery = requestedQuery
         home.activeBrowseSimilarOnly = onlySimilarKanji
-        home.activeBrowseAllKanji = allKanjiScope
+        home.activeBrowseAllKanji = false
+        home.activeBrowseShowSuspended = showSuspended
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
-                if (allKanjiScope) {
-                    BrowseRouteData(allKanjiBrowseScreenModel(home, requestedQuery))
-                } else {
-                    val items = home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)
-                    BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, allKanjiScope = false))
-                }
+                // Project Browse from persisted scheduler membership before the row cap. The
+                // management view also admits local suspensions so users can reverse them.
+                val items = home.store.searchStudyQueueInventory(
+                    requestedQuery,
+                    onlySimilarKanji,
+                    includeLocallySuspended = showSuspended,
+                )
+                BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, showSuspended))
             },
             render = { data ->
                 home.activeBrowseQuery = home.browseQueryDraft(browseRoute, data.model.initialQuery)
                 home.activeBrowseSimilarOnly = data.model.similarFilterActive
-                home.activeBrowseAllKanji = data.model.allKanjiScope
+                home.activeBrowseAllKanji = false
+                home.activeBrowseShowSuspended = data.model.showSuspendedActive
                 home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     BrowseScreen(
                         data.model.copy(
@@ -75,14 +80,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                     if (entry != null) readOnlyDetailModel(entry, requestedQuery) else null,
                     if (entry == null) BrowseDetailMissingModel(
                         HomeTextCopy.backToBrowseKanjiLabel(),
-                        Runnable { renderBrowseKanji(requestedQuery, allKanjiScope = true) },
+                        Runnable { renderBrowseKanji(requestedQuery) },
                         HomeTextCopy.kanjiNotFoundTitle(),
                         HomeTextCopy.kanjiNotFoundBody()
                     ) else null
                 )
             },
             render = { data ->
-                val backAction = Runnable { renderBrowseKanji(requestedQuery, allKanjiScope = true) }
+                val backAction = Runnable { renderBrowseKanji(requestedQuery) }
                 if (data.missingModel != null) {
                     home.renderHomeRoute(backAction = backAction) { BrowseDetailMissing(data.missingModel) }
                 } else {
@@ -108,7 +113,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             hero = BrowseDetailHeroModel(
                 entry.literal,
                 HomeTextCopy.backToBrowseKanjiLabel(),
-                Runnable { renderBrowseKanji(browseQuery, allKanjiScope = true) }
+                Runnable { renderBrowseKanji(browseQuery) }
             ),
             identity = BrowseDetailIdentityModel(
                 title = if (entry.meanings.isNotEmpty()) entry.meanings[0] else "",
@@ -175,6 +180,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             query = requestedQuery,
             onlySimilarKanji = home.activeBrowseSimilarOnly,
             allKanjiScope = home.activeBrowseAllKanji,
+            showSuspended = home.activeBrowseShowSuspended,
         )
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
@@ -218,7 +224,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             },
             render = { data ->
                 val detailBackAction = customBackAction ?: if (fromBrowse) {
-                    Runnable { renderBrowseKanji(requestedQuery, home.activeBrowseSimilarOnly) }
+                    Runnable {
+                        renderBrowseKanji(
+                            requestedQuery,
+                            home.activeBrowseSimilarOnly,
+                            home.activeBrowseShowSuspended,
+                        )
+                    }
                 } else {
                     Runnable { home.renderHome() }
                 }
@@ -335,7 +347,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 else -> HomeTextCopy.homeLabel()
             },
             customBackAction ?: if (fromBrowse) {
-                Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) }
+                Runnable {
+                    renderBrowseKanji(
+                        browseQuery,
+                        home.activeBrowseSimilarOnly,
+                        home.activeBrowseShowSuspended,
+                    )
+                }
             } else {
                 Runnable { home.renderHome() }
             }
