@@ -2,6 +2,8 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -108,6 +110,40 @@ class ReminderSchedulePolicyTest {
                     listOf(utc(2026, Calendar.MAY, 15, 23, 0)),
                 ),
             )
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun nextTriggerResolvesSpringDstGapAtTheRequestedWallClockOffset() {
+        val original = TimeZone.getDefault()
+        try {
+            val zone = ZoneId.of("Europe/London")
+            TimeZone.setDefault(TimeZone.getTimeZone(zone))
+            val now = LocalDateTime.of(2026, 3, 28, 23, 0).atZone(zone).toInstant().toEpochMilli()
+            val expected = LocalDateTime.of(2026, 3, 29, 1, 30).atZone(zone).toInstant().toEpochMilli()
+
+            val trigger = ReminderSchedulePolicy.nextTriggerMillis(1, 30, now)
+
+            assertEquals(expected, trigger)
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun nextTriggerUsesEarlierOccurrenceDuringAutumnDstOverlap() {
+        val original = TimeZone.getDefault()
+        try {
+            val zone = ZoneId.of("Europe/London")
+            TimeZone.setDefault(TimeZone.getTimeZone(zone))
+            val now = LocalDateTime.of(2026, 10, 24, 23, 0).atZone(zone).toInstant().toEpochMilli()
+            val expected = LocalDateTime.of(2026, 10, 25, 1, 30).atZone(zone).toInstant().toEpochMilli()
+
+            val trigger = ReminderSchedulePolicy.nextTriggerMillis(1, 30, now)
+
+            assertEquals(expected, trigger)
         } finally {
             TimeZone.setDefault(original)
         }
