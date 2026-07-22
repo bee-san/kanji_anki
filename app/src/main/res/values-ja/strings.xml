@@ -15,7 +15,7 @@
     <string name="activity_widget_label">学習履歴</string>
     <string name="activity_widget_description">35日間の連続学習と復習履歴を確認します。</string>
     <string name="activity_widget_loading">学習記録を読み込み中…</string>
-    <string name="activity_widget_preview_total">35日 · 87件</string>
+    <string name="activity_widget_preview_total">35日間で復習87件</string>
     <string name="activity_widget_preview_streak">5日連続</string>
     <string name="activity_widget_preview_best">最長21日</string>
 
