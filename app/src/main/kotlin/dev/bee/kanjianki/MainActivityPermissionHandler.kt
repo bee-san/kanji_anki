@@ -15,7 +15,11 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
     }
 
     fun handleAnkiPermissionResult() {
-        activity.renderHome()
+        when (activity.currentRoute) {
+            MainActivityBase.NAV_HOME_ROUTE -> activity.renderHome()
+            MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE ->
+                (activity as? MainActivitySettings)?.renderSettingsImportSync(true)
+        }
     }
 
     fun handlePostNotificationPermission(granted: Boolean) {
@@ -23,13 +27,14 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
         if (granted) {
             saveGrantedReminderPermission(pending)
         } else {
-            disableReminderAfterDeniedPermission(pending)
+            preserveReminderAfterDeniedPermission(pending)
         }
         activity.pendingReminderSettings = null
-        if (activity is MainActivitySettings) {
+        if (
+            activity is MainActivitySettings &&
+            activity.currentRoute == MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE
+        ) {
             activity.renderSettingsAutomation(true)
-        } else {
-            activity.renderSettings(true)
         }
     }
 
@@ -45,13 +50,10 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
         ).show()
     }
 
-    fun disableReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        val fallback = pending ?: activity.store.reminderSettings()
-        val fields = ReminderSettingsSavePolicy.fields(false, fallback.hour, fallback.minute)
-        activity.store.saveReminderSettings(
-            LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
-        )
-        ReminderScheduler.cancel(activity)
+    fun preserveReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
+        val reminder = pending ?: activity.store.reminderSettings()
+        activity.store.saveReminderSettings(reminder)
+        ReminderScheduler.schedule(activity, reminder)
         Toast.makeText(activity, ReminderSettingsSavePolicy.permissionDeniedMessage(), Toast.LENGTH_LONG).show()
     }
 }

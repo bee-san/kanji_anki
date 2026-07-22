@@ -96,6 +96,13 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         }
         activity.preserveStudyRecoveryForHarnessRoute = false
         activity.screenshotThemeChoiceOverride = null
+        val opensKanjiDetail = intent?.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) == true
+        val focusKanji = if (opensKanjiDetail) focusKanjiDetailFromIntent(intent) else null
+        val opensStudy = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true
+        val opensUpdate = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true
+        val opensStats = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false) == true
+        val shortcutDestination = launcherShortcutDestination(intent?.action)
+        consumeProductionNavigation(intent, shortcutDestination != null)
         val study = activity as? MainActivityStudy
         val restoreStudyRoute = activity.restoreStudyRouteOnCreate
         val recreatedRoute = activity.restoreRouteOnCreate
@@ -114,26 +121,24 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             activity.renderRestoredHomeRoute(recreatedHomeRoute)
             return
         }
-        val shortcutDestination = launcherShortcutDestination(intent?.action)
         when {
-            intent?.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) == true -> {
+            opensKanjiDetail -> {
                 activity.disableStudyOrdinaryResume()
-                val kanji = focusKanjiDetailFromIntent(intent)
-                if (kanji == null || !activity.openFocusKanjiDetail(kanji)) {
+                if (focusKanji == null || !activity.openFocusKanjiDetail(focusKanji)) {
                     activity.renderHome()
                 }
             }
 
-            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true -> {
+            opensStudy -> {
                 activity.renderStudy()
             }
 
-            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true -> {
+            opensUpdate -> {
                 activity.disableStudyOrdinaryResume()
                 activity.renderUpdate()
             }
 
-            intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false) == true -> {
+            opensStats -> {
                 activity.disableStudyOrdinaryResume()
                 if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
             }
@@ -145,6 +150,17 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             }
 
             else -> activity.renderHome()
+        }
+    }
+
+    private fun consumeProductionNavigation(intent: Intent?, consumedShortcut: Boolean) {
+        intent ?: return
+        intent.removeExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL)
+        intent.removeExtra(MainActivityBase.EXTRA_OPEN_STUDY)
+        intent.removeExtra(MainActivityBase.EXTRA_OPEN_UPDATE)
+        intent.removeExtra(MainActivityBase.EXTRA_OPEN_STATS)
+        if (consumedShortcut) {
+            intent.action = Intent.ACTION_MAIN
         }
     }
 

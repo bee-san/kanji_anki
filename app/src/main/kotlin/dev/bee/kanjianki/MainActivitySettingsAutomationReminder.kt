@@ -1,7 +1,9 @@
 package dev.bee.kanjianki
 
 import android.app.TimePickerDialog
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
@@ -105,7 +107,15 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         ReminderScheduler.ensureNotificationChannel(activity)
         if (!activity.hasRuntimeNotificationPermissionForReminder()) {
             activity.pendingReminderSettings = reminder
-            activity.requestPostNotificationPermission()
+            activity.runSettingsWrite(
+                traceSection = "kani.settings.reminder.save-before-permission",
+                write = {
+                    activity.store.saveReminderSettings(reminder)
+                },
+            ) {
+                ReminderScheduler.schedule(activity, reminder)
+                activity.requestPostNotificationPermission()
+            }
             return
         }
         val allowed = activity.notificationsAllowedForReminders()
@@ -194,10 +204,8 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
     }
 
     private fun openNotificationSettings() {
-        activity.startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
-        )
+        activity.reminderNotificationSettingsRefreshPending = true
+        activity.startActivity(reminderNotificationSettingsIntent(activity))
     }
 
     private data class NotificationSettingsAction(
@@ -213,5 +221,19 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
                 else -> MainActivityUiSupport.MUTED
             }
         }
+    }
+}
+
+internal fun reminderNotificationSettingsIntent(
+    context: Context,
+    sdkInt: Int = Build.VERSION.SDK_INT,
+): Intent {
+    return if (sdkInt >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, ReminderScheduler.REMINDER_CHANNEL_ID)
+    } else {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
     }
 }

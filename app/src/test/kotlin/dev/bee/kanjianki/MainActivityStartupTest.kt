@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.KaniThemeChoice
+import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -75,6 +76,7 @@ class MainActivityStartupTest {
 
         assertEquals("学", activity.openedFocusKanji)
         assertEquals(0, activity.renderHomeCalls)
+        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
     }
 
     @Test
@@ -105,6 +107,35 @@ class MainActivityStartupTest {
 
         assertEquals("学", activity.openedFocusKanji)
         assertEquals(0, activity.renderHomeCalls)
+        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+    }
+
+    @Test
+    fun deniedNotificationPermissionKeepsTheSelectedReminderEnabled() {
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
+        val activity = controller.create().get()
+        val selected = LocalStoreBase.ReminderSettings(true, 19, 40)
+
+        activity.preserveReminderAfterDeniedPermission(selected)
+
+        val saved = activity.store.reminderSettings()
+        assertTrue(saved.enabled)
+        assertEquals(19, saved.hour)
+        assertEquals(40, saved.minute)
+    }
+
+    @Test
+    fun permissionCallbacksDoNotReplaceAnUnrelatedRoute() {
+        val controller = Robolectric.buildActivity(PermissionRouteTrackingStartupActivity::class.java)
+        val activity = controller.create().get()
+        activity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
+
+        activity.handleAnkiPermissionResult()
+
+        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+        activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30)
+        activity.handlePostNotificationPermission(false)
+        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
     }
 
     @Test
@@ -551,6 +582,12 @@ class MainActivityStartupTest {
 
         override fun renderHome() {
             renderHomeCalls += 1
+        }
+    }
+
+    private class PermissionRouteTrackingStartupActivity : MainActivity() {
+        override fun renderHome() {
+            currentRoute = MainActivityBase.NAV_HOME_ROUTE
         }
     }
 

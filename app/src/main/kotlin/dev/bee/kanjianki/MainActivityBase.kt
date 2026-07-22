@@ -274,6 +274,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var pendingReminderSettings: LocalStoreBase.ReminderSettings? = null
 
     @JvmField
+    var reminderNotificationSettingsRefreshPending = false
+
+    @JvmField
     var settingsAnkiExpanded = true
 
     @JvmField
@@ -555,8 +558,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         permissionHandler.saveGrantedReminderPermission(pending)
     }
 
-    fun disableReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        permissionHandler.disableReminderAfterDeniedPermission(pending)
+    fun preserveReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
+        permissionHandler.preserveReminderAfterDeniedPermission(pending)
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {

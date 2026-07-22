@@ -42,8 +42,24 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
         activity.activityPaused = false
         activity.resumeActiveStudyTask()
         activity.renderDeferredStudyBehaviorPreviewIfNeeded()
+        refreshReminderNotificationSettingsIfNeeded()
         installPendingUpdateIfReady()
         onAppOpened()
+    }
+
+    private fun refreshReminderNotificationSettingsIfNeeded() {
+        if (!activity.reminderNotificationSettingsRefreshPending) {
+            return
+        }
+        activity.reminderNotificationSettingsRefreshPending = false
+        ReminderScheduler.ensureNotificationChannel(activity)
+        if (
+            activity is MainActivitySettings &&
+            activity.currentRoute == MainActivityBase.NAV_SETTINGS_AUTOMATION_ROUTE
+        ) {
+            activity.renderSettingsAutomation(true)
+        }
+        requestReminderRearm(REASON_NOTIFICATION_SETTINGS)
     }
 
     /**
@@ -178,6 +194,7 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
 
     private companion object {
         const val LOG_TAG = "KaniReminder"
+        const val REASON_NOTIFICATION_SETTINGS = "notification-settings"
         const val REASON_RESUME = "resume"
         const val RESUME_REARM_THROTTLE_MILLIS = 3L * 60L * 1000L
 
