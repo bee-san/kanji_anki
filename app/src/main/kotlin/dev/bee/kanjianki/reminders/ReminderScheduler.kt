@@ -126,7 +126,7 @@ object ReminderScheduler {
     }
 
     @JvmStatic
-    fun scheduleSnooze(context: Context?) {
+    fun scheduleSnooze(context: Context?, family: String) {
         if (context == null) {
             return
         }
@@ -136,6 +136,7 @@ object ReminderScheduler {
                 store.reminderAntiSpamSettings(),
                 androidReminderServices(context),
                 AppClock.systemClock().nowMillis(),
+                family,
             )
         }
     }
@@ -146,6 +147,7 @@ object ReminderScheduler {
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         services: ReminderServices,
         nowMillis: Long,
+        family: String = "",
     ) {
         if (settings == null || !settings.enabled) {
             services.cancelAlarm()
@@ -159,6 +161,7 @@ object ReminderScheduler {
             ),
             settings.hour,
             settings.minute,
+            family,
         )
     }
 
@@ -286,16 +289,22 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        showReminderNotification(context, androidReminderServices(context), clock, false)
+        showReminderNotification(context, androidReminderServices(context), clock, false, "")
     }
 
     @SuppressLint("MissingPermission")
     @JvmStatic
-    fun showReminderNotification(context: Context?, snoozeRepost: Boolean) {
+    fun showReminderNotification(context: Context?, snoozeRepost: Boolean, snoozedFamily: String) {
         if (context == null) {
             return
         }
-        showReminderNotification(context, androidReminderServices(context), AppClock.systemClock(), snoozeRepost)
+        showReminderNotification(
+            context,
+            androidReminderServices(context),
+            AppClock.systemClock(),
+            snoozeRepost,
+            snoozedFamily,
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -307,7 +316,7 @@ object ReminderScheduler {
     @SuppressLint("MissingPermission")
     @JvmStatic
     fun showReminderNotification(context: Context?, services: ReminderServices, clock: AppClock?) {
-        showReminderNotification(context, services, clock, false)
+        showReminderNotification(context, services, clock, false, "")
     }
 
     @SuppressLint("MissingPermission")
@@ -317,16 +326,21 @@ object ReminderScheduler {
         services: ReminderServices,
         clock: AppClock?,
         snoozeRepost: Boolean,
+        snoozedFamily: String,
     ) {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
         AppLocalStoreFactory.create(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
-            val plan = evaluate(store, now) ?: return@use
+            val reservedFamily = if (snoozeRepost) reminderFamilyOrNull(snoozedFamily) else null
+            if (snoozeRepost && reservedFamily == null) {
+                return@use
+            }
+            val plan = evaluate(store, now, reservedFamily) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.
             // A blocked post leaves the alarm to re-arm for the next eligible time.
-            if (!plan.throttleDecision.allow && !snoozeRepost) {
+            if (!plan.throttleDecision.allow && reservedFamily == null) {
                 return@use
             }
             services.ensureNotificationChannel()
@@ -375,8 +389,12 @@ object ReminderScheduler {
             if (!AndroidNotificationGateway(context).post(NOTIFICATION_ID, notification)) {
                 return@use
             }
-            store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
-            if (plan.reviewBatch) {
+            if (reservedFamily == null) {
+                store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
+            } else {
+                store.recordReminderReposted(now, plan.signature)
+            }
+            if (plan.reviewBatch && reservedFamily == null) {
                 // Keep the legacy per-day review counter in sync so the hard 2/day
                 // cap continues to engage alongside the new throttle.
                 store.recordReviewReminderNotificationShown(now)
@@ -390,6 +408,8 @@ object ReminderScheduler {
             .apply {
                 if (family != ReminderFamily.SYNC.name) {
                     putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+                } else {
+                    putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
                 }
             }
             .setFlags(
@@ -405,12 +425,14 @@ object ReminderScheduler {
         hour: Int,
         minute: Int,
         snoozeRepost: Boolean = false,
+        family: String = "",
     ): Intent {
         return Intent(context, ReminderReceiver::class.java)
             .setAction(ACTION_DAILY_REMINDER)
             .putExtra(EXTRA_REMINDER_HOUR, hour)
             .putExtra(EXTRA_REMINDER_MINUTE, minute)
             .putExtra(EXTRA_REMINDER_SNOOZE_REPOST, snoozeRepost)
+            .putExtra(EXTRA_REMINDER_FAMILY, family)
     }
 
     @JvmStatic
@@ -440,7 +462,7 @@ object ReminderScheduler {
     interface ReminderServices {
         fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int)
 
-        fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
+        fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
             scheduleAlarm(triggerAtMillis, hour, minute)
         }
 
@@ -460,7 +482,7 @@ object ReminderScheduler {
 
         override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false) ?: return
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false, "") ?: return
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
@@ -468,15 +490,15 @@ object ReminderScheduler {
             )
         }
 
-        override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
+        override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true) ?: return
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true, family) ?: return
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
 
         override fun cancelAlarm() {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false)
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false, "")
             if (pendingIntent != null) {
                 alarmManager?.cancel(pendingIntent)
                 pendingIntent.cancel()
@@ -488,8 +510,9 @@ object ReminderScheduler {
             hour: Int,
             minute: Int,
             snoozeRepost: Boolean,
+            family: String,
         ): PendingIntent? {
-            val intent = dailyReminderIntent(context, hour, minute, snoozeRepost)
+            val intent = dailyReminderIntent(context, hour, minute, snoozeRepost, family)
             return PendingIntent.getBroadcast(
                 context,
                 REQUEST_CODE,
@@ -580,24 +603,42 @@ object ReminderScheduler {
         val throttleDecision: dev.bee.kanjianki.core.ReminderThrottlePolicy.Decision,
     )
 
-    private fun evaluate(store: LocalStore, nowMillis: Long): PlannedReminder? {
+    private fun evaluate(
+        store: LocalStore,
+        nowMillis: Long,
+        reservedFamily: ReminderFamily? = null,
+    ): PlannedReminder? {
         val rows = store.activeDashboardRows()
         val eligibleItems = eligibleReminderItems(store, rows)
         val streak = store.studyStreak(nowMillis)
         val antiSpam = store.reminderAntiSpamSettings()
         val throttleState = store.reminderThrottleState(nowMillis)
         val settings = store.reminderSettings()
-        val dailyTimeOverride = isDailyReminderTime(settings, nowMillis) && !throttleState.dailyOverrideUsedToday
+        val dailyTimeOverride = reservedFamily == null &&
+            isDailyReminderTime(settings, nowMillis) &&
+            !throttleState.dailyOverrideUsedToday
 
         if (streak.studiedToday) {
+            if (reservedFamily != null && reservedFamily != ReminderFamily.DUE) {
+                return null
+            }
             // Studied today: only a genuine review batch may fire. A daily-time
             // override lowers the minimum batch to 1 so the once-a-day nudge still
             // works even for a small tail.
-            val minBatch = if (dailyTimeOverride) 1 else ReminderReviewBatchPolicy.DEFAULT_MIN_BATCH_SIZE
+            val minBatch = if (dailyTimeOverride || reservedFamily != null) {
+                1
+            } else {
+                ReminderReviewBatchPolicy.DEFAULT_MIN_BATCH_SIZE
+            }
             val batch = ReminderReviewBatchPolicy.nextBatch(
                 nowMillis,
                 eligibleItems,
-                reviewNotificationsToday(store, antiSpam, nowMillis),
+                reviewNotificationsToday(
+                    store,
+                    antiSpam,
+                    nowMillis,
+                    reserveOriginalPost = reservedFamily == ReminderFamily.DUE,
+                ),
                 minBatch,
             ) ?: return null
             val signature = ReminderThrottlePolicy.signatureFor(batch.dueCount, batch.latestDueAtMillis)
@@ -615,8 +656,17 @@ object ReminderScheduler {
 
         // Not studied today: the decision policy drives the daily reminder,
         // wired with quiet hours, per-family caps, and dismissed families (D3).
-        val decision = dailyReminderDecision(store, rows, eligibleItems, streak, antiSpam, throttleState, nowMillis)
-        if (!decision.shouldSchedule) {
+        val decision = dailyReminderDecision(
+            store,
+            rows,
+            eligibleItems,
+            streak,
+            antiSpam,
+            throttleState,
+            nowMillis,
+            reservedFamily,
+        )
+        if (!decision.shouldSchedule || (reservedFamily != null && decision.family != reservedFamily)) {
             return null
         }
         val signature = ReminderThrottlePolicy.signatureFor(1, decision.triggerAtMillis)
@@ -656,10 +706,12 @@ object ReminderScheduler {
         store: LocalStore,
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         nowMillis: Long,
+        reserveOriginalPost: Boolean = false,
     ): Int {
         // Feed the batch policy an effective "already shown" count that also
         // enforces the user's max-per-day setting when it is below the hard cap.
-        val shown = store.reviewReminderNotificationsToday(nowMillis)
+        val rawShown = store.reviewReminderNotificationsToday(nowMillis)
+        val shown = if (reserveOriginalPost) (rawShown - 1).coerceAtLeast(0) else rawShown
         val allowed = antiSpam.maxRemindersPerDay
         // If the user allows fewer than the batch policy's own 2/day fuse, bump the
         // reported count so the batch stops sooner.
@@ -674,6 +726,7 @@ object ReminderScheduler {
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         throttleState: LocalStoreBase.ReminderThrottleState,
         nowMillis: Long,
+        reservedFamily: ReminderFamily? = null,
     ): dev.bee.kanjianki.core.DailyReminderDecision {
         val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSuccessfulSyncFinishedAt(), nowMillis)
         val nowMinuteOfDay = minuteOfDay(nowMillis)
@@ -690,12 +743,32 @@ object ReminderScheduler {
                 quietHoursStartMinuteOfDay = if (quietLead != null) antiSpam.quietStartMinuteOfDay else null,
                 quietHoursLeadMinutes = quietLead ?: 60,
                 dismissedFamiliesToday = dismissed,
-                dueRemindersShownToday = throttleState.dueShownToday,
-                streakRemindersShownToday = throttleState.streakShownToday,
-                syncRemindersShownToday = throttleState.syncShownToday,
+                dueRemindersShownToday = reservedPostCount(
+                    throttleState.dueShownToday,
+                    ReminderFamily.DUE,
+                    reservedFamily,
+                ),
+                streakRemindersShownToday = reservedPostCount(
+                    throttleState.streakShownToday,
+                    ReminderFamily.STREAK,
+                    reservedFamily,
+                ),
+                syncRemindersShownToday = reservedPostCount(
+                    throttleState.syncShownToday,
+                    ReminderFamily.SYNC,
+                    reservedFamily,
+                ),
                 dueReminderCapPerDay = antiSpam.maxRemindersPerDay,
             ),
         )
+    }
+
+    private fun reservedPostCount(
+        shownToday: Int,
+        family: ReminderFamily,
+        reservedFamily: ReminderFamily?,
+    ): Int {
+        return if (family == reservedFamily) (shownToday - 1).coerceAtLeast(0) else shownToday
     }
 
     private fun dailyStudyPlan(
@@ -736,6 +809,10 @@ object ReminderScheduler {
             runCatching { ReminderFamily.valueOf(name) }.getOrNull()?.let { out.add(it) }
         }
         return out
+    }
+
+    private fun reminderFamilyOrNull(raw: String): ReminderFamily? {
+        return runCatching { ReminderFamily.valueOf(raw.trim()) }.getOrNull()
     }
 
     private fun isDailyReminderTime(settings: LocalStoreBase.ReminderSettings, nowMillis: Long): Boolean {

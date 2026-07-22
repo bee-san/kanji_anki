@@ -282,6 +282,32 @@ class MainActivityStartupTest {
     }
 
     @Test
+    fun explicitHomeNotificationOverridesOrdinaryStudyRecovery() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val store = StudySessionRecoveryStore(preferences)
+        assertNotNull(store.replaceWithActive(activeSnapshot("explicit-home-token")))
+        val intent = Intent(context, PendingAnswerStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
+        }
+
+        val controller = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+        val activity = controller.get()
+        try {
+            controller.create().start().resume()
+
+            assertEquals(0, activity.renderStudyCalls)
+            assertEquals(1, activity.renderHomeCalls)
+            assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_HOME))
+            assertFalse(store.shouldResumeOnOrdinaryLaunch())
+        } finally {
+            preferences.edit().clear().commit()
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
     fun recreationMarkerRestoresStudyAheadOfStaleOriginalUpdateIntent() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)

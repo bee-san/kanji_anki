@@ -576,6 +576,9 @@ internal abstract class LocalStoreStudy(
     fun recordReminderPosted(nowMillis: Long, family: String?, signature: String?, dailyTimeOverride: Boolean) =
         studySettings().recordReminderPosted(nowMillis, family, signature, dailyTimeOverride)
 
+    fun recordReminderReposted(nowMillis: Long, signature: String?) =
+        studySettings().recordReminderReposted(nowMillis, signature)
+
     fun recordReminderDismissed(nowMillis: Long, family: String?) =
         studySettings().recordReminderDismissed(nowMillis, family)
 

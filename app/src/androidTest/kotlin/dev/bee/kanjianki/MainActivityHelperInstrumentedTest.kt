@@ -142,6 +142,26 @@ fun tearDown() {
     }
 
     @Test
+    fun warmSyncReminderIntentExplicitlyOpensHome() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                val scenarioLaunchIntent = activity.intent
+                val reminderIntent = ReminderScheduler.reminderOpenIntent(activity, ReminderFamily.SYNC.name)
+                val onNewIntent = MainActivityBase::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
+                onNewIntent.isAccessible = true
+                try {
+                    onNewIntent.invoke(activity, reminderIntent)
+
+                    assertEquals(MainActivityBase.NAV_HOME_ROUTE, activity.currentRoute)
+                    assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_HOME))
+                } finally {
+                    activity.intent = scenarioLaunchIntent
+                }
+            }
+        }
+    }
+
+    @Test
 fun launcherHostsHomeInsideComposeShell() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->

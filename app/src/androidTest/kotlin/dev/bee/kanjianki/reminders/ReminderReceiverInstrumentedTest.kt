@@ -127,12 +127,13 @@ class ReminderReceiverInstrumentedTest {
 
     @Test
     fun dailyReminderIntentCarriesFallbackSchedule() {
-        val intent = ReminderScheduler.dailyReminderIntent(context, 6, 25, true)
+        val intent = ReminderScheduler.dailyReminderIntent(context, 6, 25, true, "DUE")
 
         assertEquals(ReminderScheduler.ACTION_DAILY_REMINDER, intent.action)
         assertEquals(6, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_HOUR, -1))
         assertEquals(25, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_MINUTE, -1))
         assertTrue(intent.getBooleanExtra(ReminderScheduler.EXTRA_REMINDER_SNOOZE_REPOST, false))
+        assertEquals("DUE", intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_FAMILY))
     }
 
     @Test

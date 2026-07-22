@@ -98,6 +98,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         activity.screenshotThemeChoiceOverride = null
         val opensKanjiDetail = intent?.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) == true
         val focusKanji = if (opensKanjiDetail) focusKanjiDetailFromIntent(intent) else null
+        val opensHome = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_HOME, false) == true
         val opensStudy = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true
         val opensUpdate = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true
         val opensStats = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false) == true
@@ -143,6 +144,11 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
             }
 
+            opensHome -> {
+                activity.disableStudyOrdinaryResume()
+                activity.renderHome()
+            }
+
             shortcutDestination != null -> renderLauncherShortcut(shortcutDestination)
 
             study?.shouldResumeStudyOnOrdinaryLaunch() == true -> {
@@ -156,6 +162,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     private fun consumeProductionNavigation(intent: Intent?, consumedShortcut: Boolean) {
         intent ?: return
         intent.removeExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL)
+        intent.removeExtra(MainActivityBase.EXTRA_OPEN_HOME)
         intent.removeExtra(MainActivityBase.EXTRA_OPEN_STUDY)
         intent.removeExtra(MainActivityBase.EXTRA_OPEN_UPDATE)
         intent.removeExtra(MainActivityBase.EXTRA_OPEN_STATS)

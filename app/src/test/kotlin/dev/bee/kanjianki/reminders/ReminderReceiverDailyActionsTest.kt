@@ -21,12 +21,12 @@ class ReminderReceiverDailyActionsTest {
         val actions = ReminderReceiverDailyActions(
             context = context,
             widgetRefresher = { events += "widget" },
-            notificationShower = { _, snoozeRepost -> events += "notification:$snoozeRepost" },
+            notificationShower = { _, snoozeRepost, family -> events += "notification:$snoozeRepost:$family" },
         )
 
-        actions.showReminderNotification(true)
+        actions.showReminderNotification(true, "DUE")
 
-        assertEquals(listOf("widget", "notification:true"), events)
+        assertEquals(listOf("widget", "notification:true:DUE"), events)
     }
 
     @Test
@@ -34,8 +34,8 @@ class ReminderReceiverDailyActionsTest {
         val events = mutableListOf<String>()
         val settings = LocalStoreBase.ReminderSettings(true, 8, 30)
         val actions = object : ReminderReceiver.DailyReminderActions {
-            override fun showReminderNotification(snoozeRepost: Boolean) {
-                events += "notification:$snoozeRepost"
+            override fun showReminderNotification(snoozeRepost: Boolean, family: String) {
+                events += "notification:$snoozeRepost:$family"
                 throw IllegalStateException("notification service failed")
             }
 
@@ -45,9 +45,9 @@ class ReminderReceiverDailyActionsTest {
         }
 
         assertThrows(IllegalStateException::class.java) {
-            ReminderReceiver.handleDailyReminder(settings, true, actions)
+            ReminderReceiver.handleDailyReminder(settings, true, "DUE", actions)
         }
 
-        assertEquals(listOf("notification:true", "schedule"), events)
+        assertEquals(listOf("notification:true:DUE", "schedule"), events)
     }
 }

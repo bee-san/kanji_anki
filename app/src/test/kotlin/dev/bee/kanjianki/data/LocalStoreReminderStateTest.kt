@@ -62,6 +62,22 @@ class LocalStoreReminderStateTest {
     }
 
     @Test
+    fun recordReminderRepostedUpdatesThrottleWithoutMintingDailyBudget() {
+        val original = utc(2026, Calendar.MAY, 15, 9, 0)
+        val repost = utc(2026, Calendar.MAY, 15, 10, 0)
+        store.recordReminderPosted(original, "DUE", "3:5", false)
+
+        store.recordReminderReposted(repost, "3:6")
+
+        val state = store.reminderThrottleState(repost)
+        assertEquals(repost, state.lastPostedAtMillis)
+        assertEquals("3:6", state.lastPostedSignature)
+        assertEquals(1, state.dueShownToday)
+        assertEquals(0, state.streakShownToday)
+        assertEquals(0, state.syncShownToday)
+    }
+
+    @Test
     fun perDayCountersResetOnNextLocalDay() {
         val day1 = utc(2026, Calendar.MAY, 15, 9, 0)
         store.recordReminderPosted(day1, "STREAK", "1:0", true)

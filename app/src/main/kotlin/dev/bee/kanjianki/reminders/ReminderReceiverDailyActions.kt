@@ -7,13 +7,13 @@ import dev.bee.kanjianki.widget.KaniWidgetUpdater
 internal class ReminderReceiverDailyActions(
     private val context: Context?,
     private val widgetRefresher: (Context?) -> Unit = KaniWidgetUpdater::requestUpdate,
-    private val notificationShower: (Context?, Boolean) -> Unit = { target, snoozeRepost ->
-        ReminderScheduler.showReminderNotification(target, snoozeRepost)
+    private val notificationShower: (Context?, Boolean, String) -> Unit = { target, snoozeRepost, family ->
+        ReminderScheduler.showReminderNotification(target, snoozeRepost, family)
     },
 ) : ReminderReceiver.DailyReminderActions {
-    override fun showReminderNotification(snoozeRepost: Boolean) {
+    override fun showReminderNotification(snoozeRepost: Boolean, family: String) {
         widgetRefresher(context)
-        notificationShower(context, snoozeRepost)
+        notificationShower(context, snoozeRepost, family)
     }
 
     override fun schedule(settings: LocalStoreBase.ReminderSettings?) {
