@@ -204,7 +204,7 @@ object DailyReminderDecisionPolicy {
                     )
                     else -> reason
                 }
-                "$workLine. Open Kani to review them."
+                "$workLine. Open Kani to study now."
             }
             RecommendedAction.STUDY_ONCE_FOR_STREAK -> {
                 "$reason. Open Kani now to keep your streak alive."

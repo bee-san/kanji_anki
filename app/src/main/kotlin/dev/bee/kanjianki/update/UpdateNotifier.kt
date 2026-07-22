@@ -1,23 +1,21 @@
 package dev.bee.kanjianki.update
 
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.updatecore.UpdateNotificationPolicy
 import dev.bee.kanjianki.updatecore.UpdateTextPolicy
 
 object UpdateNotifier {
     private const val CHANNEL_ID = "kani_app_updates"
-    private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
     private const val REQUEST_CODE = 2801
     private const val NOTIFICATION_ID = 2802
 
@@ -42,12 +40,17 @@ object UpdateNotifier {
             return false
         }
         val body = UpdateTextPolicy.notificationBody(version, message)
-        controller.ensureChannel(
-            UpdateTextPolicy.notificationChannelName(),
-            UpdateTextPolicy.notificationChannelDescription(),
-        )
-        controller.notifyUpdate(UpdateTextPolicy.notificationTitle(), body)
-        return true
+        if (!controller.ensureChannel(
+                UpdateTextPolicy.notificationChannelName(),
+                UpdateTextPolicy.notificationChannelDescription(),
+            )
+        ) {
+            return false
+        }
+        if (controller.channelImportance() == NotificationManager.IMPORTANCE_NONE) {
+            return false
+        }
+        return controller.notifyUpdate(UpdateTextPolicy.notificationTitle(), body)
     }
 
     interface NotificationController {
@@ -55,9 +58,11 @@ object UpdateNotifier {
 
         fun areNotificationsEnabled(): Boolean
 
-        fun ensureChannel(name: String, description: String)
+        fun ensureChannel(name: String, description: String): Boolean
 
-        fun notifyUpdate(title: String, body: String)
+        fun channelImportance(): Int?
+
+        fun notifyUpdate(title: String, body: String): Boolean
     }
 
     @JvmStatic
@@ -65,35 +70,31 @@ object UpdateNotifier {
         return AndroidNotificationController(context, Build.VERSION.SDK_INT)
     }
 
-    class AndroidNotificationController(context: Context, private val sdkInt: Int) : NotificationController {
+    class AndroidNotificationController(context: Context, sdkInt: Int) : NotificationController {
         private val context: Context = context.applicationContext
+        private val notifications = AndroidNotificationGateway(context, sdkInt)
 
         override fun hasRuntimeNotificationPermission(): Boolean {
-            return sdkInt < 33 ||
-                context.checkSelfPermission(POST_NOTIFICATIONS_PERMISSION) == PackageManager.PERMISSION_GRANTED
+            return notifications.hasRuntimePermission()
         }
 
         override fun areNotificationsEnabled(): Boolean {
-            return notificationsEnabled(manager(), NotificationManager::areNotificationsEnabled)
+            return notifications.areNotificationsEnabled()
         }
 
-        override fun ensureChannel(name: String, description: String) {
-            val manager = manager() ?: return
-            val channel = NotificationChannel(
+        override fun ensureChannel(name: String, description: String): Boolean {
+            return notifications.ensureChannel(
                 CHANNEL_ID,
                 name,
+                description,
                 NotificationManager.IMPORTANCE_DEFAULT,
             )
-            channel.description = description
-            channel.setShowBadge(true)
-            manager.createNotificationChannel(channel)
         }
 
-        override fun notifyUpdate(title: String, body: String) {
-            val manager = manager() ?: return
-            val open = Intent(context, MainActivity::class.java)
-                .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        override fun channelImportance(): Int? = notifications.channelImportance(CHANNEL_ID)
+
+        override fun notifyUpdate(title: String, body: String): Boolean {
+            val open = updateOpenIntent(context)
             val contentIntent = PendingIntent.getActivity(
                 context,
                 REQUEST_CODE,
@@ -107,14 +108,28 @@ object UpdateNotifier {
                 .setStyle(Notification.BigTextStyle().bigText(body))
                 .setContentIntent(contentIntent)
                 .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_STATUS)
                 .setColor(Color.rgb(110, 92, 230))
                 .build()
-            manager.notify(NOTIFICATION_ID, notification)
+            return notifications.post(NOTIFICATION_ID, notification)
         }
+    }
 
-        private fun manager(): NotificationManager? {
-            return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager?
-        }
+    @JvmStatic
+    fun updateOpenIntent(context: Context): Intent {
+        return Intent(context, MainActivity::class.java)
+            .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
+            .setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+    }
+
+    @JvmStatic
+    fun cancelPendingUpdate(context: Context?): Boolean {
+        return context?.let { AndroidNotificationGateway(it).cancel(NOTIFICATION_ID) } ?: false
     }
 
     @JvmStatic

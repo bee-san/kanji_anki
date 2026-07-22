@@ -7,10 +7,12 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.MainActivityBase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -20,6 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 private const val REMINDER_REQUEST_CODE = 2701
+private const val REMINDER_NOTIFICATION_ID = 2702
 private const val FUTURE_ALARM_AT_MILLIS = 4_102_444_800_000L
 
 @RunWith(AndroidJUnit4::class)
@@ -29,11 +32,15 @@ class ReminderReceiverInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
+        ReminderScheduler.cancel(context)
         context.deleteDatabase("kanji_anki_simple.db")
     }
 
     @After
     fun tearDown() {
+        ReminderScheduler.cancel(context)
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)
+            ?.cancel(REMINDER_NOTIFICATION_ID)
         context.deleteDatabase("kanji_anki_simple.db")
     }
 
@@ -50,6 +57,7 @@ class ReminderReceiverInstrumentedTest {
         LocalStore(context).use { store ->
             assertFalse(store.reminderSettings().enabled)
         }
+        assertFalse(waitForPendingReminderIntent(expectedPresent = false))
     }
 
     @Test
@@ -65,6 +73,7 @@ class ReminderReceiverInstrumentedTest {
             assertEquals(9, settings.hour)
             assertEquals(45, settings.minute)
         }
+        assertTrue(waitForPendingReminderIntent(expectedPresent = true))
     }
 
     @Test
@@ -114,6 +123,25 @@ class ReminderReceiverInstrumentedTest {
                 33,
             )
         )
+    }
+
+    @Test
+    fun dailyReminderIntentCarriesFallbackSchedule() {
+        val intent = ReminderScheduler.dailyReminderIntent(context, 6, 25, true, "DUE")
+
+        assertEquals(ReminderScheduler.ACTION_DAILY_REMINDER, intent.action)
+        assertEquals(6, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_HOUR, -1))
+        assertEquals(25, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_MINUTE, -1))
+        assertTrue(intent.getBooleanExtra(ReminderScheduler.EXTRA_REMINDER_SNOOZE_REPOST, false))
+        assertEquals("DUE", intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_FAMILY))
+    }
+
+    @Test
+    fun reminderOpenIntentRoutesDueWorkToStudy() {
+        val intent = ReminderScheduler.reminderOpenIntent(context, "DUE")
+
+        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
     }
 
     @Test
@@ -173,7 +201,7 @@ class ReminderReceiverInstrumentedTest {
     fun androidReminderServicesHandlesMissingAndPresentSystemManagers() {
         val missingServices = ReminderScheduler.androidReminderServices(NullSystemServiceContext(context))
 
-        missingServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS)
+        missingServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS, 8, 30)
         missingServices.cancelAlarm()
         assertFalse(missingServices.areNotificationsEnabled())
         assertEquals(NotificationManager.IMPORTANCE_NONE, missingServices.reminderChannelImportance())
@@ -182,7 +210,7 @@ class ReminderReceiverInstrumentedTest {
         clearPendingReminderIntent()
         val realServices = ReminderScheduler.androidReminderServices(context)
         realServices.cancelAlarm()
-        realServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS)
+        realServices.scheduleAlarm(FUTURE_ALARM_AT_MILLIS, 8, 30)
         realServices.cancelAlarm()
         realServices.areNotificationsEnabled()
         realServices.ensureNotificationChannel()
@@ -192,6 +220,8 @@ class ReminderReceiverInstrumentedTest {
 
     private fun permissionContext(result: Int): Context {
         return object : ContextWrapper(context) {
+            override fun getApplicationContext(): Context = this
+
             override fun checkSelfPermission(permission: String): Int {
                 assertEquals(Manifest.permission.POST_NOTIFICATIONS, permission)
                 return result
@@ -209,7 +239,27 @@ class ReminderReceiverInstrumentedTest {
         pendingIntent?.cancel()
     }
 
+    private fun waitForPendingReminderIntent(expectedPresent: Boolean): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + 2_000L
+        var present: Boolean
+        do {
+            present = PendingIntent.getBroadcast(
+                context,
+                REMINDER_REQUEST_CODE,
+                Intent(context, ReminderReceiver::class.java).setAction(ReminderScheduler.ACTION_DAILY_REMINDER),
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+            ) != null
+            if (present == expectedPresent) {
+                return present
+            }
+            SystemClock.sleep(25L)
+        } while (SystemClock.elapsedRealtime() < deadline)
+        return present
+    }
+
     private class NullSystemServiceContext(base: Context) : ContextWrapper(base) {
+        override fun getApplicationContext(): Context = this
+
         override fun getSystemService(name: String): Any? {
             return null
         }
@@ -221,7 +271,7 @@ class ReminderReceiverInstrumentedTest {
         var channelImportance: Int? = null
         var ensureCount = 0
 
-        override fun scheduleAlarm(triggerAtMillis: Long) {
+        override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             // This fake only tracks notification behavior.
         }
 

@@ -230,6 +230,19 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    /**
+     * Updates throttle state for a user-requested snooze replay without consuming
+     * another per-day reminder slot. The original post already owns that budget.
+     */
+    fun recordReminderReposted(nowMillis: Long, signature: String?) {
+        val todayStart = LocalDayPolicy.localDayStart(nowMillis)
+        inTransaction {
+            resetReminderStateIfNewDay(todayStart)
+            putLongSetting(KEY_REMINDER_LAST_POSTED_AT, nowMillis)
+            putStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, signature ?: "")
+        }
+    }
+
     /** Records a swipe-dismissal of [family] for the rest of the local day. */
     fun recordReminderDismissed(nowMillis: Long, family: String?) {
         val normalized = family?.trim().orEmpty()

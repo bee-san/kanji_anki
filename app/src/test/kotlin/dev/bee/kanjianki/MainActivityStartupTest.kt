@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.KaniThemeChoice
+import dev.bee.kanjianki.data.LocalStoreBase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -75,6 +76,7 @@ class MainActivityStartupTest {
 
         assertEquals("学", activity.openedFocusKanji)
         assertEquals(0, activity.renderHomeCalls)
+        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
     }
 
     @Test
@@ -105,6 +107,37 @@ class MainActivityStartupTest {
 
         assertEquals("学", activity.openedFocusKanji)
         assertEquals(0, activity.renderHomeCalls)
+        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+    }
+
+    @Test
+    fun deniedNotificationPermissionKeepsTheSelectedReminderEnabled() {
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
+        val activity = controller.create().get()
+        val selected = LocalStoreBase.ReminderSettings(true, 19, 40)
+        activity.store.saveReminderSettings(selected)
+        activity.pendingReminderSettings = selected
+
+        activity.handlePostNotificationPermission(false)
+
+        val saved = activity.store.reminderSettings()
+        assertTrue(saved.enabled)
+        assertEquals(19, saved.hour)
+        assertEquals(40, saved.minute)
+    }
+
+    @Test
+    fun permissionCallbacksDoNotReplaceAnUnrelatedRoute() {
+        val controller = Robolectric.buildActivity(PermissionRouteTrackingStartupActivity::class.java)
+        val activity = controller.create().get()
+        activity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
+
+        activity.handleAnkiPermissionResult()
+
+        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+        activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30)
+        activity.handlePostNotificationPermission(false)
+        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
     }
 
     @Test
@@ -242,6 +275,32 @@ class MainActivityStartupTest {
             val dormant = store.readActive()
             assertNotNull(dormant)
             assertFalse(requireNotNull(dormant).resumeOnOrdinaryLaunch)
+        } finally {
+            preferences.edit().clear().commit()
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
+    fun explicitHomeNotificationOverridesOrdinaryStudyRecovery() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val preferences = context.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val store = StudySessionRecoveryStore(preferences)
+        assertNotNull(store.replaceWithActive(activeSnapshot("explicit-home-token")))
+        val intent = Intent(context, PendingAnswerStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
+        }
+
+        val controller = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
+        val activity = controller.get()
+        try {
+            controller.create().start().resume()
+
+            assertEquals(0, activity.renderStudyCalls)
+            assertEquals(1, activity.renderHomeCalls)
+            assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_HOME))
+            assertFalse(store.shouldResumeOnOrdinaryLaunch())
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
@@ -551,6 +610,12 @@ class MainActivityStartupTest {
 
         override fun renderHome() {
             renderHomeCalls += 1
+        }
+    }
+
+    private class PermissionRouteTrackingStartupActivity : MainActivity() {
+        override fun renderHome() {
+            currentRoute = MainActivityBase.NAV_HOME_ROUTE
         }
     }
 

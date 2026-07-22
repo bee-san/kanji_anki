@@ -45,7 +45,10 @@ class ReminderSettingsSavePolicyTest {
                 ReminderSettingsSavePolicy.savedMessage(8, 5, false),
             )
             assertEquals("リマインダーをオフにしました。", ReminderSettingsSavePolicy.disabledMessage())
-            assertEquals("通知がオフのため、リマインダーは無効です。", ReminderSettingsSavePolicy.permissionDeniedMessage())
+            assertEquals(
+                "リマインダーを保存しました。受け取るにはAndroidの設定で通知を許可してください。",
+                ReminderSettingsSavePolicy.permissionDeniedMessage(),
+            )
         }
     }
 
@@ -54,11 +57,11 @@ class ReminderSettingsSavePolicyTest {
         assertEquals("Reminder turned off.", ReminderSettingsSavePolicy.DISABLED_MESSAGE)
         assertEquals("Reminder turned off.", ReminderSettingsSavePolicy.disabledMessage())
         assertEquals(
-            "Notifications are off, so reminders are disabled.",
+            "Reminder saved. Allow notifications in Android settings to receive it.",
             ReminderSettingsSavePolicy.PERMISSION_DENIED_MESSAGE,
         )
         assertEquals(
-            "Notifications are off, so reminders are disabled.",
+            "Reminder saved. Allow notifications in Android settings to receive it.",
             ReminderSettingsSavePolicy.permissionDeniedMessage(),
         )
     }

@@ -1,12 +1,16 @@
 package dev.bee.kanjianki
 
+import android.app.NotificationManager
 import android.app.TimePickerDialog
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivitySettingsAutomationReminder(private val activity: MainActivitySettings) {
@@ -105,7 +109,15 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         ReminderScheduler.ensureNotificationChannel(activity)
         if (!activity.hasRuntimeNotificationPermissionForReminder()) {
             activity.pendingReminderSettings = reminder
-            activity.requestPostNotificationPermission()
+            activity.runSettingsWrite(
+                traceSection = "kani.settings.reminder.save-before-permission",
+                write = {
+                    activity.store.saveReminderSettings(reminder)
+                    ReminderScheduler.schedule(activity, activity.store)
+                },
+            ) {
+                activity.requestPostNotificationPermission()
+            }
             return
         }
         val allowed = activity.notificationsAllowedForReminders()
@@ -164,9 +176,16 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         if (!blocked) {
             return null
         }
+        val notifications = AndroidNotificationGateway(activity)
+        val channelSpecific = shouldOpenReminderChannelSettings(
+            sdkInt = Build.VERSION.SDK_INT,
+            hasRuntimePermission = activity.hasRuntimeNotificationPermissionForReminder(),
+            appNotificationsEnabled = notifications.areNotificationsEnabled(),
+            channelImportance = notifications.channelImportance(ReminderScheduler.REMINDER_CHANNEL_ID),
+        )
         return NotificationSettingsAction(
             label = SettingsTextCopy.openNotificationSettingsLabel(),
-            action = SettingsReminderAction { openNotificationSettings() }
+            action = SettingsReminderAction { openNotificationSettings(channelSpecific) }
         )
     }
 
@@ -193,11 +212,9 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         ).show()
     }
 
-    private fun openNotificationSettings() {
-        activity.startActivity(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, activity.packageName)
-        )
+    private fun openNotificationSettings(channelSpecific: Boolean) {
+        activity.reminderNotificationSettingsRefreshPending = true
+        activity.startActivity(reminderNotificationSettingsIntent(activity, channelSpecific))
     }
 
     private data class NotificationSettingsAction(
@@ -214,4 +231,31 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
             }
         }
     }
+}
+
+internal fun reminderNotificationSettingsIntent(
+    context: Context,
+    channelSpecific: Boolean,
+    sdkInt: Int = Build.VERSION.SDK_INT,
+): Intent {
+    return if (channelSpecific && sdkInt >= Build.VERSION_CODES.O) {
+        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, ReminderScheduler.REMINDER_CHANNEL_ID)
+    } else {
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    }
+}
+
+internal fun shouldOpenReminderChannelSettings(
+    sdkInt: Int,
+    hasRuntimePermission: Boolean,
+    appNotificationsEnabled: Boolean,
+    channelImportance: Int?,
+): Boolean {
+    return sdkInt >= Build.VERSION_CODES.O &&
+        hasRuntimePermission &&
+        appNotificationsEnabled &&
+        channelImportance == NotificationManager.IMPORTANCE_NONE
 }

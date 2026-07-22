@@ -1,6 +1,10 @@
 package dev.bee.kanjianki.core
 
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.Calendar
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,6 +25,30 @@ class ReminderSnoozePolicyTest {
         val rearm = ReminderSnoozePolicy.rearmTime(now, 22 * 60, 8 * 60)
         val expected = calendarMillis(2026, 7, 15, 8, 0)
         assertTrue(rearm >= expected)
+    }
+
+    @Test
+    fun quietHourRearmEndsAtLocalTimeAcrossLondonSpringTransition() {
+        val zone = ZoneId.of("Europe/London")
+        withDefaultTimeZone(zone) {
+            val now = zonedMillis(zone, 2026, 3, 28, 23, 30)
+
+            val rearm = ReminderSnoozePolicy.rearmTime(now, 22 * 60, 8 * 60)
+
+            assertEquals(zonedMillis(zone, 2026, 3, 29, 8, 0), rearm)
+        }
+    }
+
+    @Test
+    fun quietHourRearmEndsAtLocalTimeAcrossLondonFallTransition() {
+        val zone = ZoneId.of("Europe/London")
+        withDefaultTimeZone(zone) {
+            val now = zonedMillis(zone, 2026, 10, 24, 23, 30)
+
+            val rearm = ReminderSnoozePolicy.rearmTime(now, 22 * 60, 8 * 60)
+
+            assertEquals(zonedMillis(zone, 2026, 10, 25, 8, 0), rearm)
+        }
     }
 
     @Test
@@ -61,5 +89,28 @@ class ReminderSnoozePolicyTest {
         cal.set(year, month - 1, day, hour, minute, 0)
         cal.set(Calendar.MILLISECOND, 0)
         return cal.timeInMillis
+    }
+
+    private fun zonedMillis(
+        zone: ZoneId,
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+    ): Long {
+        return ZonedDateTime.of(LocalDateTime.of(year, month, day, hour, minute), zone)
+            .toInstant()
+            .toEpochMilli()
+    }
+
+    private fun withDefaultTimeZone(zone: ZoneId, block: () -> Unit) {
+        val original = TimeZone.getDefault()
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone(zone))
+            block()
+        } finally {
+            TimeZone.setDefault(original)
+        }
     }
 }
