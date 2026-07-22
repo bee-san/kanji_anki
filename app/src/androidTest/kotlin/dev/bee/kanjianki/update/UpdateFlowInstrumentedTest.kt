@@ -12,6 +12,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.work.Data
@@ -143,11 +144,7 @@ class UpdateFlowInstrumentedTest {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             assertTrue(controller.ensureChannel("App updates", "Friendly Kani update prompts."))
             assertTrue(controller.notifyUpdate("Kani update ready", "Ready"))
-            assertTrue(
-                manager.activeNotifications.any {
-                    it.notification.category == android.app.Notification.CATEGORY_STATUS
-                },
-            )
+            assertTrue(waitForUpdateNotification(manager, expectedPresent = true))
 
             val intent = PackageInstallStatusReceiver.callbackIntent(
                 context,
@@ -157,14 +154,28 @@ class UpdateFlowInstrumentedTest {
             ).putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_SUCCESS)
             PackageInstallStatusReceiver().onReceive(context, intent)
 
-            assertFalse(
-                manager.activeNotifications.any {
-                    it.notification.category == android.app.Notification.CATEGORY_STATUS
-                },
-            )
+            assertTrue(waitForUpdateNotification(manager, expectedPresent = false))
         } finally {
             InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }
+    }
+
+    private fun waitForUpdateNotification(
+        manager: NotificationManager,
+        expectedPresent: Boolean,
+        timeoutMillis: Long = 5_000L,
+    ): Boolean {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMillis
+        do {
+            val present = manager.activeNotifications.any {
+                it.notification.category == android.app.Notification.CATEGORY_STATUS
+            }
+            if (present == expectedPresent) {
+                return true
+            }
+            SystemClock.sleep(25L)
+        } while (SystemClock.elapsedRealtime() < deadline)
+        return false
     }
 
     @Test
@@ -401,8 +412,9 @@ class UpdateFlowInstrumentedTest {
             assertTrue(controller.ensureChannel("App updates", "Friendly Kani update prompts."))
             assertEquals(NotificationManager.IMPORTANCE_DEFAULT, controller.channelImportance())
             assertTrue(controller.notifyUpdate("Kani update ready", "Ready"))
-            val posted = (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .activeNotifications
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            assertTrue(waitForUpdateNotification(manager, expectedPresent = true))
+            val posted = manager.activeNotifications
                 .single { it.notification.category == android.app.Notification.CATEGORY_STATUS }
             assertEquals(android.app.Notification.CATEGORY_STATUS, posted.notification.category)
         } finally {

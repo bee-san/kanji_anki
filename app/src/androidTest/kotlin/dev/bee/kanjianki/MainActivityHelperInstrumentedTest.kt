@@ -123,13 +123,20 @@ fun tearDown() {
     fun warmReminderIntentOpensStudyOnce() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                val scenarioLaunchIntent = activity.intent
                 val reminderIntent = ReminderScheduler.reminderOpenIntent(activity, ReminderFamily.DUE.name)
                 val onNewIntent = MainActivityBase::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
                 onNewIntent.isAccessible = true
-                onNewIntent.invoke(activity, reminderIntent)
+                try {
+                    onNewIntent.invoke(activity, reminderIntent)
 
-                assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
-                assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+                    assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
+                    assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+                } finally {
+                    // ActivityScenario tracks the launch intent by equality. Restore it
+                    // after exercising onNewIntent so scenario.close() can observe destroy.
+                    activity.intent = scenarioLaunchIntent
+                }
             }
         }
     }
