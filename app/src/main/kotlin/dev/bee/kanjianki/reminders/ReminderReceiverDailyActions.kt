@@ -15,6 +15,10 @@ internal class ReminderReceiverDailyActions(
     }
 
     override fun schedule(settings: LocalStoreBase.ReminderSettings?) {
+        if (settings == null || !settings.enabled) {
+            context?.let(ReminderScheduler::cancel)
+            return
+        }
         ReminderScheduler.schedule(context, settings)
     }
 }

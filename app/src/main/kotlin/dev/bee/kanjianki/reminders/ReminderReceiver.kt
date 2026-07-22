@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
+import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.receivers.ReceiverAsyncWork
@@ -14,15 +15,25 @@ class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         val action = intent?.action ?: ""
         val family = intent?.getStringExtra(ReminderScheduler.EXTRA_REMINDER_FAMILY) ?: ""
+        val hour = intent?.getIntExtra(
+            ReminderScheduler.EXTRA_REMINDER_HOUR,
+            TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
+        ) ?: TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR
+        val minute = intent?.getIntExtra(
+            ReminderScheduler.EXTRA_REMINDER_MINUTE,
+            TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+        ) ?: TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE
         // Reads the full dashboard + all study items + streaks; do it off the main
         // thread and keep the broadcast alive until it completes.
         ReceiverAsyncWork.run(this) {
-            handle(action, family, AndroidReceiverActions(context))
+            handle(action, family, hour, minute, AndroidReceiverActions(context))
         }
     }
 
     interface ReceiverActions {
         fun scheduleFromStoredSettings()
+
+        fun scheduleFallbackDailyReminder(hour: Int, minute: Int)
 
         fun handleDailyReminder()
 
@@ -42,6 +53,10 @@ class ReminderReceiver : BroadcastReceiver() {
     ) : ReceiverActions {
         override fun scheduleFromStoredSettings() {
             ReminderScheduler.schedule(context)
+        }
+
+        override fun scheduleFallbackDailyReminder(hour: Int, minute: Int) {
+            ReminderScheduler.scheduleFallbackDailyReminder(context, hour, minute)
         }
 
         override fun handleDailyReminder() {
@@ -66,8 +81,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         override fun handleReminderSnoozed(family: String) {
             val safeContext = context ?: return
-            val manager = safeContext.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
-            manager?.cancel(2702)
+            ReminderScheduler.cancelPostedNotification(safeContext)
             ReminderScheduler.schedule(safeContext)
         }
     }
@@ -75,11 +89,28 @@ class ReminderReceiver : BroadcastReceiver() {
     companion object {
         @JvmStatic
         fun handle(action: String?, actions: ReceiverActions) {
-            handle(action, "", actions)
+            handle(
+                action,
+                "",
+                TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
+                TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+                actions,
+            )
         }
 
         @JvmStatic
         fun handle(action: String?, family: String, actions: ReceiverActions) {
+            handle(
+                action,
+                family,
+                TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
+                TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+                actions,
+            )
+        }
+
+        @JvmStatic
+        fun handle(action: String?, family: String, hour: Int, minute: Int, actions: ReceiverActions) {
             when (
                 ReminderReceiverPolicy.commandFor(
                     action,
@@ -93,6 +124,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 }
 
                 ReminderReceiverPolicy.ReceiverCommand.HANDLE_DAILY_REMINDER -> {
+                    actions.scheduleFallbackDailyReminder(hour, minute)
                     actions.handleDailyReminder()
                 }
 
@@ -114,6 +146,7 @@ class ReminderReceiver : BroadcastReceiver() {
             actions: DailyReminderActions,
         ) {
             if (!ReminderReceiverPolicy.shouldHandleDailyReminder(settings.enabled)) {
+                actions.schedule(settings)
                 return
             }
             try {

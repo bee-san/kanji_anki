@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.ReminderCopyPolicy
+import dev.bee.kanjianki.core.ReminderFamily
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.time.AppClock
@@ -22,6 +23,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.util.Calendar
 import java.util.Locale
@@ -57,6 +59,8 @@ class ReminderSchedulerTest {
             ReminderScheduler.schedule(LocalStoreBase.ReminderSettings(true, 8, 30), services, { now })
 
             assertEquals(utc(2026, Calendar.MAY, 15, 8, 30), services.scheduledAtMillis)
+            assertEquals(8, services.scheduledHour)
+            assertEquals(30, services.scheduledMinute)
         } finally {
             TimeZone.setDefault(original)
         }
@@ -111,6 +115,25 @@ class ReminderSchedulerTest {
         val posted = notificationManager.activeNotifications.first().notification
         // In-place replacement of the single slot must not re-buzz (D1/D7 fix).
         assertTrue(posted.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
+        assertEquals(Notification.CATEGORY_REMINDER, posted.category)
+        assertTrue(
+            shadowOf(posted.contentIntent).savedIntent
+                .getBooleanExtra(dev.bee.kanjianki.MainActivityBase.EXTRA_OPEN_STUDY, false),
+        )
+    }
+
+    @Test
+    fun reminderBodyDestinationMatchesTheReminderFamily() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val due = ReminderScheduler.reminderOpenIntent(context, ReminderFamily.DUE.name)
+        val streak = ReminderScheduler.reminderOpenIntent(context, ReminderFamily.STREAK.name)
+        val sync = ReminderScheduler.reminderOpenIntent(context, ReminderFamily.SYNC.name)
+
+        assertTrue(due.getBooleanExtra(dev.bee.kanjianki.MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertTrue(streak.getBooleanExtra(dev.bee.kanjianki.MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertFalse(sync.hasExtra(dev.bee.kanjianki.MainActivityBase.EXTRA_OPEN_STUDY))
+        assertTrue(due.flags and android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
     }
 
     @Test
@@ -226,10 +249,10 @@ class ReminderSchedulerTest {
         val actions = FakeReceiverActions()
 
         ReminderReceiver.handle(android.content.Intent.ACTION_BOOT_COMPLETED, actions)
-        ReminderReceiver.handle(ReminderScheduler.ACTION_DAILY_REMINDER, actions)
+        ReminderReceiver.handle(ReminderScheduler.ACTION_DAILY_REMINDER, "", 6, 25, actions)
         ReminderReceiver.handle("dev.bee.kanjianki.OTHER", actions)
 
-        assertEquals("boot,daily", actions.events.joined)
+        assertEquals("boot,fallback:6:25,daily", actions.events.joined)
     }
 
     @Test
@@ -248,7 +271,10 @@ class ReminderSchedulerTest {
         val enabled = LocalStoreBase.ReminderSettings(true, 9, 45)
 
         ReminderReceiver.handleDailyReminder(disabled, actions)
-        assertEquals("", actions.events.joined)
+        assertEquals("schedule", actions.events.joined)
+        assertSame(disabled, actions.scheduledSettings)
+
+        actions.events.joined = ""
 
         ReminderReceiver.handleDailyReminder(enabled, actions)
 
@@ -560,13 +586,17 @@ class ReminderSchedulerTest {
     private class FakeReminderServices(private val channelContext: Context? = null) : ReminderScheduler.ReminderServices {
         var cancelCount = 0
         var scheduledAtMillis = -1L
+        var scheduledHour = -1
+        var scheduledMinute = -1
         var runtimePermission = true
         var notificationsEnabled = true
         var channelImportance: Int? = null
         var ensureCount = 0
 
-        override fun scheduleAlarm(triggerAtMillis: Long) {
+        override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             scheduledAtMillis = triggerAtMillis
+            scheduledHour = hour
+            scheduledMinute = minute
         }
 
         override fun cancelAlarm() {
@@ -606,6 +636,10 @@ class ReminderSchedulerTest {
 
         override fun scheduleFromStoredSettings() {
             events.append("boot")
+        }
+
+        override fun scheduleFallbackDailyReminder(hour: Int, minute: Int) {
+            events.append("fallback:$hour:$minute")
         }
 
         override fun handleDailyReminder() {

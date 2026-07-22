@@ -5,12 +5,10 @@ import dev.bee.kanjianki.AppLocalStoreFactory
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
@@ -35,16 +33,18 @@ import dev.bee.kanjianki.core.ReminderThrottlePolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.time.AppClock
 
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"
-    private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
     const val REMINDER_CHANNEL_ID = "kani_study_reminders"
     private const val CHANNEL_ID = REMINDER_CHANNEL_ID
     const val ACTION_REMINDER_DISMISSED: String = "dev.bee.kanjianki.action.REMINDER_DISMISSED"
     const val ACTION_REMINDER_SNOOZED: String = "dev.bee.kanjianki.action.REMINDER_SNOOZED"
     const val EXTRA_REMINDER_FAMILY: String = "dev.bee.kanjianki.extra.REMINDER_FAMILY"
+    const val EXTRA_REMINDER_HOUR: String = "dev.bee.kanjianki.extra.REMINDER_HOUR"
+    const val EXTRA_REMINDER_MINUTE: String = "dev.bee.kanjianki.extra.REMINDER_MINUTE"
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val DISMISS_REQUEST_CODE = 2703
@@ -120,7 +120,7 @@ object ReminderScheduler {
             services.cancelAlarm()
             return
         }
-        services.scheduleAlarm(nextTriggerMillis(settings, nowMillis))
+        services.scheduleAlarm(nextTriggerMillis(settings, nowMillis), settings.hour, settings.minute)
     }
 
     private fun schedule(
@@ -133,7 +133,7 @@ object ReminderScheduler {
             services.cancelAlarm()
             return
         }
-        services.scheduleAlarm(nextAlarmMillis(settings, store, nowMillis))
+        services.scheduleAlarm(nextAlarmMillis(settings, store, nowMillis), settings.hour, settings.minute)
     }
 
     /**
@@ -201,8 +201,7 @@ object ReminderScheduler {
      */
     @JvmStatic
     fun cancelPostedNotification(context: Context?) {
-        val manager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        manager.cancel(NOTIFICATION_ID)
+        context?.let { AndroidNotificationGateway(it).cancel(NOTIFICATION_ID) }
     }
 
     @JvmStatic
@@ -225,8 +224,7 @@ object ReminderScheduler {
 
     @JvmStatic
     fun hasRuntimeNotificationPermission(context: Context, sdkInt: Int): Boolean {
-        return sdkInt < 33 ||
-            context.checkSelfPermission(POST_NOTIFICATIONS_PERMISSION) == PackageManager.PERMISSION_GRANTED
+        return AndroidNotificationGateway(context, sdkInt).hasRuntimePermission()
     }
 
     @JvmStatic
@@ -273,9 +271,7 @@ object ReminderScheduler {
                 return@use
             }
             services.ensureNotificationChannel()
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@use
-            val open = Intent(context, MainActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val open = reminderOpenIntent(context, plan.family)
             val contentIntent = PendingIntent.getActivity(
                 context,
                 REQUEST_CODE,
@@ -312,11 +308,14 @@ object ReminderScheduler {
                 // recompute alerts the user twice for one visible card.
                 .setOnlyAlertOnce(true)
                 .setDeleteIntent(dismissIntent(context, plan.family))
+                .setCategory(Notification.CATEGORY_REMINDER)
                 .setColor(Color.rgb(255, 76, 118))
                 .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
                 .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
                 .build()
-            manager.notify(NOTIFICATION_ID, notification)
+            if (!AndroidNotificationGateway(context).post(NOTIFICATION_ID, notification)) {
+                return@use
+            }
             store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
             if (plan.reviewBatch) {
                 // Keep the legacy per-day review counter in sync so the hard 2/day
@@ -324,6 +323,38 @@ object ReminderScheduler {
                 store.recordReviewReminderNotificationShown(now)
             }
         }
+    }
+
+    @JvmStatic
+    fun reminderOpenIntent(context: Context, family: String?): Intent {
+        return Intent(context, MainActivity::class.java)
+            .apply {
+                if (family != ReminderFamily.SYNC.name) {
+                    putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+                }
+            }
+            .setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+    }
+
+    @JvmStatic
+    fun dailyReminderIntent(context: Context, hour: Int, minute: Int): Intent {
+        return Intent(context, ReminderReceiver::class.java)
+            .setAction(ACTION_DAILY_REMINDER)
+            .putExtra(EXTRA_REMINDER_HOUR, hour)
+            .putExtra(EXTRA_REMINDER_MINUTE, minute)
+    }
+
+    @JvmStatic
+    fun scheduleFallbackDailyReminder(context: Context?, hour: Int, minute: Int) {
+        if (context == null) {
+            return
+        }
+        val settings = LocalStoreBase.ReminderSettings(true, hour, minute).normalized()
+        schedule(settings, androidReminderServices(context), AppClock.systemClock().nowMillis())
     }
 
     private fun dismissIntent(context: Context, family: String?): PendingIntent {
@@ -342,7 +373,7 @@ object ReminderScheduler {
     fun androidReminderServices(context: Context): ReminderServices = AndroidReminderServices(context)
 
     interface ReminderServices {
-        fun scheduleAlarm(triggerAtMillis: Long)
+        fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int)
 
         fun cancelAlarm()
 
@@ -356,10 +387,12 @@ object ReminderScheduler {
     }
 
     private class AndroidReminderServices(private val context: Context) : ReminderServices {
-        override fun scheduleAlarm(triggerAtMillis: Long) {
+        private val notifications = AndroidNotificationGateway(context)
+
+        override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT) ?: return
-            alarmManager.set(
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute) ?: return
+            alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
                 pendingIntent
@@ -368,14 +401,15 @@ object ReminderScheduler {
 
         override fun cancelAlarm() {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE)
-            if (alarmManager != null && pendingIntent != null) {
-                alarmManager.cancel(pendingIntent)
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0)
+            if (pendingIntent != null) {
+                alarmManager?.cancel(pendingIntent)
+                pendingIntent.cancel()
             }
         }
 
-        private fun alarmIntent(lookupFlag: Int): PendingIntent? {
-            val intent = Intent(context, ReminderReceiver::class.java).setAction(ACTION_DAILY_REMINDER)
+        private fun alarmIntent(lookupFlag: Int, hour: Int, minute: Int): PendingIntent? {
+            val intent = dailyReminderIntent(context, hour, minute)
             return PendingIntent.getBroadcast(
                 context,
                 REQUEST_CODE,
@@ -385,38 +419,27 @@ object ReminderScheduler {
         }
 
         override fun hasRuntimeNotificationPermission(): Boolean {
-            return ReminderScheduler.hasRuntimeNotificationPermission(context)
+            return notifications.hasRuntimePermission()
         }
 
         override fun areNotificationsEnabled(): Boolean {
-            return ReminderScheduler.areNotificationsEnabled(notificationStatus())
+            return notifications.areNotificationsEnabled()
         }
 
         override fun reminderChannelImportance(): Int? {
-            val manager = notificationManager() ?: return NotificationManager.IMPORTANCE_NONE
-            val channel = manager.getNotificationChannel(CHANNEL_ID)
-            return channel?.importance
+            if (!notifications.hasManager()) {
+                return NotificationManager.IMPORTANCE_NONE
+            }
+            return notifications.channelImportance(CHANNEL_ID)
         }
 
         override fun ensureNotificationChannel() {
-            val manager = notificationManager() ?: return
-            val channel = NotificationChannel(
+            notifications.ensureChannel(
                 CHANNEL_ID,
                 ReminderCopyPolicy.notificationChannelName(),
-                NotificationManager.IMPORTANCE_DEFAULT
+                ReminderCopyPolicy.notificationChannelDescription(),
+                NotificationManager.IMPORTANCE_DEFAULT,
             )
-            channel.description = ReminderCopyPolicy.notificationChannelDescription()
-            channel.setShowBadge(true)
-            manager.createNotificationChannel(channel)
-        }
-
-        private fun notificationManager(): NotificationManager? {
-            return context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        }
-
-        private fun notificationStatus(): NotificationStatus? {
-            val manager = notificationManager() ?: return null
-            return NotificationStatus { manager.areNotificationsEnabled() }
         }
     }
 
