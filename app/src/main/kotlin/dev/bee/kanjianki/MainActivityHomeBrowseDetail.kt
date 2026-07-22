@@ -38,6 +38,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         home.activeBrowseQuery = requestedQuery
         home.activeBrowseSimilarOnly = onlySimilarKanji
         home.activeBrowseAllKanji = false
+        home.activeBrowseShowSuspended = showSuspended
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
@@ -54,6 +55,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 home.activeBrowseQuery = home.browseQueryDraft(browseRoute, data.model.initialQuery)
                 home.activeBrowseSimilarOnly = data.model.similarFilterActive
                 home.activeBrowseAllKanji = false
+                home.activeBrowseShowSuspended = data.model.showSuspendedActive
                 home.renderHomeRoute(backAction = Runnable { home.renderHome() }) {
                     BrowseScreen(
                         data.model.copy(
@@ -178,6 +180,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             query = requestedQuery,
             onlySimilarKanji = home.activeBrowseSimilarOnly,
             allKanjiScope = home.activeBrowseAllKanji,
+            showSuspended = home.activeBrowseShowSuspended,
         )
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
@@ -221,7 +224,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             },
             render = { data ->
                 val detailBackAction = customBackAction ?: if (fromBrowse) {
-                    Runnable { renderBrowseKanji(requestedQuery, home.activeBrowseSimilarOnly) }
+                    Runnable {
+                        renderBrowseKanji(
+                            requestedQuery,
+                            home.activeBrowseSimilarOnly,
+                            home.activeBrowseShowSuspended,
+                        )
+                    }
                 } else {
                     Runnable { home.renderHome() }
                 }
@@ -338,7 +347,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                 else -> HomeTextCopy.homeLabel()
             },
             customBackAction ?: if (fromBrowse) {
-                Runnable { renderBrowseKanji(browseQuery, home.activeBrowseSimilarOnly) }
+                Runnable {
+                    renderBrowseKanji(
+                        browseQuery,
+                        home.activeBrowseSimilarOnly,
+                        home.activeBrowseShowSuspended,
+                    )
+                }
             } else {
                 Runnable { home.renderHome() }
             }

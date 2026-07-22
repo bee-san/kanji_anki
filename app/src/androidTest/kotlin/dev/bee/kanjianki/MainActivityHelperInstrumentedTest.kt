@@ -1794,6 +1794,11 @@ private fun verifyBrowseSuspensionControls(activity: MainActivity) {
         performClickableWithText(activity.findViewById(android.R.id.content), "split");
         assertHasText(activity, "Back to Browse");
         assertHasText(activity, "Local records");
+        performClickableWithText(activity.findViewById(android.R.id.content), "Back to Browse");
+        assertTrue(activity.currentHomeRouteRestoration?.showSuspended == true);
+        assertHasText(activity, "SUSPENDED");
+        performClickableWithText(activity.findViewById(android.R.id.content), "split");
+        assertHasText(activity, "Unsuspend locally");
         performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
         assertFalse(activity.store.isKanjiLocallySuspended("裂"));
         activity.renderDetail("missing", false, "");
