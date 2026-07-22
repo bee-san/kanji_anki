@@ -51,6 +51,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
     @JvmField
     var activeBrowseAllKanji: Boolean = false
 
+    @JvmField
+    var activeBrowseShowSuspended: Boolean = false
+
     private val focusQueue by lazy { MainActivityHomeFocusQueue(this) }
     private val browseDetail by lazy { MainActivityHomeBrowseDetail(this) }
     private val homeStudyPlanProvider by lazy { MainActivityStudyPlanProvider(this) }
@@ -404,6 +407,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 activeBrowseQuery = route.query
                 activeBrowseSimilarOnly = route.onlySimilarKanji
                 activeBrowseAllKanji = route.allKanjiScope
+                activeBrowseShowSuspended = route.showSuspended
                 renderDetail(route.kanji, route.fromBrowse, route.query)
             }
             HomeRouteRestoration.Destination.READ_ONLY_DETAIL ->

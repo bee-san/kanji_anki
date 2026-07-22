@@ -150,6 +150,7 @@ class MainActivityStartupTest {
         assertEquals("", activity.activeBrowseQuery)
         assertFalse(activity.activeBrowseSimilarOnly)
         assertTrue(activity.activeBrowseAllKanji)
+        assertFalse(activity.activeBrowseShowSuspended)
     }
 
     @Test
@@ -433,6 +434,40 @@ class MainActivityStartupTest {
             val recreated = second.create(state).start().resume().get()
 
             assertEquals(route, recreated.restoredHomeRoute)
+            assertEquals(0, recreated.renderHomeCalls)
+        } finally {
+            MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
+            second?.pause()?.stop()?.destroy()
+        }
+    }
+
+    @Test
+    fun activityRecreationRestoresBrowseDetailSuspendedScope() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val intent = Intent(context, RouteRestorationStartupActivity::class.java)
+        val state = Bundle()
+        val route = HomeRouteRestoration.detail(
+            kanji = "学",
+            fromBrowse = true,
+            query = "learn",
+            onlySimilarKanji = true,
+            allKanjiScope = false,
+            showSuspended = true,
+        )
+        MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val first = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+        var second: org.robolectric.android.controller.ActivityController<RouteRestorationStartupActivity>? = null
+        try {
+            val firstActivity = first.create().start().resume().get()
+            firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
+            firstActivity.currentHomeRouteRestoration = route
+            first.pause().saveInstanceState(state).stop().destroy()
+
+            second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
+            val recreated = second.create(state).start().resume().get()
+
+            assertEquals(route, recreated.restoredHomeRoute)
+            assertTrue(recreated.restoredHomeRoute?.showSuspended == true)
             assertEquals(0, recreated.renderHomeCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)

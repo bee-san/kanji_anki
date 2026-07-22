@@ -61,12 +61,14 @@ internal data class HomeRouteRestoration(
             query: String,
             onlySimilarKanji: Boolean,
             allKanjiScope: Boolean,
+            showSuspended: Boolean = false,
         ) = HomeRouteRestoration(
             destination = Destination.DETAIL,
             query = query.take(MAX_SAVED_QUERY_CHARS),
             kanji = kanji,
             onlySimilarKanji = onlySimilarKanji,
             allKanjiScope = allKanjiScope,
+            showSuspended = showSuspended,
             fromBrowse = fromBrowse,
         )
 
