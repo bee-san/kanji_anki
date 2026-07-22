@@ -21,6 +21,7 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
@@ -99,6 +100,7 @@ internal fun focusKanjiLayout(
         tier = tier,
         glyphFontSp = when {
             tier == FocusKanjiLayoutTier.WIDE -> 52
+            fontScale >= 1.7f -> 30
             fontScale >= 1.3f -> 40
             else -> 44
         },
@@ -192,13 +194,23 @@ private fun FocusKanjiReadyContent(
         .padding(if (layout.isWide) 8.dp else 6.dp)
 
     if (layout.tier == FocusKanjiLayoutTier.GLYPH_ONLY) {
-        Box(
+        Column(
             modifier = cardModifier
                 .clickable(detailsAction)
                 .semantics { contentDescription = description },
-            contentAlignment = Alignment.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             FocusKanjiGlyph(snapshot.kanji, layout.glyphFontSp, palette)
+            Text(
+                text = WidgetTextCopy.focusDetailsLabel(),
+                style = TextStyle(
+                    color = palette.primaryText.toGlanceColor(),
+                    fontSize = FOCUS_ACTION_FONT_SP.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                maxLines = 1,
+            )
         }
         return
     }
@@ -318,26 +330,29 @@ private fun FocusKanjiCompactContent(
                 )
             }
         }
-        if (snapshot.isDueNow) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (snapshot.isDueNow) {
+                Text(
+                    text = WidgetTextCopy.focusDueStatus(),
+                    style = TextStyle(
+                        color = palette.primaryText.toGlanceColor(),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                )
+                Spacer(GlanceModifier.width(8.dp))
+            }
             Text(
-                text = WidgetTextCopy.focusDueStatus(),
+                text = WidgetTextCopy.focusDetailsLabel(),
                 style = TextStyle(
                     color = palette.primaryText.toGlanceColor(),
-                    fontSize = 11.sp,
+                    fontSize = FOCUS_ACTION_FONT_SP.sp,
                     fontWeight = FontWeight.Bold,
                 ),
                 maxLines = 1,
             )
         }
-        Text(
-            text = WidgetTextCopy.focusDetailsLabel(),
-            style = TextStyle(
-                color = palette.primaryText.toGlanceColor(),
-                fontSize = FOCUS_ACTION_FONT_SP.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-            maxLines = 1,
-        )
     }
 }
 

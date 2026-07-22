@@ -82,7 +82,7 @@ class FocusKanjiWidgetTest {
         onNode(hasTextEqualTo("学")).assertExists()
         onNode(hasTextEqualTo("learn")).assertDoesNotExist()
         onNode(hasTextEqualTo("がく")).assertDoesNotExist()
-        onNode(hasTextEqualTo(WidgetTextCopy.focusDetailsLabel())).assertDoesNotExist()
+        onNode(hasTextEqualTo(WidgetTextCopy.focusDetailsLabel())).assertExists()
         onNode(hasTextEqualTo(WidgetTextCopy.studyNowLabel())).assertDoesNotExist()
         onNode(hasContentDescriptionEqualTo(description))
             .assertExists()
@@ -130,6 +130,24 @@ class FocusKanjiWidgetTest {
             assertFalse(layout.showMeaning)
             assertFalse(layout.showReading)
             assertEquals(40, layout.glyphFontSp)
+        }
+
+    @Test
+    fun twoXFocusKeepsAGlyphAndVisibleDetailsCueInOneCardTarget() =
+        runGlanceAppWidgetUnitTest(30.seconds) {
+            setFontScale(2f)
+            setContext(context)
+            setAppWidgetSize(DpSize(120.dp, 120.dp))
+            provideComposable {
+                FocusKanjiWidgetContent(readySnapshot(isDueNow = true))
+            }
+
+            onNode(hasTextEqualTo("学")).assertExists()
+            onNode(hasTextEqualTo(WidgetTextCopy.focusDetailsLabel())).assertExists()
+            onNode(hasTextEqualTo("learn")).assertDoesNotExist()
+            onNode(hasTextEqualTo("がく")).assertDoesNotExist()
+            onAllNodes(hasClickAction()).assertCountEquals(1)
+            assertEquals(30, focusKanjiLayout(120f, 120f, 2f).glyphFontSp)
         }
 
     @Test
@@ -204,6 +222,7 @@ class FocusKanjiWidgetTest {
         assertTrue(moderate.isWide)
         assertFalse(largeFont.isWide)
         assertTrue(largeFont.glyphFontSp < normal.glyphFontSp)
+        assertEquals(30, largeFont.glyphFontSp)
     }
 
     @Suppress("DEPRECATION")

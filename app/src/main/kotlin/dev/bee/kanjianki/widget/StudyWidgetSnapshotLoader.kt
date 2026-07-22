@@ -80,7 +80,13 @@ internal object StudyWidgetSnapshotLoader {
             )
         }) {
             is WidgetStoreRead.Ready -> read.value
-            WidgetStoreRead.NotSetUp -> KaniWidgetSnapshot(KaniWidgetState.NOT_SET_UP)
-            WidgetStoreRead.Corrupt -> KaniWidgetSnapshot(KaniWidgetState.ERROR)
+            WidgetStoreRead.NotSetUp -> KaniWidgetSnapshot(
+                KaniWidgetState.NOT_SET_UP,
+                themeChoice = KaniThemeChoice.SYSTEM,
+            )
+            WidgetStoreRead.Corrupt -> KaniWidgetSnapshot(
+                KaniWidgetState.ERROR,
+                themeChoice = KaniThemeChoice.SYSTEM,
+            )
         }
 }

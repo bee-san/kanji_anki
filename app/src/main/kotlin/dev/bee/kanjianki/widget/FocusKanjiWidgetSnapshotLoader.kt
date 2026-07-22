@@ -99,7 +99,13 @@ internal object FocusKanjiWidgetSnapshotLoader {
         }
     }) {
         is WidgetStoreRead.Ready -> read.value
-        WidgetStoreRead.NotSetUp -> FocusKanjiWidgetSnapshot(FocusKanjiWidgetState.NOT_SET_UP)
-        WidgetStoreRead.Corrupt -> FocusKanjiWidgetSnapshot(FocusKanjiWidgetState.ERROR)
+        WidgetStoreRead.NotSetUp -> FocusKanjiWidgetSnapshot(
+            FocusKanjiWidgetState.NOT_SET_UP,
+            themeChoice = KaniThemeChoice.SYSTEM,
+        )
+        WidgetStoreRead.Corrupt -> FocusKanjiWidgetSnapshot(
+            FocusKanjiWidgetState.ERROR,
+            themeChoice = KaniThemeChoice.SYSTEM,
+        )
     }
 }

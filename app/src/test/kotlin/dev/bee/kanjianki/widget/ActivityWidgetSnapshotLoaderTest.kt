@@ -36,6 +36,7 @@ class ActivityWidgetSnapshotLoaderTest {
 
         assertEquals(ActivityWidgetState.NOT_SET_UP, snapshot.state)
         assertEquals(emptyList<Int>(), snapshot.last35DayCounts)
+        assertEquals(KaniThemeChoice.SYSTEM, snapshot.themeChoice)
     }
 
     @Test

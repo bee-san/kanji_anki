@@ -296,8 +296,7 @@ private fun QuickStudyAction(
             .width(widthDp.dp)
             .height(48.dp)
             .background(palette.primary.toGlanceColor())
-            .cornerRadius(14.dp)
-            .semantics { contentDescription = label },
+            .cornerRadius(14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

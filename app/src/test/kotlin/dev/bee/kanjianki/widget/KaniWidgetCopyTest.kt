@@ -95,6 +95,18 @@ class KaniWidgetCopyTest {
         }
     }
 
+    @Test
+    fun corruptStoreUsesRecoveryCopyInsteadOfFirstRunSetupCopy() {
+        withLocale(Locale.ENGLISH) {
+            val copy = widgetCopy(KaniWidgetSnapshot(KaniWidgetState.ERROR), isExpanded = true)
+
+            assertEquals(WidgetTextCopy.errorTitle(), copy.title)
+            assertEquals(WidgetTextCopy.errorBody(), copy.body)
+            assertEquals(WidgetTextCopy.openKaniLabel(), copy.action)
+            assertEquals("", copy.extraLine)
+        }
+    }
+
     private fun dueSnapshot(
         dueCount: Int,
         newDueCount: Int = 0,
