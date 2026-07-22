@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivityPermissionHandler(private val activity: MainActivityBase) {
     fun requestAnkiPermissionIfNeeded() {
@@ -23,12 +22,8 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
     }
 
     fun handlePostNotificationPermission(granted: Boolean) {
-        val pending = activity.pendingReminderSettings
-        if (granted) {
-            saveGrantedReminderPermission(pending)
-        } else {
-            preserveReminderAfterDeniedPermission(pending)
-        }
+        val reminder = activity.pendingReminderSettings ?: activity.store.reminderSettings()
+        showReminderPermissionResult(reminder, granted)
         activity.pendingReminderSettings = null
         if (
             activity is MainActivitySettings &&
@@ -38,22 +33,16 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
         }
     }
 
-    fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
-        val reminder = pending ?: activity.store.reminderSettings()
-        activity.store.saveReminderSettings(reminder)
-        ReminderScheduler.schedule(activity, reminder)
-        val allowed = activity.notificationsAllowedForReminders()
-        Toast.makeText(
-            activity,
-            ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
-            if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
-        ).show()
-    }
-
-    fun preserveReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        val reminder = pending ?: activity.store.reminderSettings()
-        activity.store.saveReminderSettings(reminder)
-        ReminderScheduler.schedule(activity, reminder)
-        Toast.makeText(activity, ReminderSettingsSavePolicy.permissionDeniedMessage(), Toast.LENGTH_LONG).show()
+    private fun showReminderPermissionResult(
+        reminder: LocalStoreBase.ReminderSettings,
+        granted: Boolean,
+    ) {
+        val allowed = granted && activity.notificationsAllowedForReminders()
+        val message = if (granted) {
+            ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed)
+        } else {
+            ReminderSettingsSavePolicy.permissionDeniedMessage()
+        }
+        Toast.makeText(activity, message, if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG).show()
     }
 }

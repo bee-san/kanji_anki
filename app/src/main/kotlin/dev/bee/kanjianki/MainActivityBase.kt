@@ -554,14 +554,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         permissionHandler.handlePostNotificationPermission(granted)
     }
 
-    fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
-        permissionHandler.saveGrantedReminderPermission(pending)
-    }
-
-    fun preserveReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        permissionHandler.preserveReminderAfterDeniedPermission(pending)
-    }
-
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (handleFlashcardGesture(event)) {
             return true

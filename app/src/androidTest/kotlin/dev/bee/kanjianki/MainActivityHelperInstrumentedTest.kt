@@ -124,10 +124,10 @@ fun tearDown() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 val reminderIntent = ReminderScheduler.reminderOpenIntent(activity, ReminderFamily.DUE.name)
-                activity.startActivity(reminderIntent)
-            }
-            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
-            scenario.onActivity { activity ->
+                val onNewIntent = MainActivityBase::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
+                onNewIntent.isAccessible = true
+                onNewIntent.invoke(activity, reminderIntent)
+
                 assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
                 assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
             }
@@ -258,16 +258,19 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 activity.handleAnkiPermissionResult();
                 assertHasText(activity, "Kani");
 
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 8, 30));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30);
                 activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
                 assertNull(activity.pendingReminderSettings);
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 9, 15));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 9, 15);
                 activity.handlePostNotificationPermission(false);
                 assertTrue(activity.store.reminderSettings().enabled);
                 assertEquals(9, activity.store.reminderSettings().hour);
                 assertEquals(15, activity.store.reminderSettings().minute);
                 assertNull(activity.pendingReminderSettings);
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 10, 45));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 10, 45);
                 activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
@@ -326,6 +329,7 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
 fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 7, 25))
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 7, 25)
             }
 
@@ -347,6 +351,7 @@ fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
 fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsDenied() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 19, 40))
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 19, 40)
             }
             scenario.recreate()

@@ -115,8 +115,10 @@ class MainActivityStartupTest {
         val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
         val activity = controller.create().get()
         val selected = LocalStoreBase.ReminderSettings(true, 19, 40)
+        activity.store.saveReminderSettings(selected)
+        activity.pendingReminderSettings = selected
 
-        activity.preserveReminderAfterDeniedPermission(selected)
+        activity.handlePostNotificationPermission(false)
 
         val saved = activity.store.reminderSettings()
         assertTrue(saved.enabled)
