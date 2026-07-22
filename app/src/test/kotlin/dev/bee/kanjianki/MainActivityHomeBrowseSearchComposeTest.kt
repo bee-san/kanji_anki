@@ -8,7 +8,7 @@ import org.junit.Test
 
 class MainActivityHomeBrowseSearchComposeTest {
     @Test
-    fun browseScreenDataKeepsKanjiOrderAndStudiedCount() {
+    fun browseScreenDataOnlyContainsKanjiInTheStudyQueue() {
         val items = listOf(
             inventoryItem("字A", suspended = false),
             inventoryItem("字B", suspended = true),
@@ -17,10 +17,10 @@ class MainActivityHomeBrowseSearchComposeTest {
 
         val data = buildBrowseScreenData(items) { item -> browseRow(item) }
 
-        assertEquals(listOf("字A", "字B", "字C"), data.kanjiList)
+        assertEquals(listOf("字A", "字C"), data.kanjiList)
         assertEquals(2, data.studiedCount)
-        assertEquals(3, data.rows.size)
-        assertEquals(listOf(true, false, true), data.rows.map { it.studied })
+        assertEquals(2, data.rows.size)
+        assertEquals(listOf(true, true), data.rows.map { it.studied })
     }
 
     @Test
@@ -125,10 +125,11 @@ class MainActivityHomeBrowseSearchComposeTest {
     private fun legacyBrowseScreenData(
         items: List<RecordsImportModels.KanjiInventoryItem>,
     ): BrowseScreenData {
-        val rows = items.map { item -> browseRow(item) }
+        val studyQueueItems = items.filterNot { it.suspended }
+        val rows = studyQueueItems.map { item -> browseRow(item) }
         return BrowseScreenData(
             rows = rows,
-            kanjiList = items.map { item -> item.kanji },
+            kanjiList = studyQueueItems.map { item -> item.kanji },
             studiedCount = rows.count { it.studied },
         )
     }

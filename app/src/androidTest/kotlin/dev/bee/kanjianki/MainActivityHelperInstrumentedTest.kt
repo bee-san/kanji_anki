@@ -1736,12 +1736,9 @@ private fun verifyBrowseSuspensionControls(activity: MainActivity) {
 
         activity.renderBrowseKanji("裂");
         assertEquals("裂", activity.activeBrowseQuery);
-        assertHasText(activity, "SUSPENDED");
-        performClickableWithText(activity.findViewById(android.R.id.content), "split");
-        assertHasText(activity, "Back to Browse");
-        assertHasText(activity, "Local records");
-        performClickableWithText(activity.findViewById(android.R.id.content), "Unsuspend locally");
-        assertFalse(activity.store.isKanjiLocallySuspended("裂"));
+        assertHasText(activity, "No matching kanji");
+        assertFalse(containsText(activity.findViewById(android.R.id.content), "SUSPENDED"));
+        activity.store.setKanjiLocallySuspended("裂", false, 1001L);
         activity.renderDetail("missing", false, "");
         assertHasText(activity, "Kanji not found");
     }

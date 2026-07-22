@@ -398,7 +398,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
             HomeRouteRestoration.Destination.BROWSE -> renderBrowseKanji(
                 route.query,
                 route.onlySimilarKanji,
-                route.allKanjiScope,
             )
             HomeRouteRestoration.Destination.DETAIL -> {
                 activeBrowseQuery = route.query
@@ -673,11 +672,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean) {
-        browseDetail.renderBrowseKanji(query, onlySimilarKanji, false)
-    }
-
-    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean, allKanjiScope: Boolean) {
-        browseDetail.renderBrowseKanji(query, onlySimilarKanji, allKanjiScope)
+        browseDetail.renderBrowseKanji(query, onlySimilarKanji)
     }
 
     fun renderReadOnlyDetail(kanji: String, browseQuery: String?) {
@@ -802,7 +797,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderBrowseKanji(
             route.query,
             route.onlySimilarKanji,
-            route.allKanjiScope,
         )
     }
 
