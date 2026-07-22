@@ -15,7 +15,7 @@
     <string name="activity_widget_label">Activity</string>
     <string name="activity_widget_description">See your 35-day study streak and review history.</string>
     <string name="activity_widget_loading">Loading activity…</string>
-    <string name="activity_widget_preview_total">87 · 35 days</string>
+    <string name="activity_widget_preview_total">87 reviews in 35 days</string>
     <string name="activity_widget_preview_streak">5-day streak</string>
     <string name="activity_widget_preview_best">Best: 21 days</string>
 

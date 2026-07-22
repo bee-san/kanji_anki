@@ -22,6 +22,7 @@ import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
@@ -285,6 +286,7 @@ private fun standardActivityTitle(
     presentation: ActivityWidgetPresentation,
 ): String {
     if (snapshot.state != ActivityWidgetState.HISTORY) return presentation.title
+    if (presentation.cells.size == ActivityWidgetSnapshotLoader.HISTORY_DAYS) return presentation.title
     val days = if (presentation.cells.size == COMPACT_HISTORY_DAYS) {
         COMPACT_HISTORY_DAYS
     } else {
@@ -353,6 +355,7 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
             }
             .padding(if (tier == ActivityWidgetTier.COMPACT) 6.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         if (layout.stackAction) {
             Text(
@@ -376,7 +379,10 @@ internal fun ActivityWidgetContent(snapshot: ActivityWidgetSnapshot) {
                 )
             }
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = visibleCopy.title,
                     modifier = GlanceModifier.defaultWeight(),
@@ -424,7 +430,10 @@ private fun ActivityWidgetBody(
         )
     } else if (visibleCells.isNotEmpty()) {
         if (layout.showStreak) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = presentation.streak,
                     modifier = GlanceModifier.defaultWeight(),
@@ -462,7 +471,7 @@ private fun ActivityGrid(
     tier: ActivityWidgetTier,
     palette: KaniWidgetPalette,
 ) {
-    val cellSize = if (tier == ActivityWidgetTier.COMPACT) 12.dp else 10.dp
+    val cellSize = activityGridCellSizeDp(tier).dp
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         cells.chunked(GRID_COLUMNS).forEach { rowCells ->
             Row {
@@ -500,6 +509,13 @@ private fun ActivityGrid(
             }
         }
     }
+}
+
+internal fun activityGridCellSizeDp(tier: ActivityWidgetTier): Int = when (tier) {
+    ActivityWidgetTier.COMPACT -> 12
+    ActivityWidgetTier.REGULAR,
+    ActivityWidgetTier.WIDE,
+    -> 14
 }
 
 internal fun kaniActivityLaunchIntent(
