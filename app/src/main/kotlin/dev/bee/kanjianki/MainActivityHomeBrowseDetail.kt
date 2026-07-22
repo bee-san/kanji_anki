@@ -26,12 +26,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         val missingModel: BrowseDetailMissingModel?,
     )
 
-    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false) {
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean = false, showSuspended: Boolean = false) {
         val requestedQuery = query ?: ""
         val browseRoute = HomeRouteRestoration.browse(
             requestedQuery,
             onlySimilarKanji,
             false,
+            showSuspended,
         )
         home.currentHomeRouteRestoration = browseRoute
         home.activeBrowseQuery = requestedQuery
@@ -40,8 +41,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
-                val items = home.store.searchKanjiInventory(requestedQuery, onlySimilarKanji)
-                BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji))
+                // Exclude suspended kanji in SQL (before the row cap) unless the user opted to
+                // show them, so active kanji are never crowded out of the 300-row window.
+                val items = home.store.searchKanjiInventory(
+                    requestedQuery,
+                    onlySimilarKanji,
+                    excludeLocallySuspended = !showSuspended,
+                )
+                BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, showSuspended))
             },
             render = { data ->
                 home.activeBrowseQuery = home.browseQueryDraft(browseRoute, data.model.initialQuery)

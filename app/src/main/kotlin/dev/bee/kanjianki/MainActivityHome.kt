@@ -398,6 +398,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             HomeRouteRestoration.Destination.BROWSE -> renderBrowseKanji(
                 route.query,
                 route.onlySimilarKanji,
+                route.showSuspended,
             )
             HomeRouteRestoration.Destination.DETAIL -> {
                 activeBrowseQuery = route.query
@@ -675,6 +676,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
         browseDetail.renderBrowseKanji(query, onlySimilarKanji)
     }
 
+    fun renderBrowseKanji(query: String?, onlySimilarKanji: Boolean, showSuspended: Boolean) {
+        browseDetail.renderBrowseKanji(query, onlySimilarKanji, showSuspended)
+    }
+
     fun renderReadOnlyDetail(kanji: String, browseQuery: String?) {
         browseDetail.renderReadOnlyDetail(kanji, browseQuery)
     }
@@ -797,6 +802,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderBrowseKanji(
             route.query,
             route.onlySimilarKanji,
+            route.showSuspended,
         )
     }
 

@@ -402,6 +402,9 @@ object HomeTextCopy {
     fun browseSimilarFilterLabel(): String = localizedText("Similar kanji only", "類似漢字のみ")
 
     @JvmStatic
+    fun browseShowSuspendedLabel(): String = localizedText("Show suspended", "停止中を表示")
+
+    @JvmStatic
     fun browseStudySelectionSummary(selected: Int, total: Int): String {
         val safeTotal = total.coerceAtLeast(0)
         val safeSelected = selected.coerceIn(0, safeTotal)

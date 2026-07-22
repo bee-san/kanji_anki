@@ -24,6 +24,22 @@ class MainActivityHomeBrowseSearchComposeTest {
     }
 
     @Test
+    fun browseScreenDataIncludesSuspendedKanjiWhenRequested() {
+        val items = listOf(
+            inventoryItem("字A", suspended = false),
+            inventoryItem("字B", suspended = true),
+            inventoryItem("字C", suspended = false),
+        )
+
+        val data = buildBrowseScreenData(items, includeSuspended = true) { item -> browseRow(item) }
+
+        assertEquals(listOf("字A", "字B", "字C"), data.kanjiList)
+        assertEquals(2, data.studiedCount)
+        assertEquals(3, data.rows.size)
+        assertEquals(listOf(true, false, true), data.rows.map { it.studied })
+    }
+
+    @Test
     fun browseKanjiRowDescriptionIsActionOrientedAndConcise() {
         assertEquals(
             "Open details for 裂, split, レツ, 2 local sources · 1 example, SUSPENDED, not selected",

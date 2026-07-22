@@ -47,6 +47,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 internal fun browseKanjiRowTestTag(kanji: String): String = "browse-kanji-row-$kanji"
 internal fun browseKanjiStudiedToggleTestTag(kanji: String): String = "browse-kanji-studied-$kanji"
 internal fun browseSimilarFilterTestTag(): String = "browse-similar-filter"
+internal fun browseShowSuspendedTestTag(): String = "browse-show-suspended"
 internal fun browseSelectAllStudiedTestTag(): String = "browse-select-all-studied"
 internal fun browseDeselectAllStudiedTestTag(): String = "browse-deselect-all-studied"
 
@@ -70,13 +71,16 @@ internal fun browseKanjiRowDescription(
 
 internal fun buildBrowseScreenData(
     items: List<RecordsImportModels.KanjiInventoryItem>,
+    includeSuspended: Boolean = false,
     rowBuilder: (RecordsImportModels.KanjiInventoryItem) -> BrowseKanjiRowModel,
 ): BrowseScreenData {
     val rows = ArrayList<BrowseKanjiRowModel>(items.size)
     val kanjiList = ArrayList<String>(items.size)
     var studiedCount = 0
     for (item in items) {
-        if (item.suspended) {
+        // Default Browse is a study-queue projection: suspended kanji are excluded. The
+        // "Show suspended" toggle opts back in so a cleared kanji can be reselected.
+        if (item.suspended && !includeSuspended) {
             continue
         }
         val row = rowBuilder(item)
@@ -94,13 +98,15 @@ internal fun browseScreenModel(
     query: String,
     items: List<RecordsImportModels.KanjiInventoryItem>,
     onlySimilarKanji: Boolean = false,
+    showSuspended: Boolean = false,
 ): BrowseScreenModel {
     val browseRoute = HomeRouteRestoration.browse(
         query = query,
         onlySimilarKanji = onlySimilarKanji,
         allKanjiScope = false,
+        showSuspended = showSuspended,
     )
-    val screenData = buildBrowseScreenData(items) { item ->
+    val screenData = buildBrowseScreenData(items, includeSuspended = showSuspended) { item ->
         browseKanjiRowModel(activity, browseRoute, item)
     }
     return BrowseScreenModel(
@@ -108,8 +114,10 @@ internal fun browseScreenModel(
         resultHeading = HomeTextCopy.browseResultHeading(screenData.rows.size),
         rows = screenData.rows,
         similarFilterActive = onlySimilarKanji,
+        showSuspendedActive = showSuspended,
         studySelectionSummary = HomeTextCopy.browseStudySelectionSummary(screenData.studiedCount, screenData.rows.size),
-        onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji) },
+        onToggleSimilarFilter = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, !onlySimilarKanji, showSuspended) },
+        onToggleShowSuspended = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji, !showSuspended) },
         onSelectAllStudied = {
             activity.submitBrowseSelectionWrite(
                 browseRoute = browseRoute,
@@ -132,7 +140,7 @@ internal fun browseScreenModel(
         },
         onQueryChange = { activity.updateBrowseQueryDraft(browseRoute, it) },
         onHome = activity::renderHome,
-        onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji) }
+        onSearch = { updatedQuery -> activity.renderBrowseKanji(updatedQuery, onlySimilarKanji, showSuspended) }
     )
 }
 
@@ -261,6 +269,25 @@ private fun BrowseStudyControls(model: BrowseScreenModel, query: String) {
         ) {
             Text(
                 text = HomeTextCopy.browseSimilarFilterLabel(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        OutlinedButton(
+            onClick = { model.onToggleShowSuspended(query) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .testTag(browseShowSuspendedTestTag()),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (model.showSuspendedActive) BrowseCoral else BrowseWhite,
+                contentColor = if (model.showSuspendedActive) BrowseWhite else BrowseCoral,
+            ),
+            border = BorderStroke(1.dp, BrowseCoral),
+        ) {
+            Text(
+                text = HomeTextCopy.browseShowSuspendedLabel(),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
             )

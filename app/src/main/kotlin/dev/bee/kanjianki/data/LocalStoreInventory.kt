@@ -39,6 +39,8 @@ internal abstract class LocalStoreInventory(
     @Volatile
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     @Volatile
+    private var cachedKanjiInventoryActiveAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    @Volatile
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
     @Volatile
     private var cachedTimelinesByKanji: MutableMap<String, RecordsStudyModels.KanjiRecoveryTimeline>? = null
@@ -134,6 +136,7 @@ internal abstract class LocalStoreInventory(
 
     internal override fun clearKanjiInventoryAllCache() {
         cachedKanjiInventoryAll = null
+        cachedKanjiInventoryActiveAll = null
         cachedKanjiInventorySearches = null
         clearTimelineCache()
     }
@@ -317,6 +320,10 @@ internal abstract class LocalStoreInventory(
         return searchKanjiInventory(query, false)
     }
 
+    fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
+        return searchKanjiInventory(query, onlySimilarKanji, false)
+    }
+
     /** Escape `\`, `%`, and `_` so a LIKE term matches those characters literally. */
     private fun escapeLikeTerm(term: String): String {
         return term
@@ -325,14 +332,27 @@ internal abstract class LocalStoreInventory(
             .replace("_", "\\_")
     }
 
-    fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
+    /**
+     * @param excludeLocallySuspended when true, locally suspended kanji are dropped in SQL,
+     * *before* the row cap, so a Browse (study-queue) read never loses active kanji to
+     * suspended rows that would otherwise fill the first 300 results. Callers that need the
+     * full inventory (games, study, neighbor panels) leave this false.
+     */
+    fun searchKanjiInventory(
+        query: String?,
+        onlySimilarKanji: Boolean,
+        excludeLocallySuspended: Boolean,
+    ): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
         val parsed = KanjiInventorySearchQuery.parse(query)
         val terms = parsed.terms()
-        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) terms.joinToString("\u0000") else null
+        // Keep the active (study-queue) and full reads in distinct cache slots; a term-only key
+        // would let one variant's snapshot satisfy the other and leak (or hide) suspended rows.
+        val cachePrefix = if (excludeLocallySuspended) "active " else ""
+        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) cachePrefix + terms.joinToString("\u0000") else null
         if (cacheKey == null) {
             if (!onlySimilarKanji && terms.isEmpty()) {
-                cachedKanjiInventoryAll?.let { return it }
+                (if (excludeLocallySuspended) cachedKanjiInventoryActiveAll else cachedKanjiInventoryAll)?.let { return it }
             }
         } else {
             cachedKanjiInventorySearches?.get(cacheKey)?.let { return it }
@@ -356,6 +376,12 @@ internal abstract class LocalStoreInventory(
                     "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_B=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
             )
         }
+        if (excludeLocallySuspended) {
+            // Apply the study-queue filter in SQL so it precedes the row cap; a Kotlin-side
+            // filter after LIMIT 300 could drop active kanji whenever suspended rows fill
+            // that first window.
+            clauses.add("$COLUMN_KANJI NOT IN (SELECT $COLUMN_KANJI FROM $TABLE_LOCAL_KANJI_SUSPENSIONS)")
+        }
         val selection = clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND ")
         val args = argsList.takeIf { it.isNotEmpty() }?.toTypedArray()
         db.query(
@@ -372,9 +398,13 @@ internal abstract class LocalStoreInventory(
                 out.add(readInventoryItem(db, cursor))
             }
         }
-        val ranked = rankKanjiSearchResults(db, out, terms, onlySimilarKanji)
+        val ranked = rankKanjiSearchResults(db, out, terms, onlySimilarKanji, excludeLocallySuspended)
         if (!onlySimilarKanji && terms.isEmpty()) {
-            cachedKanjiInventoryAll = ranked
+            if (excludeLocallySuspended) {
+                cachedKanjiInventoryActiveAll = ranked
+            } else {
+                cachedKanjiInventoryAll = ranked
+            }
         } else if (!onlySimilarKanji) {
             val searches = cachedKanjiInventorySearches ?: ConcurrentHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
                 cachedKanjiInventorySearches = it
@@ -398,6 +428,7 @@ internal abstract class LocalStoreInventory(
         matches: List<RecordsImportModels.KanjiInventoryItem>,
         terms: List<String>,
         onlySimilarKanji: Boolean,
+        excludeLocallySuspended: Boolean,
     ): List<RecordsImportModels.KanjiInventoryItem> {
         if (terms.isEmpty()) {
             return matches
@@ -416,7 +447,13 @@ internal abstract class LocalStoreInventory(
         // similar-kanji-only filter is not re-checked here, so skip the restore there.
         val exactGlyph = if (terms.size == 1) TextUtil.normalizeSingleKanji(terms[0]) else ""
         if (!onlySimilarKanji && exactGlyph.isNotEmpty() && withExact.none { it.kanji == exactGlyph }) {
-            readInventoryItem(db, exactGlyph)?.let(withExact::add)
+            readInventoryItem(db, exactGlyph)?.let { item ->
+                // An active (study-queue) read must not resurrect a suspended row that the SQL
+                // filter deliberately excluded, even to satisfy the single-glyph restore.
+                if (!(excludeLocallySuspended && item.suspended)) {
+                    withExact.add(item)
+                }
+            }
         }
         return withExact.sortedBy { item -> if (queryGlyphs.contains(item.kanji)) 0 else 1 }
     }
