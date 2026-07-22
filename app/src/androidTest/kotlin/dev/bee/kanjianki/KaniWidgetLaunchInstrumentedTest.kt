@@ -94,6 +94,7 @@ class KaniWidgetLaunchInstrumentedTest {
                 val state = awaitState(scenario) { it.browseQuery.isEmpty() && it.allKanji }
                 assertEquals("", state.browseQuery)
                 assertExactKanjiIsVisible("学")
+                assertTextIsVisible(HomeTextCopy.backToBrowseKanjiLabel())
             }
 
             withScenario(coldStartIntent(Intent(context, MainActivity::class.java))) { scenario ->
@@ -102,6 +103,7 @@ class KaniWidgetLaunchInstrumentedTest {
                 val state = awaitState(scenario) { it.browseQuery.isEmpty() && it.allKanji }
                 assertEquals("", state.browseQuery)
                 assertExactKanjiIsVisible("学")
+                assertTextIsVisible(HomeTextCopy.backToBrowseKanjiLabel())
                 assertEquals(originalId, state.activityId)
 
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
