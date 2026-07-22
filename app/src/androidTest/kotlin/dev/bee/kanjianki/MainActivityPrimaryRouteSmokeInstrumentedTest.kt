@@ -11,6 +11,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -127,6 +128,21 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
                 LocalStoreBase.SyncTiming(1000L, 2000L),
                 null,
                 null,
+            )
+            store.saveStudyItem(
+                RecordsStudyModels.StudyItem(
+                    "裂",
+                    "new",
+                    0L,
+                    0.4,
+                    5.0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    null,
+                    0L,
+                )
             )
         }
     }
