@@ -127,11 +127,12 @@ class ReminderReceiverInstrumentedTest {
 
     @Test
     fun dailyReminderIntentCarriesFallbackSchedule() {
-        val intent = ReminderScheduler.dailyReminderIntent(context, 6, 25)
+        val intent = ReminderScheduler.dailyReminderIntent(context, 6, 25, true)
 
         assertEquals(ReminderScheduler.ACTION_DAILY_REMINDER, intent.action)
         assertEquals(6, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_HOUR, -1))
         assertEquals(25, intent.getIntExtra(ReminderScheduler.EXTRA_REMINDER_MINUTE, -1))
+        assertTrue(intent.getBooleanExtra(ReminderScheduler.EXTRA_REMINDER_SNOOZE_REPOST, false))
     }
 
     @Test
@@ -218,6 +219,8 @@ class ReminderReceiverInstrumentedTest {
 
     private fun permissionContext(result: Int): Context {
         return object : ContextWrapper(context) {
+            override fun getApplicationContext(): Context = this
+
             override fun checkSelfPermission(permission: String): Int {
                 assertEquals(Manifest.permission.POST_NOTIFICATIONS, permission)
                 return result
@@ -254,6 +257,8 @@ class ReminderReceiverInstrumentedTest {
     }
 
     private class NullSystemServiceContext(base: Context) : ContextWrapper(base) {
+        override fun getApplicationContext(): Context = this
+
         override fun getSystemService(name: String): Any? {
             return null
         }

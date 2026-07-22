@@ -29,6 +29,7 @@ import dev.bee.kanjianki.core.ReminderFamily
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
 import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
+import dev.bee.kanjianki.core.ReminderSnoozePolicy
 import dev.bee.kanjianki.core.ReminderThrottlePolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
@@ -45,6 +46,7 @@ object ReminderScheduler {
     const val EXTRA_REMINDER_FAMILY: String = "dev.bee.kanjianki.extra.REMINDER_FAMILY"
     const val EXTRA_REMINDER_HOUR: String = "dev.bee.kanjianki.extra.REMINDER_HOUR"
     const val EXTRA_REMINDER_MINUTE: String = "dev.bee.kanjianki.extra.REMINDER_MINUTE"
+    const val EXTRA_REMINDER_SNOOZE_REPOST: String = "dev.bee.kanjianki.extra.REMINDER_SNOOZE_REPOST"
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val DISMISS_REQUEST_CODE = 2703
@@ -121,6 +123,43 @@ object ReminderScheduler {
             return
         }
         services.scheduleAlarm(nextTriggerMillis(settings, nowMillis), settings.hour, settings.minute)
+    }
+
+    @JvmStatic
+    fun scheduleSnooze(context: Context?) {
+        if (context == null) {
+            return
+        }
+        AppLocalStoreFactory.create(context).use { store ->
+            scheduleSnooze(
+                store.reminderSettings(),
+                store.reminderAntiSpamSettings(),
+                androidReminderServices(context),
+                AppClock.systemClock().nowMillis(),
+            )
+        }
+    }
+
+    @JvmStatic
+    internal fun scheduleSnooze(
+        settings: LocalStoreBase.ReminderSettings?,
+        antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
+        services: ReminderServices,
+        nowMillis: Long,
+    ) {
+        if (settings == null || !settings.enabled) {
+            services.cancelAlarm()
+            return
+        }
+        services.scheduleSnoozeAlarm(
+            ReminderSnoozePolicy.rearmTime(
+                nowMillis,
+                antiSpam.quietStartMinuteOfDay,
+                antiSpam.quietEndMinuteOfDay,
+            ),
+            settings.hour,
+            settings.minute,
+        )
     }
 
     private fun schedule(
@@ -247,7 +286,16 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        showReminderNotification(context, androidReminderServices(context), clock)
+        showReminderNotification(context, androidReminderServices(context), clock, false)
+    }
+
+    @SuppressLint("MissingPermission")
+    @JvmStatic
+    fun showReminderNotification(context: Context?, snoozeRepost: Boolean) {
+        if (context == null) {
+            return
+        }
+        showReminderNotification(context, androidReminderServices(context), AppClock.systemClock(), snoozeRepost)
     }
 
     @SuppressLint("MissingPermission")
@@ -259,6 +307,17 @@ object ReminderScheduler {
     @SuppressLint("MissingPermission")
     @JvmStatic
     fun showReminderNotification(context: Context?, services: ReminderServices, clock: AppClock?) {
+        showReminderNotification(context, services, clock, false)
+    }
+
+    @SuppressLint("MissingPermission")
+    @JvmStatic
+    fun showReminderNotification(
+        context: Context?,
+        services: ReminderServices,
+        clock: AppClock?,
+        snoozeRepost: Boolean,
+    ) {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
@@ -267,7 +326,7 @@ object ReminderScheduler {
             val plan = evaluate(store, now) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.
             // A blocked post leaves the alarm to re-arm for the next eligible time.
-            if (!plan.throttleDecision.allow) {
+            if (!plan.throttleDecision.allow && !snoozeRepost) {
                 return@use
             }
             services.ensureNotificationChannel()
@@ -341,11 +400,17 @@ object ReminderScheduler {
     }
 
     @JvmStatic
-    fun dailyReminderIntent(context: Context, hour: Int, minute: Int): Intent {
+    fun dailyReminderIntent(
+        context: Context,
+        hour: Int,
+        minute: Int,
+        snoozeRepost: Boolean = false,
+    ): Intent {
         return Intent(context, ReminderReceiver::class.java)
             .setAction(ACTION_DAILY_REMINDER)
             .putExtra(EXTRA_REMINDER_HOUR, hour)
             .putExtra(EXTRA_REMINDER_MINUTE, minute)
+            .putExtra(EXTRA_REMINDER_SNOOZE_REPOST, snoozeRepost)
     }
 
     @JvmStatic
@@ -375,6 +440,10 @@ object ReminderScheduler {
     interface ReminderServices {
         fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int)
 
+        fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
+            scheduleAlarm(triggerAtMillis, hour, minute)
+        }
+
         fun cancelAlarm()
 
         fun hasRuntimeNotificationPermission(): Boolean
@@ -391,7 +460,7 @@ object ReminderScheduler {
 
         override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute) ?: return
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false) ?: return
             alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
@@ -399,17 +468,28 @@ object ReminderScheduler {
             )
         }
 
+        override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true) ?: return
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        }
+
         override fun cancelAlarm() {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0)
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false)
             if (pendingIntent != null) {
                 alarmManager?.cancel(pendingIntent)
                 pendingIntent.cancel()
             }
         }
 
-        private fun alarmIntent(lookupFlag: Int, hour: Int, minute: Int): PendingIntent? {
-            val intent = dailyReminderIntent(context, hour, minute)
+        private fun alarmIntent(
+            lookupFlag: Int,
+            hour: Int,
+            minute: Int,
+            snoozeRepost: Boolean,
+        ): PendingIntent? {
+            val intent = dailyReminderIntent(context, hour, minute, snoozeRepost)
             return PendingIntent.getBroadcast(
                 context,
                 REQUEST_CODE,

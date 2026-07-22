@@ -67,6 +67,20 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun snoozeSchedulesOneRepostAfterAnHourWithFallbackTime() {
+        val services = FakeReminderServices()
+        val now = utc(2026, Calendar.MAY, 15, 14, 0)
+        val settings = LocalStoreBase.ReminderSettings(true, 8, 30)
+        val antiSpam = LocalStoreBase.ReminderAntiSpamSettings(22 * 60, 8 * 60, 2)
+
+        ReminderScheduler.scheduleSnooze(settings, antiSpam, services, now)
+
+        assertEquals(now + HOUR, services.snoozedAtMillis)
+        assertEquals(8, services.scheduledHour)
+        assertEquals(30, services.scheduledMinute)
+    }
+
+    @Test
     fun notificationsAllowedAppliesPlatformFallbackGates() {
         val services = FakeReminderServices()
         services.runtimePermission = false
@@ -168,6 +182,26 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun snoozedReminderCanRepostTheSameDueSetAfterOneHour() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val services = FakeReminderServices(context)
+        val now = utc(2026, Calendar.MAY, 15, 15, 0)
+        seedStudiedTodayWithOverdue(context, now, dueAtMillis = now - HOUR)
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        ReminderScheduler.showReminderNotification(context, services, AppClock { now })
+        manager.cancelAll()
+        ReminderScheduler.showReminderNotification(
+            context,
+            services,
+            AppClock { now + HOUR },
+            snoozeRepost = true,
+        )
+
+        assertEquals(1, manager.activeNotifications.size)
+    }
+
+    @Test
     fun showReminderNotificationSkipsWhenDailyPlanHasNothingUseful() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val services = FakeReminderServices(context)
@@ -252,7 +286,7 @@ class ReminderSchedulerTest {
         ReminderReceiver.handle(ReminderScheduler.ACTION_DAILY_REMINDER, "", 6, 25, actions)
         ReminderReceiver.handle("dev.bee.kanjianki.OTHER", actions)
 
-        assertEquals("boot,fallback:6:25,daily", actions.events.joined)
+        assertEquals("boot,fallback:6:25,daily:false", actions.events.joined)
     }
 
     @Test
@@ -262,6 +296,15 @@ class ReminderSchedulerTest {
         ReminderReceiver.handle(ReminderScheduler.ACTION_REMINDER_DISMISSED, "DUE", actions)
 
         assertEquals("dismiss:DUE", actions.events.joined)
+    }
+
+    @Test
+    fun reminderReceiverCarriesSnoozeRepostToTheDailyHandler() {
+        val actions = FakeReceiverActions()
+
+        ReminderReceiver.handle(ReminderScheduler.ACTION_DAILY_REMINDER, "DUE", 8, 30, true, actions)
+
+        assertEquals("fallback:8:30,daily:true", actions.events.joined)
     }
 
     @Test
@@ -278,7 +321,7 @@ class ReminderSchedulerTest {
 
         ReminderReceiver.handleDailyReminder(enabled, actions)
 
-        assertEquals("show,schedule", actions.events.joined)
+        assertEquals("show:false,schedule", actions.events.joined)
         assertSame(enabled, actions.scheduledSettings)
     }
 
@@ -586,6 +629,7 @@ class ReminderSchedulerTest {
     private class FakeReminderServices(private val channelContext: Context? = null) : ReminderScheduler.ReminderServices {
         var cancelCount = 0
         var scheduledAtMillis = -1L
+        var snoozedAtMillis = -1L
         var scheduledHour = -1
         var scheduledMinute = -1
         var runtimePermission = true
@@ -595,6 +639,12 @@ class ReminderSchedulerTest {
 
         override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             scheduledAtMillis = triggerAtMillis
+            scheduledHour = hour
+            scheduledMinute = minute
+        }
+
+        override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
+            snoozedAtMillis = triggerAtMillis
             scheduledHour = hour
             scheduledMinute = minute
         }
@@ -642,8 +692,8 @@ class ReminderSchedulerTest {
             events.append("fallback:$hour:$minute")
         }
 
-        override fun handleDailyReminder() {
-            events.append("daily")
+        override fun handleDailyReminder(snoozeRepost: Boolean) {
+            events.append("daily:$snoozeRepost")
         }
 
         override fun handleReminderDismissed(family: String) {
@@ -667,8 +717,8 @@ class ReminderSchedulerTest {
         val events = Events()
         var scheduledSettings: LocalStoreBase.ReminderSettings? = null
 
-        override fun showReminderNotification() {
-            events.append("show")
+        override fun showReminderNotification(snoozeRepost: Boolean) {
+            events.append("show:$snoozeRepost")
         }
 
         override fun schedule(settings: LocalStoreBase.ReminderSettings?) {

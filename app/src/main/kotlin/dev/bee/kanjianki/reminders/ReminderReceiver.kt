@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
-import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 
@@ -23,10 +22,14 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderScheduler.EXTRA_REMINDER_MINUTE,
             TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
         ) ?: TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE
+        val snoozeRepost = intent?.getBooleanExtra(
+            ReminderScheduler.EXTRA_REMINDER_SNOOZE_REPOST,
+            false,
+        ) == true
         // Reads the full dashboard + all study items + streaks; do it off the main
         // thread and keep the broadcast alive until it completes.
         ReceiverAsyncWork.run(this) {
-            handle(action, family, hour, minute, AndroidReceiverActions(context))
+            handle(action, family, hour, minute, snoozeRepost, AndroidReceiverActions(context))
         }
     }
 
@@ -35,7 +38,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         fun scheduleFallbackDailyReminder(hour: Int, minute: Int)
 
-        fun handleDailyReminder()
+        fun handleDailyReminder(snoozeRepost: Boolean)
 
         fun handleReminderDismissed(family: String)
 
@@ -43,7 +46,7 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     interface DailyReminderActions {
-        fun showReminderNotification()
+        fun showReminderNotification(snoozeRepost: Boolean)
 
         fun schedule(settings: LocalStoreBase.ReminderSettings?)
     }
@@ -59,10 +62,11 @@ class ReminderReceiver : BroadcastReceiver() {
             ReminderScheduler.scheduleFallbackDailyReminder(context, hour, minute)
         }
 
-        override fun handleDailyReminder() {
+        override fun handleDailyReminder(snoozeRepost: Boolean) {
             AppLocalStoreFactory.create(context).use { store ->
                 handleDailyReminder(
                     store.reminderSettings(),
+                    snoozeRepost,
                     ReminderReceiverDailyActions(context),
                 )
             }
@@ -82,7 +86,7 @@ class ReminderReceiver : BroadcastReceiver() {
         override fun handleReminderSnoozed(family: String) {
             val safeContext = context ?: return
             ReminderScheduler.cancelPostedNotification(safeContext)
-            ReminderScheduler.schedule(safeContext)
+            ReminderScheduler.scheduleSnooze(safeContext)
         }
     }
 
@@ -94,6 +98,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 "",
                 TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
                 TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+                false,
                 actions,
             )
         }
@@ -105,12 +110,25 @@ class ReminderReceiver : BroadcastReceiver() {
                 family,
                 TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
                 TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+                false,
                 actions,
             )
         }
 
         @JvmStatic
         fun handle(action: String?, family: String, hour: Int, minute: Int, actions: ReceiverActions) {
+            handle(action, family, hour, minute, false, actions)
+        }
+
+        @JvmStatic
+        fun handle(
+            action: String?,
+            family: String,
+            hour: Int,
+            minute: Int,
+            snoozeRepost: Boolean,
+            actions: ReceiverActions,
+        ) {
             when (
                 ReminderReceiverPolicy.commandFor(
                     action,
@@ -125,7 +143,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
                 ReminderReceiverPolicy.ReceiverCommand.HANDLE_DAILY_REMINDER -> {
                     actions.scheduleFallbackDailyReminder(hour, minute)
-                    actions.handleDailyReminder()
+                    actions.handleDailyReminder(snoozeRepost)
                 }
 
                 ReminderReceiverPolicy.ReceiverCommand.HANDLE_REMINDER_DISMISSED -> {
@@ -145,12 +163,21 @@ class ReminderReceiver : BroadcastReceiver() {
             settings: LocalStoreBase.ReminderSettings,
             actions: DailyReminderActions,
         ) {
+            handleDailyReminder(settings, false, actions)
+        }
+
+        @JvmStatic
+        fun handleDailyReminder(
+            settings: LocalStoreBase.ReminderSettings,
+            snoozeRepost: Boolean,
+            actions: DailyReminderActions,
+        ) {
             if (!ReminderReceiverPolicy.shouldHandleDailyReminder(settings.enabled)) {
                 actions.schedule(settings)
                 return
             }
             try {
-                actions.showReminderNotification()
+                actions.showReminderNotification(snoozeRepost)
             } finally {
                 // This is a one-shot alarm. Re-arm it even when notification
                 // construction or posting fails so reminders recover tomorrow.
