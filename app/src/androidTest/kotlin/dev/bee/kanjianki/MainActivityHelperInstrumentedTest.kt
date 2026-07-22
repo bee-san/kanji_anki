@@ -1752,7 +1752,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
         val activeExample = MainActivityHomeBrowseDetail(activity)
                 .exampleModel(example("裂語", "レツゴ", "split word", MainActivityBase.SOURCE_ACTIVE));
         assertEquals("裂語  レツゴ", activeExample.expression);
-        assertEquals("split word", activeExample.meaning);
+        assertEquals("Split word", activeExample.meaning);
         val matureSupportThreshold = activity.settings().matureSupportThreshold
         val relearning = studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)
                 .copyBuilder()
@@ -1776,7 +1776,7 @@ private fun verifyHomeBrowseRowsAndDetail(activity: MainActivity, activeRow: Rec
                 1000L,
                 matureSupportThreshold,
         )
-        assertTrue(learningRow.tags.any { it.label == "learning" })
+        assertTrue(learningRow.tags.any { it.label == "Learning" })
         seedRows(activity, listOf(activeRow));
     }
 
