@@ -558,7 +558,7 @@ internal abstract class LocalStoreInventory(
         STUDY_QUEUE_WITH_SUSPENDED,
     }
 
-    private data class InventorySearchSelection(
+    private class InventorySearchSelection(
         val where: String?,
         val args: Array<String>?,
     )
