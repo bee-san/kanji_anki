@@ -331,74 +331,96 @@ object ReminderScheduler {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
+        val reservation = snoozeReservation(snoozeRepost, snoozedFamily) ?: return
         AppLocalStoreFactory.create(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
-            val reservedFamily = if (snoozeRepost) reminderFamilyOrNull(snoozedFamily) else null
-            if (snoozeRepost && reservedFamily == null) {
-                return@use
-            }
-            val plan = evaluate(store, now, reservedFamily) ?: return@use
+            val plan = evaluate(store, now, reservation.family) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.
             // A blocked post leaves the alarm to re-arm for the next eligible time.
-            if (!plan.throttleDecision.allow && reservedFamily == null) {
+            if (!shouldPost(plan, reservation.family)) {
                 return@use
             }
             services.ensureNotificationChannel()
-            val open = reminderOpenIntent(context, plan.family)
-            val contentIntent = PendingIntent.getActivity(
-                context,
-                REQUEST_CODE,
-                open,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val studyIntent = Intent(context, MainActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
-            val studyPendingIntent = PendingIntent.getActivity(
-                context,
-                STUDY_ACTION_REQUEST_CODE,
-                studyIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val snoozeIntent = Intent(context, ReminderReceiver::class.java)
-                .setAction(ACTION_REMINDER_SNOOZED)
-                .putExtra(EXTRA_REMINDER_FAMILY, plan.family ?: "")
-            val snoozePendingIntent = PendingIntent.getBroadcast(
-                context,
-                SNOOZE_ACTION_REQUEST_CODE,
-                snoozeIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val notification = Notification.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(plan.copy.title)
-                .setContentText(plan.copy.message)
-                .setStyle(Notification.BigTextStyle().bigText(plan.copy.message))
-                .setContentIntent(contentIntent)
-                .setAutoCancel(true)
-                // Replacing the single notification slot (ID 2702) in place must not
-                // re-buzz: without this, an immediate re-post (D1) or a fresh-state
-                // recompute alerts the user twice for one visible card.
-                .setOnlyAlertOnce(true)
-                .setDeleteIntent(dismissIntent(context, plan.family))
-                .setCategory(Notification.CATEGORY_REMINDER)
-                .setColor(Color.rgb(255, 76, 118))
-                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
-                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
-                .build()
+            val notification = reminderNotification(context, plan)
             if (!AndroidNotificationGateway(context).post(NOTIFICATION_ID, notification)) {
                 return@use
             }
-            if (reservedFamily == null) {
-                store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
-            } else {
-                store.recordReminderReposted(now, plan.signature)
-            }
-            if (plan.reviewBatch && reservedFamily == null) {
-                // Keep the legacy per-day review counter in sync so the hard 2/day
-                // cap continues to engage alongside the new throttle.
-                store.recordReviewReminderNotificationShown(now)
-            }
+            recordPostedReminder(store, now, plan, reservation.family)
+        }
+    }
+
+    private data class SnoozeReservation(val family: ReminderFamily?)
+
+    private fun snoozeReservation(snoozeRepost: Boolean, rawFamily: String): SnoozeReservation? {
+        if (!snoozeRepost) {
+            return SnoozeReservation(null)
+        }
+        return reminderFamilyOrNull(rawFamily)?.let(::SnoozeReservation)
+    }
+
+    private fun shouldPost(plan: PlannedReminder, reservedFamily: ReminderFamily?): Boolean {
+        return plan.throttleDecision.allow || reservedFamily != null
+    }
+
+    private fun reminderNotification(context: Context, plan: PlannedReminder): Notification {
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            REQUEST_CODE,
+            reminderOpenIntent(context, plan.family),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val studyIntent = Intent(context, MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+        val studyPendingIntent = PendingIntent.getActivity(
+            context,
+            STUDY_ACTION_REQUEST_CODE,
+            studyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val snoozeIntent = Intent(context, ReminderReceiver::class.java)
+            .setAction(ACTION_REMINDER_SNOOZED)
+            .putExtra(EXTRA_REMINDER_FAMILY, plan.family)
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            context,
+            SNOOZE_ACTION_REQUEST_CODE,
+            snoozeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(plan.copy.title)
+            .setContentText(plan.copy.message)
+            .setStyle(Notification.BigTextStyle().bigText(plan.copy.message))
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            // Replacing the single notification slot (ID 2702) in place must not
+            // re-buzz: without this, an immediate re-post (D1) or a fresh-state
+            // recompute alerts the user twice for one visible card.
+            .setOnlyAlertOnce(true)
+            .setDeleteIntent(dismissIntent(context, plan.family))
+            .setCategory(Notification.CATEGORY_REMINDER)
+            .setColor(Color.rgb(255, 76, 118))
+            .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
+            .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
+            .build()
+    }
+
+    private fun recordPostedReminder(
+        store: LocalStore,
+        nowMillis: Long,
+        plan: PlannedReminder,
+        reservedFamily: ReminderFamily?,
+    ) {
+        if (reservedFamily == null) {
+            store.recordReminderPosted(nowMillis, plan.family, plan.signature, plan.dailyTimeOverride)
+        } else {
+            store.recordReminderReposted(nowMillis, plan.signature)
+        }
+        if (plan.reviewBatch && reservedFamily == null) {
+            // Keep the legacy per-day review counter in sync so the hard 2/day
+            // cap continues to engage alongside the new throttle.
+            store.recordReviewReminderNotificationShown(nowMillis)
         }
     }
 
@@ -657,10 +679,13 @@ object ReminderScheduler {
         // Not studied today: the decision policy drives the daily reminder,
         // wired with quiet hours, per-family caps, and dismissed families (D3).
         val decision = dailyReminderDecision(
-            store,
-            rows,
-            eligibleItems,
-            streak,
+            dailyStudyPlan(
+                rows,
+                eligibleItems,
+                streak,
+                store.latestSuccessfulSyncFinishedAt(),
+                nowMillis,
+            ),
             antiSpam,
             throttleState,
             nowMillis,
@@ -719,16 +744,12 @@ object ReminderScheduler {
     }
 
     private fun dailyReminderDecision(
-        store: LocalStore,
-        rows: List<RecordsImportModels.DashboardRow>,
-        eligibleItems: List<RecordsStudyModels.StudyItem>,
-        streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
+        plan: DailyStudyPlan,
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         throttleState: LocalStoreBase.ReminderThrottleState,
         nowMillis: Long,
         reservedFamily: ReminderFamily? = null,
     ): dev.bee.kanjianki.core.DailyReminderDecision {
-        val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSuccessfulSyncFinishedAt(), nowMillis)
         val nowMinuteOfDay = minuteOfDay(nowMillis)
         val quietLead = ReminderAntiSpamPolicy.quietLeadMinutesUntilStart(
             nowMinuteOfDay,

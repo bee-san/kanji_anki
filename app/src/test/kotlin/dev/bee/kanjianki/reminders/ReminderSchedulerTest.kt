@@ -208,6 +208,26 @@ class ReminderSchedulerTest {
     }
 
     @Test
+    fun snoozeRepostWithoutAKnownFamilyIsIgnored() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val services = FakeReminderServices(context)
+        val now = utc(2026, Calendar.MAY, 15, 15, 0)
+        seedStudiedTodayWithOverdue(context, now, dueAtMillis = now - HOUR)
+
+        ReminderScheduler.showReminderNotification(
+            context,
+            services,
+            AppClock { now + HOUR },
+            snoozeRepost = true,
+            snoozedFamily = "unknown",
+        )
+
+        assertEquals(0, services.ensureCount)
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        assertEquals(0, manager.activeNotifications.size)
+    }
+
+    @Test
     fun snoozedReminderRepostsAfterTheDailyCapWasConsumed() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val services = FakeReminderServices(context)
