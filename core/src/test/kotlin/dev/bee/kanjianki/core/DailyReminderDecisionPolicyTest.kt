@@ -196,7 +196,7 @@ class DailyReminderDecisionPolicyTest {
             assertEquals(ReminderFamily.DUE, decision.family)
             assertEquals(now, decision.triggerAtMillis)
             assertEquals("Study now", decision.title)
-            assertEquals("1 new problem kanji available. Open Kani to review them.", decision.body)
+            assertEquals("1 new problem kanji available. Open Kani to study now.", decision.body)
             assertEquals(listOf("plan:new-problem-kanji"), decision.reasonIds)
             assertEquals("1 new problem kanji available", decision.humanReason)
         }
@@ -388,7 +388,7 @@ class DailyReminderDecisionPolicyTest {
             assertEquals(ReminderFamily.DUE, invalidDecision.family)
             assertEquals(utc(2026, Calendar.MAY, 16, 1, 0), invalidDecision.triggerAtMillis)
             assertEquals("Study now", invalidDecision.title)
-            assertEquals("1 due now. Open Kani to review them.", invalidDecision.body)
+            assertEquals("1 due now. Open Kani to study now.", invalidDecision.body)
 
             val rolledDecision = DailyReminderDecisionPolicy.decide(
                 DailyReminderDecisionRequest(

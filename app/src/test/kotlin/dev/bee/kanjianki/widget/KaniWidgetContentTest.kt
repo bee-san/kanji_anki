@@ -107,6 +107,15 @@ class KaniWidgetContentTest {
     }
 
     @Test
+    fun overviewStudyActionHasRoomForItsCompleteLabel() {
+        val metrics = overviewActionMetrics()
+
+        assertTrue(metrics.widthDp >= 80)
+        assertTrue(metrics.heightDp >= 56)
+        assertTrue(metrics.fontSp >= 13)
+    }
+
+    @Test
     fun widenedOverviewKeepsItsTextAndActivityContent() = runGlanceAppWidgetUnitTest(30.seconds) {
         val snapshot = KaniWidgetSnapshot(
             state = KaniWidgetState.DUE_NOW,

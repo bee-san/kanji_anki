@@ -274,6 +274,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var pendingReminderSettings: LocalStoreBase.ReminderSettings? = null
 
     @JvmField
+    var reminderNotificationSettingsRefreshPending = false
+
+    @JvmField
     var settingsAnkiExpanded = true
 
     @JvmField
@@ -551,14 +554,6 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         permissionHandler.handlePostNotificationPermission(granted)
     }
 
-    fun saveGrantedReminderPermission(pending: LocalStoreBase.ReminderSettings?) {
-        permissionHandler.saveGrantedReminderPermission(pending)
-    }
-
-    fun disableReminderAfterDeniedPermission(pending: LocalStoreBase.ReminderSettings?) {
-        permissionHandler.disableReminderAfterDeniedPermission(pending)
-    }
-
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         if (handleFlashcardGesture(event)) {
             return true
@@ -725,6 +720,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val ACTION_OPEN_STUDY = "dev.bee.kanjianki.action.OPEN_STUDY"
         const val ACTION_OPEN_BROWSE = "dev.bee.kanjianki.action.OPEN_BROWSE"
         const val ACTION_OPEN_GAMES = "dev.bee.kanjianki.action.OPEN_GAMES"
+        const val EXTRA_OPEN_HOME = "dev.bee.kanjianki.extra.OPEN_HOME"
         const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
         const val EXTRA_OPEN_STUDY = "dev.bee.kanjianki.extra.OPEN_STUDY"
         const val EXTRA_OPEN_STATS = "dev.bee.kanjianki.extra.OPEN_STATS"

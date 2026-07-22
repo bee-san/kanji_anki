@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
 import dev.bee.kanjianki.core.RecordsStudyModels;
 import dev.bee.kanjianki.core.RecordsSyncModels;
+import dev.bee.kanjianki.core.ReminderFamily;
 import dev.bee.kanjianki.core.AdaptiveFocusCopy;
 import dev.bee.kanjianki.core.DateTextPolicy;
 import dev.bee.kanjianki.core.FocusQueueCopy;
@@ -57,6 +58,7 @@ import dev.bee.kanjianki.core.study.WritingSample;
 import dev.bee.kanjianki.data.LocalStore;
 import dev.bee.kanjianki.data.LocalStoreBase;
 import dev.bee.kanjianki.data.StudyStatsStore;
+import dev.bee.kanjianki.reminders.ReminderScheduler;
 import dev.bee.kanjianki.study.CapturedStroke;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
@@ -115,6 +117,48 @@ fun tearDown() {
         MainActivityRuntimeOverrides.setNotificationsAllowed(null);
         context.deleteDatabase("kanji_anki_simple.db");
         deleteRecursively(File(context.getCacheDir(), "updates"));
+    }
+
+    @Test
+    fun warmReminderIntentOpensStudyOnce() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                val scenarioLaunchIntent = activity.intent
+                val reminderIntent = ReminderScheduler.reminderOpenIntent(activity, ReminderFamily.DUE.name)
+                val onNewIntent = MainActivityBase::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
+                onNewIntent.isAccessible = true
+                try {
+                    onNewIntent.invoke(activity, reminderIntent)
+
+                    assertEquals(MainActivityBase.NAV_STUDY, activity.currentRoute)
+                    assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+                } finally {
+                    // ActivityScenario tracks the launch intent by equality. Restore it
+                    // after exercising onNewIntent so scenario.close() can observe destroy.
+                    activity.intent = scenarioLaunchIntent
+                }
+            }
+        }
+    }
+
+    @Test
+    fun warmSyncReminderIntentExplicitlyOpensHome() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity ->
+                val scenarioLaunchIntent = activity.intent
+                val reminderIntent = ReminderScheduler.reminderOpenIntent(activity, ReminderFamily.SYNC.name)
+                val onNewIntent = MainActivityBase::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
+                onNewIntent.isAccessible = true
+                try {
+                    onNewIntent.invoke(activity, reminderIntent)
+
+                    assertEquals(MainActivityBase.NAV_HOME_ROUTE, activity.currentRoute)
+                    assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_HOME))
+                } finally {
+                    activity.intent = scenarioLaunchIntent
+                }
+            }
+        }
     }
 
     @Test
@@ -241,16 +285,19 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
                 activity.handleAnkiPermissionResult();
                 assertHasText(activity, "Kani");
 
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 8, 30));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30);
                 activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
                 assertNull(activity.pendingReminderSettings);
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 9, 15));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 9, 15);
                 activity.handlePostNotificationPermission(false);
-                assertFalse(activity.store.reminderSettings().enabled);
+                assertTrue(activity.store.reminderSettings().enabled);
                 assertEquals(9, activity.store.reminderSettings().hour);
                 assertEquals(15, activity.store.reminderSettings().minute);
                 assertNull(activity.pendingReminderSettings);
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 10, 45));
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 10, 45);
                 activity.handlePostNotificationPermission(true);
                 assertTrue(activity.store.reminderSettings().enabled);
@@ -309,6 +356,7 @@ fun baseLifecyclePermissionAndProgressHelpersCoverStatefulCallbacks() {
 fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 7, 25))
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 7, 25)
             }
 
@@ -330,6 +378,7 @@ fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsGranted() {
 fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsDenied() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
+                activity.store.saveReminderSettings(LocalStoreBase.ReminderSettings(true, 19, 40))
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 19, 40)
             }
             scenario.recreate()
@@ -339,7 +388,7 @@ fun pendingReminderSelectionSurvivesRecreationWhenPermissionIsDenied() {
                 assertEquals(40, restored.minute)
                 activity.handlePostNotificationPermission(false)
                 val denied = activity.store.reminderSettings()
-                assertFalse(denied.enabled)
+                assertTrue(denied.enabled)
                 assertEquals(19, denied.hour)
                 assertEquals(40, denied.minute)
                 assertNull(activity.pendingReminderSettings)

@@ -5,7 +5,8 @@ import java.util.Locale
 object ReminderSettingsSavePolicy {
     const val DISABLED_MESSAGE: String = "Reminder turned off."
     const val NOTIFICATIONS_BLOCKED_MESSAGE: String = "Reminder saved, but Android notifications are off."
-    const val PERMISSION_DENIED_MESSAGE: String = "Notifications are off, so reminders are disabled."
+    const val PERMISSION_DENIED_MESSAGE: String =
+        "Reminder saved. Allow notifications in Android settings to receive it."
     private const val JAPANESE_LANGUAGE = "ja"
 
     @JvmStatic
@@ -14,7 +15,7 @@ object ReminderSettingsSavePolicy {
     @JvmStatic
     fun permissionDeniedMessage(): String = localizedText(
         PERMISSION_DENIED_MESSAGE,
-        "通知がオフのため、リマインダーは無効です。",
+        "リマインダーを保存しました。受け取るにはAndroidの設定で通知を許可してください。",
     )
 
     private fun notificationsBlockedMessage(): String = localizedText(

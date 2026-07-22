@@ -5,12 +5,10 @@ import dev.bee.kanjianki.AppLocalStoreFactory
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.MainActivity
@@ -31,20 +29,24 @@ import dev.bee.kanjianki.core.ReminderFamily
 import dev.bee.kanjianki.core.ReminderNotificationPolicy
 import dev.bee.kanjianki.core.ReminderReviewBatchPolicy
 import dev.bee.kanjianki.core.ReminderSchedulePolicy
+import dev.bee.kanjianki.core.ReminderSnoozePolicy
 import dev.bee.kanjianki.core.ReminderThrottlePolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.time.AppClock
 
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"
-    private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
     const val REMINDER_CHANNEL_ID = "kani_study_reminders"
     private const val CHANNEL_ID = REMINDER_CHANNEL_ID
     const val ACTION_REMINDER_DISMISSED: String = "dev.bee.kanjianki.action.REMINDER_DISMISSED"
     const val ACTION_REMINDER_SNOOZED: String = "dev.bee.kanjianki.action.REMINDER_SNOOZED"
     const val EXTRA_REMINDER_FAMILY: String = "dev.bee.kanjianki.extra.REMINDER_FAMILY"
+    const val EXTRA_REMINDER_HOUR: String = "dev.bee.kanjianki.extra.REMINDER_HOUR"
+    const val EXTRA_REMINDER_MINUTE: String = "dev.bee.kanjianki.extra.REMINDER_MINUTE"
+    const val EXTRA_REMINDER_SNOOZE_REPOST: String = "dev.bee.kanjianki.extra.REMINDER_SNOOZE_REPOST"
     private const val REQUEST_CODE = 2701
     private const val NOTIFICATION_ID = 2702
     private const val DISMISS_REQUEST_CODE = 2703
@@ -120,7 +122,47 @@ object ReminderScheduler {
             services.cancelAlarm()
             return
         }
-        services.scheduleAlarm(nextTriggerMillis(settings, nowMillis))
+        services.scheduleAlarm(nextTriggerMillis(settings, nowMillis), settings.hour, settings.minute)
+    }
+
+    @JvmStatic
+    fun scheduleSnooze(context: Context?, family: String) {
+        if (context == null) {
+            return
+        }
+        AppLocalStoreFactory.create(context).use { store ->
+            scheduleSnooze(
+                store.reminderSettings(),
+                store.reminderAntiSpamSettings(),
+                androidReminderServices(context),
+                AppClock.systemClock().nowMillis(),
+                family,
+            )
+        }
+    }
+
+    @JvmStatic
+    internal fun scheduleSnooze(
+        settings: LocalStoreBase.ReminderSettings?,
+        antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
+        services: ReminderServices,
+        nowMillis: Long,
+        family: String = "",
+    ) {
+        if (settings == null || !settings.enabled) {
+            services.cancelAlarm()
+            return
+        }
+        services.scheduleSnoozeAlarm(
+            ReminderSnoozePolicy.rearmTime(
+                nowMillis,
+                antiSpam.quietStartMinuteOfDay,
+                antiSpam.quietEndMinuteOfDay,
+            ),
+            settings.hour,
+            settings.minute,
+            family,
+        )
     }
 
     private fun schedule(
@@ -133,7 +175,7 @@ object ReminderScheduler {
             services.cancelAlarm()
             return
         }
-        services.scheduleAlarm(nextAlarmMillis(settings, store, nowMillis))
+        services.scheduleAlarm(nextAlarmMillis(settings, store, nowMillis), settings.hour, settings.minute)
     }
 
     /**
@@ -201,8 +243,7 @@ object ReminderScheduler {
      */
     @JvmStatic
     fun cancelPostedNotification(context: Context?) {
-        val manager = context?.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        manager.cancel(NOTIFICATION_ID)
+        context?.let { AndroidNotificationGateway(it).cancel(NOTIFICATION_ID) }
     }
 
     @JvmStatic
@@ -225,8 +266,7 @@ object ReminderScheduler {
 
     @JvmStatic
     fun hasRuntimeNotificationPermission(context: Context, sdkInt: Int): Boolean {
-        return sdkInt < 33 ||
-            context.checkSelfPermission(POST_NOTIFICATIONS_PERMISSION) == PackageManager.PERMISSION_GRANTED
+        return AndroidNotificationGateway(context, sdkInt).hasRuntimePermission()
     }
 
     @JvmStatic
@@ -249,7 +289,22 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        showReminderNotification(context, androidReminderServices(context), clock)
+        showReminderNotification(context, androidReminderServices(context), clock, false, "")
+    }
+
+    @SuppressLint("MissingPermission")
+    @JvmStatic
+    fun showReminderNotification(context: Context?, snoozeRepost: Boolean, snoozedFamily: String) {
+        if (context == null) {
+            return
+        }
+        showReminderNotification(
+            context,
+            androidReminderServices(context),
+            AppClock.systemClock(),
+            snoozeRepost,
+            snoozedFamily,
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -261,69 +316,154 @@ object ReminderScheduler {
     @SuppressLint("MissingPermission")
     @JvmStatic
     fun showReminderNotification(context: Context?, services: ReminderServices, clock: AppClock?) {
+        showReminderNotification(context, services, clock, false, "")
+    }
+
+    @SuppressLint("MissingPermission")
+    @JvmStatic
+    fun showReminderNotification(
+        context: Context?,
+        services: ReminderServices,
+        clock: AppClock?,
+        snoozeRepost: Boolean,
+        snoozedFamily: String,
+    ) {
         if (!notificationsAllowed(services) || context == null) {
             return
         }
+        val reservation = snoozeReservation(snoozeRepost, snoozedFamily) ?: return
         AppLocalStoreFactory.create(context).use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
-            val plan = evaluate(store, now) ?: return@use
+            val plan = evaluate(store, now, reservation.family) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.
             // A blocked post leaves the alarm to re-arm for the next eligible time.
-            if (!plan.throttleDecision.allow) {
+            if (!shouldPost(plan, reservation.family)) {
                 return@use
             }
             services.ensureNotificationChannel()
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return@use
-            val open = Intent(context, MainActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            val contentIntent = PendingIntent.getActivity(
-                context,
-                REQUEST_CODE,
-                open,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val studyIntent = Intent(context, MainActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
-            val studyPendingIntent = PendingIntent.getActivity(
-                context,
-                STUDY_ACTION_REQUEST_CODE,
-                studyIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val snoozeIntent = Intent(context, ReminderReceiver::class.java)
-                .setAction(ACTION_REMINDER_SNOOZED)
-                .putExtra(EXTRA_REMINDER_FAMILY, plan.family ?: "")
-            val snoozePendingIntent = PendingIntent.getBroadcast(
-                context,
-                SNOOZE_ACTION_REQUEST_CODE,
-                snoozeIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            val notification = Notification.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(plan.copy.title)
-                .setContentText(plan.copy.message)
-                .setStyle(Notification.BigTextStyle().bigText(plan.copy.message))
-                .setContentIntent(contentIntent)
-                .setAutoCancel(true)
-                // Replacing the single notification slot (ID 2702) in place must not
-                // re-buzz: without this, an immediate re-post (D1) or a fresh-state
-                // recompute alerts the user twice for one visible card.
-                .setOnlyAlertOnce(true)
-                .setDeleteIntent(dismissIntent(context, plan.family))
-                .setColor(Color.rgb(255, 76, 118))
-                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
-                .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
-                .build()
-            manager.notify(NOTIFICATION_ID, notification)
-            store.recordReminderPosted(now, plan.family, plan.signature, plan.dailyTimeOverride)
-            if (plan.reviewBatch) {
-                // Keep the legacy per-day review counter in sync so the hard 2/day
-                // cap continues to engage alongside the new throttle.
-                store.recordReviewReminderNotificationShown(now)
+            val notification = reminderNotification(context, plan)
+            if (!AndroidNotificationGateway(context).post(NOTIFICATION_ID, notification)) {
+                return@use
             }
+            recordPostedReminder(store, now, plan, reservation.family)
         }
+    }
+
+    private data class SnoozeReservation(val family: ReminderFamily?)
+
+    private fun snoozeReservation(snoozeRepost: Boolean, rawFamily: String): SnoozeReservation? {
+        if (!snoozeRepost) {
+            return SnoozeReservation(null)
+        }
+        return reminderFamilyOrNull(rawFamily)?.let(::SnoozeReservation)
+    }
+
+    private fun shouldPost(plan: PlannedReminder, reservedFamily: ReminderFamily?): Boolean {
+        return plan.throttleDecision.allow || reservedFamily != null
+    }
+
+    private fun reminderNotification(context: Context, plan: PlannedReminder): Notification {
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            REQUEST_CODE,
+            reminderOpenIntent(context, plan.family),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val studyIntent = Intent(context, MainActivity::class.java)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+        val studyPendingIntent = PendingIntent.getActivity(
+            context,
+            STUDY_ACTION_REQUEST_CODE,
+            studyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val snoozeIntent = Intent(context, ReminderReceiver::class.java)
+            .setAction(ACTION_REMINDER_SNOOZED)
+            .putExtra(EXTRA_REMINDER_FAMILY, plan.family)
+        val snoozePendingIntent = PendingIntent.getBroadcast(
+            context,
+            SNOOZE_ACTION_REQUEST_CODE,
+            snoozeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return Notification.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(plan.copy.title)
+            .setContentText(plan.copy.message)
+            .setStyle(Notification.BigTextStyle().bigText(plan.copy.message))
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            // Replacing the single notification slot (ID 2702) in place must not
+            // re-buzz: without this, an immediate re-post (D1) or a fresh-state
+            // recompute alerts the user twice for one visible card.
+            .setOnlyAlertOnce(true)
+            .setDeleteIntent(dismissIntent(context, plan.family))
+            .setCategory(Notification.CATEGORY_REMINDER)
+            .setColor(Color.rgb(255, 76, 118))
+            .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderStudyNowAction(), studyPendingIntent).build())
+            .addAction(Notification.Action.Builder(null, HomeTextCopy.reminderSnoozeAction(), snoozePendingIntent).build())
+            .build()
+    }
+
+    private fun recordPostedReminder(
+        store: LocalStore,
+        nowMillis: Long,
+        plan: PlannedReminder,
+        reservedFamily: ReminderFamily?,
+    ) {
+        if (reservedFamily == null) {
+            store.recordReminderPosted(nowMillis, plan.family, plan.signature, plan.dailyTimeOverride)
+        } else {
+            store.recordReminderReposted(nowMillis, plan.signature)
+        }
+        if (plan.reviewBatch && reservedFamily == null) {
+            // Keep the legacy per-day review counter in sync so the hard 2/day
+            // cap continues to engage alongside the new throttle.
+            store.recordReviewReminderNotificationShown(nowMillis)
+        }
+    }
+
+    @JvmStatic
+    fun reminderOpenIntent(context: Context, family: String?): Intent {
+        return Intent(context, MainActivity::class.java)
+            .apply {
+                if (family != ReminderFamily.SYNC.name) {
+                    putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+                } else {
+                    putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
+                }
+            }
+            .setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
+    }
+
+    @JvmStatic
+    fun dailyReminderIntent(
+        context: Context,
+        hour: Int,
+        minute: Int,
+        snoozeRepost: Boolean = false,
+        family: String = "",
+    ): Intent {
+        return Intent(context, ReminderReceiver::class.java)
+            .setAction(ACTION_DAILY_REMINDER)
+            .putExtra(EXTRA_REMINDER_HOUR, hour)
+            .putExtra(EXTRA_REMINDER_MINUTE, minute)
+            .putExtra(EXTRA_REMINDER_SNOOZE_REPOST, snoozeRepost)
+            .putExtra(EXTRA_REMINDER_FAMILY, family)
+    }
+
+    @JvmStatic
+    fun scheduleFallbackDailyReminder(context: Context?, hour: Int, minute: Int) {
+        if (context == null) {
+            return
+        }
+        val settings = LocalStoreBase.ReminderSettings(true, hour, minute).normalized()
+        schedule(settings, androidReminderServices(context), AppClock.systemClock().nowMillis())
     }
 
     private fun dismissIntent(context: Context, family: String?): PendingIntent {
@@ -342,7 +482,11 @@ object ReminderScheduler {
     fun androidReminderServices(context: Context): ReminderServices = AndroidReminderServices(context)
 
     interface ReminderServices {
-        fun scheduleAlarm(triggerAtMillis: Long)
+        fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int)
+
+        fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
+            scheduleAlarm(triggerAtMillis, hour, minute)
+        }
 
         fun cancelAlarm()
 
@@ -356,26 +500,41 @@ object ReminderScheduler {
     }
 
     private class AndroidReminderServices(private val context: Context) : ReminderServices {
-        override fun scheduleAlarm(triggerAtMillis: Long) {
+        private val notifications = AndroidNotificationGateway(context)
+
+        override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT) ?: return
-            alarmManager.set(
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false, "") ?: return
+            alarmManager.setAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 triggerAtMillis,
                 pendingIntent
             )
         }
 
+        override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true, family) ?: return
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        }
+
         override fun cancelAlarm() {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE)
-            if (alarmManager != null && pendingIntent != null) {
-                alarmManager.cancel(pendingIntent)
+            val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false, "")
+            if (pendingIntent != null) {
+                alarmManager?.cancel(pendingIntent)
+                pendingIntent.cancel()
             }
         }
 
-        private fun alarmIntent(lookupFlag: Int): PendingIntent? {
-            val intent = Intent(context, ReminderReceiver::class.java).setAction(ACTION_DAILY_REMINDER)
+        private fun alarmIntent(
+            lookupFlag: Int,
+            hour: Int,
+            minute: Int,
+            snoozeRepost: Boolean,
+            family: String,
+        ): PendingIntent? {
+            val intent = dailyReminderIntent(context, hour, minute, snoozeRepost, family)
             return PendingIntent.getBroadcast(
                 context,
                 REQUEST_CODE,
@@ -385,38 +544,27 @@ object ReminderScheduler {
         }
 
         override fun hasRuntimeNotificationPermission(): Boolean {
-            return ReminderScheduler.hasRuntimeNotificationPermission(context)
+            return notifications.hasRuntimePermission()
         }
 
         override fun areNotificationsEnabled(): Boolean {
-            return ReminderScheduler.areNotificationsEnabled(notificationStatus())
+            return notifications.areNotificationsEnabled()
         }
 
         override fun reminderChannelImportance(): Int? {
-            val manager = notificationManager() ?: return NotificationManager.IMPORTANCE_NONE
-            val channel = manager.getNotificationChannel(CHANNEL_ID)
-            return channel?.importance
+            if (!notifications.hasManager()) {
+                return NotificationManager.IMPORTANCE_NONE
+            }
+            return notifications.channelImportance(CHANNEL_ID)
         }
 
         override fun ensureNotificationChannel() {
-            val manager = notificationManager() ?: return
-            val channel = NotificationChannel(
+            notifications.ensureChannel(
                 CHANNEL_ID,
                 ReminderCopyPolicy.notificationChannelName(),
-                NotificationManager.IMPORTANCE_DEFAULT
+                ReminderCopyPolicy.notificationChannelDescription(),
+                NotificationManager.IMPORTANCE_DEFAULT,
             )
-            channel.description = ReminderCopyPolicy.notificationChannelDescription()
-            channel.setShowBadge(true)
-            manager.createNotificationChannel(channel)
-        }
-
-        private fun notificationManager(): NotificationManager? {
-            return context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        }
-
-        private fun notificationStatus(): NotificationStatus? {
-            val manager = notificationManager() ?: return null
-            return NotificationStatus { manager.areNotificationsEnabled() }
         }
     }
 
@@ -477,24 +625,42 @@ object ReminderScheduler {
         val throttleDecision: dev.bee.kanjianki.core.ReminderThrottlePolicy.Decision,
     )
 
-    private fun evaluate(store: LocalStore, nowMillis: Long): PlannedReminder? {
+    private fun evaluate(
+        store: LocalStore,
+        nowMillis: Long,
+        reservedFamily: ReminderFamily? = null,
+    ): PlannedReminder? {
         val rows = store.activeDashboardRows()
         val eligibleItems = eligibleReminderItems(store, rows)
         val streak = store.studyStreak(nowMillis)
         val antiSpam = store.reminderAntiSpamSettings()
         val throttleState = store.reminderThrottleState(nowMillis)
         val settings = store.reminderSettings()
-        val dailyTimeOverride = isDailyReminderTime(settings, nowMillis) && !throttleState.dailyOverrideUsedToday
+        val dailyTimeOverride = reservedFamily == null &&
+            isDailyReminderTime(settings, nowMillis) &&
+            !throttleState.dailyOverrideUsedToday
 
         if (streak.studiedToday) {
+            if (reservedFamily != null && reservedFamily != ReminderFamily.DUE) {
+                return null
+            }
             // Studied today: only a genuine review batch may fire. A daily-time
             // override lowers the minimum batch to 1 so the once-a-day nudge still
             // works even for a small tail.
-            val minBatch = if (dailyTimeOverride) 1 else ReminderReviewBatchPolicy.DEFAULT_MIN_BATCH_SIZE
+            val minBatch = if (dailyTimeOverride || reservedFamily != null) {
+                1
+            } else {
+                ReminderReviewBatchPolicy.DEFAULT_MIN_BATCH_SIZE
+            }
             val batch = ReminderReviewBatchPolicy.nextBatch(
                 nowMillis,
                 eligibleItems,
-                reviewNotificationsToday(store, antiSpam, nowMillis),
+                reviewNotificationsToday(
+                    store,
+                    antiSpam,
+                    nowMillis,
+                    reserveOriginalPost = reservedFamily == ReminderFamily.DUE,
+                ),
                 minBatch,
             ) ?: return null
             val signature = ReminderThrottlePolicy.signatureFor(batch.dueCount, batch.latestDueAtMillis)
@@ -512,8 +678,20 @@ object ReminderScheduler {
 
         // Not studied today: the decision policy drives the daily reminder,
         // wired with quiet hours, per-family caps, and dismissed families (D3).
-        val decision = dailyReminderDecision(store, rows, eligibleItems, streak, antiSpam, throttleState, nowMillis)
-        if (!decision.shouldSchedule) {
+        val decision = dailyReminderDecision(
+            dailyStudyPlan(
+                rows,
+                eligibleItems,
+                streak,
+                store.latestSuccessfulSyncFinishedAt(),
+                nowMillis,
+            ),
+            antiSpam,
+            throttleState,
+            nowMillis,
+            reservedFamily,
+        )
+        if (!decision.shouldSchedule || (reservedFamily != null && decision.family != reservedFamily)) {
             return null
         }
         val signature = ReminderThrottlePolicy.signatureFor(1, decision.triggerAtMillis)
@@ -553,10 +731,12 @@ object ReminderScheduler {
         store: LocalStore,
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         nowMillis: Long,
+        reserveOriginalPost: Boolean = false,
     ): Int {
         // Feed the batch policy an effective "already shown" count that also
         // enforces the user's max-per-day setting when it is below the hard cap.
-        val shown = store.reviewReminderNotificationsToday(nowMillis)
+        val rawShown = store.reviewReminderNotificationsToday(nowMillis)
+        val shown = if (reserveOriginalPost) (rawShown - 1).coerceAtLeast(0) else rawShown
         val allowed = antiSpam.maxRemindersPerDay
         // If the user allows fewer than the batch policy's own 2/day fuse, bump the
         // reported count so the batch stops sooner.
@@ -564,15 +744,12 @@ object ReminderScheduler {
     }
 
     private fun dailyReminderDecision(
-        store: LocalStore,
-        rows: List<RecordsImportModels.DashboardRow>,
-        eligibleItems: List<RecordsStudyModels.StudyItem>,
-        streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
+        plan: DailyStudyPlan,
         antiSpam: LocalStoreBase.ReminderAntiSpamSettings,
         throttleState: LocalStoreBase.ReminderThrottleState,
         nowMillis: Long,
+        reservedFamily: ReminderFamily? = null,
     ): dev.bee.kanjianki.core.DailyReminderDecision {
-        val plan = dailyStudyPlan(rows, eligibleItems, streak, store.latestSuccessfulSyncFinishedAt(), nowMillis)
         val nowMinuteOfDay = minuteOfDay(nowMillis)
         val quietLead = ReminderAntiSpamPolicy.quietLeadMinutesUntilStart(
             nowMinuteOfDay,
@@ -587,12 +764,32 @@ object ReminderScheduler {
                 quietHoursStartMinuteOfDay = if (quietLead != null) antiSpam.quietStartMinuteOfDay else null,
                 quietHoursLeadMinutes = quietLead ?: 60,
                 dismissedFamiliesToday = dismissed,
-                dueRemindersShownToday = throttleState.dueShownToday,
-                streakRemindersShownToday = throttleState.streakShownToday,
-                syncRemindersShownToday = throttleState.syncShownToday,
+                dueRemindersShownToday = reservedPostCount(
+                    throttleState.dueShownToday,
+                    ReminderFamily.DUE,
+                    reservedFamily,
+                ),
+                streakRemindersShownToday = reservedPostCount(
+                    throttleState.streakShownToday,
+                    ReminderFamily.STREAK,
+                    reservedFamily,
+                ),
+                syncRemindersShownToday = reservedPostCount(
+                    throttleState.syncShownToday,
+                    ReminderFamily.SYNC,
+                    reservedFamily,
+                ),
                 dueReminderCapPerDay = antiSpam.maxRemindersPerDay,
             ),
         )
+    }
+
+    private fun reservedPostCount(
+        shownToday: Int,
+        family: ReminderFamily,
+        reservedFamily: ReminderFamily?,
+    ): Int {
+        return if (family == reservedFamily) (shownToday - 1).coerceAtLeast(0) else shownToday
     }
 
     private fun dailyStudyPlan(
@@ -633,6 +830,10 @@ object ReminderScheduler {
             runCatching { ReminderFamily.valueOf(name) }.getOrNull()?.let { out.add(it) }
         }
         return out
+    }
+
+    private fun reminderFamilyOrNull(raw: String): ReminderFamily? {
+        return runCatching { ReminderFamily.valueOf(raw.trim()) }.getOrNull()
     }
 
     private fun isDailyReminderTime(settings: LocalStoreBase.ReminderSettings, nowMillis: Long): Boolean {

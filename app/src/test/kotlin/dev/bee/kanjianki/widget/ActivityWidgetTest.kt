@@ -91,6 +91,27 @@ class ActivityWidgetTest {
     }
 
     @Test
+    fun regularAndWideHistoryUseSpaceFillingReadableCells() {
+        assertEquals(12, activityGridCellSizeDp(ActivityWidgetTier.COMPACT))
+        assertEquals(14, activityGridCellSizeDp(ActivityWidgetTier.REGULAR))
+        assertEquals(14, activityGridCellSizeDp(ActivityWidgetTier.WIDE))
+    }
+
+    @Test
+    fun wideHistoryTitleNamesBothTheMetricAndPeriod() {
+        withLocale(Locale.ENGLISH) {
+            val layout = activityWidgetLayout(ActivityWidgetTier.WIDE, fontScale = 1f)
+            val copy = activityWidgetVisibleCopy(
+                history,
+                activityWidgetPresentation(history, ActivityWidgetTier.WIDE),
+                layout,
+            )
+
+            assertEquals("87 reviews in 35 days", copy.title)
+        }
+    }
+
+    @Test
     fun enlargedFontUsesWholeReviewCopyAndACompactGrid() {
         withLocale(Locale.ENGLISH) {
             val layout = activityWidgetLayout(ActivityWidgetTier.REGULAR, fontScale = 1.3f)

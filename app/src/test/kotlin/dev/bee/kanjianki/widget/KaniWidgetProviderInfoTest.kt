@@ -42,6 +42,7 @@ class KaniWidgetProviderInfoTest {
     @Test
     fun canonicalProviderKeepsComponentXmlConfigurationAndSizeContract() {
         val provider = providerInfo("@xml/kani_widget_info")
+        val preview = File("src/main/res/layout/kani_widget_preview.xml").readText()
 
         assertEquals("dev.bee.kanjianki.widget.KaniWidgetConfigActivity", provider.androidAttribute("configure"))
         assertEquals("reconfigurable|configuration_optional", provider.androidAttribute("widgetFeatures"))
@@ -52,6 +53,8 @@ class KaniWidgetProviderInfoTest {
         assertEquals("horizontal|vertical", provider.androidAttribute("resizeMode"))
         assertEquals("4", provider.androidAttribute("targetCellWidth"))
         assertEquals("1", provider.androidAttribute("targetCellHeight"))
+        assertTrue(preview.contains("android:minWidth=\"80dp\""))
+        assertTrue(preview.contains("android:layout_height=\"56dp\""))
     }
 
     @Test
@@ -124,10 +127,11 @@ class KaniWidgetProviderInfoTest {
         assertTrue(preview.contains("@string/activity_widget_preview_streak"))
         assertTrue(preview.contains("@string/activity_widget_preview_best"))
         assertFalse(preview.contains("@string/activity_widget_preview_stats"))
-        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 · 35 days</string>"))
+        assertTrue(english.contains("name=\"activity_widget_preview_total\">87 reviews in 35 days</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_streak\">5-day streak</string>"))
         assertTrue(english.contains("name=\"activity_widget_preview_best\">Best: 21 days</string>"))
         assertFalse(english.contains("name=\"activity_widget_preview_stats\""))
+        assertTrue(japanese.contains("name=\"activity_widget_preview_total\">35日間で復習87件</string>"))
         assertTrue(japanese.contains("name=\"activity_widget_preview_streak\">5日連続</string>"))
         assertTrue(japanese.contains("name=\"activity_widget_preview_best\">最長21日</string>"))
         assertFalse(japanese.contains("name=\"activity_widget_preview_stats\""))

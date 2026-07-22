@@ -25,6 +25,7 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
@@ -107,6 +108,18 @@ internal data class OverviewActivityStripMetrics(
 internal fun overviewActivityStripMetrics() = OverviewActivityStripMetrics(
     cellSizeDp = 9,
     gapDp = 2,
+)
+
+internal data class OverviewActionMetrics(
+    val widthDp: Int,
+    val heightDp: Int,
+    val fontSp: Int,
+)
+
+internal fun overviewActionMetrics() = OverviewActionMetrics(
+    widthDp = 80,
+    heightDp = 56,
+    fontSp = 13,
 )
 
 @Composable
@@ -258,10 +271,11 @@ private fun OverviewAction(
     action: Action,
     palette: KaniWidgetPalette,
 ) {
+    val metrics = overviewActionMetrics()
     Box(
         modifier = GlanceModifier
-            .width(64.dp)
-            .height(56.dp)
+            .width(metrics.widthDp.dp)
+            .height(metrics.heightDp.dp)
             .background(palette.primary.toProvider())
             .cornerRadius(14.dp)
             .clickable(action)
@@ -272,8 +286,9 @@ private fun OverviewAction(
             text = label,
             style = TextStyle(
                 color = palette.onPrimary.toProvider(),
-                fontSize = 13.sp,
+                fontSize = metrics.fontSp.sp,
                 fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
             ),
             maxLines = 2,
         )

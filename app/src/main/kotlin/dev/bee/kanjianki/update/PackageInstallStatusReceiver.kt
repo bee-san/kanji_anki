@@ -25,6 +25,10 @@ class PackageInstallStatusReceiver : BroadcastReceiver() {
         val statusMessage = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
         val mapped = PackageInstallStatusPolicy.mapInstallStatus(status, statusMessage)
         val now = System.currentTimeMillis()
+        if (!mapped.pendingUserAction()) {
+            // Clear stale "ready to install" UI before any store/cache work can fail.
+            UpdateNotifier.cancelPendingUpdate(context)
+        }
 
         // Does a LocalStore write plus a cache-file deletion; move off the main thread
         // and keep the broadcast alive until it finishes.

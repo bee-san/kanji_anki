@@ -1,6 +1,9 @@
 package dev.bee.kanjianki.core
 
-import java.util.Calendar
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 
 object ReminderSchedulePolicy {
     private const val REVIEW_CUTOFF_HOUR = 22
@@ -40,25 +43,24 @@ object ReminderSchedulePolicy {
     }
 
     private fun nextDailyTriggerMillis(hour: Int, minute: Int, nowMillis: Long, allowToday: Boolean): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = nowMillis
-        calendar.set(Calendar.HOUR_OF_DAY, hour)
-        calendar.set(Calendar.MINUTE, minute)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        if (!allowToday || calendar.timeInMillis <= nowMillis) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
+        val zone = ZoneId.systemDefault()
+        val now = Instant.ofEpochMilli(nowMillis)
+        val localNow = now.atZone(zone)
+        val reminderTime = LocalTime.of(hour.coerceIn(0, 23), minute.coerceIn(0, 59))
+        var trigger = ZonedDateTime.of(localNow.toLocalDate(), reminderTime, zone)
+        if (!allowToday || !trigger.toInstant().isAfter(now)) {
+            trigger = ZonedDateTime.of(localNow.toLocalDate().plusDays(1), reminderTime, zone)
         }
-        return calendar.timeInMillis
+        return trigger.toInstant().toEpochMilli()
     }
 
     private fun localTimeMillis(referenceMillis: Long, hour: Int, minute: Int): Long {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = referenceMillis
-        calendar.set(Calendar.HOUR_OF_DAY, hour)
-        calendar.set(Calendar.MINUTE, minute)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        return calendar.timeInMillis
+        val zone = ZoneId.systemDefault()
+        val localDate = Instant.ofEpochMilli(referenceMillis).atZone(zone).toLocalDate()
+        return ZonedDateTime.of(
+            localDate,
+            LocalTime.of(hour.coerceIn(0, 23), minute.coerceIn(0, 59)),
+            zone,
+        ).toInstant().toEpochMilli()
     }
 }

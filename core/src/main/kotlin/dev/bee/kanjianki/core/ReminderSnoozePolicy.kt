@@ -1,8 +1,12 @@
 package dev.bee.kanjianki.core
 
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+
 object ReminderSnoozePolicy {
     private const val SNOOZE_DURATION_MILLIS: Long = 60L * 60L * 1000L
-    private const val MINUTES_PER_DAY = 24 * 60
 
     @JvmStatic
     fun rearmTime(
@@ -16,8 +20,12 @@ object ReminderSnoozePolicy {
         }
         val rawMinuteOfDay = minuteOfDay(raw)
         if (isInsideQuietWindow(rawMinuteOfDay, quietStartMinuteOfDay, quietEndMinuteOfDay)) {
-            val minutesToEnd = (quietEndMinuteOfDay - rawMinuteOfDay + MINUTES_PER_DAY) % MINUTES_PER_DAY
-            return saturatingAdd(raw, minutesToEnd.toLong() * 60L * 1000L)
+            return quietEndMillis(
+                raw,
+                rawMinuteOfDay,
+                quietStartMinuteOfDay,
+                quietEndMinuteOfDay,
+            )
         }
         return raw
     }
@@ -34,6 +42,30 @@ object ReminderSnoozePolicy {
         val calendar = java.util.Calendar.getInstance()
         calendar.timeInMillis = millis
         return calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+    }
+
+    private fun quietEndMillis(raw: Long, rawMinuteOfDay: Int, quietStart: Int, quietEnd: Int): Long {
+        val zone = ZoneId.systemDefault()
+        val rawInstant = Instant.ofEpochMilli(raw)
+        val rawDate = rawInstant.atZone(zone).toLocalDate()
+        val endDate = if (quietStart > quietEnd && rawMinuteOfDay >= quietStart) {
+            rawDate.plusDays(1)
+        } else {
+            rawDate
+        }
+        var resolvedEnd = ZonedDateTime.of(
+            endDate,
+            LocalTime.of(quietEnd / 60, quietEnd % 60),
+            zone,
+        )
+        if (!resolvedEnd.toInstant().isAfter(rawInstant)) {
+            resolvedEnd = resolvedEnd.withLaterOffsetAtOverlap()
+        }
+        return try {
+            maxOf(raw, resolvedEnd.toInstant().toEpochMilli())
+        } catch (_: ArithmeticException) {
+            Long.MAX_VALUE
+        }
     }
 
     private fun isInsideQuietWindow(minute: Int, start: Int, end: Int): Boolean {

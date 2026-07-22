@@ -370,7 +370,8 @@ class MainActivitySettingsInstrumentedTest {
 
                 activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 9, 30)
                 val grantedReminder = requireNotNull(activity.pendingReminderSettings)
-                activity.saveGrantedReminderPermission(grantedReminder)
+                activity.store.saveReminderSettings(grantedReminder)
+                activity.handlePostNotificationPermission(true)
                 assertEquals(9, requireNotNull(activity.store.reminderSettings()).hour)
             }
         }
