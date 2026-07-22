@@ -8,7 +8,7 @@ import org.junit.Test
 
 class MainActivityHomeBrowseSearchComposeTest {
     @Test
-    fun browseScreenDataOnlyContainsKanjiInTheStudyQueue() {
+    fun browseScreenDataExcludesSuspendedRowsByDefault() {
         val items = listOf(
             inventoryItem("字A", suspended = false),
             inventoryItem("字B", suspended = true),

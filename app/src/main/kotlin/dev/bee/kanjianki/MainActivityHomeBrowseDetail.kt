@@ -41,12 +41,12 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
-                // Exclude suspended kanji in SQL (before the row cap) unless the user opted to
-                // show them, so active kanji are never crowded out of the 300-row window.
-                val items = home.store.searchKanjiInventory(
+                // Project Browse from persisted scheduler membership before the row cap. The
+                // management view also admits local suspensions so users can reverse them.
+                val items = home.store.searchStudyQueueInventory(
                     requestedQuery,
                     onlySimilarKanji,
-                    excludeLocallySuspended = !showSuspended,
+                    includeLocallySuspended = showSuspended,
                 )
                 BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, showSuspended))
             },

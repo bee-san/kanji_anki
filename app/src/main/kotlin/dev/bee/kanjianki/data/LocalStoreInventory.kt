@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyCollectionLookup
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.TextUtil
 import java.util.Collections
 import java.util.Locale
@@ -39,7 +40,9 @@ internal abstract class LocalStoreInventory(
     @Volatile
     private var cachedKanjiInventoryAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     @Volatile
-    private var cachedKanjiInventoryActiveAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    private var cachedKanjiInventoryStudyQueueAll: List<RecordsImportModels.KanjiInventoryItem>? = null
+    @Volatile
+    private var cachedKanjiInventoryStudyQueueWithSuspendedAll: List<RecordsImportModels.KanjiInventoryItem>? = null
     @Volatile
     private var cachedKanjiInventorySearches: MutableMap<String, List<RecordsImportModels.KanjiInventoryItem>>? = null
     @Volatile
@@ -116,6 +119,9 @@ internal abstract class LocalStoreInventory(
     private fun clearLocalStudyItemsCache() {
         cachedStudyItems = null
         cachedStudyItemsByKanji = null
+        cachedKanjiInventoryStudyQueueAll = null
+        cachedKanjiInventoryStudyQueueWithSuspendedAll = null
+        cachedKanjiInventorySearches = null
         clearTimelineCache()
         bumpNewCardSortPreviewCacheVersion()
     }
@@ -136,7 +142,8 @@ internal abstract class LocalStoreInventory(
 
     internal override fun clearKanjiInventoryAllCache() {
         cachedKanjiInventoryAll = null
-        cachedKanjiInventoryActiveAll = null
+        cachedKanjiInventoryStudyQueueAll = null
+        cachedKanjiInventoryStudyQueueWithSuspendedAll = null
         cachedKanjiInventorySearches = null
         clearTimelineCache()
     }
@@ -321,74 +328,84 @@ internal abstract class LocalStoreInventory(
     }
 
     fun searchKanjiInventory(query: String?, onlySimilarKanji: Boolean): List<RecordsImportModels.KanjiInventoryItem> {
-        return searchKanjiInventory(query, onlySimilarKanji, false)
-    }
-
-    /** Escape `\`, `%`, and `_` so a LIKE term matches those characters literally. */
-    private fun escapeLikeTerm(term: String): String {
-        return term
-            .replace("\\", "\\\\")
-            .replace("%", "\\%")
-            .replace("_", "\\_")
+        ensureDashboardCacheFresh()
+        return searchKanjiInventory(query, onlySimilarKanji, InventorySearchScope.ALL)
     }
 
     /**
-     * @param excludeLocallySuspended when true, locally suspended kanji are dropped in SQL,
-     * *before* the row cap, so a Browse (study-queue) read never loses active kanji to
-     * suspended rows that would otherwise fill the first 300 results. Callers that need the
-     * full inventory (games, study, neighbor panels) leave this false.
+     * Searches the persisted scheduler projection shown by Browse.
+     *
+     * The default variant requires a non-retired `study_items` row and hides local
+     * suspensions. The management variant also includes locally suspended inventory so a
+     * suspension can always be reversed, even after the scheduler retired that row. Applying
+     * the predicates in SQL keeps them ahead of the 300-row cap.
      */
-    fun searchKanjiInventory(
+    fun searchStudyQueueInventory(
         query: String?,
         onlySimilarKanji: Boolean,
-        excludeLocallySuspended: Boolean,
+        includeLocallySuspended: Boolean,
+    ): List<RecordsImportModels.KanjiInventoryItem> {
+        ensureDashboardCacheFresh()
+        ensureStudyItemsCacheFresh()
+        val scope = if (includeLocallySuspended) {
+            InventorySearchScope.STUDY_QUEUE_WITH_SUSPENDED
+        } else {
+            InventorySearchScope.STUDY_QUEUE
+        }
+        return searchKanjiInventory(query, onlySimilarKanji, scope)
+    }
+
+    private fun searchKanjiInventory(
+        query: String?,
+        onlySimilarKanji: Boolean,
+        scope: InventorySearchScope,
     ): List<RecordsImportModels.KanjiInventoryItem> {
         val db = readableDatabase
-        val parsed = KanjiInventorySearchQuery.parse(query)
-        val terms = parsed.terms()
-        // Keep the active (study-queue) and full reads in distinct cache slots; a term-only key
-        // would let one variant's snapshot satisfy the other and leak (or hide) suspended rows.
-        val cachePrefix = if (excludeLocallySuspended) "active " else ""
-        val cacheKey = if (!onlySimilarKanji && terms.isNotEmpty()) cachePrefix + terms.joinToString("\u0000") else null
-        if (cacheKey == null) {
-            if (!onlySimilarKanji && terms.isEmpty()) {
-                (if (excludeLocallySuspended) cachedKanjiInventoryActiveAll else cachedKanjiInventoryAll)?.let { return it }
-            }
-        } else {
-            cachedKanjiInventorySearches?.get(cacheKey)?.let { return it }
-        }
+        val terms = KanjiInventorySearchQuery.parse(query).terms()
+        cachedInventorySearch(scope, onlySimilarKanji, terms)?.let { return it }
+        val selection = inventorySearchSelection(terms, onlySimilarKanji, scope)
+        val matches = queryKanjiInventory(db, selection)
+        val ranked = rankKanjiSearchResults(db, matches, terms, onlySimilarKanji, scope)
+        cacheInventorySearch(scope, onlySimilarKanji, terms, ranked)
+        return ranked
+    }
 
-        val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
+    private fun inventorySearchSelection(
+        terms: List<String>,
+        onlySimilarKanji: Boolean,
+        scope: InventorySearchScope,
+    ): InventorySearchSelection {
         val clauses = ArrayList<String>()
         val argsList = ArrayList<String>()
-        if (terms.isNotEmpty()) {
-            for (term in terms) {
-                // Escape LIKE wildcards so a user typing % or _ searches literally
-                // rather than matching everything.
-                clauses.add("search_text LIKE ? ESCAPE '\\'")
-                argsList.add("%${escapeLikeTerm(term)}%")
-            }
+        for (term in terms) {
+            // Escape LIKE wildcards so a user typing % or _ searches literally rather than
+            // matching everything.
+            clauses.add("search_text LIKE ? ESCAPE '\\'")
+            argsList.add("%${escapeLikeTerm(term)}%")
         }
         if (onlySimilarKanji) {
-            clauses.add(
-                "EXISTS (SELECT 1 FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE " +
-                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_A=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI OR " +
-                    "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_B=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
-            )
+            clauses.add(similarKanjiInventoryClause())
         }
-        if (excludeLocallySuspended) {
-            // Apply the study-queue filter in SQL so it precedes the row cap; a Kotlin-side
-            // filter after LIMIT 300 could drop active kanji whenever suspended rows fill
-            // that first window.
-            clauses.add("$COLUMN_KANJI NOT IN (SELECT $COLUMN_KANJI FROM $TABLE_LOCAL_KANJI_SUSPENSIONS)")
+        studyQueueInventoryClause(scope)?.let { clause ->
+            clauses.add(clause)
+            argsList.add(StudyLadderRules.STATE_RETIRED)
         }
-        val selection = clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND ")
-        val args = argsList.takeIf { it.isNotEmpty() }?.toTypedArray()
+        return InventorySearchSelection(
+            clauses.takeIf { it.isNotEmpty() }?.joinToString(" AND "),
+            argsList.takeIf { it.isNotEmpty() }?.toTypedArray(),
+        )
+    }
+
+    private fun queryKanjiInventory(
+        db: SQLiteDatabase,
+        selection: InventorySearchSelection,
+    ): List<RecordsImportModels.KanjiInventoryItem> {
+        val out = ArrayList<RecordsImportModels.KanjiInventoryItem>()
         db.query(
             TABLE_KANJI_INVENTORY,
             null,
-            selection,
-            args,
+            selection.where,
+            selection.args,
             null,
             null,
             ORDER_KANJI_ASC,
@@ -398,20 +415,75 @@ internal abstract class LocalStoreInventory(
                 out.add(readInventoryItem(db, cursor))
             }
         }
-        val ranked = rankKanjiSearchResults(db, out, terms, onlySimilarKanji, excludeLocallySuspended)
-        if (!onlySimilarKanji && terms.isEmpty()) {
-            if (excludeLocallySuspended) {
-                cachedKanjiInventoryActiveAll = ranked
-            } else {
-                cachedKanjiInventoryAll = ranked
-            }
-        } else if (!onlySimilarKanji) {
-            val searches = cachedKanjiInventorySearches ?: ConcurrentHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
-                cachedKanjiInventorySearches = it
-            }
-            searches[cacheKey!!] = ranked
+        return out
+    }
+
+    private fun similarKanjiInventoryClause(): String {
+        return "EXISTS (SELECT 1 FROM $TABLE_SIMILAR_KANJI_PAIRS WHERE " +
+            "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_A=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI OR " +
+            "$TABLE_SIMILAR_KANJI_PAIRS.$COLUMN_KANJI_B=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
+    }
+
+    private fun studyQueueInventoryClause(scope: InventorySearchScope): String? {
+        if (scope == InventorySearchScope.ALL) return null
+        val activeItem = "EXISTS (SELECT 1 FROM $TABLE_STUDY_ITEMS WHERE " +
+            "$TABLE_STUDY_ITEMS.$COLUMN_KANJI=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI AND " +
+            "$TABLE_STUDY_ITEMS.$COLUMN_STATE<>?)"
+        val locallySuspended = "EXISTS (SELECT 1 FROM $TABLE_LOCAL_KANJI_SUSPENSIONS WHERE " +
+            "$TABLE_LOCAL_KANJI_SUSPENSIONS.$COLUMN_KANJI=$TABLE_KANJI_INVENTORY.$COLUMN_KANJI)"
+        return if (scope == InventorySearchScope.STUDY_QUEUE_WITH_SUSPENDED) {
+            "($activeItem OR $locallySuspended)"
+        } else {
+            "($activeItem AND NOT $locallySuspended)"
         }
-        return ranked
+    }
+
+    private fun cachedInventorySearch(
+        scope: InventorySearchScope,
+        onlySimilarKanji: Boolean,
+        terms: List<String>,
+    ): List<RecordsImportModels.KanjiInventoryItem>? {
+        if (onlySimilarKanji) return null
+        if (terms.isNotEmpty()) return cachedKanjiInventorySearches?.get(inventorySearchCacheKey(scope, terms))
+        return when (scope) {
+            InventorySearchScope.ALL -> cachedKanjiInventoryAll
+            InventorySearchScope.STUDY_QUEUE -> cachedKanjiInventoryStudyQueueAll
+            InventorySearchScope.STUDY_QUEUE_WITH_SUSPENDED -> cachedKanjiInventoryStudyQueueWithSuspendedAll
+        }
+    }
+
+    private fun cacheInventorySearch(
+        scope: InventorySearchScope,
+        onlySimilarKanji: Boolean,
+        terms: List<String>,
+        results: List<RecordsImportModels.KanjiInventoryItem>,
+    ) {
+        if (onlySimilarKanji) return
+        if (terms.isNotEmpty()) {
+            val searches = cachedKanjiInventorySearches
+                ?: ConcurrentHashMap<String, List<RecordsImportModels.KanjiInventoryItem>>().also {
+                    cachedKanjiInventorySearches = it
+                }
+            searches[inventorySearchCacheKey(scope, terms)] = results
+            return
+        }
+        when (scope) {
+            InventorySearchScope.ALL -> cachedKanjiInventoryAll = results
+            InventorySearchScope.STUDY_QUEUE -> cachedKanjiInventoryStudyQueueAll = results
+            InventorySearchScope.STUDY_QUEUE_WITH_SUSPENDED -> cachedKanjiInventoryStudyQueueWithSuspendedAll = results
+        }
+    }
+
+    private fun inventorySearchCacheKey(scope: InventorySearchScope, terms: List<String>): String {
+        return scope.name + "\u0001" + terms.joinToString("\u0000")
+    }
+
+    /** Escape `\`, `%`, and `_` so a LIKE term matches those characters literally. */
+    private fun escapeLikeTerm(term: String): String {
+        return term
+            .replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
     }
 
     /**
@@ -428,7 +500,7 @@ internal abstract class LocalStoreInventory(
         matches: List<RecordsImportModels.KanjiInventoryItem>,
         terms: List<String>,
         onlySimilarKanji: Boolean,
-        excludeLocallySuspended: Boolean,
+        scope: InventorySearchScope,
     ): List<RecordsImportModels.KanjiInventoryItem> {
         if (terms.isEmpty()) {
             return matches
@@ -448,15 +520,48 @@ internal abstract class LocalStoreInventory(
         val exactGlyph = if (terms.size == 1) TextUtil.normalizeSingleKanji(terms[0]) else ""
         if (!onlySimilarKanji && exactGlyph.isNotEmpty() && withExact.none { it.kanji == exactGlyph }) {
             readInventoryItem(db, exactGlyph)?.let { item ->
-                // An active (study-queue) read must not resurrect a suspended row that the SQL
-                // filter deliberately excluded, even to satisfy the single-glyph restore.
-                if (!(excludeLocallySuspended && item.suspended)) {
+                // Exact-row restoration runs after LIMIT, so it must enforce the same scheduler
+                // scope as the main query instead of resurrecting retired or unadmitted rows.
+                if (inventoryItemMatchesScope(db, item, scope)) {
                     withExact.add(item)
                 }
             }
         }
         return withExact.sortedBy { item -> if (queryGlyphs.contains(item.kanji)) 0 else 1 }
     }
+
+    private fun inventoryItemMatchesScope(
+        db: SQLiteDatabase,
+        item: RecordsImportModels.KanjiInventoryItem,
+        scope: InventorySearchScope,
+    ): Boolean {
+        if (scope == InventorySearchScope.ALL) return true
+        if (scope == InventorySearchScope.STUDY_QUEUE && item.suspended) return false
+        if (scope == InventorySearchScope.STUDY_QUEUE_WITH_SUSPENDED && item.suspended) return true
+        db.query(
+            TABLE_STUDY_ITEMS,
+            arrayOf(COLUMN_KANJI),
+            "$COLUMN_KANJI=? AND $COLUMN_STATE<>?",
+            arrayOf(item.kanji, StudyLadderRules.STATE_RETIRED),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return cursor.moveToFirst()
+        }
+    }
+
+    private enum class InventorySearchScope {
+        ALL,
+        STUDY_QUEUE,
+        STUDY_QUEUE_WITH_SUSPENDED,
+    }
+
+    private data class InventorySearchSelection(
+        val where: String?,
+        val args: Array<String>?,
+    )
 
     fun locallySuspendedKanji(): Set<String> {
         ensureDashboardCacheFresh()

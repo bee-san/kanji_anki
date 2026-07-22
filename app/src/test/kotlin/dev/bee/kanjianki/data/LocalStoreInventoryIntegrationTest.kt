@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.StudyLadderRules
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -139,6 +140,38 @@ class LocalStoreInventoryIntegrationTest {
     }
 
     @Test
+    fun studyQueueSearchFiltersSchedulerMembershipBeforeLimitAndExactRestore() {
+        repeat(301) { index ->
+            insertInventoryItem("字$index", "unadmitted $index")
+        }
+        insertInventoryItem("龍", "dragon")
+        insertStudyItem("龍", StudyLadderRules.STATE_NEW)
+        insertInventoryItem("亀", "turtle")
+        insertStudyItem("亀", StudyLadderRules.STATE_RETIRED)
+
+        val queue = store.searchStudyQueueInventory("", false, includeLocallySuspended = false)
+
+        assertEquals(listOf("龍"), queue.map { it.kanji })
+        assertTrue(store.searchStudyQueueInventory("亀", false, false).isEmpty())
+    }
+
+    @Test
+    fun studyQueueManagementIncludesSuspensionsWithoutLeakingUnadmittedRows() {
+        insertInventoryItem("水", "water")
+        insertStudyItem("水", StudyLadderRules.STATE_NEW)
+        insertInventoryItem("火", "fire")
+        store.setKanjiLocallySuspended("火", true, 1_000L)
+        insertInventoryItem("木", "tree")
+
+        val queue = store.searchStudyQueueInventory("", false, includeLocallySuspended = false)
+        val management = store.searchStudyQueueInventory("", false, includeLocallySuspended = true)
+
+        assertEquals(setOf("水"), queue.map { it.kanji }.toSet())
+        assertEquals(setOf("水", "火"), management.map { it.kanji }.toSet())
+        assertTrue(management.first { it.kanji == "火" }.suspended)
+    }
+
+    @Test
     fun timelineForKanjiWithNoEventsReturnsEmptyTimeline() {
         val timeline = store.timelineForKanji("水")
         assertNotNull(timeline)
@@ -183,5 +216,28 @@ class LocalStoreInventoryIntegrationTest {
         val results = store.searchKanjiInventory("")
         assertNotNull(results)
         thread.join()
+    }
+
+    private fun insertStudyItem(kanji: String, state: String) {
+        val values = ContentValues().apply {
+            put(LocalStoreBase.COLUMN_KANJI, kanji)
+            put(LocalStoreBase.COLUMN_STATE, state)
+            put("due_at", 0L)
+            put("stability", 0.4)
+            put("difficulty", 5.0)
+            put("total_reviews", 0)
+            put("lapses", 0)
+            put("learning_step", 0)
+            put("writing_level", 0)
+            put(LocalStoreBase.COLUMN_ANSWER_SIGNATURE, "signature-$kanji")
+            put(LocalStoreBase.COLUMN_CREATED_AT, 0L)
+        }
+        store.writableDatabase.insertWithOnConflict(
+            LocalStoreBase.TABLE_STUDY_ITEMS,
+            null,
+            values,
+            android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE,
+        )
+        store.clearStudyItemsCache()
     }
 }
