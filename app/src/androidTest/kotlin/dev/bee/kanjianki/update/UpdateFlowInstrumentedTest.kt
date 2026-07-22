@@ -69,10 +69,12 @@ class UpdateFlowInstrumentedTest {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase(DATABASE_NAME)
         clearUpdatesCache()
+        UpdateNotifier.cancelPendingUpdate(context)
     }
 
     @After
     fun tearDown() {
+        UpdateNotifier.cancelPendingUpdate(context)
         context.deleteDatabase(DATABASE_NAME)
         clearUpdatesCache()
     }
@@ -129,6 +131,39 @@ class UpdateFlowInstrumentedTest {
             assertEquals("Install failed: blocked by Android.", status.lastResult)
             assertEquals("v1.0.0", status.lastVersion)
             assertFalse(status.hasPendingUpdate())
+        }
+    }
+
+    @Test
+    fun terminalPackageInstallStatusClearsThePendingUpdateNotification() {
+        InstrumentationRegistry.getInstrumentation().uiAutomation
+            .adoptShellPermissionIdentity(Manifest.permission.POST_NOTIFICATIONS)
+        try {
+            val controller = UpdateNotifier.AndroidNotificationController(context, 33)
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            assertTrue(controller.ensureChannel("App updates", "Friendly Kani update prompts."))
+            assertTrue(controller.notifyUpdate("Kani update ready", "Ready"))
+            assertTrue(
+                manager.activeNotifications.any {
+                    it.notification.category == android.app.Notification.CATEGORY_STATUS
+                },
+            )
+
+            val intent = PackageInstallStatusReceiver.callbackIntent(
+                context,
+                "finished.apk",
+                "v1.0.0",
+                GitHubUpdater.UpdateSource.AUTOMATIC,
+            ).putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_SUCCESS)
+            PackageInstallStatusReceiver().onReceive(context, intent)
+
+            assertFalse(
+                manager.activeNotifications.any {
+                    it.notification.category == android.app.Notification.CATEGORY_STATUS
+                },
+            )
+        } finally {
+            InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }
     }
 
@@ -351,8 +386,8 @@ class UpdateFlowInstrumentedTest {
         val noManagerController = UpdateNotifier.AndroidNotificationController(noManager, 33)
 
         assertFalse(noManagerController.areNotificationsEnabled())
-        noManagerController.ensureChannel("App updates", "Friendly Kani update prompts.")
-        noManagerController.notifyUpdate("Kani update ready", "Ready")
+        assertFalse(noManagerController.ensureChannel("App updates", "Friendly Kani update prompts."))
+        assertFalse(noManagerController.notifyUpdate("Kani update ready", "Ready"))
     }
 
     @Test
@@ -363,8 +398,13 @@ class UpdateFlowInstrumentedTest {
 
             assertTrue(controller.hasRuntimeNotificationPermission())
             assertTrue(controller.areNotificationsEnabled())
-            controller.ensureChannel("App updates", "Friendly Kani update prompts.")
-            controller.notifyUpdate("Kani update ready", "Ready")
+            assertTrue(controller.ensureChannel("App updates", "Friendly Kani update prompts."))
+            assertEquals(NotificationManager.IMPORTANCE_DEFAULT, controller.channelImportance())
+            assertTrue(controller.notifyUpdate("Kani update ready", "Ready"))
+            val posted = (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .activeNotifications
+                .single { it.notification.category == android.app.Notification.CATEGORY_STATUS }
+            assertEquals(android.app.Notification.CATEGORY_STATUS, posted.notification.category)
         } finally {
             InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }

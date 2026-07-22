@@ -51,11 +51,40 @@ class UpdateNotifierTest {
         assertTrue(controller.notificationsQueried)
         assertTrue(controller.channelCreated)
         assertTrue(controller.notified)
-        assertEquals("channel notify", controller.events.toString())
+        assertEquals("channel importance notify", controller.events.toString())
         assertEquals("App updates", controller.channelName)
         assertEquals("Friendly Kani update prompts.", controller.channelDescription)
         assertEquals("Kani update ready to install", controller.title)
         assertEquals("Version 0.4.3 is ready. Open Kani to install it.", controller.body)
+    }
+
+    @Test
+    fun showPendingUpdateStopsWhenTheUpdateChannelIsBlocked() {
+        val controller = Controller().apply {
+            runtimePermission = true
+            notificationsEnabled = true
+            channelImportance = NotificationManager.IMPORTANCE_NONE
+        }
+
+        val shown = UpdateNotifier.showPendingUpdate("v0.4.3", "ready", controller)
+
+        assertFalse(shown)
+        assertTrue(controller.channelCreated)
+        assertFalse(controller.notified)
+    }
+
+    @Test
+    fun showPendingUpdateReportsARejectedNotificationPost() {
+        val controller = Controller().apply {
+            runtimePermission = true
+            notificationsEnabled = true
+            notificationAccepted = false
+        }
+
+        val shown = UpdateNotifier.showPendingUpdate("v0.4.3", "ready", controller)
+
+        assertFalse(shown)
+        assertTrue(controller.notified)
     }
 
     @Test
@@ -99,6 +128,8 @@ class UpdateNotifierTest {
         var notificationsQueried = false
         var channelCreated = false
         var notified = false
+        var notificationAccepted = true
+        var channelImportance = NotificationManager.IMPORTANCE_DEFAULT
         var channelName: String? = null
         var channelDescription: String? = null
         var title: String? = null
@@ -111,18 +142,25 @@ class UpdateNotifierTest {
             return notificationsEnabled
         }
 
-        override fun ensureChannel(name: String, description: String) {
+        override fun ensureChannel(name: String, description: String): Boolean {
             channelCreated = true
             channelName = name
             channelDescription = description
             events.append("channel")
+            return true
         }
 
-        override fun notifyUpdate(title: String, body: String) {
+        override fun channelImportance(): Int {
+            events.append(" importance")
+            return channelImportance
+        }
+
+        override fun notifyUpdate(title: String, body: String): Boolean {
             notified = true
             this.title = title
             this.body = body
             events.append(" notify")
+            return notificationAccepted
         }
     }
 }

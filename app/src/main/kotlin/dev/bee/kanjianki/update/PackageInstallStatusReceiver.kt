@@ -35,6 +35,7 @@ class PackageInstallStatusReceiver : BroadcastReceiver() {
                     store.recordAutoUpdateResult(now, message, version, apkName, message)
                     handlePendingUserAction(context, intent, source, version, message)
                 } else {
+                    UpdateNotifier.cancelPendingUpdate(context)
                     deleteCachedApk(context, apkName)
                     store.recordAutoUpdateResult(now, mapped.message(), version, "", "")
                 }
