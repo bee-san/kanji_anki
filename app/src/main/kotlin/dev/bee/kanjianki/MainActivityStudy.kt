@@ -535,9 +535,18 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         // without the active-Activity guard so the gate always reaches APPLIED.
         postToMain {
             val state = studyAnswerFeedbackState
-            if (state?.markApplied(token) == true) {
-                persistPendingStudyAnswer(state)
-            }
+            val before = state?.snapshot()?.phase
+            val applied = state?.markApplied(token) == true
+            val persisted = applied && persistPendingStudyAnswer(state)
+            val after = state?.snapshot()?.phase
+            logStudyAnswerEvent(
+                "event=${if (applied) "applied" else "apply-rejected"} " +
+                    "token_id=${studyAnswerTokenId(token)} " +
+                    "phase_before=${studyAnswerPhaseName(before)} " +
+                    "phase_after=${studyAnswerPhaseName(after)} persisted=$persisted " +
+                    "active_token_match=${activeSession?.token == token} " +
+                    "finishing=$isFinishing destroyed=$isDestroyed",
+            )
         }
     }
 
@@ -548,27 +557,43 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun continueAfterStudyAnswer(): Boolean {
-        val state = studyAnswerFeedbackState ?: return false
+        val state = studyAnswerFeedbackState
+        if (state == null) {
+            logStudyAnswerEvent("event=continue-rejected token_id=none reason=no-feedback-state")
+            return false
+        }
         var pending = studyRecoveryStore.readPending()
+        val tokenId = studyAnswerTokenId(state.sessionToken)
+        logStudyAnswerEvent(
+            "event=continue-start token_id=$tokenId " +
+                "phase=${studyAnswerPhaseName(state.snapshot().phase)} " +
+                "pending_phase=${studyAnswerPhaseName(pending?.snapshot?.feedback?.phase)} " +
+                "active_token_match=${activeSession?.token == state.sessionToken}",
+        )
         val retryCanonicalPending = pending == null ||
             (pending.snapshot.feedback.sessionToken == state.sessionToken &&
                 pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.SUBMITTING)
         if (retryCanonicalPending && canCreateContinuedHandoff(state.sessionToken)) {
-            if (!persistPendingStudyAnswer(state)) return false
+            if (!persistPendingStudyAnswer(state)) {
+                return rejectStudyAnswerContinue(tokenId, "persist-applied-envelope")
+            }
             pending = studyRecoveryStore.readPending()
-                ?: return false
+                ?: return rejectStudyAnswerContinue(tokenId, "missing-pending-after-persist")
         }
         if (!state.tryContinue()) {
-            return false
+            return rejectStudyAnswerContinue(
+                tokenId,
+                "feedback-gate-${studyAnswerPhaseName(state.snapshot().phase)}",
+            )
         }
         val continued = when {
             pending == null -> null
             canPersistContinuedHandoff(pending) -> studyRecoveryStore.continuePending(pending)
-                ?: return restoreAppliedFeedbackAfterContinueFailure(state)
+                ?: return rejectStudyAnswerContinueAfterRollback(state, tokenId, "continue-pending-cas")
             !canClearLegacyPendingAfterContinue(pending, state.sessionToken) ->
-                return restoreAppliedFeedbackAfterContinueFailure(state)
+                return rejectStudyAnswerContinueAfterRollback(state, tokenId, "pending-shape-mismatch")
             !studyRecoveryStore.clearIfUnchanged(pending) ->
-                return restoreAppliedFeedbackAfterContinueFailure(state)
+                return rejectStudyAnswerContinueAfterRollback(state, tokenId, "clear-legacy-pending-cas")
             else -> null
         }
         activeStudyRecovery = null
@@ -577,8 +602,37 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             activeSimilarWritingRepair = null
         }
         renderStudy()
+        logStudyAnswerEvent(
+            "event=continue-accepted token_id=$tokenId handoff=${continued != null}",
+        )
         return true
     }
+
+    private fun rejectStudyAnswerContinue(tokenId: String, reason: String): Boolean {
+        logStudyAnswerEvent("event=continue-rejected token_id=$tokenId reason=$reason")
+        return false
+    }
+
+    private fun rejectStudyAnswerContinueAfterRollback(
+        state: StudyAnswerFeedbackState,
+        tokenId: String,
+        reason: String,
+    ): Boolean {
+        restoreAppliedFeedbackAfterContinueFailure(state)
+        return rejectStudyAnswerContinue(tokenId, reason)
+    }
+
+    private fun logStudyAnswerEvent(details: String) {
+        if (AppDebugLog.isCapturing()) {
+            AppDebugLog.log("study-answer $details")
+        }
+    }
+
+    private fun studyAnswerPhaseName(phase: StudyAnswerFeedbackPhase?): String =
+        phase?.name?.lowercase(java.util.Locale.ROOT) ?: "none"
+
+    private fun studyAnswerTokenId(token: String): String =
+        Integer.toUnsignedString(token.hashCode(), 16)
 
     private fun canPersistContinuedHandoff(pending: StoredPendingStudyRecovery): Boolean =
         pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.APPLIED &&
