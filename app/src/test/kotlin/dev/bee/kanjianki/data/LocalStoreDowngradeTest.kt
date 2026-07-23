@@ -130,7 +130,14 @@ class LocalStoreDowngradeTest {
     fun downgradePreservesMissingKanjiSourcesAndReceipts() {
         val store = LocalStore(context)
         store.missingKanjiStore().addManualSources(
-            listOf(MissingKanjiCandidate("水", listOf("water"), jitenRank = 12)),
+            listOf(
+                MissingKanjiCandidate(
+                    "水",
+                    meanings = listOf("water"),
+                    kunReadings = listOf("みず"),
+                    jitenRank = 12,
+                ),
+            ),
             nowMillis = 100,
         )
         store.missingKanjiStore().recordExportReceipts(

@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
+import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SuspendedImportPolicy
 
@@ -38,11 +40,16 @@ internal class SqliteSyncRepository(
             )
             val nowMillis = command.timing.finishedAtMillis
             val locallySuspended = store.locallySuspendedKanji().toSet()
-            val activeRows = SuspendedImportPolicy.activeRows(command.rows, locallySuspended)
+            val queueRows = ManualKanjiAdmissionPolicy.mergeRows(
+                providerRows = command.rows,
+                candidates = store.missingKanjiStore().manualSources().map { source -> source.candidate },
+                reasonText = MissingKanjiTextCopy.dictionarySourceReason(),
+            )
+            val activeRows = SuspendedImportPolicy.activeRows(queueRows, locallySuspended)
             val currentItems = store.studyItems().toList()
             val queuePlan = command.queuePlanner.plan(
                 SyncQueuePlanningSnapshot(
-                    rows = command.rows.toList(),
+                    rows = queueRows,
                     activeRows = activeRows.toList(),
                     currentItems = currentItems,
                     locallySuspendedKanji = locallySuspended,

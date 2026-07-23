@@ -4,9 +4,12 @@ import dev.bee.kanjianki.anki.AnkiDroidCollectionInventoryGateway
 import dev.bee.kanjianki.anki.AnkiKanjiInventoryReader
 import dev.bee.kanjianki.core.AnkiKanjiInventoryProgress
 import dev.bee.kanjianki.core.DictionaryLookup
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
 import dev.bee.kanjianki.core.MissingKanjiAnalyzer
+import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.MissingKanjiTextCopy
+import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.MissingKanjiInventoryState
 import dev.bee.kanjianki.data.MissingKanjiPreferences
 import dev.bee.kanjianki.data.MissingKanjiScanStatus
@@ -22,6 +25,14 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
 
     @Volatile
     private var activeMissingKanjiScan: MissingKanjiScanTask? = null
+
+    @Volatile
+    private var activeMissingKanjiCandidatesByLiteral: Map<String, MissingKanjiCandidate> = emptyMap()
+
+    @Volatile
+    private var activeMissingKanjiOperationResult: MissingKanjiOperationResultModel? = null
+
+    private val missingKanjiOperationInProgress = AtomicBoolean(false)
 
     override fun renderMissingKanji() {
         currentHomeRouteRestoration = HomeRouteRestoration.missingKanji()
@@ -77,6 +88,12 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
                     observedKanji = published.literals,
                     range = preferences.range,
                 )
+                activeMissingKanjiCandidatesByLiteral = report.missing.associateBy(
+                    MissingKanjiCandidate::literal,
+                )
+                val activeManualLiterals = repository.manualSources()
+                    .mapTo(HashSet()) { source -> source.candidate.literal }
+                val removableManualLiterals = repository.removableManualSourceLiterals()
                 MissingKanjiContentModel.Report(
                     MissingKanjiReportUiModel(
                         reportKey = reportKey(
@@ -92,17 +109,25 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
                         ),
                         eligibleDictionaryKanjiCount = report.eligibleDictionaryKanjiCount,
                         missingKanjiCount = report.missingKanjiCount,
-                        rows = missingKanjiRows(report.missing),
+                        rows = missingKanjiRows(
+                            candidates = report.missing,
+                            activeManualLiterals = activeManualLiterals,
+                            removableManualLiterals = removableManualLiterals,
+                        ),
                         staleReason = staleReason(inventoryState, System.currentTimeMillis()),
                     ),
                 )
             } catch (_: Exception) {
+                activeMissingKanjiCandidatesByLiteral = emptyMap()
                 MissingKanjiContentModel.Error(FAILURE_DICTIONARY_UNAVAILABLE)
             }
-        } ?: contentWithoutPublishedInventory(
+        } ?: run {
+            activeMissingKanjiCandidatesByLiteral = emptyMap()
+            contentWithoutPublishedInventory(
             availability = availability,
             inventoryState = inventoryState,
-        )
+            )
+        }
         return missingKanjiScreenModel(
             content = content,
             availability = availability,
@@ -146,6 +171,7 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
         preferences: MissingKanjiPreferences,
     ): MissingKanjiScreenModel {
         val primaryAction = primaryAction(content, availability)
+        val hasReport = content is MissingKanjiContentModel.Report
         return MissingKanjiScreenModel(
             content = content,
             providerAvailability = availability,
@@ -159,7 +185,155 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
             onRangeApplied = ::applyMissingKanjiRange,
             onRangePreview = ::previewMissingKanjiRange,
             onSearchQueryChanged = ::persistMissingKanjiSearch,
+            destinations = MissingKanjiDestinationModel(
+                addToKaniEnabled = hasReport,
+                createAnkiDeckEnabled = false,
+                newPerDay = settings().newPerDay,
+                operationInProgress = missingKanjiOperationInProgress.get(),
+                onAddToKani = ::addSelectedMissingKanjiToKani,
+                onRemoveFromKani = ::removeMissingKanjiFromKani,
+            ),
+            operationResult = activeMissingKanjiOperationResult,
+            onDismissOperationResult = ::dismissMissingKanjiOperationResult,
+            onStudyNow = ::studyAdmittedMissingKanji,
         )
+    }
+
+    private fun addSelectedMissingKanjiToKani(literals: Set<String>) {
+        if (literals.isEmpty() || !missingKanjiOperationInProgress.compareAndSet(false, true)) {
+            return
+        }
+        val candidates = literals.mapNotNull(activeMissingKanjiCandidatesByLiteral::get)
+        activeMissingKanjiOperationResult = null
+        if (isMissingKanjiRouteVisible()) {
+            renderMissingKanji()
+        }
+        io.execute {
+            val result = runCatching {
+                addMissingKanjiCandidatesToKani(
+                    requestedCount = literals.size,
+                    candidates = candidates,
+                )
+            }.getOrElse {
+                MissingKanjiOperationResultModel.Failed
+            }
+            postToMainIfActive {
+                missingKanjiOperationInProgress.set(false)
+                activeMissingKanjiOperationResult = result
+                if (isMissingKanjiRouteVisible()) {
+                    renderMissingKanji()
+                }
+            }
+        }
+    }
+
+    private fun addMissingKanjiCandidatesToKani(
+        requestedCount: Int,
+        candidates: List<MissingKanjiCandidate>,
+    ): MissingKanjiOperationResultModel.KaniAdmission {
+        val repository = store.missingKanjiStore()
+        val requestedLiterals = candidates.map(MissingKanjiCandidate::literal)
+        val existingItems = store.studyItemsForKanji(requestedLiterals)
+        val activeManualLiterals = repository.manualSources()
+            .mapTo(HashSet()) { source -> source.candidate.literal }
+        val addition = ManualKanjiAdmissionPolicy.planAddition(
+            candidates = candidates,
+            existingStudyLiterals = existingItems.mapTo(HashSet()) { item -> item.kanji },
+            activeManualLiterals = activeManualLiterals,
+        )
+        val now = System.currentTimeMillis()
+        val written = repository.addManualSources(addition.candidatesToAdd, now)
+        val addedLiterals = LinkedHashSet<String>().apply {
+            addAll(written.addedLiterals)
+            addAll(written.reactivatedLiterals)
+        }
+
+        var admittedNowCount = 0
+        if (addedLiterals.isNotEmpty()) {
+            runCatching {
+                val rows = store.activeStudyDashboardRows()
+                val currentItems = store.studyItemsForKanji(rows.map { row -> row.kanji })
+                val seeded = studyQueue(
+                    rows = rows,
+                    now = now,
+                    persist = true,
+                    plan = null,
+                    currentItems = currentItems,
+                )
+                admittedNowCount = seeded.count { item ->
+                    item.kanji in addedLiterals &&
+                        item.state != StudyLadderRules.STATE_RETIRED
+                }
+            }
+        }
+        val already = LinkedHashSet<String>().apply {
+            addAll(addition.alreadyInKaniLiterals)
+            addAll(written.alreadyActiveLiterals)
+        }
+        val missingMeaning = LinkedHashSet<String>().apply {
+            addAll(addition.missingMeaningLiterals)
+            addAll(written.missingMeaningLiterals)
+        }
+        val missingReading = LinkedHashSet<String>().apply {
+            addAll(addition.missingReadingLiterals)
+            addAll(written.missingReadingLiterals)
+        }
+        return MissingKanjiOperationResultModel.KaniAdmission(
+            requestedCount = requestedCount,
+            addedCount = addedLiterals.size,
+            alreadyInKaniCount = already.size,
+            skippedMissingMeaningCount = missingMeaning.size,
+            skippedMissingReadingCount = missingReading.size,
+            invalidCount = addition.invalidLiterals.size +
+                written.invalidCount +
+                (requestedCount - candidates.size).coerceAtLeast(0),
+            admittedNowCount = admittedNowCount,
+            deferredCount = (addedLiterals.size - admittedNowCount).coerceAtLeast(0),
+        )
+    }
+
+    private fun removeMissingKanjiFromKani(literal: String) {
+        if (!missingKanjiOperationInProgress.compareAndSet(false, true)) {
+            return
+        }
+        activeMissingKanjiOperationResult = null
+        if (isMissingKanjiRouteVisible()) {
+            renderMissingKanji()
+        }
+        io.execute {
+            val result = runCatching {
+                val removed = store.missingKanjiStore().removeUnreviewedManualSources(
+                    literals = listOf(literal),
+                    nowMillis = System.currentTimeMillis(),
+                )
+                MissingKanjiOperationResultModel.KaniRemoval(
+                    literal = literal,
+                    removed = literal in removed.removedLiterals,
+                    reviewed = literal in removed.reviewedLiterals,
+                )
+            }.getOrElse {
+                MissingKanjiOperationResultModel.Failed
+            }
+            postToMainIfActive {
+                missingKanjiOperationInProgress.set(false)
+                activeMissingKanjiOperationResult = result
+                if (isMissingKanjiRouteVisible()) {
+                    renderMissingKanji()
+                }
+            }
+        }
+    }
+
+    private fun dismissMissingKanjiOperationResult() {
+        activeMissingKanjiOperationResult = null
+        if (isMissingKanjiRouteVisible()) {
+            renderMissingKanji()
+        }
+    }
+
+    private fun studyAdmittedMissingKanji() {
+        activeMissingKanjiOperationResult = null
+        startFocusedStudy()
     }
 
     private fun primaryAction(

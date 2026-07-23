@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyQueueSeeder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -286,9 +287,146 @@ class MissingKanjiStoreTest {
     }
 
     @Test
+    fun manualSourcesRejectCandidatesThatCannotFormBothStudyCores() {
+        val result = store.missingKanjiStore().addManualSources(
+            listOf(
+                candidate("水", 12, meanings = listOf("water"), kun = listOf("みず")),
+                candidate("火", 13, meanings = emptyList(), on = listOf("カ")),
+                candidate("風", 14, meanings = listOf("wind")),
+            ),
+            nowMillis = 100,
+        )
+
+        assertEquals(setOf("水"), result.addedLiterals)
+        assertEquals(setOf("火"), result.missingMeaningLiterals)
+        assertEquals(setOf("風"), result.missingReadingLiterals)
+        assertEquals(listOf("水"), store.missingKanjiStore().manualSources().map { it.candidate.literal })
+    }
+
+    @Test
+    fun unreviewedManualSourceCanBeRemovedButReviewedHistoryWins() {
+        val repository = store.missingKanjiStore()
+        val water = candidate("水", 12, meanings = listOf("water"), kun = listOf("みず"))
+        repository.addManualSources(listOf(water), nowMillis = 100)
+        val row = store.activeStudyDashboardRows().single()
+        val item = StudyQueueSeeder().seedQueue(
+            listOf(row),
+            emptyList(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            200,
+            0,
+            ladder = null,
+        ).single()
+        store.replaceStudyItems(listOf(item))
+
+        assertEquals(setOf("水"), repository.removableManualSourceLiterals())
+        val removed = repository.removeUnreviewedManualSources(listOf("水"), nowMillis = 300)
+        assertEquals(setOf("水"), removed.removedLiterals)
+        assertTrue(repository.manualSources().isEmpty())
+        assertTrue(store.studyItems().isEmpty())
+
+        repository.addManualSources(listOf(water), nowMillis = 400)
+        val restoredRow = store.activeStudyDashboardRows().single()
+        val restored = StudyQueueSeeder().seedQueue(
+            listOf(restoredRow),
+            emptyList(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+            500,
+            0,
+            ladder = null,
+        ).single()
+        store.replaceStudyItems(listOf(restored))
+        store.writableDatabase.execSQL(
+            "UPDATE ${LocalStoreBase.TABLE_STUDY_ITEMS} SET total_reviews=1 WHERE kanji='水'",
+        )
+        store.clearStudyItemsCache()
+
+        assertTrue(repository.removableManualSourceLiterals().isEmpty())
+        val protected = repository.removeUnreviewedManualSources(listOf("水"), nowMillis = 600)
+        assertEquals(setOf("水"), protected.reviewedLiterals)
+        assertTrue(repository.manualSources().single().active)
+        assertEquals(1, store.studyItems().single().totalReviews)
+    }
+
+    @Test
+    fun manualSourceWritesInvalidateDashboardViewsAcrossStoreInstances() {
+        val observer = LocalStore(context)
+        try {
+            assertTrue(observer.activeStudyDashboardRows().isEmpty())
+            store.missingKanjiStore().addManualSources(
+                listOf(candidate("水", 12, meanings = listOf("water"), kun = listOf("みず"))),
+                nowMillis = 100,
+            )
+
+            assertEquals("水", observer.activeStudyDashboardRows().single().kanji)
+            assertTrue(observer.activeDashboardRows().isEmpty())
+
+            val row = store.activeStudyDashboardRows().single()
+            val item = StudyQueueSeeder().seedQueue(
+                listOf(row),
+                emptyList(),
+                RecordsSyncModels.Settings.kikuDefaults(),
+                200,
+                0,
+                ladder = null,
+            ).single()
+            store.replaceStudyItems(listOf(item))
+
+            assertEquals("水", observer.activeDashboardRows().single().kanji)
+        } finally {
+            observer.close()
+        }
+    }
+
+    @Test
+    fun allManualSourcesRemainSchedulerVisibleWhileHomeShowsOnlyAdmittedItems() {
+        val settings = RecordsSyncModels.Settings.kikuDefaults()
+        val candidates = (1..20).map { index ->
+            candidate(
+                literal = String(Character.toChars(0x4E00 + index)),
+                rank = index,
+                meanings = listOf("meaning $index"),
+                on = listOf("オン"),
+            )
+        }
+        store.missingKanjiStore().addManualSources(candidates, nowMillis = 100)
+
+        val allRows = store.activeStudyDashboardRows()
+        assertEquals(20, allRows.size)
+        assertTrue(store.activeDashboardRows().isEmpty())
+
+        val firstDay = StudyQueueSeeder().seedQueue(
+            allRows,
+            emptyList(),
+            settings,
+            1_000,
+            0,
+            ladder = null,
+        )
+        store.replaceStudyItems(firstDay)
+        val expectedFirstDay = minOf(settings.newPerDay, settings.activeQueueCap, candidates.size)
+        assertEquals(expectedFirstDay, firstDay.count { it.state != LocalStoreBase.STATE_RETIRED })
+        assertEquals(expectedFirstDay, store.activeDashboardRows().size)
+        assertEquals(20, store.activeStudyDashboardRows().size)
+
+        val secondDayStart = 86_400_000L
+        val secondDay = StudyQueueSeeder().seedQueue(
+            store.activeStudyDashboardRows(),
+            store.studyItems(),
+            settings,
+            secondDayStart + 1_000,
+            secondDayStart,
+            ladder = null,
+        )
+        assertTrue(
+            secondDay.count { it.state != LocalStoreBase.STATE_RETIRED } > expectedFirstDay,
+        )
+    }
+
+    @Test
     fun normalConfiguredModelSyncDoesNotEraseManualSources() {
         store.missingKanjiStore().addManualSources(
-            listOf(candidate("水", 12, meanings = listOf("water"))),
+            listOf(candidate("水", 12, meanings = listOf("water"), kun = listOf("みず"))),
             nowMillis = 100,
         )
 

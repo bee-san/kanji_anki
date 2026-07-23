@@ -288,6 +288,109 @@ class MissingKanjiComposeTest {
         ).assertIsDisplayed()
     }
 
+    @Test
+    fun addToKaniRequiresConfirmationAndReportsDailyAdmission() {
+        val row = missingKanjiRows(listOf(candidate("語", "language", 301))).single()
+        var added: Set<String> = emptySet()
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "add-to-kani"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(
+                        addToKaniEnabled = true,
+                        newPerDay = 3,
+                        onAddToKani = { literals -> added = literals },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(MISSING_KANJI_LIST_TAG).performScrollToIndex(6)
+        composeRule.onNodeWithTag(missingKanjiCheckboxTag("語")).performClick()
+        composeRule.onNodeWithTag(MISSING_KANJI_ADD_TO_KANI_TAG)
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.addToKaniConfirmationTitle())
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.addToKaniConfirmationBody(1, 3))
+            .assertIsDisplayed()
+        composeRule.onNodeWithTag(MISSING_KANJI_CONFIRM_ADD_TAG).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(setOf("語"), added)
+        }
+    }
+
+    @Test
+    fun removableManualSourceIsMarkedAndConfirmedFromDetails() {
+        val row = missingKanjiRows(
+            candidates = listOf(candidate("語", "language", 301)),
+            activeManualLiterals = setOf("語"),
+            removableManualLiterals = setOf("語"),
+        ).single()
+        var removed = ""
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "remove-from-kani"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(
+                        addToKaniEnabled = true,
+                        onRemoveFromKani = { literal -> removed = literal },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(MISSING_KANJI_LIST_TAG).performScrollToIndex(6)
+        composeRule.onNodeWithText(MissingKanjiTextCopy.inKaniLabel()).assertIsDisplayed()
+        composeRule.onNodeWithTag(missingKanjiRowTag("語")).performClick()
+        composeRule.onNodeWithTag(MISSING_KANJI_REMOVE_TAG).performClick()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.removeFromKaniConfirmationTitle("語"))
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.removeFromKaniLabel()).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("語", removed)
+        }
+    }
+
+    @Test
+    fun admissionResultOffersStudyOnlyWhenAnItemWasAdmitted() {
+        var studyNow = false
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(MissingKanjiContentModel.FirstRun).copy(
+                    operationResult = MissingKanjiOperationResultModel.KaniAdmission(
+                        requestedCount = 4,
+                        addedCount = 3,
+                        alreadyInKaniCount = 1,
+                        skippedMissingMeaningCount = 0,
+                        skippedMissingReadingCount = 0,
+                        invalidCount = 0,
+                        admittedNowCount = 2,
+                        deferredCount = 1,
+                    ),
+                    onStudyNow = { studyNow = true },
+                ),
+            )
+        }
+
+        composeRule.onNodeWithText(MissingKanjiTextCopy.kaniAdmissionResultTitle())
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.studyNowLabel()).performClick()
+        composeRule.runOnIdle {
+            assertTrue(studyNow)
+        }
+    }
+
     private fun screenModel(
         content: MissingKanjiContentModel,
         availability: MissingKanjiProviderAvailability = MissingKanjiProviderAvailability.READY,

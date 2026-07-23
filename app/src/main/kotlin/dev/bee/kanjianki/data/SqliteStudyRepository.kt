@@ -10,7 +10,7 @@ internal class SqliteStudyRepository(
 ) : StudyRepository {
     override suspend fun loadQueue(nowMillis: Long) = safeStoreCall {
         store.readSnapshot {
-            val rows = store.activeDashboardRows()
+            val rows = store.activeStudyDashboardRows()
             val dayStart = LocalDayPolicy.localDayStart(nowMillis)
             StudyQueueSnapshot(
                 activeRows = rows.toList(),

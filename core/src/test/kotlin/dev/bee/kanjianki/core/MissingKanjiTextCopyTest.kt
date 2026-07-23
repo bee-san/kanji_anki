@@ -16,6 +16,8 @@ class MissingKanjiTextCopyTest {
             assertTrue(MissingKanjiTextCopy.frequencyBody().contains("Smaller rank numbers"))
             assertEquals("Jiten #2,000", MissingKanjiTextCopy.rankLabel(2_000))
             assertEquals("Unranked", MissingKanjiTextCopy.rankLabel(null))
+            assertTrue(MissingKanjiTextCopy.addToKaniConfirmationBody(25, 5).contains("5 new items per day"))
+            assertTrue(MissingKanjiTextCopy.kaniAdmissionResultBody(3, 1, 2, 1, 0).contains("3 added"))
         }
     }
 
@@ -28,6 +30,7 @@ class MissingKanjiTextCopyTest {
             assertEquals("スキャンをキャンセル", MissingKanjiTextCopy.cancelLabel())
             assertTrue(MissingKanjiTextCopy.firstRunBody().contains("すべてのノート欄"))
             assertTrue(MissingKanjiTextCopy.frequencyBody().contains("数字が小さいほど"))
+            assertTrue(MissingKanjiTextCopy.addToKaniConfirmationBody(25, 5).contains("1日最大5件"))
             assertTrue(
                 MissingKanjiTextCopy.rowDescription(
                     literal = "語",

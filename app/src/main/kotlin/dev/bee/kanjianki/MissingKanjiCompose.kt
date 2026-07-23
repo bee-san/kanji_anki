@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,8 @@ internal const val MISSING_KANJI_MAXIMUM_RANK_TAG = "missing-kanji-maximum-rank"
 internal const val MISSING_KANJI_APPLY_RANGE_TAG = "missing-kanji-apply-range"
 internal const val MISSING_KANJI_ADD_TO_KANI_TAG = "missing-kanji-add-to-kani"
 internal const val MISSING_KANJI_CREATE_ANKI_TAG = "missing-kanji-create-anki"
+internal const val MISSING_KANJI_CONFIRM_ADD_TAG = "missing-kanji-confirm-add"
+internal const val MISSING_KANJI_REMOVE_TAG = "missing-kanji-remove"
 
 internal fun missingKanjiRowTag(literal: String): String = "missing-kanji-row-$literal"
 
@@ -91,6 +94,8 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
         mutableStateOf(MissingKanjiSelection.empty())
     }
     var detailLiteral by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingAddToKani by remember { mutableStateOf<Set<String>?>(null) }
+    var pendingRemoveFromKani by remember { mutableStateOf<String?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf(model.frequency.searchQuery) }
     val listState = rememberLazyListState()
     val visibleRows = remember(report?.rows, searchQuery) {
@@ -237,7 +242,9 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
                             item(key = "destination-preview") {
                                 MissingKanjiDestinationBar(
                                     selected = selection,
-                                    destinations = model.destinations,
+                                    destinations = model.destinations.copy(
+                                        onAddToKani = { literals -> pendingAddToKani = literals },
+                                    ),
                                 )
                             }
                         }
@@ -284,7 +291,9 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
         ) {
             MissingKanjiDestinationBar(
                 selected = selection,
-                destinations = model.destinations,
+                destinations = model.destinations.copy(
+                    onAddToKani = { literals -> pendingAddToKani = literals },
+                ),
             )
         }
     }
@@ -294,6 +303,42 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
         MissingKanjiDetailsDialog(
             row = detail,
             onDismiss = { detailLiteral = null },
+            onRemove = if (detail.canRemoveFromKani) {
+                {
+                    detailLiteral = null
+                    pendingRemoveFromKani = detail.literal
+                }
+            } else {
+                null
+            },
+        )
+    }
+    pendingAddToKani?.let { literals ->
+        MissingKanjiAddConfirmationDialog(
+            count = literals.size,
+            newPerDay = model.destinations.newPerDay,
+            onConfirm = {
+                pendingAddToKani = null
+                model.destinations.onAddToKani(literals)
+            },
+            onDismiss = { pendingAddToKani = null },
+        )
+    }
+    pendingRemoveFromKani?.let { literal ->
+        MissingKanjiRemoveConfirmationDialog(
+            literal = literal,
+            onConfirm = {
+                pendingRemoveFromKani = null
+                model.destinations.onRemoveFromKani(literal)
+            },
+            onDismiss = { pendingRemoveFromKani = null },
+        )
+    }
+    model.operationResult?.let { result ->
+        MissingKanjiOperationResultDialog(
+            result = result,
+            onDismiss = model.onDismissOperationResult,
+            onStudyNow = model.onStudyNow,
         )
     }
 }
@@ -856,6 +901,14 @@ private fun MissingKanjiResultRow(
                     color = KaniUiTokens.Muted,
                     style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
                 )
+                if (row.inKani) {
+                    Text(
+                        text = MissingKanjiTextCopy.inKaniLabel(),
+                        color = KaniUiTokens.Teal,
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
             IconButton(onClick = onDetails) {
                 Icon(
@@ -898,7 +951,9 @@ private fun MissingKanjiDestinationBar(
                     modifier = modifier.testTag(MISSING_KANJI_ADD_TO_KANI_TAG),
                     minHeightDp = 48,
                     textSizeSp = 14,
-                    enabled = destinations.addToKaniEnabled && selected.size > 0,
+                    enabled = destinations.addToKaniEnabled &&
+                        !destinations.operationInProgress &&
+                        selected.size > 0,
                     onClick = {
                         destinations.onAddToKani(selected.selectedLiterals)
                     },
@@ -910,7 +965,9 @@ private fun MissingKanjiDestinationBar(
                     modifier = modifier.testTag(MISSING_KANJI_CREATE_ANKI_TAG),
                     minHeightDp = 48,
                     textSizeSp = 14,
-                    enabled = destinations.createAnkiDeckEnabled && selected.size > 0,
+                    enabled = destinations.createAnkiDeckEnabled &&
+                        !destinations.operationInProgress &&
+                        selected.size > 0,
                     onClick = {
                         destinations.onCreateAnkiDeck(selected.selectedLiterals)
                     },
@@ -931,6 +988,7 @@ private fun MissingKanjiDestinationBar(
 private fun MissingKanjiDetailsDialog(
     row: MissingKanjiRowModel,
     onDismiss: () -> Unit,
+    onRemove: (() -> Unit)?,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -969,6 +1027,13 @@ private fun MissingKanjiDetailsDialog(
                     color = KaniUiTokens.Teal,
                     fontWeight = FontWeight.Bold,
                 )
+                if (row.inKani) {
+                    Text(
+                        text = MissingKanjiTextCopy.inKaniLabel(),
+                        color = KaniUiTokens.Teal,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -979,6 +1044,152 @@ private fun MissingKanjiDetailsDialog(
                 ),
             ) {
                 Text(MissingKanjiTextCopy.closeLabel())
+            }
+        },
+        dismissButton = if (onRemove == null) {
+            null
+        } else {
+            {
+                TextButton(
+                    modifier = Modifier.testTag(MISSING_KANJI_REMOVE_TAG),
+                    onClick = onRemove,
+                ) {
+                    Text(MissingKanjiTextCopy.removeFromKaniLabel())
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun MissingKanjiAddConfirmationDialog(
+    count: Int,
+    newPerDay: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(MissingKanjiTextCopy.addToKaniConfirmationTitle()) },
+        text = {
+            Text(
+                MissingKanjiTextCopy.addToKaniConfirmationBody(
+                    count = count,
+                    newPerDay = newPerDay,
+                ),
+            )
+        },
+        confirmButton = {
+            Button(
+                modifier = Modifier.testTag(MISSING_KANJI_CONFIRM_ADD_TAG),
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = KaniUiTokens.Primary),
+            ) {
+                Text(MissingKanjiTextCopy.confirmAddToKaniLabel())
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(MissingKanjiTextCopy.closeLabel())
+            }
+        },
+    )
+}
+
+@Composable
+private fun MissingKanjiRemoveConfirmationDialog(
+    literal: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(MissingKanjiTextCopy.removeFromKaniConfirmationTitle(literal)) },
+        text = { Text(MissingKanjiTextCopy.removeFromKaniConfirmationBody()) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = KaniUiTokens.Primary),
+            ) {
+                Text(MissingKanjiTextCopy.removeFromKaniLabel())
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(MissingKanjiTextCopy.closeLabel())
+            }
+        },
+    )
+}
+
+@Composable
+private fun MissingKanjiOperationResultDialog(
+    result: MissingKanjiOperationResultModel,
+    onDismiss: () -> Unit,
+    onStudyNow: () -> Unit,
+) {
+    val title: String
+    val body: String
+    val canStudyNow: Boolean
+    when (result) {
+        is MissingKanjiOperationResultModel.KaniAdmission -> {
+            title = MissingKanjiTextCopy.kaniAdmissionResultTitle()
+            body = MissingKanjiTextCopy.kaniAdmissionResultBody(
+                added = result.addedCount,
+                alreadyInKani = result.alreadyInKaniCount,
+                admittedNow = result.admittedNowCount,
+                deferred = result.deferredCount,
+                skipped = result.skippedMissingMeaningCount +
+                    result.skippedMissingReadingCount +
+                    result.invalidCount,
+            )
+            canStudyNow = result.admittedNowCount > 0
+        }
+        is MissingKanjiOperationResultModel.KaniRemoval -> {
+            if (result.removed || result.reviewed) {
+                title = MissingKanjiTextCopy.kaniAdmissionResultTitle()
+                body = if (result.reviewed) {
+                    MissingKanjiTextCopy.reviewedSourceKeptBody(result.literal)
+                } else {
+                    MissingKanjiTextCopy.removedFromKaniBody(result.literal)
+                }
+            } else {
+                title = MissingKanjiTextCopy.operationFailedTitle()
+                body = MissingKanjiTextCopy.operationFailedBody()
+            }
+            canStudyNow = false
+        }
+        MissingKanjiOperationResultModel.Failed -> {
+            title = MissingKanjiTextCopy.operationFailedTitle()
+            body = MissingKanjiTextCopy.operationFailedBody()
+            canStudyNow = false
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(body) },
+        confirmButton = {
+            Button(
+                onClick = if (canStudyNow) onStudyNow else onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = KaniUiTokens.Primary),
+            ) {
+                Text(
+                    if (canStudyNow) {
+                        MissingKanjiTextCopy.studyNowLabel()
+                    } else {
+                        MissingKanjiTextCopy.closeLabel()
+                    },
+                )
+            }
+        },
+        dismissButton = if (!canStudyNow) {
+            null
+        } else {
+            {
+                TextButton(onClick = onDismiss) {
+                    Text(MissingKanjiTextCopy.closeLabel())
+                }
             }
         },
     )

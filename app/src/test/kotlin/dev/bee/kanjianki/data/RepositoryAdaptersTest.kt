@@ -3,11 +3,13 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
+import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.SyncSettings
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -304,6 +306,43 @@ class RepositoryAdaptersTest {
         assertEquals(1, plannerCalls)
         assertEquals(plan, result.valueOrNull()?.adaptiveLoadPlan)
         assertTrue(store.hasSuccessfulSyncSince(FINISHED_AT))
+    }
+
+    @Test
+    fun syncPublicationKeepsDictionarySourcesInTheNormalQueuePipeline() = runTest {
+        store.missingKanjiStore().addManualSources(
+            listOf(
+                MissingKanjiCandidate(
+                    literal = "水",
+                    meanings = listOf("water"),
+                    kunReadings = listOf("みず"),
+                    jitenRank = 12,
+                ),
+            ),
+            nowMillis = STARTED_AT,
+        )
+        val repository = SqliteSyncRepository(store)
+
+        val result = repository.publish(
+            emptyPublicationCommand { snapshot ->
+                val seeded = StudyQueueSeeder().seedQueue(
+                    allRows = snapshot.rows,
+                    eligibleRows = snapshot.activeRows,
+                    existing = snapshot.currentItems,
+                    settings = snapshot.settings,
+                    nowMillis = snapshot.nowMillis,
+                    startOfDayMillis = 0L,
+                    plan = null,
+                    ladder = snapshot.studyLadder,
+                )
+                SyncQueuePlan(seeded, emptyAdaptivePlan())
+            },
+        )
+
+        assertTrue(result.isOk())
+        assertEquals("水", result.valueOrNull()?.activeRows?.single()?.kanji)
+        assertEquals("水", store.studyItems().single().kanji)
+        assertEquals("水", store.activeDashboardRows().single().kanji)
     }
 
     @Test

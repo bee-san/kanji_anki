@@ -130,6 +130,8 @@ internal data class MissingKanjiRowModel(
     val kunReadings: List<String>,
     val jitenRank: Int?,
     internal val normalizedSearchText: String,
+    val inKani: Boolean = false,
+    val canRemoveFromKani: Boolean = false,
 ) {
     val primaryMeaning: String
         get() = meanings.firstOrNull().orEmpty()
@@ -141,9 +143,33 @@ internal data class MissingKanjiRowModel(
 internal data class MissingKanjiDestinationModel(
     val addToKaniEnabled: Boolean = false,
     val createAnkiDeckEnabled: Boolean = false,
+    val newPerDay: Int = 0,
+    val operationInProgress: Boolean = false,
     val onAddToKani: (Set<String>) -> Unit = {},
     val onCreateAnkiDeck: (Set<String>) -> Unit = {},
+    val onRemoveFromKani: (String) -> Unit = {},
 )
+
+internal sealed interface MissingKanjiOperationResultModel {
+    data class KaniAdmission(
+        val requestedCount: Int,
+        val addedCount: Int,
+        val alreadyInKaniCount: Int,
+        val skippedMissingMeaningCount: Int,
+        val skippedMissingReadingCount: Int,
+        val invalidCount: Int,
+        val admittedNowCount: Int,
+        val deferredCount: Int,
+    ) : MissingKanjiOperationResultModel
+
+    data class KaniRemoval(
+        val literal: String,
+        val removed: Boolean,
+        val reviewed: Boolean,
+    ) : MissingKanjiOperationResultModel
+
+    data object Failed : MissingKanjiOperationResultModel
+}
 
 internal data class MissingKanjiScreenModel(
     val content: MissingKanjiContentModel,
@@ -157,6 +183,9 @@ internal data class MissingKanjiScreenModel(
     val onRangePreview: (MissingKanjiFrequencyRange, (Int) -> Unit) -> Unit,
     val onSearchQueryChanged: (String) -> Unit,
     val destinations: MissingKanjiDestinationModel = MissingKanjiDestinationModel(),
+    val operationResult: MissingKanjiOperationResultModel? = null,
+    val onDismissOperationResult: () -> Unit = {},
+    val onStudyNow: () -> Unit = {},
 )
 
 internal sealed interface MissingKanjiRangeInputResult {
@@ -200,6 +229,8 @@ private fun parseRank(value: String): Int? {
 
 internal fun missingKanjiRows(
     candidates: List<MissingKanjiCandidate>,
+    activeManualLiterals: Set<String> = emptySet(),
+    removableManualLiterals: Set<String> = emptySet(),
 ): List<MissingKanjiRowModel> {
     return candidates.map { candidate ->
         val searchValues = buildList {
@@ -216,6 +247,8 @@ internal fun missingKanjiRows(
             kunReadings = candidate.kunReadings,
             jitenRank = candidate.jitenRank,
             normalizedSearchText = searchValues.joinToString("\u0000").lowercase(Locale.ROOT),
+            inKani = candidate.literal in activeManualLiterals,
+            canRemoveFromKani = candidate.literal in removableManualLiterals,
         )
     }
 }

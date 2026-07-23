@@ -159,6 +159,25 @@ class MissingKanjiScreenModelTest {
     }
 
     @Test
+    fun rowModelsExposeDurableKaniSourceState() {
+        val rows = missingKanjiRows(
+            candidates = listOf(
+                MissingKanjiCandidate(
+                    literal = "語",
+                    meanings = listOf("language"),
+                    onReadings = listOf("ゴ"),
+                    jitenRank = 301,
+                ),
+            ),
+            activeManualLiterals = setOf("語"),
+            removableManualLiterals = setOf("語"),
+        )
+
+        assertTrue(rows.single().inKani)
+        assertTrue(rows.single().canRemoveFromKani)
+    }
+
+    @Test
     fun fiveThousandRowModelAndFilterStayBounded() {
         val candidates = (1..5_000).map { rank ->
             MissingKanjiCandidate(

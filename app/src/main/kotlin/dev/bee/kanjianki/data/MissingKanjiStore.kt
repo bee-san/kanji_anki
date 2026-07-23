@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AnkiKanjiInventory
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
 import dev.bee.kanjianki.core.MissingKanjiAnalyzer
 import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
@@ -91,8 +92,18 @@ internal data class ManualKanjiSourceWriteResult(
     val addedLiterals: Set<String>,
     val reactivatedLiterals: Set<String>,
     val alreadyActiveLiterals: Set<String>,
+    val missingMeaningLiterals: Set<String>,
+    val missingReadingLiterals: Set<String>,
     val invalidCount: Int,
     val duplicateCount: Int,
+)
+
+internal data class ManualKanjiSourceRemovalResult(
+    val requestedCount: Int,
+    val removedLiterals: Set<String>,
+    val reviewedLiterals: Set<String>,
+    val inactiveLiterals: Set<String>,
+    val invalidCount: Int,
 )
 
 internal data class MissingKanjiExportReceipt(
@@ -111,6 +122,7 @@ internal data class MissingKanjiExportReceipt(
 internal class MissingKanjiStore(
     private val store: LocalStoreBase,
     private val publicationHook: PublicationHook = PublicationHook.NONE,
+    private val manualSourcesChanged: () -> Unit = {},
 ) {
     fun publishInventory(
         inventory: AnkiKanjiInventory,
@@ -275,19 +287,25 @@ internal class MissingKanjiStore(
         candidates: Collection<MissingKanjiCandidate>,
         nowMillis: Long,
     ): ManualKanjiSourceWriteResult {
-        val normalized = LinkedHashMap<String, MissingKanjiCandidate>()
+        val structurallyValid = ArrayList<MissingKanjiCandidate>(candidates.size)
         var invalidCount = 0
-        var duplicateCount = 0
         for (candidate in candidates) {
             val normalizedCandidate = normalizeCandidate(candidate)
             if (normalizedCandidate == null) {
                 invalidCount += 1
             } else {
-                if (normalized.putIfAbsent(normalizedCandidate.literal, normalizedCandidate) != null) {
-                    duplicateCount += 1
-                }
+                structurallyValid.add(normalizedCandidate)
             }
         }
+        val admission = ManualKanjiAdmissionPolicy.planAddition(
+            candidates = structurallyValid,
+            existingStudyLiterals = emptySet(),
+            activeManualLiterals = emptySet(),
+        )
+        val normalized = admission.candidatesToAdd.associateByTo(
+            LinkedHashMap(),
+            MissingKanjiCandidate::literal,
+        )
         val added = LinkedHashSet<String>()
         val reactivated = LinkedHashSet<String>()
         val alreadyActive = LinkedHashSet<String>()
@@ -313,18 +331,158 @@ internal class MissingKanjiStore(
                 }
             }
         }
+        if (normalized.isNotEmpty()) {
+            manualSourcesChanged()
+        }
         return ManualKanjiSourceWriteResult(
             requestedCount = candidates.size,
             addedLiterals = immutableSet(added),
             reactivatedLiterals = immutableSet(reactivated),
             alreadyActiveLiterals = immutableSet(alreadyActive),
+            missingMeaningLiterals = admission.missingMeaningLiterals,
+            missingReadingLiterals = admission.missingReadingLiterals,
             invalidCount = invalidCount,
-            duplicateCount = duplicateCount,
+            duplicateCount = admission.duplicateCount,
         )
     }
 
     fun manualSources(activeOnly: Boolean = true): List<ManualKanjiSource> {
         return loadManualSources(store.readableDatabase, activeOnly)
+    }
+
+    fun admittedManualSources(): List<ManualKanjiSource> {
+        val sources = ArrayList<ManualKanjiSource>()
+        store.readableDatabase.rawQuery(
+            """
+            SELECT manual.*
+            FROM ${LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES} manual
+            WHERE manual.$COLUMN_ACTIVE=1
+              AND EXISTS (
+                SELECT 1
+                FROM ${LocalStoreBase.TABLE_STUDY_ITEMS} item
+                WHERE item.${LocalStoreBase.COLUMN_KANJI}=manual.$COLUMN_LITERAL
+                  AND item.${LocalStoreBase.COLUMN_STATE}<>?
+              )
+            ORDER BY manual.${LocalStoreBase.COLUMN_JITEN_RANK} IS NULL,
+                     manual.${LocalStoreBase.COLUMN_JITEN_RANK},
+                     manual.$COLUMN_LITERAL
+            """.trimIndent(),
+            arrayOf(LocalStoreBase.STATE_RETIRED),
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                sources.add(manualSource(cursor))
+            }
+        }
+        return Collections.unmodifiableList(sources)
+    }
+
+    fun manualSource(literal: String): ManualKanjiSource? {
+        val normalized = normalizeLiteral(literal) ?: return null
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES,
+            null,
+            "$COLUMN_LITERAL=? AND $COLUMN_ACTIVE=1",
+            arrayOf(normalized),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) manualSource(cursor) else null
+        }
+    }
+
+    fun removableManualSourceLiterals(): Set<String> {
+        val literals = LinkedHashSet<String>()
+        store.readableDatabase.rawQuery(
+            """
+            SELECT manual.$COLUMN_LITERAL
+            FROM ${LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES} manual
+            WHERE manual.$COLUMN_ACTIVE=1
+              AND NOT EXISTS (
+                SELECT 1
+                FROM ${LocalStoreBase.TABLE_REVIEW_LOG} review
+                WHERE review.${LocalStoreBase.COLUMN_KANJI}=manual.$COLUMN_LITERAL
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM ${LocalStoreBase.TABLE_STUDY_ITEMS} item
+                WHERE item.${LocalStoreBase.COLUMN_KANJI}=manual.$COLUMN_LITERAL
+                  AND item.total_reviews>0
+              )
+            ORDER BY manual.$COLUMN_LITERAL
+            """.trimIndent(),
+            null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                literals.add(cursor.text(COLUMN_LITERAL))
+            }
+        }
+        return immutableSet(literals)
+    }
+
+    fun removeUnreviewedManualSources(
+        literals: Collection<String>,
+        nowMillis: Long,
+    ): ManualKanjiSourceRemovalResult {
+        val normalized = LinkedHashSet<String>()
+        var invalidCount = 0
+        for (literal in literals) {
+            val value = normalizeLiteral(literal)
+            if (value == null) {
+                invalidCount += 1
+            } else {
+                normalized.add(value)
+            }
+        }
+        val removed = LinkedHashSet<String>()
+        val reviewed = LinkedHashSet<String>()
+        val inactive = LinkedHashSet<String>()
+        val safeNow = nowMillis.coerceAtLeast(0L)
+        store.writableDatabase.transaction {
+            for (literal in normalized) {
+                if (!isActiveManualSource(this, literal)) {
+                    inactive.add(literal)
+                    continue
+                }
+                if (hasReviewHistory(this, literal)) {
+                    reviewed.add(literal)
+                    continue
+                }
+                val values = ContentValues().apply {
+                    put(COLUMN_ACTIVE, 0)
+                    put(LocalStoreBase.COLUMN_UPDATED_AT, safeNow)
+                }
+                val changed = update(
+                    LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES,
+                    values,
+                    "$COLUMN_LITERAL=? AND $COLUMN_ACTIVE=1",
+                    arrayOf(literal),
+                )
+                if (changed == 0) {
+                    inactive.add(literal)
+                    continue
+                }
+                removed.add(literal)
+                if (!hasProviderDashboardRow(this, literal)) {
+                    delete(
+                        LocalStoreBase.TABLE_STUDY_ITEMS,
+                        "${LocalStoreBase.COLUMN_KANJI}=?",
+                        arrayOf(literal),
+                    )
+                }
+            }
+        }
+        if (removed.isNotEmpty()) {
+            manualSourcesChanged()
+        }
+        return ManualKanjiSourceRemovalResult(
+            requestedCount = literals.size,
+            removedLiterals = immutableSet(removed),
+            reviewedLiterals = immutableSet(reviewed),
+            inactiveLiterals = immutableSet(inactive),
+            invalidCount = invalidCount,
+        )
     }
 
     fun deactivateManualSources(literals: Collection<String>, nowMillis: Long): Int {
@@ -333,7 +491,7 @@ internal class MissingKanjiStore(
             return 0
         }
         val safeNow = nowMillis.coerceAtLeast(0L)
-        return store.writableDatabase.transaction {
+        val changed = store.writableDatabase.transaction {
             var changed = 0
             val values = ContentValues().apply {
                 put(COLUMN_ACTIVE, 0)
@@ -349,6 +507,10 @@ internal class MissingKanjiStore(
             }
             changed
         }
+        if (changed > 0) {
+            manualSourcesChanged()
+        }
+        return changed
     }
 
     fun recordExportReceipts(receipts: Collection<MissingKanjiExportReceipt>): Int {
@@ -476,6 +638,51 @@ internal class MissingKanjiStore(
             }
         }
         return Collections.unmodifiableList(sources)
+    }
+
+    private fun isActiveManualSource(db: SQLiteDatabase, literal: String): Boolean {
+        return db.rawQuery(
+            """
+            SELECT 1
+            FROM ${LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES}
+            WHERE $COLUMN_LITERAL=? AND $COLUMN_ACTIVE=1
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(literal),
+        ).use(Cursor::moveToFirst)
+    }
+
+    private fun hasReviewHistory(db: SQLiteDatabase, literal: String): Boolean {
+        return db.rawQuery(
+            """
+            SELECT 1
+            WHERE EXISTS (
+                SELECT 1
+                FROM ${LocalStoreBase.TABLE_REVIEW_LOG}
+                WHERE ${LocalStoreBase.COLUMN_KANJI}=?
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM ${LocalStoreBase.TABLE_STUDY_ITEMS}
+                WHERE ${LocalStoreBase.COLUMN_KANJI}=?
+                  AND total_reviews>0
+            )
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(literal, literal),
+        ).use(Cursor::moveToFirst)
+    }
+
+    private fun hasProviderDashboardRow(db: SQLiteDatabase, literal: String): Boolean {
+        return db.rawQuery(
+            """
+            SELECT 1
+            FROM ${LocalStoreBase.TABLE_DASHBOARD_ROWS}
+            WHERE ${LocalStoreBase.COLUMN_KANJI}=?
+            LIMIT 1
+            """.trimIndent(),
+            arrayOf(literal),
+        ).use(Cursor::moveToFirst)
     }
 
     private fun insertManualSource(

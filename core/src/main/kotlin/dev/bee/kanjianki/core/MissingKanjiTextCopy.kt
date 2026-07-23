@@ -400,6 +400,94 @@ object MissingKanjiTextCopy {
     fun addToKaniLabel(): String = localized("Add to Kani", "Kaniに追加")
 
     @JvmStatic
+    fun inKaniLabel(): String = localized("In Kani", "Kaniに追加済み")
+
+    @JvmStatic
+    fun addToKaniConfirmationTitle(): String = localized(
+        "Add selected kanji?",
+        "選択した漢字を追加しますか？",
+    )
+
+    @JvmStatic
+    fun addToKaniConfirmationBody(count: Int, newPerDay: Int): String = localized(
+        "${number(count)} selected kanji will become eligible for Kani. The normal limit of up to ${number(newPerDay)} new items per day still applies.",
+        "選択した${number(count)}字がKaniの学習対象になります。1日最大${number(newPerDay)}件の通常の新規項目制限が適用されます。",
+    )
+
+    @JvmStatic
+    fun confirmAddToKaniLabel(): String = localized("Add", "追加")
+
+    @JvmStatic
+    fun kaniAdmissionResultTitle(): String = localized(
+        "Kani list updated",
+        "Kaniリストを更新しました",
+    )
+
+    @JvmStatic
+    fun kaniAdmissionResultBody(
+        added: Int,
+        alreadyInKani: Int,
+        admittedNow: Int,
+        deferred: Int,
+        skipped: Int,
+    ): String = localized(
+        "${number(added)} added · ${number(alreadyInKani)} already in Kani\n" +
+            "${number(admittedNow)} ready now · ${number(deferred)} waiting for daily admission\n" +
+            "${number(skipped)} skipped for incomplete dictionary data",
+        "${number(added)}字を追加・${number(alreadyInKani)}字は追加済み\n" +
+            "${number(admittedNow)}字は今すぐ学習可能・${number(deferred)}字は日次追加待ち\n" +
+            "辞書データ不足で${number(skipped)}字をスキップ",
+    )
+
+    @JvmStatic
+    fun removeFromKaniLabel(): String = localized("Remove from Kani", "Kaniから削除")
+
+    @JvmStatic
+    fun removeFromKaniConfirmationTitle(literal: String): String = localized(
+        "Remove $literal from Kani?",
+        "${literal}をKaniから削除しますか？",
+    )
+
+    @JvmStatic
+    fun removeFromKaniConfirmationBody(): String = localized(
+        "This is available only before the first review.",
+        "初回レビュー前のみ削除できます。",
+    )
+
+    @JvmStatic
+    fun removedFromKaniBody(literal: String): String = localized(
+        "$literal was removed from Kani.",
+        "${literal}をKaniから削除しました。",
+    )
+
+    @JvmStatic
+    fun reviewedSourceKeptBody(literal: String): String = localized(
+        "$literal has review history, so its source was kept.",
+        "${literal}にはレビュー履歴があるため、追加元を保持しました。",
+    )
+
+    @JvmStatic
+    fun operationFailedTitle(): String = localized(
+        "Could not update Missing Kanji",
+        "未登録漢字を更新できませんでした",
+    )
+
+    @JvmStatic
+    fun operationFailedBody(): String = localized(
+        "Nothing was lost. Try again.",
+        "データは失われていません。もう一度お試しください。",
+    )
+
+    @JvmStatic
+    fun studyNowLabel(): String = localized("Study now", "今すぐ学習")
+
+    @JvmStatic
+    fun dictionarySourceReason(): String = localized(
+        "Added from the offline dictionary.",
+        "オフライン辞書から追加しました。",
+    )
+
+    @JvmStatic
     fun createAnkiDeckLabel(): String = localized("Create Anki deck", "Ankiデッキを作成")
 
     @JvmStatic
