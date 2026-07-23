@@ -94,12 +94,34 @@ fun HomeHeader(
             }
         }
         Spacer(modifier = Modifier.width(10.dp))
-        Image(
-            painter = painterResource(id = R.mipmap.ic_launcher_foreground),
-            contentDescription = null,
-            modifier = Modifier.size(110.dp),
-            contentScale = ContentScale.Fit
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                contentDescription = "Kani logo",
+                modifier = Modifier.size(92.dp),
+                contentScale = ContentScale.Fit
+            )
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Alpha",
+                    color = KaniTheme.colors.primary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = "By Bee",
+                    color = HomeMuted,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                )
+            }
+        }
     }
 }
 
