@@ -56,6 +56,68 @@ class MainActivityStudyFlashcardGestureTest {
     }
 
     @Test
+    fun answeredFlashcardPersistsMnemonicEvenWhenActivityIoIsUnavailable() {
+        val token = "mnemonic-token"
+        val activity = createActivity()
+        val stoppedIo = QueueingExecutorService().also { it.shutdown() }
+        replaceField(activity, "io", stoppedIo)
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("録", token, RecordsBase.LadderRung.KANJI_MEANING),
+            row = RecordsImportModels.DashboardRow(
+                "録", null, "record", "ろくおん", "録音", 1, "reason", "Needs practice", 1, 0, 0,
+                emptyList<RecordsImportModels.Example>(),
+            ),
+            token = token,
+            taskType = StudyTaskTypes.KANJI_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT))
+
+        assertTrue(
+            activity.saveStudyMnemonicAfterAnswer(
+                expectedToken = token,
+                expectedRecovery = null,
+                kanji = "録",
+                note = "  record sound\ninside a metal box  ",
+            ),
+        )
+
+        assertEquals("record sound\ninside a metal box", activity.store.kanjiMnemonicNote("録"))
+        assertEquals(0, stoppedIo.pendingCount())
+    }
+
+    @Test
+    fun unansweredFlashcardCannotPersistMnemonic() {
+        val token = "unanswered-mnemonic-token"
+        val activity = createActivity()
+        val mnemonicIo = QueueingExecutorService()
+        replaceField(activity, "io", mnemonicIo)
+        val session = RecordsSchedulerModels.StudySession(
+            item = studyItem("録", token, RecordsBase.LadderRung.KANJI_MEANING),
+            row = null,
+            token = token,
+            taskType = StudyTaskTypes.KANJI_MEANING,
+            writingRequired = false,
+            prompt = "",
+        )
+        activity.activeSession = session
+        activity.prepareStudyAnswerFeedback(token)
+
+        assertFalse(
+            activity.saveStudyMnemonicAfterAnswer(
+                expectedToken = token,
+                expectedRecovery = null,
+                kanji = "録",
+                note = "too early",
+            ),
+        )
+        assertEquals(0, mnemonicIo.pendingCount())
+    }
+
+    @Test
     fun correctTypedMeaningRevealsAnswerAndKeepsCardUntilContinue() {
         val token = "typing-meaning-token"
         val activity = createActivity()

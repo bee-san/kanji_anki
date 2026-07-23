@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -535,8 +536,9 @@ class MainActivityStudyFlashcardComposeUnitTest {
     }
 
     @Test
-    fun gradedFlashcardShowsPersistentFeedbackAndContinueInsteadOfRatingActions() {
+    fun gradedFlashcardShowsPersistentFeedbackContinueAndMnemonicEditor() {
         var continued = 0
+        var savedMnemonic = ""
         val feedback = StudyAnswerFeedbackState("token-獄").apply {
             begin(StudyAnswerOutcome.CORRECT)
         }
@@ -548,6 +550,14 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 onFail = {},
                 onPass = {},
                 feedbackState = feedback,
+                mnemonicNote = BrowseMnemonicNoteModel(
+                    title = "My mnemonic",
+                    fieldLabel = "Mnemonic note",
+                    helper = "Write a story.",
+                    initialNote = "",
+                    saveLabel = "Save mnemonic",
+                    onSave = { savedMnemonic = it },
+                ),
                 onContinue = {
                     if (feedback.tryContinue()) continued += 1
                 },
@@ -557,6 +567,24 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.onAllNodesWithText(StudyReviewButtonCopy.againLabel()).assertCountEquals(0)
         composeRule.onAllNodesWithText(StudyReviewButtonCopy.goodLabel()).assertCountEquals(0)
         composeRule.onNodeWithText(StudyTextCopy.answerCorrectFeedback()).assertIsDisplayed()
+        composeRule.onNodeWithTag(STUDY_MNEMONIC_EDITOR_ACTION_TEST_TAG)
+            .assertIsDisplayed()
+            .performClick()
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT)
+            .assertIsDisplayed()
+            .performTextReplacement("  a prison gate\nlocks the meaning in  ")
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).performClick()
+        assertEquals("a prison gate\nlocks the meaning in", savedMnemonic)
+        composeRule.onAllNodesWithTag(BrowseMnemonicNoteTestTags.INPUT).assertCountEquals(0)
+        composeRule.onNodeWithTag(STUDY_MNEMONIC_EDITOR_ACTION_TEST_TAG).performClick()
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.INPUT)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.EditableText,
+                    AnnotatedString("a prison gate\nlocks the meaning in"),
+                ),
+            )
+        composeRule.onNodeWithTag(BrowseMnemonicNoteTestTags.SAVE).performClick()
         composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
             .assertIsNotEnabled()
         composeRule.mainClock.advanceTimeBy(5_000L)
@@ -567,6 +595,30 @@ class MainActivityStudyFlashcardComposeUnitTest {
             .assertIsEnabled()
             .performClick()
         assertEquals(1, continued)
+    }
+
+    @Test
+    fun ungradedFlashcardDoesNotShowMnemonicEditor() {
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                mnemonicNote = BrowseMnemonicNoteModel(
+                    title = "My mnemonic",
+                    fieldLabel = "Mnemonic note",
+                    helper = "Write a story.",
+                    initialNote = "",
+                    saveLabel = "Save mnemonic",
+                    onSave = {},
+                ),
+            )
+        }
+
+        composeRule.onAllNodesWithTag(STUDY_MNEMONIC_EDITOR_ACTION_TEST_TAG).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(BrowseMnemonicNoteTestTags.INPUT).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(BrowseMnemonicNoteTestTags.SAVE).assertCountEquals(0)
     }
 
     @Test

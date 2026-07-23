@@ -16,6 +16,7 @@ import dev.bee.kanjianki.core.AnswerEvidence
 import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.EvidenceSource
 import dev.bee.kanjianki.core.FailureKind
+import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.PresentationVariant
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.StudyTaskCopy
@@ -91,6 +92,21 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val heroPanel = flashcardHeroPanelModel(session)
         val typingAnswer = buildTypingAnswerState(typingTask, answered, feedback, activeUiRecovery)
         val answerPanel = flashcardAnswerPanelModel(session, mnemonic)
+        val mnemonicNote = BrowseMnemonicNoteModel(
+            title = HomeTextCopy.mnemonicNoteTitle(),
+            fieldLabel = HomeTextCopy.mnemonicNoteFieldLabel(),
+            helper = HomeTextCopy.mnemonicNoteHelper(false),
+            initialNote = mnemonic?.note.orEmpty(),
+            saveLabel = HomeTextCopy.saveMnemonicNoteLabel(),
+            onSave = { note ->
+                activity.saveStudyMnemonicAfterAnswer(
+                    expectedToken = session.token,
+                    expectedRecovery = activeUiRecovery,
+                    kanji = session.item?.kanji.orEmpty(),
+                    note = note,
+                )
+            },
+        )
         val cardModel = FlashcardCardModel(
             FlashcardPromptHeaderModel(
                 StudyTaskCopy.studyModeLabel(session),
@@ -112,6 +128,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         return ComposeFlashcardRouteModel(
             cardModel = cardModel,
             actionBarState = actionBarState,
+            mnemonicNote = mnemonicNote,
             swipeFeedback = swipeFeedback,
             sessionToken = session.token,
             activeRecovery = activeUiRecovery,
@@ -343,6 +360,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             swipeFeedback = route.swipeFeedback,
             onReview = route.onReview,
             feedbackState = activity.studyAnswerFeedbackState,
+            mnemonicNote = route.mnemonicNote,
             onContinue = {
                 activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery) &&
                     activity.continueAfterStudyAnswer()
@@ -390,6 +408,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     private data class ComposeFlashcardRouteModel(
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
+        val mnemonicNote: BrowseMnemonicNoteModel,
         val swipeFeedback: StudySwipeFeedbackState,
         val sessionToken: String,
         val activeRecovery: StoredActiveStudyRecovery?,
