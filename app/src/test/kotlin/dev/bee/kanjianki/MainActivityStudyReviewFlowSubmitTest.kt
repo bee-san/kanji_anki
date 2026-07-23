@@ -27,6 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
+import java.io.File
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
@@ -713,6 +714,31 @@ class MainActivityStudyReviewFlowSubmitTest {
                 requireNotNull(activity.studyAnswerFeedbackState).continueEnabled,
             )
             assertTrue(activity.continueAfterStudyAnswer())
+        }
+    }
+
+    @Test
+    fun debugLogCorrelatesAppliedAndContinueGateLifecycleWithoutCardContent() {
+        withReviewActivity("秘") { activity, _, reviewIo, session ->
+            val context = activity.applicationContext
+            val logFile = File(context.filesDir, "kani-debug.log")
+            AppDebugLog.resetForTests()
+            logFile.delete()
+            AppDebugLog.setEnabled(context, true)
+
+            assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false, interactionSource = "card"))
+            reviewIo.runNext()
+            shadowOf(Looper.getMainLooper()).idleFor(5, TimeUnit.SECONDS)
+            assertTrue(activity.continueAfterStudyAnswer())
+            AppDebugLog.resetForTests()
+
+            val text = logFile.readText(Charsets.UTF_8)
+            val tokenId = Integer.toUnsignedString(session.token.hashCode(), 16)
+            assertTrue(text.contains("study-answer event=applied token_id=$tokenId"))
+            assertTrue(text.contains("phase_before=submitting phase_after=applied persisted=true"))
+            assertTrue(text.contains("study-answer event=continue-start token_id=$tokenId phase=applied"))
+            assertTrue(text.contains("study-answer event=continue-accepted token_id=$tokenId"))
+            assertFalse("diagnostics must not expose card content", text.contains("秘"))
         }
     }
 
