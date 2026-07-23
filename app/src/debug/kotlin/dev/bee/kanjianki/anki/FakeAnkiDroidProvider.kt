@@ -174,6 +174,14 @@ class FakeAnkiDroidProvider : ContentProvider() {
                 suspendedTags = "leech kani_repaired"
                 result.putBoolean("ok", true)
             }
+            "rejectInventoryNotesV2" -> {
+                rejectInventoryNotesV2 = true
+                result.putBoolean("ok", true)
+            }
+            "inventoryMalformedRow" -> {
+                inventoryMalformedRow = true
+                result.putBoolean("ok", true)
+            }
         }
         return result
     }
@@ -214,11 +222,22 @@ class FakeAnkiDroidProvider : ContentProvider() {
         if (path == "/notes_v2" && nullSqlNotesCursor) {
             return null
         }
+        if (
+            path == "/notes_v2" &&
+            rejectInventoryNotesV2 &&
+            selection.orEmpty().trim().startsWith("id >")
+        ) {
+            throw IllegalArgumentException("notes_v2 is not supported")
+        }
         if (path == "/notes" && failConfiguredSearch && isConfiguredModelSearch(selection.orEmpty())) {
             throw IllegalArgumentException("model search failed")
         }
         if (path == "/notes" || path == "/notes_v2") {
-            return notes(selection.orEmpty(), allowBrowserQuerySearch = path == "/notes")
+            return notes(
+                selection.orEmpty(),
+                allowBrowserQuerySearch = path == "/notes",
+                selectionArgs = selectionArgs,
+            )
         }
         if (NOTES_ID_PATH.matcher(path).matches()) {
             return noteById(uri.lastPathSegment!!.toLong(), projection)
@@ -330,8 +349,67 @@ class FakeAnkiDroidProvider : ContentProvider() {
         return null
     }
 
-    private fun notes(selection: String, allowBrowserQuerySearch: Boolean): Cursor? {
+    private fun notes(
+        selection: String,
+        allowBrowserQuerySearch: Boolean,
+        selectionArgs: Array<String>?,
+    ): Cursor? {
         val cursor = MatrixCursor(arrayOf("_id", "mid", "flds", "tags"))
+        val collectionWide = selection.isBlank() || selection.trim().startsWith("id >")
+        if (collectionWide) {
+            val afterId = selectionArgs?.firstOrNull()?.toLongOrNull() ?: 0L
+            val rows = listOf(
+                arrayOf<Any?>(
+                    1L,
+                    100L,
+                    fields(
+                        "確認",
+                        "かくにん",
+                        "confirmation",
+                        "確認した。",
+                        "100",
+                        "100",
+                        "<ruby>確認<rt>かくにん</rt></ruby> &amp; 確認 [sound:voice.mp3]",
+                    ),
+                    activeTags,
+                ),
+                arrayOf<Any?>(
+                    2L,
+                    100L,
+                    fields(
+                        "笥箱",
+                        "しはこ",
+                        "rare box",
+                        "笥箱を見た。",
+                        "3500",
+                        "3500",
+                        "duplicate 箱",
+                    ),
+                    suspendedTags,
+                ),
+                arrayOf<Any?>(
+                    101L,
+                    200L,
+                    fields("確認", "かくにん", "confirmation", "確認した。", "100", "100"),
+                    activeTags,
+                ),
+                arrayOf<Any?>(
+                    102L,
+                    200L,
+                    fields("笥箱", "しはこ", "rare box", "<b>笥箱</b>", "3500", "3500"),
+                    suspendedTags,
+                ),
+            )
+            for (row in rows) {
+                if ((row[0] as Long) > afterId) {
+                    cursor.addRow(row)
+                }
+            }
+            if (inventoryMalformedRow && 103L > afterId) {
+                cursor.addRow(arrayOf<Any?>(103L, 999L, fields("malformed"), ""))
+            }
+            return cursor
+        }
         val suspendedOnly = isSuspendedModelSearch(selection)
         val browserQuery = allowBrowserQuerySearch && isBrowserQuerySearch(selection)
         if (suspendedOnly && nullSuspendedSearchCursor) {
@@ -851,6 +929,12 @@ class FakeAnkiDroidProvider : ContentProvider() {
         @JvmField
         var failBrowserQueryReread = false
 
+        @JvmField
+        var rejectInventoryNotesV2 = false
+
+        @JvmField
+        var inventoryMalformedRow = false
+
         @JvmStatic
         fun reset() {
             topLevelCardsQueries = 0
@@ -898,6 +982,8 @@ class FakeAnkiDroidProvider : ContentProvider() {
             nullNoteCursor = false
             configuredSearchIncludesWrongModel = false
             failBrowserQueryReread = false
+            rejectInventoryNotesV2 = false
+            inventoryMalformedRow = false
         }
     }
 }
