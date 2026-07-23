@@ -10,12 +10,15 @@ internal class LocalStore(
     diagnosticLogger: DiagnosticLogger = NoOpDiagnosticLogger,
 ) : LocalStoreSync(context, diagnosticLogger), DatabaseSnapshotter {
     private val mnemonicNotes = LocalStoreMnemonicNotes(this)
+    private val missingKanji = MissingKanjiStore(this)
 
     fun kanjiMnemonicNote(kanji: String?): String = mnemonicNotes.read(kanji)
 
     fun saveKanjiMnemonicNote(kanji: String?, note: String?, updatedAtMillis: Long) {
         mnemonicNotes.save(kanji, note, updatedAtMillis)
     }
+
+    fun missingKanjiStore(): MissingKanjiStore = missingKanji
 
     /**
      * Produce a WAL-safe, transactionally consistent snapshot at [destination] using this

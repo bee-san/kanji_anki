@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.MissingKanjiCandidate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -122,6 +123,29 @@ class LocalStoreDowngradeTest {
 
         val inventory = downgradedStore.searchKanjiInventory("水")
         assertNotNull(inventory)
+        downgradedStore.close()
+    }
+
+    @Test
+    fun downgradePreservesMissingKanjiSourcesAndReceipts() {
+        val store = LocalStore(context)
+        store.missingKanjiStore().addManualSources(
+            listOf(MissingKanjiCandidate("水", listOf("water"), jitenRank = 12)),
+            nowMillis = 100,
+        )
+        store.missingKanjiStore().recordExportReceipts(
+            listOf(MissingKanjiExportReceipt("水", "anki:test", 200, 300)),
+        )
+        store.close()
+
+        setDatabaseVersion(LocalStoreSchema.DB_VERSION + 1)
+
+        val downgradedStore = LocalStore(context)
+        assertEquals("水", downgradedStore.missingKanjiStore().manualSources().single().candidate.literal)
+        assertEquals(
+            300L,
+            downgradedStore.missingKanjiStore().exportReceipts("anki:test").getValue("水").externalNoteId,
+        )
         downgradedStore.close()
     }
 

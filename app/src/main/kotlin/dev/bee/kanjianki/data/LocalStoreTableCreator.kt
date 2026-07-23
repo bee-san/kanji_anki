@@ -92,6 +92,65 @@ internal object LocalStoreTableCreator {
         )
     }
 
+    fun createMissingKanjiTables(db: SQLiteDatabase) {
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_ANKI_KANJI_INVENTORY_SCANS,
+            COLUMN_ID_AUTOINCREMENT,
+            "started_at INTEGER NOT NULL",
+            "completed_at INTEGER NOT NULL",
+            "status TEXT NOT NULL",
+            "notes_scanned INTEGER NOT NULL",
+            "fields_scanned INTEGER NOT NULL",
+            "unique_kanji INTEGER NOT NULL",
+            "skipped_notes INTEGER NOT NULL",
+            "model_count INTEGER NOT NULL",
+            "provider_fingerprint TEXT NOT NULL",
+            "failure_code TEXT NOT NULL DEFAULT ''",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_anki_kanji_inventory_scans_completed ON " +
+                "${LocalStoreBase.TABLE_ANKI_KANJI_INVENTORY_SCANS}(completed_at DESC, id DESC)",
+        )
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_ANKI_KANJI_INVENTORY,
+            "literal TEXT PRIMARY KEY",
+            "scan_id INTEGER NOT NULL",
+            "observed_at INTEGER NOT NULL",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_anki_kanji_inventory_scan ON " +
+                "${LocalStoreBase.TABLE_ANKI_KANJI_INVENTORY}(scan_id)",
+        )
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES,
+            "literal TEXT PRIMARY KEY",
+            "source_type TEXT NOT NULL",
+            "jiten_rank INTEGER",
+            "meanings_json TEXT NOT NULL",
+            "on_readings_json TEXT NOT NULL",
+            "kun_readings_json TEXT NOT NULL",
+            "added_at INTEGER NOT NULL",
+            "updated_at INTEGER NOT NULL",
+            "active INTEGER NOT NULL DEFAULT 1",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_manual_kanji_sources_active_rank ON " +
+                "${LocalStoreBase.TABLE_MANUAL_KANJI_SOURCES}(active, jiten_rank, literal)",
+        )
+        db.createTableIfMissing(
+            LocalStoreBase.TABLE_MISSING_KANJI_EXPORTS,
+            "literal TEXT NOT NULL",
+            "destination_key TEXT NOT NULL",
+            "exported_at INTEGER NOT NULL",
+            "external_note_id INTEGER",
+            "PRIMARY KEY (literal, destination_key)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS idx_missing_kanji_exports_destination ON " +
+                "${LocalStoreBase.TABLE_MISSING_KANJI_EXPORTS}(destination_key, exported_at)",
+        )
+    }
+
     fun createSimilarKanjiTables(db: SQLiteDatabase) {
         db.createTableIfMissing(
             LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS,

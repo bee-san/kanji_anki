@@ -19,9 +19,14 @@ import dev.bee.kanjianki.backup.BackupRestoreStager
 import dev.bee.kanjianki.backup.StagedRestoreApplier
 import dev.bee.kanjianki.backup.UriStreams
 import dev.bee.kanjianki.backup.ValidatedBackup
+import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
+import dev.bee.kanjianki.core.MissingKanjiCandidate
+import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
+import dev.bee.kanjianki.data.MissingKanjiExportReceipt
+import dev.bee.kanjianki.data.MissingKanjiPreferences
 import dev.bee.kanjianki.testing.DeviceRisk
 import java.io.File
 import java.io.FileOutputStream
@@ -162,6 +167,79 @@ class BackupAndRestoreInstrumentedTest {
                     assertEquals(LocalStoreSchema.DB_VERSION, cursor.getInt(0))
                 }
             }
+        }
+    }
+
+    @Test
+    @SdkSuppress(minSdkVersion = 30)
+    fun missingKanjiStateSurvivesSnapshotAndRestoreRoundTrip() {
+        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "missing-kanji.db")
+        fixture.parentFile!!.mkdirs()
+        LocalStore(context).use { store ->
+            val missing = store.missingKanjiStore()
+            missing.publishInventory(
+                AnkiKanjiInventory(
+                    literals = setOf("水", "火"),
+                    notesScanned = 12,
+                    fieldsScanned = 40,
+                    skippedNotes = 1,
+                    modelCount = 2,
+                    malformedRowWarning = null,
+                ),
+                startedAt = 100,
+                completedAt = 200,
+                providerFingerprint = "authority=fixture;spec=2",
+            )
+            missing.savePreferences(
+                MissingKanjiPreferences(
+                    preset = MissingKanjiPreferences.PRESET_CUSTOM,
+                    range = MissingKanjiFrequencyRange(50, 2_500, includeUnranked = true),
+                    searchQuery = "water",
+                ),
+            )
+            missing.addManualSources(
+                listOf(
+                    MissingKanjiCandidate(
+                        literal = "水",
+                        meanings = listOf("water"),
+                        onReadings = listOf("スイ"),
+                        kunReadings = listOf("みず"),
+                        jitenRank = 12,
+                    ),
+                ),
+                nowMillis = 300,
+            )
+            missing.recordExportReceipts(
+                listOf(MissingKanjiExportReceipt("水", "anki:fixture", 400, 500)),
+            )
+            store.snapshotInto(fixture)
+        }
+
+        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        assertTrue(
+            BackupRestoreStager.stage(
+                ValidatedBackup(fixture, "missing-kanji.db.gz"),
+                context.filesDir,
+                Build.VERSION.SDK_INT,
+            ),
+        )
+        val application = context.applicationContext as KaniApplication
+        assertEquals(
+            StagedRestoreApplier.Result.APPLIED,
+            application.applyPendingRestoreAtStartup(),
+        )
+
+        LocalStore(context).use { restored ->
+            val missing = restored.missingKanjiStore()
+            assertEquals(setOf("水", "火"), missing.inventoryState().published?.literals)
+            assertEquals(12, missing.inventoryState().published?.scan?.notesScanned)
+            assertEquals("water", missing.loadPreferences().searchQuery)
+            assertEquals("水", missing.manualSources().single().candidate.literal)
+            assertEquals(
+                500L,
+                missing.exportReceipts("anki:fixture").getValue("水").externalNoteId,
+            )
         }
     }
 }
