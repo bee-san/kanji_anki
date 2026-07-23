@@ -45,6 +45,7 @@ internal object StudyWidgetSnapshotLoader {
             )
             val streak = store.studyStreak(nowMillis)
             val dueCount = eligibleItems.count { it.dueAtMillis <= nowMillis }
+            val autoSync = store.autoSyncSettings()
             val plan = DailyStudyPlanPolicy.plan(
                 DailyStudyPlanRequest(
                     nowMillis = nowMillis,
@@ -59,6 +60,8 @@ internal object StudyWidgetSnapshotLoader {
                     ),
                     newProblemKanjiAvailable = eligibleItems.count { it.totalReviews == 0 },
                     lastSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
+                    autoSyncEnabled = autoSync.enabled,
+                    consecutiveFailedSyncs = store.consecutiveFailedSyncCount(),
                 ),
             )
             val last7Days = StudyStatsQueries(store)

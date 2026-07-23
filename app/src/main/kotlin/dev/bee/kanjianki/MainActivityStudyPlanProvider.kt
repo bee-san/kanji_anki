@@ -107,6 +107,7 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
             rows,
             activity.studyLadderSettings(),
         )
+        val autoSync = activity.store.autoSyncSettings()
         return DailyStudyPlanPolicy.plan(
             DailyStudyPlanRequest(
                 nowMillis = now,
@@ -121,6 +122,8 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                 ),
                 newProblemKanjiAvailable = if (rows.isEmpty()) 0 else eligibleItems.count { it.totalReviews == 0 },
                 lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
+                autoSyncEnabled = autoSync.enabled,
+                consecutiveFailedSyncs = activity.store.consecutiveFailedSyncCount(),
             ),
         )
     }
