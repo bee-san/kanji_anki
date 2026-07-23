@@ -55,9 +55,11 @@ class KaniWidgetProviderInfoTest {
         assertEquals("1", provider.androidAttribute("targetCellHeight"))
         assertTrue(preview.contains("android:orientation=\"horizontal\""))
         assertTrue(preview.contains("android:padding=\"8dp\""))
-        assertTrue(preview.contains("android:minWidth=\"80dp\""))
-        assertTrue(preview.contains("android:layout_width=\"80dp\""))
-        assertTrue(preview.contains("android:layout_height=\"56dp\""))
+        assertTrue(preview.contains("@drawable/kani_widget_mascot"))
+        assertTrue(preview.contains("@drawable/ic_arrow_forward_24"))
+        assertTrue(preview.contains("android:minWidth=\"48dp\""))
+        assertTrue(preview.contains("android:layout_width=\"48dp\""))
+        assertTrue(preview.contains("android:layout_height=\"48dp\""))
     }
 
     @Test

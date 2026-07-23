@@ -3,4 +3,7 @@
     <issue id="UnusedResources">
         <ignore path="src/main/res/raw/font_attribution.txt" />
     </issue>
+    <issue id="IconXmlAndPng">
+        <ignore regexp="src/main/res/mipmap-[^/]*/ic_launcher\.(png|xml)" />
+    </issue>
 </lint>
