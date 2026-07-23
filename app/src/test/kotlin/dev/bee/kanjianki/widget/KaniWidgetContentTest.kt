@@ -54,6 +54,7 @@ class KaniWidgetContentTest {
     fun compactDueOverviewUsesSiblingHomeAndStudyTargets() = runGlanceAppWidgetUnitTest(30.seconds) {
         val snapshot = KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 3)
         val copy = widgetCopy(snapshot, isExpanded = false)
+        val presentation = overviewCompactPresentation(snapshot)
         val description = WidgetTextCopy.widgetDescription(copy.title, copy.body)
         setContext(context)
         setAppWidgetSize(DpSize(180.dp, 72.dp))
@@ -61,11 +62,10 @@ class KaniWidgetContentTest {
 
         onNode(hasContentDescriptionEqualTo(description))
             .assertHasStartActivityClickAction(kaniWidgetHomeIntent(context))
-        onNode(hasAnyDescendant(hasTextEqualTo(copy.title)) and hasClickAction())
+        onNode(hasAnyDescendant(hasTextEqualTo(presentation.hero)) and hasClickAction())
             .assertHasStartActivityClickAction(kaniWidgetHomeIntent(context))
         onNode(
-            hasAnyDescendant(hasTextEqualTo(copy.action)) and
-                hasClickAction() and
+            hasContentDescriptionEqualTo(copy.action) and hasClickAction() and
                 hasMinimumTapTarget(48.dp),
         ).assertHasStartActivityClickAction(kaniWidgetLaunchIntent(context, snapshot))
         onAllNodes(hasClickAction()).assertCountEquals(2)
@@ -89,7 +89,7 @@ class KaniWidgetContentTest {
 
             onNode(hasTextEqualTo(WidgetTextCopy.visualCountLabel(snapshot.dueCount))).assertExists()
             onNode(hasTextEqualTo(copy.title)).assertDoesNotExist()
-            onNode(hasTextEqualTo(WidgetTextCopy.studyLabel())).assertExists()
+            onNode(hasContentDescriptionEqualTo(WidgetTextCopy.studyLabel())).assertExists()
             onNode(hasTextEqualTo(copy.action)).assertDoesNotExist()
             onNode(hasTextEqualTo(WidgetTextCopy.appName())).assertDoesNotExist()
             onNode(hasTextEqualTo(copy.body)).assertDoesNotExist()
@@ -97,22 +97,25 @@ class KaniWidgetContentTest {
         }
 
     @Test
-    fun sevenDayActivityStripFitsTheNarrowExpandedOverviewColumn() {
-        val metrics = overviewActivityStripMetrics()
+    fun sevenDayActivityBarsKeepEmptyDaysVisibleAndScalePositiveCounts() {
+        val metrics = overviewActivityBarMetrics()
 
-        assertEquals(9, metrics.cellSizeDp)
-        assertEquals(2, metrics.gapDp)
-        assertEquals(75, metrics.widthDp(dayCount = 7))
-        assertTrue(metrics.widthDp(dayCount = 7) <= 80)
+        assertEquals(24, metrics.trackHeightDp)
+        assertEquals(8, metrics.barWidthDp)
+        assertEquals(4, overviewActivityBarHeight(0, 20))
+        assertEquals(9, overviewActivityBarHeight(5, 20))
+        assertEquals(14, overviewActivityBarHeight(10, 20))
+        assertEquals(24, overviewActivityBarHeight(20, 20))
+        assertEquals(24, overviewActivityBarHeight(40, 20))
     }
 
     @Test
-    fun overviewStudyActionHasRoomForItsCompleteLabel() {
+    fun overviewStudyActionKeepsAnAccessibleIconTarget() {
         val metrics = overviewActionMetrics()
 
-        assertTrue(metrics.widthDp >= 80)
-        assertTrue(metrics.heightDp >= 56)
-        assertTrue(metrics.fontSp >= 13)
+        assertTrue(metrics.widthDp >= 48)
+        assertTrue(metrics.heightDp >= 48)
+        assertTrue(metrics.iconSizeDp >= 20)
     }
 
     @Test
@@ -134,9 +137,7 @@ class KaniWidgetContentTest {
         onNode(hasTextEqualTo(copy.body)).assertExists()
         onNode(hasTextEqualTo(copy.extraLine)).assertExists()
         onNode(hasTextEqualTo(WidgetTextCopy.appName())).assertExists()
-        onNode(hasTextEqualTo(copy.action)).assertExists()
-        val stripMetrics = overviewActivityStripMetrics()
-        onAllNodes(hasExactSize(stripMetrics.cellSizeDp.dp)).assertCountEquals(7)
+        onNode(hasContentDescriptionEqualTo(copy.action)).assertExists()
     }
 
     @Suppress("DEPRECATION")
@@ -146,19 +147,6 @@ class KaniWidgetContentTest {
         }
         context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
     }
-
-    private fun hasExactSize(size: Dp) =
-        GlanceNodeMatcher<MappedNode>("has exact ${size.value}dp size") { node ->
-            var width: Dp? = null
-            var height: Dp? = null
-            node.value.emittable.modifier.foldIn(Unit) { _, element ->
-                when (element) {
-                    is WidthModifier -> width = (element.width as? Dimension.Dp)?.dp
-                    is HeightModifier -> height = (element.height as? Dimension.Dp)?.dp
-                }
-            }
-            width == size && height == size
-        }
 
     private fun hasMinimumTapTarget(minimum: Dp) =
         GlanceNodeMatcher<MappedNode>("has minimum ${minimum.value}dp tap target") { node ->

@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Static widget-picker preview (previewLayout, API 31+). Mirrors the DUE_NOW
-    card using shared day/night semantic preview colors; the live widget
-    renders through Glance with the user's theme.
--->
+<!-- Static API 31+ picker preview for the compact study overview. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -14,26 +10,26 @@
     android:padding="8dp"
     tools:ignore="Overdraw">
 
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:src="@drawable/kani_widget_mascot" />
+
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/widget_preview_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:text="@string/kani_widget_preview_count"
             android:textColor="@color/widget_preview_ink"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
 
         <TextView
@@ -41,19 +37,23 @@
             android:layout_height="wrap_content"
             android:text="@string/kani_widget_preview_streak"
             android:textColor="@color/widget_preview_muted"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
-    <TextView
-        android:layout_width="80dp"
-        android:layout_height="56dp"
+    <FrameLayout
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="8dp"
         android:background="@drawable/widget_preview_primary_action"
-        android:gravity="center"
-        android:minWidth="80dp"
-        android:paddingHorizontal="8dp"
-        android:text="@string/shortcut_study_long_label"
-        android:textColor="@color/widget_preview_on_primary"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:minWidth="48dp">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/shortcut_study_long_label"
+            android:src="@drawable/ic_arrow_forward_24"
+            android:tint="@color/widget_preview_on_primary"
+            tools:ignore="UseAppTint" />
+    </FrameLayout>
 </LinearLayout>
