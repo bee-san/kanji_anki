@@ -29,6 +29,19 @@ class QuickStudyWidgetTest {
     }
 
     @Test
+    fun compactActionWrapsWhileTinyWideAndAccessibilityLayoutsKeepTheirExistingShape() {
+        val tiny = quickStudyLayout(56f, 56f, 1f)
+        val compact = quickStudyLayout(120f, 56f, 1f)
+        val wide = quickStudyLayout(180f, 72f, 1f)
+        val accessibility = quickStudyLayout(120f, 56f, 2f)
+
+        assertEquals(1, tiny.actionMaxLines)
+        assertEquals(2, compact.actionMaxLines)
+        assertEquals(1, wide.actionMaxLines)
+        assertFalse(accessibility.showSeparateAction)
+    }
+
+    @Test
     fun duePresentationCapsOnlyTheVisualCountAndKeepsExactAccessibleCount() {
         withLocale(Locale.ENGLISH) {
             val presentation = quickStudyPresentation(
