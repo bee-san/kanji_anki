@@ -113,6 +113,43 @@ class DictionaryStoreTest {
         assertNull(store.lookupKanji("not-kanji"))
     }
 
+    @Test
+    fun rankRangeQueryLoadsTopFiveThousandInStableOrder() {
+        val store = openStore()
+        val range = DictionaryLookup.JitenRankRange(1, 5_000)
+
+        val page = store.kanjiByJitenRank(range, offset = 0, limit = 5_000)
+
+        assertEquals(store.eligibleKanjiCount(range), page.totalEligible)
+        assertTrue(page.entries.size > 1_000)
+        assertTrue(page.entries.size <= 5_000)
+        assertEquals(1, page.entries.first().jitenRank)
+        assertTrue(page.entries.zipWithNext().all { (left, right) ->
+            val leftRank = left.jitenRank ?: Int.MAX_VALUE
+            val rightRank = right.jitenRank ?: Int.MAX_VALUE
+            leftRank < rightRank || leftRank == rightRank && left.literal <= right.literal
+        })
+    }
+
+    @Test
+    fun rankRangeQueryPagesAndOptionallyAppendsUnrankedEntries() {
+        val store = openStore()
+        val rankedRange = DictionaryLookup.JitenRankRange(1, 10)
+        val ranked = store.kanjiByJitenRank(rankedRange, offset = 0, limit = 3)
+        val next = store.kanjiByJitenRank(rankedRange, offset = ranked.nextOffset!!, limit = 20)
+        val withUnranked = store.kanjiByJitenRank(
+            DictionaryLookup.JitenRankRange(1, 1, includeUnranked = true),
+            offset = 0,
+            limit = DictionaryLookup.MAX_KANJI_PAGE_SIZE,
+        )
+
+        assertEquals(3, ranked.entries.size)
+        assertTrue(next.entries.isNotEmpty())
+        assertTrue(withUnranked.entries.any { it.jitenRank == null })
+        assertTrue(withUnranked.entries.takeWhile { it.jitenRank != null }.all { it.jitenRank == 1 })
+        assertTrue(withUnranked.entries.dropWhile { it.jitenRank != null }.all { it.jitenRank == null })
+    }
+
     private fun openStore(): DictionaryStore {
         return DictionaryStore.open(ApplicationProvider.getApplicationContext())
     }

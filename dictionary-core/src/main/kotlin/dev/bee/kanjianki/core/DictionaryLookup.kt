@@ -15,6 +15,14 @@ abstract class DictionaryLookup {
 
     open fun searchKanji(query: String?, limit: Int): List<KanjiEntry> = emptyList()
 
+    open fun eligibleKanjiCount(range: JitenRankRange): Int = 0
+
+    open fun kanjiByJitenRank(
+        range: JitenRankRange,
+        offset: Int,
+        limit: Int,
+    ): KanjiEntryPage = KanjiEntryPage.empty()
+
     fun studyCue(
         kanji: String?,
         ankiMeaning: String?,
@@ -60,8 +68,56 @@ abstract class DictionaryLookup {
 
         override fun kanjiCount(): Int = kanjiByLiteral.size
 
+        override fun eligibleKanjiCount(range: JitenRankRange): Int {
+            if (!range.isValid()) {
+                return 0
+            }
+            return kanjiByLiteral.values.count { entry -> range.includes(entry.jitenRank) }
+        }
+
+        override fun kanjiByJitenRank(
+            range: JitenRankRange,
+            offset: Int,
+            limit: Int,
+        ): KanjiEntryPage {
+            if (!range.isValid() || offset < 0 || limit < 1) {
+                return KanjiEntryPage.empty()
+            }
+            val eligible = kanjiByLiteral.values
+                .asSequence()
+                .filter { entry -> range.includes(entry.jitenRank) }
+                .sortedWith(KANJI_RANK_COMPARATOR)
+                .toList()
+            val boundedLimit = limit.coerceAtMost(MAX_KANJI_PAGE_SIZE)
+            val page = eligible.drop(offset).take(boundedLimit)
+            val nextOffset = (offset + page.size).takeIf { next -> next < eligible.size }
+            return KanjiEntryPage(page, eligible.size, nextOffset)
+        }
+
         companion object {
             val EMPTY = MemoryDictionaryLookup(emptyList())
+        }
+    }
+
+    data class JitenRankRange(
+        val minimumRank: Int,
+        val maximumRank: Int,
+        val includeUnranked: Boolean = false,
+    ) {
+        fun isValid(): Boolean = minimumRank >= 1 && maximumRank >= minimumRank
+
+        fun includes(rank: Int?): Boolean {
+            return if (rank == null) includeUnranked else rank in minimumRank..maximumRank
+        }
+    }
+
+    data class KanjiEntryPage(
+        val entries: List<KanjiEntry>,
+        val totalEligible: Int,
+        val nextOffset: Int?,
+    ) {
+        companion object {
+            fun empty(): KanjiEntryPage = KanjiEntryPage(emptyList(), 0, null)
         }
     }
 
@@ -134,7 +190,11 @@ abstract class DictionaryLookup {
     )
 
     companion object {
+        const val MAX_KANJI_PAGE_SIZE: Int = 10_000
         private val MULTI_WHITESPACE: Pattern = Pattern.compile("\\s+")
+        private val KANJI_RANK_COMPARATOR =
+            compareBy<KanjiEntry> { it.jitenRank ?: Int.MAX_VALUE }
+                .thenBy { it.literal }
 
         const val SOURCE_KANJIDIC2: String = "KANJIDIC2"
         const val SOURCE_ANKI: String = "anki"
