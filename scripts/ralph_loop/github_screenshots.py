@@ -17,7 +17,16 @@ Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
 EXPECTED_REPO = "bee-san/kanji_anki"
-EXPECTED_ALL_SCREENSHOT_ROUTES = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
+EXPECTED_ALL_SCREENSHOT_ROUTES = [
+    "home",
+    "study",
+    "stats",
+    "settings",
+    "games",
+    "missing-kanji",
+    "narrow",
+    "wide",
+]
 SCREENSHOT_ROUTE_ALIASES = {"launcher-home": "home"}
 
 

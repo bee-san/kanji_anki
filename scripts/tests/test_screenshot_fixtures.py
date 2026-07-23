@@ -16,7 +16,7 @@ class ScreenshotFixturesTest(unittest.TestCase):
         self.assertEqual(again, registry)
         self.assertEqual("cheap-ralph-screenshot-fixtures-v1", registry["schema"])
         self.assertEqual(
-            ["home", "study", "stats", "settings", "games", "narrow", "wide"],
+            ["home", "study", "stats", "settings", "games", "missing-kanji", "narrow", "wide"],
             registry["all_route_order"],
         )
         self.assertEqual({"launcher-home": "home"}, registry["requested_route_aliases"])
@@ -29,6 +29,7 @@ class ScreenshotFixturesTest(unittest.TestCase):
                 "stats",
                 "settings",
                 "games",
+                "missing-kanji",
                 "narrow",
                 "wide",
                 "update",
@@ -38,10 +39,10 @@ class ScreenshotFixturesTest(unittest.TestCase):
 
         fixtures = cast(list[dict[str, object]], registry["fixtures"])
         self.assertEqual(
-            ["home", "study", "stats", "settings", "games", "narrow", "wide", "update"],
+            ["home", "study", "stats", "settings", "games", "missing-kanji", "narrow", "wide", "update"],
             [fixture["route"] for fixture in fixtures],
         )
-        self.assertEqual(8, cast(dict[str, object], registry["summary"])["fixture_count"])
+        self.assertEqual(9, cast(dict[str, object], registry["summary"])["fixture_count"])
         for fixture in fixtures:
             self.assertEqual(screenshot_fixtures.fixture_hash(fixture), fixture["fixture_hash"])
             self.assertTrue(fixture["view_id"])
@@ -50,23 +51,25 @@ class ScreenshotFixturesTest(unittest.TestCase):
             self.assertTrue(cast(list[str], fixture["expected_terms"]))
             self.assertTrue(cast(list[str], fixture["known_invariants"]))
             route = str(fixture["route"])
-            self.assertEqual(
-                [f"{route}-top.png", f"{route}-middle.png", f"{route}-bottom.png"],
-                fixture["screenshot_names"],
+            expected_names = (
+                [f"{route}-top.png"]
+                if route == "missing-kanji"
+                else [f"{route}-top.png", f"{route}-middle.png", f"{route}-bottom.png"]
             )
+            self.assertEqual(expected_names, fixture["screenshot_names"])
 
     def test_bucket_mapping_returns_expected_view_fixtures(self) -> None:
         self.assertEqual(
-            ["home", "narrow", "wide"],
+            ["home", "missing-kanji", "narrow", "wide"],
             [fixture["route"] for fixture in screenshot_fixtures.fixtures_for_bucket("home")],
         )
         self.assertEqual(
             ["settings", "update"],
             [fixture["route"] for fixture in screenshot_fixtures.fixtures_for_bucket("settings")],
         )
-        self.assertEqual(8, len(screenshot_fixtures.fixtures_for_bucket("shell")))
-        self.assertEqual(8, len(screenshot_fixtures.fixtures_for_bucket("theme")))
-        self.assertEqual(8, len(screenshot_fixtures.fixtures_for_bucket("shared")))
+        self.assertEqual(9, len(screenshot_fixtures.fixtures_for_bucket("shell")))
+        self.assertEqual(9, len(screenshot_fixtures.fixtures_for_bucket("theme")))
+        self.assertEqual(9, len(screenshot_fixtures.fixtures_for_bucket("shared")))
         self.assertEqual([], screenshot_fixtures.fixtures_for_bucket("test"))
 
 

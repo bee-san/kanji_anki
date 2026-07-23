@@ -111,6 +111,21 @@ FIXTURES: tuple[ScreenshotFixture, ...] = (
         ),
     ),
     ScreenshotFixture(
+        view_id="missing-kanji-default",
+        route="missing-kanji",
+        launch_route="missing-kanji",
+        fixture_id="stable-missing-kanji-default",
+        orientation="portrait",
+        screenshot_names=("missing-kanji-top.png",),
+        expected_terms=("Missing Kanji",),
+        source_buckets=("home", "missing-kanji", "shell", "theme", "shared"),
+        risk_tags=("collection-inventory", "navigation", "read-only"),
+        known_invariants=(
+            "Must not query AnkiDroid or persist collection data during screenshot-only startup.",
+            "Must keep destination actions disabled until their later delivery goals are implemented.",
+        ),
+    ),
+    ScreenshotFixture(
         view_id="home-narrow",
         route="narrow",
         launch_route="home",
@@ -158,7 +173,7 @@ FIXTURES: tuple[ScreenshotFixture, ...] = (
 )
 
 
-ALL_ROUTE_ORDER = ("home", "study", "stats", "settings", "games", "narrow", "wide")
+ALL_ROUTE_ORDER = ("home", "study", "stats", "settings", "games", "missing-kanji", "narrow", "wide")
 SUPPORTED_REQUESTED_ROUTES = (
     "all",
     "launcher-home",
@@ -167,6 +182,7 @@ SUPPORTED_REQUESTED_ROUTES = (
     "stats",
     "settings",
     "games",
+    "missing-kanji",
     "narrow",
     "wide",
     "update",

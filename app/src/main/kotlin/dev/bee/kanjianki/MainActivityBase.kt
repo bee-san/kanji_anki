@@ -568,9 +568,18 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         studySessionActive: Boolean = false,
+        scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
         content: @Composable () -> Unit,
     ) {
-        shellHost.composeRoute(selected, initialScrollY, scrollPositionLabel, onScrollY, studySessionActive, content)
+        shellHost.composeRoute(
+            selected,
+            initialScrollY,
+            scrollPositionLabel,
+            onScrollY,
+            studySessionActive,
+            scrollMode,
+            content,
+        )
     }
 
     fun composeRouteWithActionBar(
@@ -579,6 +588,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         studySessionActive: Boolean = false,
+        scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
@@ -589,6 +599,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             scrollPositionLabel,
             onScrollY,
             studySessionActive,
+            scrollMode,
             beforeContent,
             content,
             actionBar,
@@ -731,6 +742,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
+        const val SCREENSHOT_MISSING_KANJI_ROUTE = "missing-kanji"
         const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         private const val STATE_PENDING_REMINDER = "kani.pending-reminder"

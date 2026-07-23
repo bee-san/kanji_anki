@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import dev.bee.kanjianki.core.KanjiGameCopy
 import dev.bee.kanjianki.core.KanjiGameEngine
+import dev.bee.kanjianki.core.MissingKanjiCandidate
+import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal fun screenshotGamesScreenModel(): GamesScreenModel {
@@ -25,6 +27,71 @@ internal fun screenshotGamesScreenModel(): GamesScreenModel {
                 onClick = Runnable {},
             )
         },
+    )
+}
+
+internal fun screenshotMissingKanjiScreenModel(): MissingKanjiScreenModel {
+    val rows = missingKanjiRows(
+        listOf(
+            MissingKanjiCandidate(
+                literal = "朧",
+                meanings = listOf("haze", "dimness"),
+                onReadings = listOf("ロウ"),
+                kunReadings = listOf("おぼろ"),
+                jitenRank = 2_184,
+            ),
+            MissingKanjiCandidate(
+                literal = "凪",
+                meanings = listOf("calm", "lull"),
+                onReadings = listOf("チ"),
+                kunReadings = listOf("なぎ"),
+                jitenRank = 2_641,
+            ),
+            MissingKanjiCandidate(
+                literal = "憧",
+                meanings = listOf("yearn", "long for"),
+                onReadings = listOf("ショウ", "ドウ"),
+                kunReadings = listOf("あこが.れる"),
+                jitenRank = 2_903,
+            ),
+            MissingKanjiCandidate(
+                literal = "燦",
+                meanings = listOf("brilliant"),
+                onReadings = listOf("サン"),
+                jitenRank = 3_412,
+            ),
+        ),
+    )
+    return MissingKanjiScreenModel(
+        content = MissingKanjiContentModel.Report(
+            MissingKanjiReportUiModel(
+                reportKey = "screenshot:1:5000:false",
+                scan = MissingKanjiScanSummaryModel(
+                    scanId = 1L,
+                    completedAtMillis = 1_784_795_436_000L,
+                    notesScanned = 12_480,
+                    uniqueAnkiKanjiCount = 1_842,
+                    skippedNotes = 0,
+                ),
+                eligibleDictionaryKanjiCount = 5_000,
+                missingKanjiCount = rows.size,
+                rows = rows,
+                staleReason = null,
+            ),
+        ),
+        providerAvailability = MissingKanjiProviderAvailability.READY,
+        frequency = MissingKanjiFrequencyModel(
+            preset = MissingKanjiPreset.TOP_5000,
+            range = MissingKanjiFrequencyRange.TOP_5000,
+            searchQuery = "",
+        ),
+        primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+        onHome = {},
+        onPrimaryAction = {},
+        onCancelScan = {},
+        onRangeApplied = { _, _ -> },
+        onRangePreview = { _, callback -> callback(5_000) },
+        onSearchQueryChanged = {},
     )
 }
 
