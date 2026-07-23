@@ -58,6 +58,30 @@ class RealAnkiDroidLiveProviderInstrumentedTest {
         assertHasRealSchedulerState(snapshot)
     }
 
+    @Test
+    fun scansCollectionWideKanjiInventoryThroughRealAnkiDroid() {
+        val gateway = AnkiDroidCollectionInventoryGateway(context)
+        val status = gateway.status()
+
+        assertTrue("Collection inventory provider must be installed.", status.installed)
+        assertTrue("Collection inventory permission must be granted.", status.permissionGranted)
+
+        val inventory = AnkiKanjiInventoryReader(gateway).read()
+        val minimumNotes = liveMinimumNotes()
+
+        assertTrue(
+            "Expected at least $minimumNotes collection notes, got ${inventory.notesScanned}.",
+            inventory.notesScanned >= minimumNotes,
+        )
+        assertTrue("Expected collection-wide kanji membership.", inventory.literals.isNotEmpty())
+        println(
+            "KANI_LIVE_INVENTORY authority=${status.authority} " +
+                "spec=${status.providerSpecVersion} notes=${inventory.notesScanned} " +
+                "models=${inventory.modelCount} uniqueKanji=${inventory.uniqueKanjiCount} " +
+                "skipped=${inventory.skippedNotes}",
+        )
+    }
+
     /**
      * Time-boxed D-S8 probe. Writing the card's existing queue value makes the
      * experiment semantically non-destructive even if a future provider accepts it.

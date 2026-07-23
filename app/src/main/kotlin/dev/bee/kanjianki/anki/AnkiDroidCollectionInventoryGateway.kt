@@ -124,6 +124,7 @@ class AnkiDroidCollectionInventoryGateway private constructor(
         var skippedNotes = 0
         while (true) {
             ensureNotCancelled()
+            val pageStartId = lastId
             val cursor = try {
                 resolver.query(
                     uri(target.authority, NOTES_V2_PATH),
@@ -165,6 +166,12 @@ class AnkiDroidCollectionInventoryGateway private constructor(
                     }
                     progress.onProgress(ScanProgress(notesRead, skippedNotes))
                 }
+            }
+            if (rowsInPage >= PAGE_SIZE && lastId <= pageStartId) {
+                throw Failure(
+                    FailureKind.PROVIDER_UNAVAILABLE,
+                    "AnkiDroid returned a non-advancing collection-note page.",
+                )
             }
             if (rowsInPage < PAGE_SIZE) {
                 return ScanResult(

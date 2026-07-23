@@ -82,6 +82,23 @@ class AnkiDroidCollectionInventoryGatewayInstrumentedTest {
     }
 
     @Test
+    fun buildsAggregateKanjiInventoryWithoutConfiguredSync() {
+        providerCall("inventoryMalformedRow")
+        val progress = mutableListOf<dev.bee.kanjianki.core.AnkiKanjiInventoryProgress>()
+
+        val inventory = AnkiKanjiInventoryReader(testGateway()).read(progress::add)
+
+        assertEquals(setOf("確", "認", "笥", "箱", "見"), inventory.literals)
+        assertEquals(4, inventory.notesScanned)
+        assertEquals(26, inventory.fieldsScanned)
+        assertEquals(1, inventory.skippedNotes)
+        assertEquals(2, inventory.modelCount)
+        assertTrue(inventory.malformedRowWarning != null)
+        assertTrue(progress.first().isIndeterminate)
+        assertEquals(5, progress.last().uniqueKanjiCount)
+    }
+
+    @Test
     fun cancellationStopsBetweenRowsWithoutRetainingTheRemainingFields() {
         var cancelled = false
         val notes = mutableListOf<AnkiDroidCollectionInventoryGateway.CollectionNote>()
