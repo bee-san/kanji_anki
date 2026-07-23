@@ -547,6 +547,30 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         }
     }
 
+    internal fun saveStudyMnemonicAfterAnswer(
+        expectedToken: String,
+        expectedRecovery: StoredActiveStudyRecovery?,
+        kanji: String,
+        note: String,
+    ): Boolean {
+        if (!matchesMountedStudyRoute(expectedToken, expectedRecovery)) return false
+        val feedback = studyAnswerFeedbackState ?: return false
+        val phase = feedback.snapshot().phase
+        if (feedback.sessionToken != expectedToken ||
+            (phase != StudyAnswerFeedbackPhase.SUBMITTING && phase != StudyAnswerFeedbackPhase.APPLIED)
+        ) {
+            return false
+        }
+        val normalizedKanji = kanji.trim()
+        if (normalizedKanji.isEmpty() || activeSession?.item?.kanji?.trim() != normalizedKanji) return false
+        val normalizedNote = note.trim()
+        // This is an explicit user-authored save, so commit the tiny local SQLite write
+        // before returning. Activity-owned executors are interrupted in onDestroy and
+        // could otherwise acknowledge a queued mnemonic that rotation silently drops.
+        store.saveKanjiMnemonicNote(normalizedKanji, normalizedNote, System.currentTimeMillis())
+        return true
+    }
+
     fun continueAfterStudyAnswer(): Boolean {
         val state = studyAnswerFeedbackState ?: return false
         var pending = studyRecoveryStore.readPending()
