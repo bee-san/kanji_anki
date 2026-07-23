@@ -82,6 +82,7 @@ internal data class QuickStudyLayout(
     val statusFontSp: Int = 12,
     val actionFontSp: Int = 13,
     val actionWidthDp: Int,
+    val actionMaxLines: Int,
 )
 
 internal fun quickStudyLayout(
@@ -103,6 +104,7 @@ internal fun quickStudyLayout(
         showAction = true,
         showSeparateAction = tier != QuickStudyTier.TINY && !veryLargeFont,
         actionWidthDp = if (tier == QuickStudyTier.WIDE) 72 else 56,
+        actionMaxLines = if (tier == QuickStudyTier.COMPACT) 2 else 1,
         heroFontSp = when {
             veryLargeFont -> 16
             tier == QuickStudyTier.TINY -> 22
@@ -219,6 +221,7 @@ internal fun QuickStudyWidgetContent(snapshot: KaniWidgetSnapshot) {
                 palette = palette,
                 fontSizeSp = layout.actionFontSp,
                 widthDp = layout.actionWidthDp,
+                maxLines = layout.actionMaxLines,
             )
         }
     } else {
@@ -290,6 +293,7 @@ private fun QuickStudyAction(
     palette: KaniWidgetPalette,
     fontSizeSp: Int,
     widthDp: Int,
+    maxLines: Int,
 ) {
     Box(
         modifier = GlanceModifier
@@ -306,7 +310,7 @@ private fun QuickStudyAction(
                 fontSize = fontSizeSp.sp,
                 fontWeight = FontWeight.Bold,
             ),
-            maxLines = 1,
+            maxLines = maxLines,
         )
     }
 }
