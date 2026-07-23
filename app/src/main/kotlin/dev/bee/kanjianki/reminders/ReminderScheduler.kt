@@ -684,6 +684,8 @@ object ReminderScheduler {
                 eligibleItems,
                 streak,
                 store.latestSuccessfulSyncFinishedAt(),
+                store.autoSyncSettings().enabled,
+                store.consecutiveFailedSyncCount(),
                 nowMillis,
             ),
             antiSpam,
@@ -797,6 +799,8 @@ object ReminderScheduler {
         eligibleItems: List<RecordsStudyModels.StudyItem>,
         streak: dev.bee.kanjianki.data.StudyStatsStore.StudyStreak,
         lastSuccessfulSyncAtMillis: Long?,
+        autoSyncEnabled: Boolean,
+        consecutiveFailedSyncs: Int,
         nowMillis: Long,
     ): DailyStudyPlan {
         return DailyStudyPlanPolicy.plan(
@@ -813,6 +817,8 @@ object ReminderScheduler {
                 ),
                 newProblemKanjiAvailable = if (rows.isEmpty()) 0 else eligibleItems.count { it.totalReviews == 0 },
                 lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
+                autoSyncEnabled = autoSyncEnabled,
+                consecutiveFailedSyncs = consecutiveFailedSyncs,
             ),
         )
     }

@@ -115,6 +115,25 @@ internal class LocalStoreStudyStatus(
         }
     }
 
+    fun consecutiveFailedSyncCount(): Int {
+        val sql = """
+            SELECT COUNT(*)
+            FROM ${LocalStoreBase.TABLE_SYNC_RUNS}
+            WHERE ${LocalStoreBase.COLUMN_STATUS} != ?
+              AND id > COALESCE((
+                  SELECT MAX(id)
+                  FROM ${LocalStoreBase.TABLE_SYNC_RUNS}
+                  WHERE ${LocalStoreBase.COLUMN_STATUS} = ?
+              ), 0)
+        """.trimIndent()
+        store.readableDatabase.rawQuery(
+            sql,
+            arrayOf(LocalStoreBase.STATUS_SUCCESS, LocalStoreBase.STATUS_SUCCESS),
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getInt(0).coerceAtLeast(0) else 0
+        }
+    }
+
     fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean {
         store.readableDatabase.query(
             LocalStoreBase.TABLE_SYNC_RUNS,

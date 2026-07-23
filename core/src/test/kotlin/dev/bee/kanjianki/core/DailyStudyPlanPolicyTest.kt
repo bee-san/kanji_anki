@@ -146,6 +146,69 @@ class DailyStudyPlanPolicyTest {
     }
 
     @Test
+    fun autoSyncGraceKeepsYesterdaySyncFromTakingOverTodayCard() {
+        val now = 10L * 24L * 60L * 60L * 1000L
+        val plan = DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = now,
+                lastSuccessfulSyncAtMillis = now - 2L * 24L * 60L * 60L * 1000L,
+                autoSyncEnabled = true,
+                consecutiveFailedSyncs = 0,
+            ),
+        )
+
+        assertEquals(SyncStatus.CURRENT, plan.syncStatus)
+        assertEquals(RecommendedAction.NOTHING_USEFUL_NOW, plan.recommendedAction)
+    }
+
+    @Test
+    fun autoSyncGraceEndsAfterThreeDaysWithoutSuccess() {
+        val now = 10L * 24L * 60L * 60L * 1000L
+        val plan = DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = now,
+                lastSuccessfulSyncAtMillis = now - 3L * 24L * 60L * 60L * 1000L - 1L,
+                autoSyncEnabled = true,
+                consecutiveFailedSyncs = 0,
+            ),
+        )
+
+        assertEquals(SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS, plan.syncStatus)
+        assertEquals(RecommendedAction.SYNC_FIRST, plan.recommendedAction)
+    }
+
+    @Test
+    fun thirdConsecutiveFailureEndsAutoSyncGraceEarly() {
+        val now = 10L * 24L * 60L * 60L * 1000L
+        val plan = DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = now,
+                lastSuccessfulSyncAtMillis = now - 1L,
+                autoSyncEnabled = true,
+                consecutiveFailedSyncs = 3,
+            ),
+        )
+
+        assertEquals(SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS, plan.syncStatus)
+        assertEquals(RecommendedAction.SYNC_FIRST, plan.recommendedAction)
+    }
+
+    @Test
+    fun twoConsecutiveFailuresStayInsideAutoSyncGrace() {
+        val now = 10L * 24L * 60L * 60L * 1000L
+        val plan = DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = now,
+                lastSuccessfulSyncAtMillis = now - 1L,
+                autoSyncEnabled = true,
+                consecutiveFailedSyncs = 2,
+            ),
+        )
+
+        assertEquals(SyncStatus.CURRENT, plan.syncStatus)
+    }
+
+    @Test
     fun estimateSaturatesWhenUntrustedCountsAndDurationsAreHuge() {
         withUtcZone {
             val plan = DailyStudyPlanPolicy.plan(
