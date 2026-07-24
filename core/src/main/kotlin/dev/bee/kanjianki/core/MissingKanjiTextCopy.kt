@@ -491,6 +491,135 @@ object MissingKanjiTextCopy {
     fun createAnkiDeckLabel(): String = localized("Create Anki deck", "Ankiデッキを作成")
 
     @JvmStatic
+    fun exportToAnkiLabel(): String = localized("Export to Anki", "Ankiへ書き出す")
+
+    @JvmStatic
+    fun exportSelectionTitle(count: Int): String = localized(
+        "Export ${number(count)} selected kanji",
+        "選択した${number(count)}字を書き出す",
+    )
+
+    @JvmStatic
+    fun exportSelectionBody(): String = localized(
+        "Create the notes directly in AnkiDroid or share an Anki-ready UTF-8 CSV.",
+        "AnkiDroidに直接ノートを作成するか、Anki用UTF-8 CSVを共有します。",
+    )
+
+    @JvmStatic
+    fun directExportUnavailableBody(): String = localized(
+        "Direct creation is unavailable for this AnkiDroid provider. CSV export remains available.",
+        "このAnkiDroidプロバイダーでは直接作成できません。CSV書き出しは利用できます。",
+    )
+
+    @JvmStatic
+    fun deckNameLabel(): String = localized("Deck name", "デッキ名")
+
+    @JvmStatic
+    fun createInAnkiDroidLabel(): String = localized(
+        "Create in AnkiDroid",
+        "AnkiDroidに作成",
+    )
+
+    @JvmStatic
+    fun shareCsvLabel(): String = localized("Share CSV", "CSVを共有")
+
+    @JvmStatic
+    fun exportChooserTitle(): String = localized(
+        "Share Missing Kanji CSV",
+        "未登録漢字CSVを共有",
+    )
+
+    @JvmStatic
+    fun csvImportInstructions(): String = localized(
+        "Import as UTF-8, skip the header row, and allow HTML in fields. Map the six columns in this order: Kanji, Meaning, OnReading, KunReading, JitenRank, SourceId. Use SourceId to identify exported notes.",
+        "UTF-8として読み込み、見出し行を除外し、欄内のHTMLを許可してください。6列をKanji、Meaning、OnReading、KunReading、JitenRank、SourceIdの順に割り当てます。書き出したノートの識別にはSourceIdを使用します。",
+    )
+
+    @JvmStatic
+    fun exportProgress(processed: Int, total: Int): String = localized(
+        "Exporting ${number(processed)} of ${number(total)}",
+        "${number(total)}字中${number(processed)}字を書き出し中",
+    )
+
+    @JvmStatic
+    fun cancelExportLabel(): String = localized("Cancel export", "書き出しをキャンセル")
+
+    @JvmStatic
+    fun ankiExportResultTitle(success: Boolean): String = if (success) {
+        localized("Anki deck updated", "Ankiデッキを更新しました")
+    } else {
+        localized("Anki export stopped", "Anki書き出しを停止しました")
+    }
+
+    @JvmStatic
+    fun ankiExportResultBody(
+        deckName: String,
+        created: Int,
+        alreadyPresent: Int,
+        skipped: Int,
+        unfinished: Int,
+        failureCode: String?,
+    ): String {
+        val summary = localized(
+            "Deck: $deckName\n${number(created)} created · ${number(alreadyPresent)} already present · ${number(skipped)} skipped",
+            "デッキ：$deckName\n${number(created)}字を作成・${number(alreadyPresent)}字は作成済み・${number(skipped)}字をスキップ",
+        )
+        if (failureCode == null && unfinished == 0) {
+            return summary
+        }
+        val failure = when (failureCode) {
+            "cancelled" -> localized("Export was cancelled.", "書き出しをキャンセルしました。")
+            "model_collision" -> localized(
+                "An incompatible Kani note type already exists.",
+                "互換性のないKaniノートタイプがすでに存在します。",
+            )
+            "deck_collision" -> localized(
+                "The selected name belongs to a filtered deck.",
+                "選択した名前はフィルターデッキで使用されています。",
+            )
+            "permission_required" -> localized(
+                "AnkiDroid collection permission is required.",
+                "AnkiDroidコレクションへの権限が必要です。",
+            )
+            "unsupported_provider" -> localized(
+                "This AnkiDroid provider cannot create notes safely.",
+                "このAnkiDroidプロバイダーでは安全にノートを作成できません。",
+            )
+            "receipt_persistence" -> localized(
+                "Created notes were found, but their local receipts could not be saved.",
+                "作成したノートは確認できましたが、端末内の記録を保存できませんでした。",
+            )
+            else -> localized(
+                "AnkiDroid became unavailable before the export finished.",
+                "書き出し完了前にAnkiDroidを利用できなくなりました。",
+            )
+        }
+        return if (unfinished > 0) {
+            localized(
+                "$summary\n${number(unfinished)} unfinished. $failure Retry or share CSV; confirmed notes will not be duplicated.",
+                "$summary\n${number(unfinished)}字が未完了です。$failure 再試行またはCSV共有が可能で、確認済みノートは重複しません。",
+            )
+        } else {
+            localized(
+                "$summary\n$failure Retry direct export to reconcile its local receipt.",
+                "$summary\n$failure 直接書き出しを再試行して端末内の記録を更新してください。",
+            )
+        }
+    }
+
+    @JvmStatic
+    fun csvExportResultTitle(): String = localized(
+        "CSV ready to share",
+        "CSVを共有できます",
+    )
+
+    @JvmStatic
+    fun csvExportResultBody(exported: Int, skipped: Int, fileName: String): String = localized(
+        "${number(exported)} kanji exported · ${number(skipped)} skipped\n$fileName",
+        "${number(exported)}字を書き出し・${number(skipped)}字をスキップ\n$fileName",
+    )
+
+    @JvmStatic
     fun homeLabel(): String = localized("Home", "ホーム")
 
     private fun number(value: Int): String =

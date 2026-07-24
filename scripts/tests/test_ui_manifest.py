@@ -25,7 +25,7 @@ class UiManifestTest(unittest.TestCase):
         registry = cast(dict[str, object], manifest["screenshot_fixture_registry"])
         self.assertEqual("ui-manifest-v1", manifest["schema"])
         self.assertEqual("cheap-ralph-screenshot-fixtures-v1", summary["screenshot_fixture_schema"])
-        self.assertEqual(8, summary["screenshot_fixture_count"])
+        self.assertEqual(9, summary["screenshot_fixture_count"])
         self.assertEqual("cheap-ralph-screenshot-fixtures-v1", registry["schema"])
         self.assertEqual(sorted(files), [entry["path"] for entry in manifest_files])
         self.assertEqual(
@@ -52,7 +52,10 @@ class UiManifestTest(unittest.TestCase):
         self.assertIn("interactive", home_risk_tags)
         self.assertEqual(["app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt"], home["nearest_tests"])
         self.assertTrue(any(marker["kind"] == "Button" and marker["label"] == "primary_home_cta" for marker in home_markers))
-        self.assertEqual(["home", "narrow", "wide"], [fixture["route"] for fixture in home_fixtures])
+        self.assertEqual(
+            ["home", "missing-kanji", "narrow", "wide"],
+            [fixture["route"] for fixture in home_fixtures],
+        )
         self.assertEqual("stable-home-default", home_fixtures[0]["fixture_id"])
         self.assertIn("Kani route home", home_expected_terms)
 
@@ -70,10 +73,10 @@ class UiManifestTest(unittest.TestCase):
         shell_risk_tags = cast(list[str], shell["risk_tags"])
         self.assertEqual("shell", shell["bucket"])
         self.assertIn("shell_entry", shell_risk_tags)
-        self.assertEqual(8, len(cast(list[dict[str, object]], shell["screenshot_fixtures"])))
+        self.assertEqual(9, len(cast(list[dict[str, object]], shell["screenshot_fixtures"])))
 
         theme = files["app/src/main/kotlin/dev/bee/kanjianki/ui/theme/KaniTheme.kt"]
-        self.assertEqual(8, len(cast(list[dict[str, object]], theme["screenshot_fixtures"])))
+        self.assertEqual(9, len(cast(list[dict[str, object]], theme["screenshot_fixtures"])))
 
         test = files["app/src/androidTest/kotlin/dev/bee/kanjianki/HomeScreenComposeTest.kt"]
         self.assertEqual([], cast(list[dict[str, object]], test["screenshot_fixtures"]))
@@ -90,7 +93,7 @@ class UiManifestTest(unittest.TestCase):
             loaded = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual("ui-manifest-v1", loaded["schema"])
             self.assertEqual(8, len(loaded["files"]))
-            self.assertEqual(8, loaded["summary"]["screenshot_fixture_count"])
+            self.assertEqual(9, loaded["summary"]["screenshot_fixture_count"])
 
     def _write_fixture(self, root: Path) -> None:
         fixtures = {

@@ -214,15 +214,17 @@ class MissingKanjiScreenModelTest {
     }
 
     @Test
-    fun screenshotFixtureIsAReadyReadOnlyReport() {
+    fun screenshotFixtureIsAReadyActionableReport() {
         val model = screenshotMissingKanjiScreenModel()
         val report = (model.content as MissingKanjiContentModel.Report).report
 
         assertEquals(MissingKanjiProviderAvailability.READY, model.providerAvailability)
         assertEquals(MissingKanjiPreset.TOP_5000, model.frequency.preset)
         assertEquals(4, report.rows.size)
-        assertFalse(model.destinations.addToKaniEnabled)
-        assertFalse(model.destinations.createAnkiDeckEnabled)
+        assertEquals(setOf("朧"), model.initialSelectedLiterals)
+        assertTrue(model.destinations.addToKaniEnabled)
+        assertTrue(model.destinations.createAnkiDeckEnabled)
+        assertTrue(model.destinations.csvExportEnabled)
     }
 
     private class TrackingLookup(entries: List<DictionaryLookup.KanjiEntry>) : DictionaryLookup() {

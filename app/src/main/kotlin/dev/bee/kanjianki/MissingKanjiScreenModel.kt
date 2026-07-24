@@ -143,12 +143,46 @@ internal data class MissingKanjiRowModel(
 internal data class MissingKanjiDestinationModel(
     val addToKaniEnabled: Boolean = false,
     val createAnkiDeckEnabled: Boolean = false,
+    val csvExportEnabled: Boolean = false,
+    val defaultDeckName: String = "Kani::Missing Kanji",
     val newPerDay: Int = 0,
     val operationInProgress: Boolean = false,
+    val exportProgress: MissingKanjiExportProgressState? = null,
     val onAddToKani: (Set<String>) -> Unit = {},
-    val onCreateAnkiDeck: (Set<String>) -> Unit = {},
+    val onCreateAnkiDeck: (Set<String>, String) -> Unit = { _, _ -> },
+    val onExportCsv: (Set<String>) -> Unit = {},
+    val onCancelExport: () -> Unit = {},
     val onRemoveFromKani: (String) -> Unit = {},
 )
+
+internal class MissingKanjiExportProgressState {
+    var totalCount by mutableIntStateOf(0)
+        private set
+    var processedCount by mutableIntStateOf(0)
+        private set
+    var createdCount by mutableIntStateOf(0)
+        private set
+    var alreadyPresentCount by mutableIntStateOf(0)
+        private set
+    var isCancelling by mutableStateOf(false)
+        private set
+
+    fun update(
+        totalCount: Int,
+        processedCount: Int,
+        createdCount: Int,
+        alreadyPresentCount: Int,
+    ) {
+        this.totalCount = totalCount.coerceAtLeast(0)
+        this.processedCount = processedCount.coerceIn(0, this.totalCount)
+        this.createdCount = createdCount.coerceAtLeast(0)
+        this.alreadyPresentCount = alreadyPresentCount.coerceAtLeast(0)
+    }
+
+    fun markCancelling() {
+        isCancelling = true
+    }
+}
 
 internal sealed interface MissingKanjiOperationResultModel {
     data class KaniAdmission(
@@ -168,6 +202,22 @@ internal sealed interface MissingKanjiOperationResultModel {
         val reviewed: Boolean,
     ) : MissingKanjiOperationResultModel
 
+    data class AnkiExport(
+        val deckName: String,
+        val createdCount: Int,
+        val alreadyPresentCount: Int,
+        val skippedCount: Int,
+        val unfinishedCount: Int,
+        val failureCode: String?,
+        val csvFallbackAvailable: Boolean,
+    ) : MissingKanjiOperationResultModel
+
+    data class CsvExport(
+        val exportedCount: Int,
+        val skippedCount: Int,
+        val fileName: String,
+    ) : MissingKanjiOperationResultModel
+
     data object Failed : MissingKanjiOperationResultModel
 }
 
@@ -182,10 +232,12 @@ internal data class MissingKanjiScreenModel(
     val onRangeApplied: (MissingKanjiPreset, MissingKanjiFrequencyRange) -> Unit,
     val onRangePreview: (MissingKanjiFrequencyRange, (Int) -> Unit) -> Unit,
     val onSearchQueryChanged: (String) -> Unit,
+    val initialSelectedLiterals: Set<String> = emptySet(),
     val destinations: MissingKanjiDestinationModel = MissingKanjiDestinationModel(),
     val operationResult: MissingKanjiOperationResultModel? = null,
     val onDismissOperationResult: () -> Unit = {},
     val onStudyNow: () -> Unit = {},
+    val onExportCsvFallback: () -> Unit = {},
 )
 
 internal sealed interface MissingKanjiRangeInputResult {

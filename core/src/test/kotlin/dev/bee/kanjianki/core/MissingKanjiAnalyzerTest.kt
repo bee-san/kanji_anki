@@ -6,6 +6,14 @@ import org.junit.Test
 
 class MissingKanjiAnalyzerTest {
     @Test
+    fun frequencyPresetsUseInclusiveDocumentedBounds() {
+        assertEquals(MissingKanjiFrequencyRange(1, 1_000), MissingKanjiFrequencyRange.TOP_1000)
+        assertEquals(MissingKanjiFrequencyRange(1, 2_000), MissingKanjiFrequencyRange.TOP_2000)
+        assertEquals(MissingKanjiFrequencyRange(1, 3_000), MissingKanjiFrequencyRange.TOP_3000)
+        assertEquals(MissingKanjiFrequencyRange(1, 5_000), MissingKanjiFrequencyRange.TOP_5000)
+    }
+
+    @Test
     fun emptyCollectionReturnsEveryEligibleUniqueCandidateAsMissing() {
         val result = success(
             candidates(

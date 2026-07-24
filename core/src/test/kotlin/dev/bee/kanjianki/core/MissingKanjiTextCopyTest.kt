@@ -18,6 +18,20 @@ class MissingKanjiTextCopyTest {
             assertEquals("Unranked", MissingKanjiTextCopy.rankLabel(null))
             assertTrue(MissingKanjiTextCopy.addToKaniConfirmationBody(25, 5).contains("5 new items per day"))
             assertTrue(MissingKanjiTextCopy.kaniAdmissionResultBody(3, 1, 2, 1, 0).contains("3 added"))
+            assertEquals("Export to Anki", MissingKanjiTextCopy.exportToAnkiLabel())
+            assertTrue(MissingKanjiTextCopy.exportSelectionTitle(25).contains("25"))
+            assertTrue(MissingKanjiTextCopy.csvImportInstructions().contains("allow HTML"))
+            assertTrue(MissingKanjiTextCopy.csvImportInstructions().contains("skip the header"))
+            assertTrue(
+                MissingKanjiTextCopy.ankiExportResultBody(
+                    deckName = "Kani::Missing Kanji",
+                    created = 2,
+                    alreadyPresent = 1,
+                    skipped = 0,
+                    unfinished = 1,
+                    failureCode = "provider_unavailable",
+                ).contains("will not be duplicated"),
+            )
         }
     }
 
@@ -31,6 +45,9 @@ class MissingKanjiTextCopyTest {
             assertTrue(MissingKanjiTextCopy.firstRunBody().contains("すべてのノート欄"))
             assertTrue(MissingKanjiTextCopy.frequencyBody().contains("数字が小さいほど"))
             assertTrue(MissingKanjiTextCopy.addToKaniConfirmationBody(25, 5).contains("1日最大5件"))
+            assertEquals("Ankiへ書き出す", MissingKanjiTextCopy.exportToAnkiLabel())
+            assertEquals("CSVを共有", MissingKanjiTextCopy.shareCsvLabel())
+            assertTrue(MissingKanjiTextCopy.csvImportInstructions().contains("HTMLを許可"))
             assertTrue(
                 MissingKanjiTextCopy.rowDescription(
                     literal = "語",

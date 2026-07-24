@@ -146,20 +146,27 @@ count.
 - malformed-row isolation and explicit provider errors; and
 - read/write capability status for a spec-2 test provider.
 
-The fake provider does not authorize production writes in this design-only
-change. Writer mutation coverage is added with the writer implementation.
+`AnkiMissingKanjiWriterInstrumentedTest` verifies:
+
+- exact deck, six-field model, template, and CSS compatibility checks;
+- first export and process-restart retry without duplicate notes;
+- reconciliation after a provider throws following a partial write;
+- short writes, receipt failures, filtered-deck and incompatible-model
+  collisions, and cooperative cancellation;
+- batches of at most 100 notes; and
+- a 5,000-note export plus full retry in 0.812 seconds on the local API 35
+  emulator, producing 50 batches and zero retry duplicates.
 
 ## Live/emulator evidence
 
 The source contract above was inspected at the pinned AnkiDroid 2.24.0 tag.
-The release gate will run `ci/scripts/run_local_ankidroid_fixture.sh` against
-the sanitized fixture after the inventory and writer instrumentation subsets
-are present. It must record:
+The release gate runs `ci/scripts/run_local_ankidroid_fixture.sh` against the
+sanitized fixture and records:
 
 - provider authority and spec version;
 - collection-wide note/model counts;
-- a disposable `Kani::Missing Kanji` deck/model/note create, duplicate retry,
-  and cleanup; and
+- a reusable `Kani::Missing Kanji` deck/model, disposable note creation,
+  rendered-card inspection, duplicate retry, and note cleanup; and
 - confirmation that normal configured-model sync still passes.
 
 No personal note text, model names, or deck names may appear in the evidence.

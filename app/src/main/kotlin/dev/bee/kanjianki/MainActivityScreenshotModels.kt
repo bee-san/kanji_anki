@@ -92,6 +92,13 @@ internal fun screenshotMissingKanjiScreenModel(): MissingKanjiScreenModel {
         onRangeApplied = { _, _ -> },
         onRangePreview = { _, callback -> callback(5_000) },
         onSearchQueryChanged = {},
+        initialSelectedLiterals = setOf("朧"),
+        destinations = MissingKanjiDestinationModel(
+            addToKaniEnabled = true,
+            createAnkiDeckEnabled = true,
+            csvExportEnabled = true,
+            newPerDay = 5,
+        ),
     )
 }
 

@@ -7,10 +7,13 @@ of checking in private user data.
 The fixture is intentionally small: one suspended `箱` card plus active weak
 `橋・箸・端` cards whose shared `はし` reading exercises the conditional
 reading-to-kanji rung through the real provider. The live instrumentation suite
-passes `kanjiLiveMinimumNotes=1` in CI. Local release testing against the copied
-user collection must omit that argument so the default 7,000-note threshold
-remains in force. See `docs/local-ankidroid-provider-testing.md` for the local
-emulator wrapper, diagnostics, and real-collection privacy policy.
+passes `kanjiLiveMinimumNotes=1` in CI. It also verifies collection-wide Missing
+Kanji inventory and a disposable direct export, rendered-card inspection,
+idempotent retry, and note cleanup through the real provider. Local release
+testing against the copied user collection must omit the lowered threshold so
+the default 7,000-note gate remains in force. See
+`docs/local-ankidroid-provider-testing.md` for the local emulator wrapper,
+diagnostics, and real-collection privacy policy.
 
 `ankidroid-2.24.0.sha256` pins the release APKs used by the x86_64 CI emulator
 and supported local emulator architectures. Update it only from the SHA-256

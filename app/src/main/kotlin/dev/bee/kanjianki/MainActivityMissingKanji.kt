@@ -1,18 +1,23 @@
 package dev.bee.kanjianki
 
+import android.content.Intent
 import dev.bee.kanjianki.anki.AnkiDroidCollectionInventoryGateway
 import dev.bee.kanjianki.anki.AnkiKanjiInventoryReader
+import dev.bee.kanjianki.anki.AnkiMissingKanjiWriter
 import dev.bee.kanjianki.core.AnkiKanjiInventoryProgress
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
 import dev.bee.kanjianki.core.MissingKanjiAnalyzer
 import dev.bee.kanjianki.core.MissingKanjiCandidate
+import dev.bee.kanjianki.core.MissingKanjiExportPlanner
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.data.MissingKanjiExportReceipt
 import dev.bee.kanjianki.data.MissingKanjiInventoryState
 import dev.bee.kanjianki.data.MissingKanjiPreferences
 import dev.bee.kanjianki.data.MissingKanjiScanStatus
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -27,10 +32,16 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
     private var activeMissingKanjiScan: MissingKanjiScanTask? = null
 
     @Volatile
+    private var activeMissingKanjiExport: MissingKanjiExportTask? = null
+
+    @Volatile
     private var activeMissingKanjiCandidatesByLiteral: Map<String, MissingKanjiCandidate> = emptyMap()
 
     @Volatile
     private var activeMissingKanjiOperationResult: MissingKanjiOperationResultModel? = null
+
+    @Volatile
+    private var activeMissingKanjiCsvFallbackLiterals: Set<String> = emptySet()
 
     private val missingKanjiOperationInProgress = AtomicBoolean(false)
 
@@ -61,11 +72,13 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
 
     open override fun renderHome() {
         cancelMissingKanjiScan()
+        cancelMissingKanjiExport()
         super.renderHome()
     }
 
     override fun onDestroy() {
         activeMissingKanjiScan?.cancellation?.set(true)
+        activeMissingKanjiExport?.cancellation?.set(true)
         super.onDestroy()
     }
 
@@ -132,6 +145,7 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
             content = content,
             availability = availability,
             preferences = preferences,
+            capability = capability,
         )
     }
 
@@ -169,9 +183,11 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
         content: MissingKanjiContentModel,
         availability: MissingKanjiProviderAvailability,
         preferences: MissingKanjiPreferences,
+        capability: AnkiDroidCollectionInventoryGateway.CapabilityStatus,
     ): MissingKanjiScreenModel {
         val primaryAction = primaryAction(content, availability)
         val hasReport = content is MissingKanjiContentModel.Report
+        val exportTask = activeMissingKanjiExport
         return MissingKanjiScreenModel(
             content = content,
             providerAvailability = availability,
@@ -187,15 +203,24 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
             onSearchQueryChanged = ::persistMissingKanjiSearch,
             destinations = MissingKanjiDestinationModel(
                 addToKaniEnabled = hasReport,
-                createAnkiDeckEnabled = false,
+                createAnkiDeckEnabled = hasReport &&
+                    capability.canWriteCollection &&
+                    capability.providerSpecVersion >= MINIMUM_DIRECT_WRITE_SPEC,
+                csvExportEnabled = hasReport,
+                defaultDeckName = MissingKanjiExportPlanner.DEFAULT_DECK_NAME,
                 newPerDay = settings().newPerDay,
                 operationInProgress = missingKanjiOperationInProgress.get(),
+                exportProgress = exportTask?.uiProgress,
                 onAddToKani = ::addSelectedMissingKanjiToKani,
+                onCreateAnkiDeck = ::createSelectedMissingKanjiInAnki,
+                onExportCsv = ::shareSelectedMissingKanjiCsv,
+                onCancelExport = ::cancelMissingKanjiExport,
                 onRemoveFromKani = ::removeMissingKanjiFromKani,
             ),
             operationResult = activeMissingKanjiOperationResult,
             onDismissOperationResult = ::dismissMissingKanjiOperationResult,
             onStudyNow = ::studyAdmittedMissingKanji,
+            onExportCsvFallback = ::shareFailedMissingKanjiExportAsCsv,
         )
     }
 
@@ -292,6 +317,172 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
         )
     }
 
+    private fun createSelectedMissingKanjiInAnki(
+        literals: Set<String>,
+        deckName: String,
+    ) {
+        if (
+            literals.isEmpty() ||
+            deckName.isBlank() ||
+            !missingKanjiOperationInProgress.compareAndSet(false, true)
+        ) {
+            return
+        }
+        val candidates = literals.mapNotNull(activeMissingKanjiCandidatesByLiteral::get)
+        val task = MissingKanjiExportTask(
+            literals = literals.toSet(),
+            deckName = deckName.trim(),
+        )
+        activeMissingKanjiExport = task
+        activeMissingKanjiCsvFallbackLiterals = emptySet()
+        activeMissingKanjiOperationResult = null
+        if (isMissingKanjiRouteVisible()) {
+            renderMissingKanji()
+        }
+        io.execute {
+            val result = runCatching {
+                runMissingKanjiAnkiExport(task, candidates)
+            }.getOrElse {
+                MissingKanjiOperationResultModel.Failed
+            }
+            postToMainIfActive {
+                if (activeMissingKanjiExport !== task) {
+                    return@postToMainIfActive
+                }
+                activeMissingKanjiExport = null
+                missingKanjiOperationInProgress.set(false)
+                activeMissingKanjiOperationResult = result
+                activeMissingKanjiCsvFallbackLiterals =
+                    if (
+                        result is MissingKanjiOperationResultModel.AnkiExport &&
+                        result.csvFallbackAvailable
+                    ) {
+                        task.csvFallbackLiterals.get()
+                    } else {
+                        emptySet()
+                    }
+                if (isMissingKanjiRouteVisible()) {
+                    renderMissingKanji()
+                }
+            }
+        }
+    }
+
+    private fun runMissingKanjiAnkiExport(
+        task: MissingKanjiExportTask,
+        candidates: List<MissingKanjiCandidate>,
+    ): MissingKanjiOperationResultModel.AnkiExport {
+        val repository = store.missingKanjiStore()
+        val writer = AnkiMissingKanjiWriter(
+            context = this,
+            cancellation = AnkiMissingKanjiWriter.Cancellation {
+                task.cancellation.get() || Thread.currentThread().isInterrupted
+            },
+        )
+        val export = writer.export(
+            candidates = candidates,
+            deckName = task.deckName,
+            progress = AnkiMissingKanjiWriter.ProgressListener { progress ->
+                postToMainIfActive {
+                    if (activeMissingKanjiExport === task) {
+                        task.uiProgress.update(
+                            totalCount = progress.totalCount,
+                            processedCount = progress.processedCount,
+                            createdCount = progress.createdCount,
+                            alreadyPresentCount = progress.alreadyPresentCount,
+                        )
+                    }
+                }
+            },
+            receiptSink = AnkiMissingKanjiWriter.ReceiptSink { destinationKey, notes ->
+                val exportedAt = System.currentTimeMillis()
+                repository.recordExportReceipts(
+                    notes.map { note ->
+                        MissingKanjiExportReceipt(
+                            literal = note.literal,
+                            destinationKey = destinationKey,
+                            exportedAt = exportedAt,
+                            externalNoteId = note.noteId,
+                        )
+                    },
+                ) == notes.size
+            },
+        )
+        val missingCandidates = (task.literals.size - candidates.size).coerceAtLeast(0)
+        val csvFallbackLiterals = LinkedHashSet(export.unfinishedLiterals)
+        task.csvFallbackLiterals.set(csvFallbackLiterals)
+        return MissingKanjiOperationResultModel.AnkiExport(
+            deckName = task.deckName,
+            createdCount = export.createdCount,
+            alreadyPresentCount = export.alreadyPresentCount,
+            skippedCount = export.skippedCount + missingCandidates,
+            unfinishedCount = export.unfinishedLiterals.size,
+            failureCode = export.failureKind?.name?.lowercase(Locale.ROOT),
+            csvFallbackAvailable = csvFallbackLiterals.isNotEmpty(),
+        )
+    }
+
+    private fun cancelMissingKanjiExport() {
+        val task = activeMissingKanjiExport ?: return
+        task.cancellation.set(true)
+        task.uiProgress.markCancelling()
+    }
+
+    private fun shareSelectedMissingKanjiCsv(literals: Set<String>) {
+        if (literals.isEmpty() || !missingKanjiOperationInProgress.compareAndSet(false, true)) {
+            return
+        }
+        val candidates = literals.mapNotNull(activeMissingKanjiCandidatesByLiteral::get)
+        val range = activeMissingKanjiPreferences.range
+        activeMissingKanjiOperationResult = null
+        activeMissingKanjiCsvFallbackLiterals = literals.toSet()
+        if (isMissingKanjiRouteVisible()) {
+            renderMissingKanji()
+        }
+        io.execute {
+            val prepared = MissingKanjiExportShare.prepare(
+                context = this,
+                candidates = candidates,
+                range = range,
+            )
+            postToMainIfActive {
+                missingKanjiOperationInProgress.set(false)
+                if (prepared == null) {
+                    activeMissingKanjiOperationResult = MissingKanjiOperationResultModel.Failed
+                } else {
+                    val launched = runCatching {
+                        startActivity(
+                            Intent.createChooser(
+                                prepared.intent,
+                                MissingKanjiTextCopy.exportChooserTitle(),
+                            ),
+                        )
+                    }.isSuccess
+                    activeMissingKanjiOperationResult = if (launched) {
+                        MissingKanjiOperationResultModel.CsvExport(
+                            exportedCount = prepared.csvResult.exportedCount,
+                            skippedCount = prepared.csvResult.skippedCount +
+                                (literals.size - candidates.size).coerceAtLeast(0),
+                            fileName = prepared.fileName,
+                        )
+                    } else {
+                        MissingKanjiOperationResultModel.Failed
+                    }
+                }
+                if (isMissingKanjiRouteVisible()) {
+                    renderMissingKanji()
+                }
+            }
+        }
+    }
+
+    private fun shareFailedMissingKanjiExportAsCsv() {
+        val literals = activeMissingKanjiCsvFallbackLiterals
+        activeMissingKanjiOperationResult = null
+        activeMissingKanjiCsvFallbackLiterals = emptySet()
+        shareSelectedMissingKanjiCsv(literals)
+    }
+
     private fun removeMissingKanjiFromKani(literal: String) {
         if (!missingKanjiOperationInProgress.compareAndSet(false, true)) {
             return
@@ -326,6 +517,7 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
 
     private fun dismissMissingKanjiOperationResult() {
         activeMissingKanjiOperationResult = null
+        activeMissingKanjiCsvFallbackLiterals = emptySet()
         if (isMissingKanjiRouteVisible()) {
             renderMissingKanji()
         }
@@ -333,6 +525,7 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
 
     private fun studyAdmittedMissingKanji() {
         activeMissingKanjiOperationResult = null
+        activeMissingKanjiCsvFallbackLiterals = emptySet()
         startFocusedStudy()
     }
 
@@ -637,12 +830,21 @@ internal abstract class MainActivityMissingKanji : MainActivityHome() {
         var lastPublishedNoteCount: Int = 0,
     )
 
+    private data class MissingKanjiExportTask(
+        val literals: Set<String>,
+        val deckName: String,
+        val cancellation: AtomicBoolean = AtomicBoolean(false),
+        val uiProgress: MissingKanjiExportProgressState = MissingKanjiExportProgressState(),
+        val csvFallbackLiterals: AtomicReference<Set<String>> = AtomicReference(emptySet()),
+    )
+
     private companion object {
         const val FAILURE_CANCELLED = "cancelled"
         const val FAILURE_PROVIDER_UNAVAILABLE = "provider_unavailable"
         const val FAILURE_DICTIONARY_UNAVAILABLE = "dictionary_unavailable"
         const val MAX_PERSISTED_SEARCH_CHARS = 128
         const val PROGRESS_NOTE_INTERVAL = 25
+        const val MINIMUM_DIRECT_WRITE_SPEC = 2
         const val STALE_AFTER_MILLIS = 7L * 24L * 60L * 60L * 1000L
 
         fun MissingKanjiPreferences.toFrequencyModel(): MissingKanjiFrequencyModel =

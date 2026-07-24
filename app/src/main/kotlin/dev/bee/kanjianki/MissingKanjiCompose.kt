@@ -72,8 +72,13 @@ internal const val MISSING_KANJI_MAXIMUM_RANK_TAG = "missing-kanji-maximum-rank"
 internal const val MISSING_KANJI_APPLY_RANGE_TAG = "missing-kanji-apply-range"
 internal const val MISSING_KANJI_ADD_TO_KANI_TAG = "missing-kanji-add-to-kani"
 internal const val MISSING_KANJI_CREATE_ANKI_TAG = "missing-kanji-create-anki"
+internal const val MISSING_KANJI_DESTINATION_BAR_TAG = "missing-kanji-destination-bar"
 internal const val MISSING_KANJI_CONFIRM_ADD_TAG = "missing-kanji-confirm-add"
 internal const val MISSING_KANJI_REMOVE_TAG = "missing-kanji-remove"
+internal const val MISSING_KANJI_DIRECT_EXPORT_TAG = "missing-kanji-direct-export"
+internal const val MISSING_KANJI_CSV_EXPORT_TAG = "missing-kanji-csv-export"
+internal const val MISSING_KANJI_DECK_NAME_TAG = "missing-kanji-deck-name"
+internal const val MISSING_KANJI_CANCEL_EXPORT_TAG = "missing-kanji-cancel-export"
 
 internal fun missingKanjiRowTag(literal: String): String = "missing-kanji-row-$literal"
 
@@ -91,10 +96,11 @@ private val MissingKanjiSelectionSaver = listSaver<MissingKanjiSelection, String
 internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
     val report = (model.content as? MissingKanjiContentModel.Report)?.report
     var selection by rememberSaveable(stateSaver = MissingKanjiSelectionSaver) {
-        mutableStateOf(MissingKanjiSelection.empty())
+        mutableStateOf(MissingKanjiSelection.from(model.initialSelectedLiterals))
     }
     var detailLiteral by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingAddToKani by remember { mutableStateOf<Set<String>?>(null) }
+    var pendingAnkiExport by remember { mutableStateOf<Set<String>?>(null) }
     var pendingRemoveFromKani by remember { mutableStateOf<String?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf(model.frequency.searchQuery) }
     val listState = rememberLazyListState()
@@ -237,7 +243,8 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
                         }
                         if (
                             !model.destinations.addToKaniEnabled &&
-                            !model.destinations.createAnkiDeckEnabled
+                            !model.destinations.createAnkiDeckEnabled &&
+                            !model.destinations.csvExportEnabled
                         ) {
                             item(key = "destination-preview") {
                                 MissingKanjiDestinationBar(
@@ -245,6 +252,7 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
                                     destinations = model.destinations.copy(
                                         onAddToKani = { literals -> pendingAddToKani = literals },
                                     ),
+                                    onExportRequested = { literals -> pendingAnkiExport = literals },
                                 )
                             }
                         }
@@ -286,14 +294,17 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
             report.rows.isNotEmpty() &&
             (
                 model.destinations.addToKaniEnabled ||
-                model.destinations.createAnkiDeckEnabled
+                model.destinations.createAnkiDeckEnabled ||
+                model.destinations.csvExportEnabled
             )
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
             MissingKanjiDestinationBar(
                 selected = selection,
                 destinations = model.destinations.copy(
                     onAddToKani = { literals -> pendingAddToKani = literals },
                 ),
+                onExportRequested = { literals -> pendingAnkiExport = literals },
             )
         }
     }
@@ -324,6 +335,23 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
             onDismiss = { pendingAddToKani = null },
         )
     }
+    pendingAnkiExport?.let { literals ->
+        MissingKanjiExportDialog(
+            count = literals.size,
+            directEnabled = model.destinations.createAnkiDeckEnabled,
+            csvEnabled = model.destinations.csvExportEnabled,
+            defaultDeckName = model.destinations.defaultDeckName,
+            onCreateDirect = { deckName ->
+                pendingAnkiExport = null
+                model.destinations.onCreateAnkiDeck(literals, deckName)
+            },
+            onExportCsv = {
+                pendingAnkiExport = null
+                model.destinations.onExportCsv(literals)
+            },
+            onDismiss = { pendingAnkiExport = null },
+        )
+    }
     pendingRemoveFromKani?.let { literal ->
         MissingKanjiRemoveConfirmationDialog(
             literal = literal,
@@ -339,6 +367,7 @@ internal fun MissingKanjiScreen(model: MissingKanjiScreenModel) {
             result = result,
             onDismiss = model.onDismissOperationResult,
             onStudyNow = model.onStudyNow,
+            onExportCsvFallback = model.onExportCsvFallback,
         )
     }
 }
@@ -925,9 +954,12 @@ private fun MissingKanjiResultRow(
 private fun MissingKanjiDestinationBar(
     selected: MissingKanjiSelection,
     destinations: MissingKanjiDestinationModel,
+    onExportRequested: (Set<String>) -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(MISSING_KANJI_DESTINATION_BAR_TAG),
         color = KaniUiTokens.PanelFill,
         border = BorderStroke(1.dp, KaniUiTokens.PanelBorder),
     ) {
@@ -935,15 +967,34 @@ private fun MissingKanjiDestinationBar(
             modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            destinations.exportProgress?.let { progress ->
                 Text(
-                    text = MissingKanjiTextCopy.selectedCount(selected.size),
-                    color = KaniUiTokens.Ink,
-                    fontWeight = FontWeight.Bold,
+                    text = MissingKanjiTextCopy.exportProgress(
+                        progress.processedCount,
+                        progress.totalCount,
+                    ),
+                    color = KaniUiTokens.Muted,
+                    style = MaterialTheme.typography.bodySmall.copy(letterSpacing = 0.sp),
                 )
+                LinearProgressIndicator(
+                    progress = {
+                        if (progress.totalCount == 0) {
+                            0f
+                        } else {
+                            progress.processedCount.toFloat() / progress.totalCount.toFloat()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = KaniUiTokens.Primary,
+                    trackColor = KaniUiTokens.PanelBorder,
+                )
+                TextButton(
+                    modifier = Modifier.testTag(MISSING_KANJI_CANCEL_EXPORT_TAG),
+                    enabled = !progress.isCancelling,
+                    onClick = destinations.onCancelExport,
+                ) {
+                    Text(MissingKanjiTextCopy.cancelExportLabel())
+                }
             }
             val addButton: @Composable (Modifier) -> Unit = { modifier ->
                 KaniOutlinedButton(
@@ -961,15 +1012,18 @@ private fun MissingKanjiDestinationBar(
             }
             val ankiButton: @Composable (Modifier) -> Unit = { modifier ->
                 KaniOutlinedButton(
-                    label = MissingKanjiTextCopy.createAnkiDeckLabel(),
+                    label = MissingKanjiTextCopy.exportToAnkiLabel(),
                     modifier = modifier.testTag(MISSING_KANJI_CREATE_ANKI_TAG),
                     minHeightDp = 48,
                     textSizeSp = 14,
-                    enabled = destinations.createAnkiDeckEnabled &&
+                    enabled = (
+                        destinations.createAnkiDeckEnabled ||
+                            destinations.csvExportEnabled
+                        ) &&
                         !destinations.operationInProgress &&
                         selected.size > 0,
                     onClick = {
-                        destinations.onCreateAnkiDeck(selected.selectedLiterals)
+                        onExportRequested(selected.selectedLiterals)
                     },
                 )
             }
@@ -1097,6 +1151,79 @@ private fun MissingKanjiAddConfirmationDialog(
 }
 
 @Composable
+private fun MissingKanjiExportDialog(
+    count: Int,
+    directEnabled: Boolean,
+    csvEnabled: Boolean,
+    defaultDeckName: String,
+    onCreateDirect: (String) -> Unit,
+    onExportCsv: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var deckName by rememberSaveable { mutableStateOf(defaultDeckName) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(MissingKanjiTextCopy.exportSelectionTitle(count)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(MissingKanjiTextCopy.exportSelectionBody())
+                if (directEnabled) {
+                    OutlinedTextField(
+                        value = deckName,
+                        onValueChange = { value -> deckName = value.take(MAX_DECK_NAME_CHARS) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(MISSING_KANJI_DECK_NAME_TAG),
+                        label = { Text(MissingKanjiTextCopy.deckNameLabel()) },
+                        singleLine = true,
+                    )
+                } else {
+                    Text(
+                        text = MissingKanjiTextCopy.directExportUnavailableBody(),
+                        color = KaniUiTokens.Muted,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (directEnabled) {
+                    Button(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(MISSING_KANJI_DIRECT_EXPORT_TAG),
+                        enabled = deckName.trim().isNotEmpty(),
+                        onClick = { onCreateDirect(deckName.trim()) },
+                        colors = ButtonDefaults.buttonColors(containerColor = KaniUiTokens.Primary),
+                    ) {
+                        Text(MissingKanjiTextCopy.createInAnkiDroidLabel())
+                    }
+                }
+                if (csvEnabled) {
+                    KaniOutlinedButton(
+                        label = MissingKanjiTextCopy.shareCsvLabel(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(MISSING_KANJI_CSV_EXPORT_TAG),
+                        minHeightDp = 48,
+                        textSizeSp = 14,
+                        onClick = onExportCsv,
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(MissingKanjiTextCopy.closeLabel())
+            }
+        },
+    )
+}
+
+@Composable
 private fun MissingKanjiRemoveConfirmationDialog(
     literal: String,
     onConfirm: () -> Unit,
@@ -1127,10 +1254,12 @@ private fun MissingKanjiOperationResultDialog(
     result: MissingKanjiOperationResultModel,
     onDismiss: () -> Unit,
     onStudyNow: () -> Unit,
+    onExportCsvFallback: () -> Unit,
 ) {
     val title: String
     val body: String
     val canStudyNow: Boolean
+    val canExportCsv: Boolean
     when (result) {
         is MissingKanjiOperationResultModel.KaniAdmission -> {
             title = MissingKanjiTextCopy.kaniAdmissionResultTitle()
@@ -1144,6 +1273,7 @@ private fun MissingKanjiOperationResultDialog(
                     result.invalidCount,
             )
             canStudyNow = result.admittedNowCount > 0
+            canExportCsv = false
         }
         is MissingKanjiOperationResultModel.KaniRemoval -> {
             if (result.removed || result.reviewed) {
@@ -1158,11 +1288,37 @@ private fun MissingKanjiOperationResultDialog(
                 body = MissingKanjiTextCopy.operationFailedBody()
             }
             canStudyNow = false
+            canExportCsv = false
+        }
+        is MissingKanjiOperationResultModel.AnkiExport -> {
+            val success = result.failureCode == null && result.unfinishedCount == 0
+            title = MissingKanjiTextCopy.ankiExportResultTitle(success)
+            body = MissingKanjiTextCopy.ankiExportResultBody(
+                deckName = result.deckName,
+                created = result.createdCount,
+                alreadyPresent = result.alreadyPresentCount,
+                skipped = result.skippedCount,
+                unfinished = result.unfinishedCount,
+                failureCode = result.failureCode,
+            )
+            canStudyNow = false
+            canExportCsv = result.csvFallbackAvailable && !success
+        }
+        is MissingKanjiOperationResultModel.CsvExport -> {
+            title = MissingKanjiTextCopy.csvExportResultTitle()
+            body = MissingKanjiTextCopy.csvExportResultBody(
+                exported = result.exportedCount,
+                skipped = result.skippedCount,
+                fileName = result.fileName,
+            )
+            canStudyNow = false
+            canExportCsv = false
         }
         MissingKanjiOperationResultModel.Failed -> {
             title = MissingKanjiTextCopy.operationFailedTitle()
             body = MissingKanjiTextCopy.operationFailedBody()
             canStudyNow = false
+            canExportCsv = false
         }
     }
     AlertDialog(
@@ -1171,19 +1327,23 @@ private fun MissingKanjiOperationResultDialog(
         text = { Text(body) },
         confirmButton = {
             Button(
-                onClick = if (canStudyNow) onStudyNow else onDismiss,
+                onClick = when {
+                    canStudyNow -> onStudyNow
+                    canExportCsv -> onExportCsvFallback
+                    else -> onDismiss
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = KaniUiTokens.Primary),
             ) {
                 Text(
-                    if (canStudyNow) {
-                        MissingKanjiTextCopy.studyNowLabel()
-                    } else {
-                        MissingKanjiTextCopy.closeLabel()
+                    when {
+                        canStudyNow -> MissingKanjiTextCopy.studyNowLabel()
+                        canExportCsv -> MissingKanjiTextCopy.shareCsvLabel()
+                        else -> MissingKanjiTextCopy.closeLabel()
                     },
                 )
             }
         },
-        dismissButton = if (!canStudyNow) {
+        dismissButton = if (!canStudyNow && !canExportCsv) {
             null
         } else {
             {
@@ -1217,5 +1377,6 @@ private fun MissingKanjiDetailLine(
 }
 
 private const val MAX_SEARCH_CHARS = 128
+private const val MAX_DECK_NAME_CHARS = 128
 private const val SEARCH_PERSIST_DEBOUNCE_MS = 300L
 private const val RANGE_PREVIEW_DEBOUNCE_MS = 250L

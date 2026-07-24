@@ -215,6 +215,34 @@ class MissingKanjiComposeTest {
     }
 
     @Test
+    fun fixedDestinationBarIsSeparatedFromScrollableReport() {
+        val row = missingKanjiRows(listOf(candidate("語", "language", 301))).single()
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "footer-separation"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(csvExportEnabled = true),
+                ),
+            )
+        }
+
+        val listBottom = composeRule.onNodeWithTag(MISSING_KANJI_LIST_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .bottom
+        val destinationTop = composeRule.onNodeWithTag(MISSING_KANJI_DESTINATION_BAR_TAG)
+            .fetchSemanticsNode()
+            .boundsInRoot
+            .top
+
+        assertTrue("Fixed actions must not touch or overlap scrolling content.", destinationTop > listBottom)
+    }
+
+    @Test
     fun customRangeBlocksInvertedBoundsPreviewsValidCountAndApplies() {
         var applied: Pair<MissingKanjiPreset, MissingKanjiFrequencyRange>? = null
         val model = screenModel(MissingKanjiContentModel.FirstRun).copy(
@@ -389,6 +417,164 @@ class MissingKanjiComposeTest {
         composeRule.runOnIdle {
             assertTrue(studyNow)
         }
+    }
+
+    @Test
+    fun exportChooserSupportsEditableDirectDeckAndCsv() {
+        val row = missingKanjiRows(listOf(candidate("語", "language", 301))).single()
+        var direct: Pair<Set<String>, String>? = null
+        var csv: Set<String> = emptySet()
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "anki-export"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(
+                        createAnkiDeckEnabled = true,
+                        csvExportEnabled = true,
+                        defaultDeckName = "Kani::Missing Kanji",
+                        onCreateAnkiDeck = { literals, deck -> direct = literals to deck },
+                        onExportCsv = { literals -> csv = literals },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(MISSING_KANJI_LIST_TAG).performScrollToIndex(6)
+        composeRule.onNodeWithTag(missingKanjiCheckboxTag("語")).performClick()
+        composeRule.onAllNodesWithText(MissingKanjiTextCopy.selectedCount(1))
+            .assertCountEquals(1)
+        composeRule.onNodeWithTag(MISSING_KANJI_CREATE_ANKI_TAG).performClick()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.exportSelectionTitle(1))
+            .assertIsDisplayed()
+        composeRule.onNodeWithTag(MISSING_KANJI_DECK_NAME_TAG)
+            .performTextReplacement("Japanese::Missing")
+        composeRule.onNodeWithTag(MISSING_KANJI_DIRECT_EXPORT_TAG).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(setOf("語") to "Japanese::Missing", direct)
+            assertTrue(csv.isEmpty())
+        }
+    }
+
+    @Test
+    fun unsupportedDirectProviderStillOffersCsvFromChooser() {
+        val row = missingKanjiRows(listOf(candidate("語", "language", 301))).single()
+        var csv: Set<String> = emptySet()
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "csv-export"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(
+                        createAnkiDeckEnabled = false,
+                        csvExportEnabled = true,
+                        onExportCsv = { literals -> csv = literals },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithTag(MISSING_KANJI_LIST_TAG).performScrollToIndex(6)
+        composeRule.onNodeWithTag(missingKanjiCheckboxTag("語")).performClick()
+        composeRule.onNodeWithTag(MISSING_KANJI_CREATE_ANKI_TAG).performClick()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.directExportUnavailableBody())
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithTag(MISSING_KANJI_DIRECT_EXPORT_TAG).assertCountEquals(0)
+        composeRule.onNodeWithTag(MISSING_KANJI_CSV_EXPORT_TAG).performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(setOf("語"), csv)
+        }
+    }
+
+    @Test
+    fun directExportProgressCanBeCancelled() {
+        val row = missingKanjiRows(listOf(candidate("語", "language", 301))).single()
+        val progress = MissingKanjiExportProgressState().apply {
+            update(
+                totalCount = 150,
+                processedCount = 100,
+                createdCount = 90,
+                alreadyPresentCount = 10,
+            )
+        }
+        var cancelled = false
+        composeRule.setContent {
+            MissingKanjiScreen(
+                screenModel(
+                    MissingKanjiContentModel.Report(
+                        report(rows = listOf(row), eligible = 1, key = "export-progress"),
+                    ),
+                    primaryAction = MissingKanjiPrimaryAction.SCAN_AGAIN,
+                ).copy(
+                    destinations = MissingKanjiDestinationModel(
+                        csvExportEnabled = true,
+                        operationInProgress = true,
+                        exportProgress = progress,
+                        onCancelExport = { cancelled = true },
+                    ),
+                ),
+            )
+        }
+
+        composeRule.onNodeWithText(MissingKanjiTextCopy.exportProgress(100, 150))
+            .assertIsDisplayed()
+        composeRule.onNodeWithTag(MISSING_KANJI_CANCEL_EXPORT_TAG).performClick()
+        composeRule.runOnIdle {
+            assertTrue(cancelled)
+        }
+    }
+
+    @Test
+    fun failedDirectExportOffersCsvFallbackAndCsvResultIsReported() {
+        var csvFallback = false
+        val model = mutableStateOf(
+            screenModel(MissingKanjiContentModel.FirstRun).copy(
+                operationResult = MissingKanjiOperationResultModel.AnkiExport(
+                    deckName = "Kani::Missing Kanji",
+                    createdCount = 1,
+                    alreadyPresentCount = 0,
+                    skippedCount = 0,
+                    unfinishedCount = 2,
+                    failureCode = "provider_unavailable",
+                    csvFallbackAvailable = true,
+                ),
+                onExportCsvFallback = { csvFallback = true },
+            ),
+        )
+        composeRule.setContent {
+            MissingKanjiScreen(model.value)
+        }
+
+        composeRule.onNodeWithText(MissingKanjiTextCopy.ankiExportResultTitle(false))
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(MissingKanjiTextCopy.shareCsvLabel()).performClick()
+        composeRule.runOnIdle {
+            assertTrue(csvFallback)
+            model.value = screenModel(MissingKanjiContentModel.FirstRun).copy(
+                operationResult = MissingKanjiOperationResultModel.CsvExport(
+                    exportedCount = 3,
+                    skippedCount = 1,
+                    fileName = "kani-missing-kanji-1-1000-2026-07-23.csv",
+                ),
+            )
+        }
+        composeRule.onNodeWithText(MissingKanjiTextCopy.csvExportResultTitle())
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(
+            MissingKanjiTextCopy.csvExportResultBody(
+                exported = 3,
+                skipped = 1,
+                fileName = "kani-missing-kanji-1-1000-2026-07-23.csv",
+            ),
+        ).assertIsDisplayed()
     }
 
     private fun screenModel(

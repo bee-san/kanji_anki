@@ -119,10 +119,11 @@ FIXTURES: tuple[ScreenshotFixture, ...] = (
         screenshot_names=("missing-kanji-top.png",),
         expected_terms=("Missing Kanji",),
         source_buckets=("home", "missing-kanji", "shell", "theme", "shared"),
-        risk_tags=("collection-inventory", "navigation", "read-only"),
+        risk_tags=("collection-inventory", "navigation", "interactive", "provider-write"),
         known_invariants=(
             "Must not query AnkiDroid or persist collection data during screenshot-only startup.",
-            "Must keep destination actions disabled until their later delivery goals are implemented.",
+            "Must keep Kani and Anki export actions visible without obscuring report controls.",
+            "Must keep direct Anki writes behind provider capability checks and retain CSV fallback.",
         ),
     ),
     ScreenshotFixture(
