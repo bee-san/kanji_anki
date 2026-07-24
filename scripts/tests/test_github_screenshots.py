@@ -85,6 +85,11 @@ class GithubScreenshotsTest(unittest.TestCase):
         self.assertIn('requested_locale="${SCREENSHOT_LOCALE:-}"', script)
         self.assertIn('stats_label="Stats"', script)
         self.assertIn('stats_label="統計"', script)
+        self.assertIn(
+            "capture_route_variant missing-kanji missing-kanji-top missing-kanji portrait top",
+            script,
+        )
+        self.assertNotIn("capture_route_triplet missing-kanji", script)
         self.assertIn('--es "${screen_route_extra}" "${launch_target}"', script)
         self.assertIn('--es "${screen_locale_extra}" "${requested_locale}"', script)
         self.assertIn('--es "${screen_scroll_position_extra}" "${scroll_position}"', script)
@@ -188,7 +193,16 @@ class GithubScreenshotsTest(unittest.TestCase):
     def test_validate_artifact_accepts_all_route_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
-            routes = ["home", "study", "stats", "settings", "games", "narrow", "wide"]
+            routes = [
+                "home",
+                "study",
+                "stats",
+                "settings",
+                "games",
+                "missing-kanji",
+                "narrow",
+                "wide",
+            ]
             files = []
             captures = []
             payload = b"\x89PNG\r\n\x1a\n"
@@ -431,8 +445,8 @@ class GithubScreenshotsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             out = Path(temp)
             for routes in [
-                ["study", "home", "stats", "settings", "games", "narrow", "wide"],
-                ["home", "study", "stats", "settings", "games", "narrow", "wide", "extra"],
+                ["study", "home", "stats", "settings", "games", "missing-kanji", "narrow", "wide"],
+                ["home", "study", "stats", "settings", "games", "missing-kanji", "narrow", "wide", "extra"],
             ]:
                 files = []
                 for route in routes:

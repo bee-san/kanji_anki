@@ -25,6 +25,7 @@ internal data class HomeRouteRestoration(
         DETAIL("detail"),
         READ_ONLY_DETAIL("read-only-detail"),
         GAMES("games"),
+        MISSING_KANJI("missing-kanji"),
     }
 
     fun toBundle(): Bundle = Bundle().apply {
@@ -81,6 +82,8 @@ internal data class HomeRouteRestoration(
         )
 
         fun games() = HomeRouteRestoration(Destination.GAMES)
+
+        fun missingKanji() = HomeRouteRestoration(Destination.MISSING_KANJI)
 
         fun fromBundle(bundle: Bundle?): HomeRouteRestoration? {
             bundle ?: return null

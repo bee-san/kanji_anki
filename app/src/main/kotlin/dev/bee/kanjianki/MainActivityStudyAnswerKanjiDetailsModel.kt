@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import java.util.Locale
 
@@ -414,10 +415,13 @@ internal fun studyAnswerUsedInAnkiRows(
     modelNamesByNoteId: Map<Long, String> = emptyMap(),
 ): List<StudyAnswerUsedInAnkiRowModel> {
     val mergedExamples = LinkedHashMap<String, RecordsImportModels.Example>()
-    if (currentExample != null) {
+    if (currentExample != null && !ManualKanjiAdmissionPolicy.isDictionaryExample(currentExample)) {
         mergedExamples[exampleKey(currentExample)] = currentExample
     }
     for (example in examples) {
+        if (ManualKanjiAdmissionPolicy.isDictionaryExample(example)) {
+            continue
+        }
         mergedExamples.putIfAbsent(exampleKey(example), example)
     }
     return mergedExamples.values.sortedWith(exampleComparator(currentExample)).map { example ->

@@ -468,11 +468,13 @@ fi
 
 stats_label="Stats"
 study_label="Study"
+missing_kanji_label="Missing Kanji"
 route_label_prefix="Kani route"
 requested_locale_lower="$(printf '%s' "${requested_locale}" | tr '[:upper:]' '[:lower:]')"
 if [[ "${requested_locale_lower}" == ja* ]]; then
   stats_label="統計"
   study_label="学習"
+  missing_kanji_label="未登録漢字"
   route_label_prefix="Kaniルート"
 fi
 if [ -n "${requested_locale}" ]; then
@@ -486,6 +488,7 @@ case "${requested_route}" in
     capture_route_triplet stats stats portrait "${route_label_prefix} stats" "${stats_label}"
     capture_route_triplet settings settings portrait "${route_label_prefix} settings" "Settings"
     capture_route_triplet games games portrait "Games"
+    capture_route_variant missing-kanji missing-kanji-top missing-kanji portrait top "${missing_kanji_label}"
     capture_route_triplet narrow home portrait "${route_label_prefix} home"
     capture_route_triplet wide home landscape "${route_label_prefix} home"
     ;;
@@ -507,6 +510,9 @@ case "${requested_route}" in
   games)
     capture_route_triplet games games portrait "Games"
     ;;
+  missing-kanji)
+    capture_route_variant missing-kanji missing-kanji-top missing-kanji portrait top "${missing_kanji_label}"
+    ;;
   narrow)
     capture_route_triplet narrow home portrait "${route_label_prefix} home"
     ;;
@@ -517,7 +523,7 @@ case "${requested_route}" in
     capture_route_triplet update update portrait "${route_label_prefix} settings" "GitHub updater"
     ;;
   *)
-    echo "Unsupported screenshot route '${requested_route}'. Expected one of: all, home, launcher-home, study, stats, stats-heatmap, settings, games, narrow, wide, update." >&2
+    echo "Unsupported screenshot route '${requested_route}'. Expected one of: all, home, launcher-home, study, stats, stats-heatmap, settings, games, missing-kanji, narrow, wide, update." >&2
     exit 1
     ;;
 esac

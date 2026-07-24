@@ -10,11 +10,34 @@ internal class LocalStore(
     diagnosticLogger: DiagnosticLogger = NoOpDiagnosticLogger,
 ) : LocalStoreSync(context, diagnosticLogger), DatabaseSnapshotter {
     private val mnemonicNotes = LocalStoreMnemonicNotes(this)
+    private val missingKanji = MissingKanjiStore(
+        this,
+        manualSourcesChanged = ::onManualKanjiSourcesChanged,
+    )
 
     fun kanjiMnemonicNote(kanji: String?): String = mnemonicNotes.read(kanji)
 
     fun saveKanjiMnemonicNote(kanji: String?, note: String?, updatedAtMillis: Long) {
         mnemonicNotes.save(kanji, note, updatedAtMillis)
+    }
+
+    fun missingKanjiStore(): MissingKanjiStore = missingKanji
+
+    override fun manualKanjiSources(admittedOnly: Boolean): List<ManualKanjiSource> {
+        return if (admittedOnly) {
+            missingKanji.admittedManualSources()
+        } else {
+            missingKanji.manualSources()
+        }
+    }
+
+    override fun manualKanjiSource(literal: String): ManualKanjiSource? {
+        return missingKanji.manualSource(literal)
+    }
+
+    private fun onManualKanjiSourcesChanged() {
+        clearDashboardRowsCache()
+        clearStudyItemsCache()
     }
 
     /**

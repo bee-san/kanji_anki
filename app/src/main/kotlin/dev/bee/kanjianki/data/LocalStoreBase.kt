@@ -157,6 +157,10 @@ abstract class LocalStoreBase internal constructor(
         LocalStoreTableCreator.createKanjiMnemonicNotesTable(db)
     }
 
+    fun createMissingKanjiTables(db: SQLiteDatabase) {
+        LocalStoreTableCreator.createMissingKanjiTables(db)
+    }
+
     fun createSimilarKanjiTables(db: SQLiteDatabase) {
         LocalStoreTableCreator.createSimilarKanjiTables(db)
     }
@@ -549,6 +553,10 @@ abstract class LocalStoreBase internal constructor(
         const val TABLE_REVIEW_LOG: String = "review_log"
         const val TABLE_KANJI_INVENTORY: String = "kanji_inventory"
         const val TABLE_KANJI_MNEMONIC_NOTES: String = "kanji_mnemonic_notes"
+        const val TABLE_ANKI_KANJI_INVENTORY: String = "anki_kanji_inventory"
+        const val TABLE_ANKI_KANJI_INVENTORY_SCANS: String = "anki_kanji_inventory_scans"
+        const val TABLE_MANUAL_KANJI_SOURCES: String = "manual_kanji_sources"
+        const val TABLE_MISSING_KANJI_EXPORTS: String = "missing_kanji_exports"
         const val TABLE_LOCAL_KANJI_SUSPENSIONS: String = "local_kanji_suspensions"
         const val TABLE_SIMILAR_KANJI_PAIRS: String = "similar_kanji_pairs"
         const val TABLE_SIMILAR_KANJI_CHOICE_STATE: String = "similar_kanji_choice_state"

@@ -256,7 +256,7 @@ class DictionaryStoreInstrumentedTest {
             includeJitenTable = false,
             includeMetaTable = true,
             includeRequiredMeta = true,
-            schemaVersion = "1",
+            schemaVersion = "2",
             includeJitenRankColumn = true,
             expectedMessage = "Dictionary is missing jiten_ranks table."
         )
@@ -266,7 +266,7 @@ class DictionaryStoreInstrumentedTest {
             includeJitenTable = true,
             includeMetaTable = false,
             includeRequiredMeta = true,
-            schemaVersion = "1",
+            schemaVersion = "2",
             includeJitenRankColumn = true,
             expectedMessage = "Dictionary is missing dictionary_meta table."
         )
@@ -276,7 +276,7 @@ class DictionaryStoreInstrumentedTest {
             includeJitenTable = true,
             includeMetaTable = true,
             includeRequiredMeta = false,
-            schemaVersion = "1",
+            schemaVersion = "2",
             includeJitenRankColumn = true,
             expectedMessage = "Dictionary metadata is missing schema_version."
         )
@@ -296,7 +296,7 @@ class DictionaryStoreInstrumentedTest {
             includeJitenTable = true,
             includeMetaTable = true,
             includeRequiredMeta = true,
-            schemaVersion = "1",
+            schemaVersion = "2",
             includeJitenRankColumn = false,
             expectedMessage = "Dictionary kanji table is missing jiten_rank."
         )
@@ -382,7 +382,7 @@ class DictionaryStoreInstrumentedTest {
             includeJitenTable = true,
             includeMetaTable = true,
             includeRequiredMeta = true,
-            schemaVersion = "1",
+            schemaVersion = "2",
             includeJitenRankColumn = true,
             expectedMessage = "Dictionary has no kanji rows."
         )
@@ -663,11 +663,13 @@ class DictionaryStoreInstrumentedTest {
     ) {
         val db = SQLiteDatabase.openOrCreateDatabase(database, null)
         try {
+            val rankColumn = if (includeJitenRankColumn) ", jiten_rank INTEGER" else ""
             db.execSQL(
-                "CREATE TABLE kanji (literal TEXT PRIMARY KEY, meanings TEXT NOT NULL, on_readings TEXT NOT NULL, kun_readings TEXT NOT NULL, nanori_readings TEXT NOT NULL, stroke_count INTEGER NOT NULL, grade INTEGER NOT NULL, radical INTEGER NOT NULL, kanjidic_frequency INTEGER" +
-                    if (includeJitenRankColumn) ", jiten_rank INTEGER" else "" +
-                    ")"
+                "CREATE TABLE kanji (literal TEXT PRIMARY KEY, meanings TEXT NOT NULL, on_readings TEXT NOT NULL, kun_readings TEXT NOT NULL, nanori_readings TEXT NOT NULL, stroke_count INTEGER NOT NULL, grade INTEGER NOT NULL, radical INTEGER NOT NULL, kanjidic_frequency INTEGER$rankColumn)"
             )
+            if (includeJitenRankColumn) {
+                db.execSQL("CREATE INDEX idx_kanji_jiten_rank_literal ON kanji (jiten_rank, literal)")
+            }
             if (includeJitenTable) {
                 db.execSQL("CREATE TABLE jiten_ranks (literal TEXT PRIMARY KEY, rank INTEGER NOT NULL)")
             }

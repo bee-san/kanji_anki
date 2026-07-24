@@ -37,6 +37,7 @@ Highlights:
 * Specially designed to make you spend the least amount of time in app as possible.
 * Two-core adaptive study with targeted repair tasks based on why you fail each kanji.
 * Kanji browser with per-kanji details, stroke-order diagrams, memory charts, and local mnemonic notes.
+* Collection-wide Missing Kanji discovery with ranked Kani, AnkiDroid, and CSV destinations.
 * Quick practice games, study stats, streak-aware reminders, and a home-screen widget for due counts.
 * English and Japanese UI.
 
@@ -92,6 +93,23 @@ Kani sends the query to AnkiDroid unchanged, then filters the returned notes by 
 
 The goal is to spend less time managing study queues and more time reading, listening, and immersing.
 
+### Missing Kanji
+
+The **Missing Kanji** action on Home compares every note field in the live
+AnkiDroid collection with Kani's bundled Jiten-ranked dictionary. It reports
+the unique kanji absent from Anki for a preset or custom inclusive rank range,
+with local search and bulk selection for large result sets.
+
+Selected kanji can enter Kani through the normal daily admission and
+two-core study pipeline. On supported AnkiDroid providers, Kani can also create
+an additive `Kani::Missing Kanji` deck with stable source IDs; retries reconcile
+the provider before writing and do not duplicate confirmed notes. A shareable
+UTF-8 CSV containing the same six fields is always available as a fallback.
+
+Collection note text is processed in memory. Kani persists only aggregate
+kanji membership, scan counts and metadata, dictionary-origin study sources,
+and export receipts required for recovery.
+
 Other product areas:
 
 - Suspended AnkiDroid cards are archived locally by default and imported through a dedicated suspended-kanji module.
@@ -108,6 +126,8 @@ Other product areas:
 - Suspended cards are archived locally and processed by the dedicated suspended-kanji import module.
 - Browser query import is opt-in. Suspended-only import remains the default, and query text stays local because it may contain private deck or tag names.
 - Query-selected suspended cards are archived locally before provider cleanup hides them from later syncs.
+- Missing Kanji scans all live Anki note fields independently of configured-model sync. It never stores raw note text, tags, deck names, or templates.
+- Missing Kanji exports are additive and never rewrite user notes or Anki scheduling state. Direct creation requires a compatible provider; UTF-8 CSV remains available otherwise.
 - Jiten kanji frequency ranks are bundled in the offline dictionary DB for filtering. The default suspended import range is ranks `100` through `3000`, and it can be changed in Settings.
 - Weak-kanji rows and details are derived from the active mirror plus the suspended archive.
 - Kani keeps its own local FSRS-style queue and never rewrites Anki's deck schedule.

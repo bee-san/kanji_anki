@@ -21,8 +21,11 @@ class UiViewMatrixTest(unittest.TestCase):
 
             self.assertEqual("ui-view-matrix-v1", matrix["schema"])
             summary = cast(dict[str, object], matrix["summary"])
-            self.assertEqual(8, summary["view_count"])
-            self.assertEqual(["home", "study", "stats", "settings", "games", "narrow", "wide", "update"], summary["routes"])
+            self.assertEqual(9, summary["view_count"])
+            self.assertEqual(
+                ["home", "study", "stats", "settings", "games", "missing-kanji", "narrow", "wide", "update"],
+                summary["routes"],
+            )
             self.assertGreaterEqual(cast(int, summary["source_file_count"]), 4)
 
             views = cast(list[dict[str, object]], matrix["views"])

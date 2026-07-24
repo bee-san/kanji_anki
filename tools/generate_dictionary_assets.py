@@ -17,7 +17,8 @@ from typing import Iterable
 
 
 LIST_SEPARATOR = "\x1f"
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
+KANJI_RANK_INDEX = "idx_kanji_jiten_rank_literal"
 XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 EDRDG_LICENSE = "CC BY-SA 4.0 via EDRDG licence"
 KANJIDIC2_URL = "https://www.edrdg.org/kanjidic/kanjidic2.xml.gz"
@@ -221,6 +222,9 @@ def write_database(
         connection.executemany(
             "INSERT INTO jiten_ranks (literal, rank) VALUES (?, ?)",
             sorted(jiten_ranks.items(), key=lambda item: (item[1], item[0])),
+        )
+        connection.execute(
+            f"CREATE INDEX {KANJI_RANK_INDEX} ON kanji (jiten_rank, literal)"
         )
         meta = [
             ("schema_version", SCHEMA_VERSION),

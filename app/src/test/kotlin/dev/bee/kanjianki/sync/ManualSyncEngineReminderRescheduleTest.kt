@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
+import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -55,6 +56,36 @@ class ManualSyncEngineReminderRescheduleTest {
 
         assertTrue(result.success)
         assertEquals(1, rearms)
+    }
+
+    @Test
+    fun successfulSyncAdmitsDurableDictionarySourceWithoutAnkiEvidence() {
+        store.missingKanjiStore().addManualSources(
+            listOf(
+                MissingKanjiCandidate(
+                    literal = "水",
+                    meanings = listOf("water"),
+                    kunReadings = listOf("みず"),
+                    jitenRank = 12,
+                ),
+            ),
+            nowMillis = 100,
+        )
+        val engine = ManualSyncEngine(
+            context,
+            store,
+            EmptyGateway(),
+            RecordsSyncModels.Settings.kikuDefaults(),
+        ).also {
+            it.reminderRescheduler = Runnable { }
+            it.widgetRefresher = Runnable { }
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals("水", store.studyItems().single().kanji)
+        assertEquals("水", store.activeDashboardRows().single().kanji)
     }
 
     @Test

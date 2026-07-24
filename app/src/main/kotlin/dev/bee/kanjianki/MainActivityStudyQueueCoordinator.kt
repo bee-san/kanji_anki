@@ -70,7 +70,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             }
         }
         val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
-        val rows = withStudyLoadProbe("activeDashboardRows") { study.store.activeDashboardRows() }
+        val rows = withStudyLoadProbe("activeStudyDashboardRows") {
+            study.store.activeStudyDashboardRows()
+        }
         val now = System.currentTimeMillis()
         val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
         studyLoadDebug("renderStudy rows=${rows.size}")

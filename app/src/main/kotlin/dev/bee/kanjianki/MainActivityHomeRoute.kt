@@ -14,10 +14,20 @@ internal fun MainActivityHome.renderHomeRoute(
     backAction: Runnable? = null,
     initialScrollY: Int = 0,
     scrollPositionLabel: String? = null,
+    managedScroll: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    rememberHomeRouteContent(backAction, content)
-    composeRoute(MainActivityBase.NAV_HOME_ROUTE, initialScrollY, scrollPositionLabel) {
+    rememberHomeRouteContent(backAction, managedScroll, content)
+    composeRoute(
+        selected = MainActivityBase.NAV_HOME_ROUTE,
+        initialScrollY = initialScrollY,
+        scrollPositionLabel = scrollPositionLabel,
+        scrollMode = if (managedScroll) {
+            MainActivityRouteScrollMode.CONTENT
+        } else {
+            MainActivityRouteScrollMode.SHELL
+        },
+    ) {
         content()
         HomeSyncConfirmDialog(pendingHomeSyncDialog)
         HomeUpdatePermissionDialog(pendingUpdatePermissionDialog)

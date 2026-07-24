@@ -55,6 +55,9 @@ Defaults:
 - Fixture threshold: `KANJI_LIVE_MINIMUM_NOTES=1`. The sanitized Kiku fixture
   contains four notes/cards: one suspended import plus an active weak
   `橋・箸・端` homophone trio that exercises `hasReadingKanji` end to end.
+- The live Missing Kanji subset scans the complete fixture, creates and renders
+  two notes in the dedicated model, retries them idempotently, and deletes the
+  disposable notes. The compatible deck/model remain available for later runs.
 
 Useful overrides:
 

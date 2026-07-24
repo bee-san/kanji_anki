@@ -66,6 +66,15 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/debug_log_paths" />
         </provider>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.missingkanji"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/missing_kanji_export_paths" />
+        </provider>
         <service
             android:name=".sync.AutoSyncJobService"
             android:exported="true"

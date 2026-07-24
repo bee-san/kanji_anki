@@ -6,6 +6,8 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
+import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -29,6 +31,8 @@ internal abstract class LocalStoreInventory(
     private var cachedDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     @Volatile
     private var cachedActiveDashboardRows: List<RecordsImportModels.DashboardRow>? = null
+    @Volatile
+    private var cachedActiveStudyDashboardRows: List<RecordsImportModels.DashboardRow>? = null
     @Volatile
     private var cachedActiveDashboardRowsByKanji: Map<String, RecordsImportModels.DashboardRow>? = null
     @Volatile
@@ -79,6 +83,7 @@ internal abstract class LocalStoreInventory(
     private fun clearLocalDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null
+        cachedActiveStudyDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
         clearConditionalRungAvailabilityCaches()
         clearTimelineCache()
@@ -89,6 +94,7 @@ internal abstract class LocalStoreInventory(
         val publishedEpoch = DASHBOARD_CACHE_EPOCH.incrementAndGet()
         cachedLocallySuspendedKanji = null
         cachedActiveDashboardRows = null
+        cachedActiveStudyDashboardRows = null
         cachedActiveDashboardRowsByKanji = null
         clearKanjiInventoryAllCache()
         bumpNewCardSortPreviewCacheVersion()
@@ -119,6 +125,9 @@ internal abstract class LocalStoreInventory(
     private fun clearLocalStudyItemsCache() {
         cachedStudyItems = null
         cachedStudyItemsByKanji = null
+        cachedActiveDashboardRows = null
+        cachedActiveStudyDashboardRows = null
+        cachedActiveDashboardRowsByKanji = null
         cachedKanjiInventoryStudyQueueAll = null
         cachedKanjiInventoryStudyQueueWithSuspendedAll = null
         cachedKanjiInventorySearches = null
@@ -283,19 +292,50 @@ internal abstract class LocalStoreInventory(
 
     fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
         ensureDashboardCacheFresh()
+        ensureStudyItemsCacheFresh()
         cachedActiveDashboardRows?.let { return it }
 
         val suspended = locallySuspendedKanji()
-        if (suspended.isEmpty()) {
-            val rows = dashboardRows()
-            cachedActiveDashboardRows = rows
-            return rows
+        val providerRows = if (suspended.isEmpty()) {
+            dashboardRows()
+        } else {
+            // Apply local suspensions before the row cap. Filtering the already-capped dashboard
+            // snapshot let suspended kanji consume slots and hid valid lower-ranked candidates.
+            loadDashboardRows(excludeLocallySuspended = true)
         }
-        // Apply local suspensions before the row cap. Filtering the already-capped dashboard
-        // snapshot let suspended kanji consume slots and hid valid lower-ranked candidates
-        // from Home and study planning.
-        val rows = loadDashboardRows(excludeLocallySuspended = true)
+        val rows = mergeManualRows(
+            providerRows = providerRows,
+            sources = manualKanjiSources(admittedOnly = true),
+            locallySuspended = suspended,
+            admittedOnly = true,
+        )
         cachedActiveDashboardRows = rows
+        return rows
+    }
+
+    /**
+     * Scheduler-facing projection. Unlike [activeDashboardRows], this includes
+     * every active manual source so daily admission can continue beyond the
+     * first capped Home page.
+     */
+    fun activeStudyDashboardRows(): List<RecordsImportModels.DashboardRow> {
+        ensureDashboardCacheFresh()
+        ensureStudyItemsCacheFresh()
+        cachedActiveStudyDashboardRows?.let { return it }
+
+        val suspended = locallySuspendedKanji()
+        val providerRows = if (suspended.isEmpty()) {
+            dashboardRows()
+        } else {
+            loadDashboardRows(excludeLocallySuspended = true)
+        }
+        val rows = mergeManualRows(
+            providerRows = providerRows,
+            sources = manualKanjiSources(admittedOnly = false),
+            locallySuspended = suspended,
+            admittedOnly = false,
+        )
+        cachedActiveStudyDashboardRows = rows
         return rows
     }
 
@@ -316,7 +356,88 @@ internal abstract class LocalStoreInventory(
     }
 
     fun rowForKanji(kanji: String?): RecordsImportModels.DashboardRow? {
-        return readDashboardRow(readableDatabase, kanji)
+        if (kanji == null) {
+            return null
+        }
+        val provider = readDashboardRow(readableDatabase, kanji)
+        val manual = manualKanjiSource(kanji) ?: return provider
+        return ManualKanjiAdmissionPolicy.mergeRows(
+            providerRows = listOfNotNull(provider),
+            candidates = listOf(manual.candidate),
+            reasonText = MissingKanjiTextCopy.dictionarySourceReason(),
+        ).firstOrNull()
+    }
+
+    internal open fun manualKanjiSources(admittedOnly: Boolean): List<ManualKanjiSource> = emptyList()
+
+    internal open fun manualKanjiSource(literal: String): ManualKanjiSource? = null
+
+    private fun mergeManualRows(
+        providerRows: List<RecordsImportModels.DashboardRow>,
+        sources: List<ManualKanjiSource>,
+        locallySuspended: Set<String>,
+        admittedOnly: Boolean,
+    ): List<RecordsImportModels.DashboardRow> {
+        if (sources.isEmpty()) {
+            return providerRows
+        }
+        val activeSources = if (locallySuspended.isEmpty()) {
+            sources
+        } else {
+            sources.filterNot { source -> source.candidate.literal in locallySuspended }
+        }
+        if (activeSources.isEmpty()) {
+            return providerRows
+        }
+        val providers = LinkedHashMap<String, RecordsImportModels.DashboardRow>()
+        for (row in providerRows) {
+            providers[row.kanji] = row
+        }
+        for (row in providerRowsForManualSources(admittedOnly)) {
+            if (row.kanji !in locallySuspended) {
+                providers[row.kanji] = row
+            }
+        }
+        return ManualKanjiAdmissionPolicy.mergeRows(
+            providerRows = ArrayList(providers.values),
+            candidates = activeSources.map(ManualKanjiSource::candidate),
+            reasonText = MissingKanjiTextCopy.dictionarySourceReason(),
+        )
+    }
+
+    private fun providerRowsForManualSources(
+        admittedOnly: Boolean,
+    ): List<RecordsImportModels.DashboardRow> {
+        val admittedClause = if (admittedOnly) {
+            """
+            AND EXISTS (
+                SELECT 1
+                FROM $TABLE_STUDY_ITEMS item
+                WHERE item.$COLUMN_KANJI=manual.literal
+                  AND item.$COLUMN_STATE<>'$STATE_RETIRED'
+            )
+            """.trimIndent()
+        } else {
+            ""
+        }
+        val rows = ArrayList<RecordsImportModels.DashboardRow>()
+        readableDatabase.rawQuery(
+            """
+            SELECT dashboard.*
+            FROM $TABLE_DASHBOARD_ROWS dashboard
+            INNER JOIN $TABLE_MANUAL_KANJI_SOURCES manual
+              ON manual.literal=dashboard.$COLUMN_KANJI
+             AND manual.active=1
+            $admittedClause
+            ORDER BY dashboard.$COLUMN_KANJI
+            """.trimIndent(),
+            null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                rows.add(readDashboardRow(readableDatabase, cursor))
+            }
+        }
+        return rows
     }
 
     fun inventoryItemForKanji(kanji: String?): RecordsImportModels.KanjiInventoryItem? {
@@ -745,21 +866,24 @@ internal abstract class LocalStoreInventory(
         val totalStart = if (traceEnabled) elapsedRealtimeNanos() else 0L
         val queryStart = elapsedRealtimeNanos()
         val db = readableDatabase
-        val placeholders = distinctKanji.joinToString(",") { "?" }
         val items = ArrayList<RecordsStudyModels.StudyItem>()
-        db.query(
-            TABLE_STUDY_ITEMS,
-            null,
-            "$COLUMN_KANJI IN ($placeholders)",
-            distinctKanji.toTypedArray(),
-            null,
-            null,
-            "due_at ASC",
-        ).use { cursor ->
-            while (cursor.moveToNext()) {
-                items.add(readStudyItem(cursor))
+        for (chunk in distinctKanji.chunked(SQLITE_BIND_CHUNK_SIZE)) {
+            val placeholders = chunk.joinToString(",") { "?" }
+            db.query(
+                TABLE_STUDY_ITEMS,
+                null,
+                "$COLUMN_KANJI IN ($placeholders)",
+                chunk.toTypedArray(),
+                null,
+                null,
+                "due_at ASC",
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    items.add(readStudyItem(cursor))
+                }
             }
         }
+        items.sortWith(compareBy<RecordsStudyModels.StudyItem> { it.dueAtMillis }.thenBy { it.kanji })
         diagnosticLogger.traceStudyLoad(
             "studyItemsForKanji LOADED size=${items.size} keys=${distinctKanji.size} " +
                 "duration_ms=${nanosToMillis(elapsedRealtimeNanos() - queryStart)}"
@@ -1296,6 +1420,7 @@ internal abstract class LocalStoreInventory(
 
     private companion object {
         const val DASHBOARD_ROW_LIMIT = "120"
+        const val SQLITE_BIND_CHUNK_SIZE = 900
 
         /** Shared by every LocalStore helper in this process. */
         val DASHBOARD_CACHE_EPOCH = AtomicLong(0L)

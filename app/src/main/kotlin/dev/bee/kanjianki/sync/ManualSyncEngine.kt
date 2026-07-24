@@ -18,6 +18,8 @@ import dev.bee.kanjianki.core.KanjiImportSelector
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.LocalDayPolicy
+import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
+import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -184,7 +186,12 @@ internal class ManualSyncEngine {
 
                 progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
                 val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
-                activeRows = SuspendedImportPolicy.activeRows(rows, store.locallySuspendedKanji())
+                val queueRows = ManualKanjiAdmissionPolicy.mergeRows(
+                    providerRows = rows,
+                    candidates = store.missingKanjiStore().manualSources().map { source -> source.candidate },
+                    reasonText = MissingKanjiTextCopy.dictionarySourceReason(),
+                )
+                activeRows = SuspendedImportPolicy.activeRows(queueRows, store.locallySuspendedKanji())
                 // Seeding is a durable reconciliation, so it must see every persisted family.
                 // Admission and planning stay scoped to rows that are not locally suspended.
                 val currentItems = store.studyItems()
@@ -193,7 +200,7 @@ internal class ManualSyncEngine {
                 plan = adaptivePlan(activeRows, activeItems, finished)
                 val evidenceStatusByKanji = repairEvidenceStatusByKanji(rows, started)
                 var seeded = scheduler.seedQueue(
-                    rows,
+                    queueRows,
                     activeRows,
                     currentItems,
                     settings,

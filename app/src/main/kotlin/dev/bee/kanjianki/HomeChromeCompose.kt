@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.Role
 import dev.bee.kanjianki.core.HomeTextCopy
+import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 
 internal fun homeActionButtonTestTag(label: String): String = "home-action-button-$label"
@@ -36,8 +37,9 @@ internal fun homeActionModels(home: MainActivityHome): List<HomeActionModel> {
         add(HomeActionModel(HomeTextCopy.browseActionLabel(), R.drawable.ic_book_24, onClick = { home.renderBrowseKanji("") }))
         add(HomeActionModel(HomeTextCopy.recentMistakesTitle(), R.drawable.ic_trending_24, onClick = home::renderRecentMistakes))
         add(HomeActionModel(HomeTextCopy.statsActionLabel(), R.drawable.ic_stats_24, onClick = home::renderStats))
-        add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, onClick = home::renderGames))
         add(HomeActionModel(SettingsTextCopy.settingsTitle(), R.drawable.ic_settings_24, onClick = home::renderSettings))
+        add(HomeActionModel(HomeTextCopy.gamesActionLabel(), R.drawable.ic_game_24, onClick = home::renderGames))
+        add(HomeActionModel(MissingKanjiTextCopy.actionLabel(), R.drawable.ic_missing_kanji_24, onClick = home::renderMissingKanji))
     }
 }
 
