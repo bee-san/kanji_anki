@@ -17,13 +17,14 @@ import dev.bee.kanjianki.core.HomeTextCopy
 internal fun homeUpdateCheckFailedBannerTestTag(): String = "home-update-check-failed"
 
 /**
- * Truthful, recoverable offline state for the in-app update check. When the last
- * update check failed for a connectivity reason (no route, DNS, TLS/captive
- * portal, empty response) the store lights an update-check-failed flag and the
- * home model surfaces [line] + [onRetry]. This banner is the only place the user
- * sees that failure and gets a retry affordance; before it existed the failure
- * was silently swallowed. The retry re-runs the manual update check, which is
- * idempotent — tapping it while online clears the flag and removes the banner.
+ * Truthful, recoverable state for a manual in-app update check. When a manual
+ * check fails for a connectivity reason (no route, DNS, TLS/captive portal,
+ * empty response), the store lights an update-check-failed flag and the home
+ * model surfaces [line] + [onRetry]. Automatic background checks deliberately
+ * stay silent so Internet availability never distracts from local study. This
+ * banner gives a manual check an explicit retry affordance. The retry re-runs
+ * that idempotent manual check; tapping it while online clears the flag and
+ * removes the banner.
  */
 @Composable
 internal fun HomeUpdateCheckFailedBanner(
