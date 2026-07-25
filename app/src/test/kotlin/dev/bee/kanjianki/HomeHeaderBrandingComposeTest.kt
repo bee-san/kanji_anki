@@ -25,7 +25,7 @@ class HomeHeaderBrandingComposeTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun alphaAndByBeeAppearBelowTheKaniLogo() {
+    fun alphaAppearsUnderWordmarkWithSmallerByBeeToItsRight() {
         composeRule.setContent {
             Box(Modifier.width(360.dp)) {
                 HomeHeader(title = "Kani", subtitle = "")
@@ -33,6 +33,9 @@ class HomeHeaderBrandingComposeTest {
         }
         composeRule.waitForIdle()
 
+        val wordmark = composeRule.onNodeWithText("Kani")
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
         val logo = composeRule.onNodeWithContentDescription("Kani logo")
             .assertIsDisplayed()
             .fetchSemanticsNode().boundsInRoot
@@ -43,7 +46,9 @@ class HomeHeaderBrandingComposeTest {
             .assertIsDisplayed()
             .fetchSemanticsNode().boundsInRoot
 
-        assertTrue("Alpha should sit below the logo: logo=$logo, alpha=$alpha", alpha.top >= logo.bottom)
+        assertTrue("Alpha should sit below the Kani wordmark: wordmark=$wordmark, alpha=$alpha", alpha.top >= wordmark.bottom)
+        assertTrue("Alpha should align with the wordmark's left edge: wordmark=$wordmark, alpha=$alpha", kotlin.math.abs(alpha.left - wordmark.left) <= 2f)
+        assertTrue("Brand text should remain left of the logo: alpha=$alpha, logo=$logo", alpha.right <= logo.left)
         val horizontalGap = byBee.left - alpha.right
         assertTrue(
             "By Bee should sit beside Alpha with a small gap: alpha=$alpha, byBee=$byBee",
@@ -53,7 +58,11 @@ class HomeHeaderBrandingComposeTest {
             "By Bee should vertically overlap Alpha's row: alpha=$alpha, byBee=$byBee",
             byBee.top < alpha.bottom && byBee.bottom > alpha.top,
         )
-        assertTrue("By Bee should use smaller text than Alpha", textSize("By Bee") < textSize("Alpha"))
+        val alphaSize = textSize("Alpha")
+        val byBeeSize = textSize("By Bee")
+        assertTrue("Alpha should be a readable secondary wordmark", alphaSize in 18f..24f)
+        assertTrue("By Bee should be smaller but still readable", byBeeSize in 12f..16f)
+        assertTrue("By Bee should use smaller text than Alpha", byBeeSize < alphaSize)
     }
 
     private fun textSize(text: String): Float {
