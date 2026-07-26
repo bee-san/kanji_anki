@@ -1,2 +1,3 @@
 gradle/verification-metadata.xml text eol=lf
 branding/kani-app-icon.svg text eol=lf
+core/src/test/resources/**/*.txt text eol=lf

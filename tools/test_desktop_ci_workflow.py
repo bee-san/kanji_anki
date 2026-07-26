@@ -77,6 +77,10 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             attributes,
         )
         self.assertIn("branding/kani-app-icon.svg text eol=lf", attributes)
+        self.assertIn(
+            "core/src/test/resources/**/*.txt text eol=lf",
+            attributes,
+        )
 
     def test_matrix_pins_exact_supported_host_labels_and_architectures(self) -> None:
         matrix_job = _mapping_block(self.workflow, "desktop_matrix", 2)
@@ -228,6 +232,8 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         )
         self.assertIn("desktop-app/build/compose/logs/", diagnostics)
         self.assertIn("build-logic/build/test-results/test/", diagnostics)
+        self.assertIn("core/build/test-results/test/", diagnostics)
+        self.assertIn("core/build/reports/tests/test/", diagnostics)
         self.assertIn("if-no-files-found: warn", diagnostics)
         self.assertIn("retention-days: 7", diagnostics)
 

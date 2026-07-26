@@ -39,23 +39,34 @@ class DesktopLauncherTest {
     }
 
     @Test
-    fun smokeLaunchForcesTheDeterministicSoftwareRendererOnly() {
+    fun smokeLaunchForcesTheDeterministicSoftwareRendererOnLinuxOnly() {
         val properties = mutableMapOf<String, String>()
         configureSmokeRenderer(
             DesktopLaunchOptions(smokeTest = true, temporaryData = true),
             properties::put,
+            osName = "Linux",
         )
         assertEquals(
-            mapOf(SMOKE_RENDER_API_PROPERTY to SMOKE_RENDER_API),
+            mapOf(SMOKE_RENDER_API_PROPERTY to LINUX_SMOKE_RENDER_API),
             properties,
         )
 
-        properties.clear()
-        configureSmokeRenderer(
-            DesktopLaunchOptions(smokeTest = false, temporaryData = false),
-            properties::put,
-        )
-        assertTrue(properties.isEmpty())
+        for ((osName, smokeTest) in listOf(
+            "Mac OS X" to true,
+            "Windows 11" to true,
+            "Linux" to false,
+        )) {
+            properties.clear()
+            configureSmokeRenderer(
+                DesktopLaunchOptions(
+                    smokeTest = smokeTest,
+                    temporaryData = smokeTest,
+                ),
+                properties::put,
+                osName = osName,
+            )
+            assertTrue("$osName smokeTest=$smokeTest", properties.isEmpty())
+        }
     }
 
     @Test

@@ -163,6 +163,8 @@ jobs:
           path: |
             desktop-app/build/compose/logs/
             build-logic/build/test-results/test/
+            core/build/test-results/test/
+            core/build/reports/tests/test/
           if-no-files-found: warn
           retention-days: 7
 
