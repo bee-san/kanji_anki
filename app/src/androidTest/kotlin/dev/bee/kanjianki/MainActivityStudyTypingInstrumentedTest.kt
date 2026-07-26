@@ -66,7 +66,7 @@ class MainActivityStudyTypingInstrumentedTest {
             typeAnswer("split")
             scenario.onActivity { activity ->
                 val typingAnswerState = requireNotNull(activity.typingAnswerState)
-                assertEquals("split", typingAnswerState.text.toString())
+                assertEquals("split", typingAnswerState.text)
             }
             clickDeviceText("Reveal")
             // The typed answer matched, so revealing auto-passes; the review write
@@ -80,7 +80,7 @@ class MainActivityStudyTypingInstrumentedTest {
             val inputBounds = wrongInput.visibleBounds
             scenario.onActivity { activity ->
                 val typingAnswerState = requireNotNull(activity.typingAnswerState)
-                assertEquals("wrong", typingAnswerState.text.toString())
+                assertEquals("wrong", typingAnswerState.text)
                 val inputCenterX = inputBounds.exactCenterX()
                 val inputCenterY = inputBounds.exactCenterY()
                 assertTrue(typingAnswerState.containsWindowPoint(inputCenterX, inputCenterY))

@@ -834,7 +834,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
 
         assertEquals(1, summary.sourceCards)
         assertEquals(0, summary.taggedNotes)
-        assertTrue(summary.message?.contains("kept in the local archive") == true)
+        assertTrue(summary.message.contains("kept in the local archive"))
         assertEquals("", providerString("suspendedTags"))
     }
 
@@ -853,7 +853,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
 
         assertEquals(1, summary.sourceCards)
         assertEquals(0, summary.taggedNotes)
-        assertTrue(summary.message?.contains("kept in the local archive") == true)
+        assertTrue(summary.message.contains("kept in the local archive"))
         assertEquals("", providerString("suspendedTags"))
     }
 
@@ -886,7 +886,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
 
         assertEquals(2, summary.sourceCards)
         assertEquals(1, summary.taggedNotes)
-        assertTrue(summary.message?.contains("partly tagged") == true)
+        assertTrue(summary.message.contains("partly tagged"))
         assertEquals("kani_archived", providerString("suspendedTags"))
     }
 
@@ -902,7 +902,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
 
         assertEquals(1, summary.sourceCards)
         assertEquals(0, summary.taggedNotes)
-        assertTrue(summary.message?.contains("kept in the local archive") == true)
+        assertTrue(summary.message.contains("kept in the local archive"))
         assertEquals("", providerString("suspendedTags"))
     }
 

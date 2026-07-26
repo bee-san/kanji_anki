@@ -24,6 +24,9 @@ java {
 
 kotlin {
     jvmToolchain(libs.versions.jvmTarget.get().toInt())
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
 }
 
 tasks.withType<Test>().configureEach {

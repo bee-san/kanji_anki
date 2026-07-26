@@ -496,7 +496,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     ): Boolean {
         val selectedAnswer = answerEvidence?.selectedAnswer
             ?.takeIf { it.isNotBlank() }
-            ?: typingAnswerState?.text?.toString()?.takeIf { it.isNotBlank() }
+            ?: typingAnswerState?.text?.takeIf { it.isNotBlank() }
             ?: rating
         return submitWithAnswerFeedback(rating != MainActivityBase.RATING_AGAIN, selectedAnswer) {
             writingReview.submitReview(rating, override, ladder, interactionSource, answerEvidence)

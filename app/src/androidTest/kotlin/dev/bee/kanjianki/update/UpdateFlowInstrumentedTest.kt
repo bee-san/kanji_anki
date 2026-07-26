@@ -674,9 +674,9 @@ class UpdateFlowInstrumentedTest {
         var session: GitHubUpdater.InstallerSession? = null
         try {
             session = backend.openSession(sessionId)
-            session!!.openWrite("kani-update.apk", 0, 3).use { output ->
+            session.openWrite("kani-update.apk", 0, 3).use { output ->
                 output.write(byteArrayOf(1, 2, 3))
-                session!!.fsync(output)
+                session.fsync(output)
             }
         } finally {
             session?.close()
@@ -684,7 +684,7 @@ class UpdateFlowInstrumentedTest {
         }
 
         try {
-            session!!.commit(dummyIntentSender())
+            session.commit(dummyIntentSender())
         } catch (ignored: RuntimeException) {
             assertNotNull(ignored.javaClass.simpleName)
         }

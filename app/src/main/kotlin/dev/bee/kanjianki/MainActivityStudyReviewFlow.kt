@@ -277,7 +277,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 coreSkill = CoreSkill.RECOGNITION,
                 failureKind = if (failed) FailureKind.MEANING_UNKNOWN else null,
                 evidenceSource = EvidenceSource.OBJECTIVE_CHOICE,
-                selectedAnswer = activity.typingAnswerState?.text?.toString().orEmpty(),
+                selectedAnswer = activity.typingAnswerState?.text.orEmpty(),
                 correctAnswer = StudyTextCopy.collectionMeaningForSession(session),
                 renderedExpression = session.item?.kanji.orEmpty(),
             )

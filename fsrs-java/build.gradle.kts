@@ -1,10 +1,12 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
+
 plugins {
     id("kani.kotlin-library-conventions")
 }
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.add("-Xjvm-default=all")
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
     }
 }
 

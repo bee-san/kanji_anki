@@ -161,6 +161,12 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
+}
+
 jacoco {
     toolVersion = libs.versions.jacoco.get()
 }

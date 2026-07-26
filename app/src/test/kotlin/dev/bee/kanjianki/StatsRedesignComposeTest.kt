@@ -53,7 +53,7 @@ class StatsRedesignComposeTest {
         composeRule.onAllNodesWithTag(KaniHeatmapWeekTag).assertCountEquals(state.reviewsAnalytics.heatmap!!.weeks.size)
         composeRule.onNodeWithText("Sun", substring = true).assertExists()
         assertTrue(composeRule.onAllNodesWithText("Jul").fetchSemanticsNodes().isNotEmpty())
-        composeRule.onNodeWithContentDescription(state.reviewsAnalytics.heatmap!!.accessibilitySummary).assertExists()
+        composeRule.onNodeWithContentDescription(state.reviewsAnalytics.heatmap.accessibilitySummary).assertExists()
         // The per-day bar chart is gone (Review calendar heatmap replaces it) but the
         // range summary metrics still render for the selected range.
         composeRule.onAllNodesWithTag("kani-bar-chart").assertCountEquals(0)

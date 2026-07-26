@@ -379,7 +379,7 @@ internal object MissingKanjiReportLoader {
             offset = nextOffset
         }
         check(expectedTotal == candidates.size) {
-            "Dictionary candidate paging returned ${candidates.size} of ${expectedTotal ?: 0} rows."
+            "Dictionary candidate paging returned ${candidates.size} of $expectedTotal rows."
         }
         return when (
             val analysis = MissingKanjiAnalyzer.analyze(

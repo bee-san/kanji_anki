@@ -2,6 +2,12 @@ plugins {
     `kotlin-dsl`
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
+}
+
 gradlePlugin {
     plugins {
         create("kaniReleaseIntegrity") {

@@ -67,7 +67,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             !activity.flashcardAnswerRevealed
 
     private fun submitTypingReading(session: RecordsSchedulerModels.StudySession) {
-        val typed = activity.typingAnswerState?.text?.toString().orEmpty()
+        val typed = activity.typingAnswerState?.text.orEmpty()
         val expected = StudyTextCopy.collectionReadingForSession(session)
         val matched = TypedReadingPolicy.matches(typed, expected)
         Toast.makeText(
@@ -97,7 +97,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
         val matched = TypingAnswerMatcher.matches(
             activity.currentDictionaryLookup(),
             session.item?.kanji ?: "",
-            activity.typingAnswerState?.text?.toString() ?: "",
+            activity.typingAnswerState?.text ?: "",
             StudyTextCopy.collectionMeaningForSession(session),
         )
         if (matched) {

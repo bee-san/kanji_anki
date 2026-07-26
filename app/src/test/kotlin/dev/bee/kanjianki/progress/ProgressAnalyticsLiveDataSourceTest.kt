@@ -235,7 +235,7 @@ class ProgressAnalyticsLiveDataSourceTest {
             assertTrue(snapshot.accuracyRetention.accuracyTrend.xAxisLabels.all { " " !in it })
             assertTrue(snapshot.accuracyRetention.accuracyTrend.tooltipLabel!!.contains("、"))
             assertTrue(snapshot.forecast!!.headline.contains("2027年3月"))
-            assertEquals(listOf("3月"), snapshot.forecast!!.burnDown.xAxisLabels)
+            assertEquals(listOf("3月"), snapshot.forecast.burnDown.xAxisLabels)
         } finally {
             Locale.setDefault(previousLocale)
             TimeZone.setDefault(previousTimeZone)

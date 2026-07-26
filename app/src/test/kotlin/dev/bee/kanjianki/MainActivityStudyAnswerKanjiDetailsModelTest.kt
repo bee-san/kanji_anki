@@ -35,25 +35,25 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals(StudyAnswerSectionContentState.READY, model.details.contentState)
         assertEquals("8 strokes • radical 64", model.details.summary)
         assertEquals(listOf("to resist", "to oppose"), model.details.body!!.meanings)
-        assertEquals(listOf("On", "Kun", "Nanori"), model.details.body!!.readingGroups.map { it.label })
-        assertEquals(listOf("コウ"), model.details.body!!.readingGroups[0].readings)
-        assertEquals(8, model.details.body!!.strokeCount)
-        assertEquals(null, model.details.body!!.grade)
-        assertEquals(64, model.details.body!!.radical)
-        assertEquals(100, model.details.body!!.frequency)
-        assertEquals(12, model.details.body!!.jitenRank)
+        assertEquals(listOf("On", "Kun", "Nanori"), model.details.body.readingGroups.map { it.label })
+        assertEquals(listOf("コウ"), model.details.body.readingGroups[0].readings)
+        assertEquals(8, model.details.body.strokeCount)
+        assertEquals(null, model.details.body.grade)
+        assertEquals(64, model.details.body.radical)
+        assertEquals(100, model.details.body.frequency)
+        assertEquals(12, model.details.body.jitenRank)
 
         assertEquals(StudyAnswerSectionContentState.READY, model.breakdown.contentState)
         assertEquals("Radical only", model.breakdown.summary)
         assertEquals(64, model.breakdown.body!!.radicalNumber)
-        assertTrue(model.breakdown.body!!.componentRows.isEmpty())
-        assertEquals("Component breakdown is still molting. Radical data is shown for now.", model.breakdown.body!!.fallbackCopy)
+        assertTrue(model.breakdown.body.componentRows.isEmpty())
+        assertEquals("Component breakdown is still molting. Radical data is shown for now.", model.breakdown.body.fallbackCopy)
 
         assertEquals(StudyAnswerSectionContentState.READY, model.strokeOrder.contentState)
         assertEquals("8 strokes", model.strokeOrder.summary)
         assertEquals(StudyAnswerStrokeOrderAvailability.COUNT_ONLY, model.strokeOrder.body!!.availability)
-        assertEquals(8, model.strokeOrder.body!!.strokeCount)
-        assertEquals("Stroke-order animation needs a licensed offline asset before Kani can draw it here.", model.strokeOrder.body!!.fallbackCopy)
+        assertEquals(8, model.strokeOrder.body.strokeCount)
+        assertEquals("Stroke-order animation needs a licensed offline asset before Kani can draw it here.", model.strokeOrder.body.fallbackCopy)
     }
 
     @Test
@@ -202,9 +202,9 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals(StudyAnswerSectionContentState.READY, collapsed.contentState)
         assertEquals("4 synced words", collapsed.summary)
         assertEquals(4, collapsed.body!!.rows.size)
-        assertEquals(3, collapsed.body!!.visibleRows.size)
-        assertEquals(1, collapsed.body!!.hiddenRowCount)
-        assertEquals("Show all 4", collapsed.body!!.toggleLabel)
+        assertEquals(3, collapsed.body.visibleRows.size)
+        assertEquals(1, collapsed.body.hiddenRowCount)
+        assertEquals("Show all 4", collapsed.body.toggleLabel)
 
         val expanded = studyAnswerUsedInAnkiSection(
             examples = listOf(second, third, fourth),
@@ -213,8 +213,8 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
             openAnkiDroidSupported = false,
         )
         assertEquals(4, expanded.body!!.visibleRows.size)
-        assertEquals(0, expanded.body!!.hiddenRowCount)
-        assertEquals("Show fewer", expanded.body!!.toggleLabel)
+        assertEquals(0, expanded.body.hiddenRowCount)
+        assertEquals("Show fewer", expanded.body.toggleLabel)
     }
 
     @Test
@@ -313,10 +313,10 @@ class MainActivityStudyAnswerKanjiDetailsModelTest {
         assertEquals(StudyAnswerSectionContentState.READY, section.contentState)
         assertEquals("From: 抗議", section.summary)
         assertEquals("抗議", section.body!!.sourceExpression)
-        assertEquals("こうぎ", section.body!!.sourceReading)
-        assertEquals(2, section.body!!.previewExamples.size)
-        assertEquals(listOf("抗体", "抵抗"), section.body!!.previewExamples.map { it.expression })
-        assertEquals(null, section.body!!.fallbackCopy)
+        assertEquals("こうぎ", section.body.sourceReading)
+        assertEquals(2, section.body.previewExamples.size)
+        assertEquals(listOf("抗体", "抵抗"), section.body.previewExamples.map { it.expression })
+        assertEquals(null, section.body.fallbackCopy)
 
         val fallback = studyAnswerWhyThisCardSection(examples = emptyList(), currentExample = null)
         assertEquals(StudyAnswerSectionContentState.EMPTY, fallback.contentState)

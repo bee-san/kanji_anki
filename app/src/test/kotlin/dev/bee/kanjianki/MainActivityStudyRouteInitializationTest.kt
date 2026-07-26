@@ -130,7 +130,7 @@ class MainActivityStudyRouteInitializationTest {
 
         assertSame(feedback, activity.studyAnswerFeedbackState)
         assertTrue(activity.flashcardRevealState?.isRevealed == true)
-        assertEquals("strong", activity.typingAnswerState?.text?.toString())
+        assertEquals("strong", activity.typingAnswerState?.text)
         assertTrue(activity.studyAnswerFeedbackState?.continueEnabled == true)
     }
 
@@ -213,7 +213,7 @@ class MainActivityStudyRouteInitializationTest {
             assertEquals(session.token, restoredActivity.studyAnswerFeedbackState?.sessionToken)
             assertTrue(restoredActivity.studyAnswerFeedbackState?.continueEnabled == true)
             assertTrue(restoredActivity.flashcardRevealState?.isRevealed == true)
-            assertEquals("strong", restoredActivity.typingAnswerState?.text?.toString())
+            assertEquals("strong", restoredActivity.typingAnswerState?.text)
         } finally {
             activity.store.saveKanjiMnemonicNote(session.item!!.kanji, "", 3_000L)
             preferences.edit().clear().commit()

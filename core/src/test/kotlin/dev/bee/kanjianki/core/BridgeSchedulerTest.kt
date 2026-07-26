@@ -184,8 +184,8 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertTrue(session!!.writingRequired)
-        assertEquals("write_kanji", session!!.taskType)
+        assertTrue(session.writingRequired)
+        assertEquals("write_kanji", session.taskType)
     }
 
     @Test
@@ -204,13 +204,13 @@ public class BridgeSchedulerTest {
                 RecordsBase.StudyLadderSettings.defaults()
         )!!
         assertNotNull(session)
-        assertEquals("keep-token", session!!.token)
-        assertEquals("keep-token", session!!.item!!.activeToken)
+        assertEquals("keep-token", session.token)
+        assertEquals("keep-token", session.item!!.activeToken)
         assertSame(existing, scheduler.targetedStudyItem(listOf(existing), "裂", 1234L, RecordsBase.StudyLadderSettings.defaults()))
-        assertEquals(RecordsBase.LadderRung.WORD_READING, session!!.item!!.rung)
-        assertEquals("word_reading", session!!.taskType)
-        assertEquals("split", session!!.prompt)
-        assertFalse(session!!.writingRequired)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item.rung)
+        assertEquals("word_reading", session.taskType)
+        assertEquals("split", session.prompt)
+        assertFalse(session.writingRequired)
     }
 
     @Test
@@ -225,20 +225,20 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
-        assertEquals("new", session!!.item!!.state)
-        assertEquals(1234L, session!!.item!!.dueAtMillis)
-        assertEquals(1234L, session!!.item!!.createdAtMillis)
+        assertEquals("謎", session.item!!.kanji)
+        assertEquals("new", session.item.state)
+        assertEquals(1234L, session.item.dueAtMillis)
+        assertEquals(1234L, session.item.createdAtMillis)
         // New default order (Goal 65): with kanji_meaning disabled and no
         // similar-kanji content, the nearest enabled rung by distance is
         // font_meaning (the content-less similar_kanji directly below is
         // unavailable, so the mapping falls to the closer higher rung).
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, session!!.item!!.rung)
-        assertEquals("font_meaning", session!!.taskType)
-        assertEquals("local reason", session!!.prompt)
-        assertFalse(session!!.writingRequired)
-        assertTrue(session!!.token.startsWith("謎-"))
-        assertEquals(session!!.token, session!!.item!!.activeToken)
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, session.item.rung)
+        assertEquals("font_meaning", session.taskType)
+        assertEquals("local reason", session.prompt)
+        assertFalse(session.writingRequired)
+        assertTrue(session.token.startsWith("謎-"))
+        assertEquals(session.token, session.item.activeToken)
     }
 
     @Test
@@ -261,9 +261,9 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
-        assertEquals("kanji_meaning", session!!.taskType)
-        assertFalse(session!!.writingRequired)
+        assertEquals("謎", session.item!!.kanji)
+        assertEquals("kanji_meaning", session.taskType)
+        assertFalse(session.writingRequired)
     }
 
     @Test
@@ -793,7 +793,7 @@ public class BridgeSchedulerTest {
         )
         var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(result.items, rows, 2000L, 0L, null, difficultySort)!!
         assertNotNull(session)
-        assertEquals("難", session!!.item!!.kanji)
+        assertEquals("難", session.item!!.kanji)
     }
 
     @Test
@@ -815,7 +815,7 @@ public class BridgeSchedulerTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, active.get(0).rung)
         assertEquals(1, scheduler.dueCount(items, rows, 1000L))
         assertNotNull(session)
-        assertEquals(RecordsBase.LadderRung.WORD_READING, session!!.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item!!.rung)
     }
 
     @Test
@@ -953,7 +953,7 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("裂", session!!.item!!.kanji)
+        assertEquals("裂", session.item!!.kanji)
     }
 
     @Test
@@ -1341,7 +1341,7 @@ public class BridgeSchedulerTest {
         assertEquals(1, activeItems.size)
         assertEquals("提", activeItems.get(0).kanji)
         assertNotNull(session)
-        assertEquals("提", session!!.item!!.kanji)
+        assertEquals("提", session.item!!.kanji)
     }
 
     @Test
@@ -1727,7 +1727,7 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("学", session!!.item!!.kanji)
+        assertEquals("学", session.item!!.kanji)
     }
 
     @Test
@@ -1804,7 +1804,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -1831,7 +1831,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -1901,7 +1901,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -2061,8 +2061,8 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         assertNotNull(session)
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, session!!.item!!.rung)
-        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session!!.taskType)
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, session.item!!.rung)
+        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session.taskType)
     }
 
     @Test
@@ -2093,7 +2093,7 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
-                session!!.item!!.withToken("meaning-pass"),
+                session.item!!.withToken("meaning-pass"),
                 RecordsSchedulerModels.ReviewRequest("裂", "meaning-pass", "good", false, false, false, 0),
                 HashSet(),
                 1000L,
@@ -2182,7 +2182,7 @@ public class BridgeSchedulerTest {
                 listOf(ahead), rows, now, 15L * 60_000L, null
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
+        assertEquals("謎", session.item!!.kanji)
     }
 
     @Test
@@ -2251,7 +2251,7 @@ public class BridgeSchedulerTest {
                 listOf(dueIn5, dueNow), rows, now, 15L * 60_000L, null
         )!!
         assertNotNull(session)
-        assertEquals("裂", session!!.item!!.kanji)
+        assertEquals("裂", session.item!!.kanji)
     }
 
     @Test

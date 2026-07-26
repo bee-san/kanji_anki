@@ -85,7 +85,7 @@ internal object NoteTypeFieldMappings {
     }
 
     @JvmStatic
-    fun labels(noteTypes: List<Choice>?): Array<String> {
+    fun labels(noteTypes: List<Choice?>?): Array<String> {
         val choices = noteTypes.orEmpty().map { noteType -> noteType?.coreChoice }
         return NoteTypeFieldMappingPolicy.labels(choices)
     }

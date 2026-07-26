@@ -169,7 +169,7 @@ class ManualSyncEngineRepairedWriteBackTest {
         assertTrue(result.success)
         assertEquals(setOf(1L), recorded)
         assertTrue(result.message!!.contains("Tagged 1 repaired note"))
-        assertFalse(result.message!!.contains("retry"))
+        assertFalse(result.message.contains("retry"))
     }
 
     @Test

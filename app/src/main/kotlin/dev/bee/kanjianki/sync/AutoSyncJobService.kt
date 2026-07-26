@@ -15,9 +15,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class AutoSyncJobService : JobService {
-    private lateinit var executor: JobExecutor
-    private lateinit var shutdown: Shutdown
-    private lateinit var autoSyncTask: AutoSyncTask
+    private val executor: JobExecutor
+    private val shutdown: Shutdown
+    private val autoSyncTask: AutoSyncTask
     private val activeRuns = ConcurrentHashMap<Int, JobRun>()
 
     constructor() {

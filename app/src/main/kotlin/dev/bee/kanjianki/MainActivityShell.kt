@@ -213,7 +213,7 @@ private fun MainActivityScrollableRouteColumn(
                 Row(modifier = Modifier.fillMaxSize()) {
                     KaniNavigationRail(
                         selectedRoute = model.selectedRoute,
-                        actions = navActions!!,
+                        actions = navActions,
                         studyBadgeCount = model.studyBadgeCount,
                     )
                     Column(
@@ -269,7 +269,7 @@ private fun MainActivityScrollableRouteColumn(
                     if (showNav) {
                         KaniBottomNavBar(
                             selectedRoute = model.selectedRoute,
-                            actions = navActions!!,
+                            actions = navActions,
                             studyBadgeCount = model.studyBadgeCount,
                         )
                     }

@@ -325,7 +325,7 @@ class ReminderSchedulerTest {
 
             assertTrue(channel != null)
             assertEquals(ReminderCopyPolicy.notificationChannelName(), channel!!.name.toString())
-            assertEquals(ReminderCopyPolicy.notificationChannelDescription(), channel.description?.toString())
+            assertEquals(ReminderCopyPolicy.notificationChannelDescription(), channel.description)
         }
     }
 

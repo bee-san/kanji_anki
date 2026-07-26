@@ -3220,7 +3220,7 @@ fun collectVisibleText(root: View, texts: MutableList<String>) {
         }
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             collectVisibleText(group.getChildAt(i), texts)
         }
@@ -3347,7 +3347,7 @@ fun <T : View> findType(root: View, type: Class<T>): T? {
         return type.cast(root)
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             val found = findType(group.getChildAt(i), type)
             if (found != null) {
@@ -3366,7 +3366,7 @@ fun <T : View> collectTypes(root: View, type: Class<T>, results: MutableList<T>)
         results.add(requireNotNull(type.cast(root)))
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             collectTypes(group.getChildAt(i), type, results)
         }
@@ -3404,13 +3404,13 @@ fun findText(root: View, text: String): View? {
         return null
     }
     if (root is TextView) {
-        val value = (root as TextView).text
+        val value = root.text
         if (value != null && value.toString().contains(text)) {
             return root
         }
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             val found = findText(group.getChildAt(i), text)
             if (found != null) {
@@ -3427,13 +3427,13 @@ fun countText(root: View, text: String): Int {
     }
     var count = 0
     if (root is TextView) {
-        val value = (root as TextView).text
+        val value = root.text
         if (value != null && value.toString().contains(text)) {
             count++
         }
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             count += countText(group.getChildAt(i), text)
         }
@@ -3446,13 +3446,13 @@ fun findExactText(root: View, text: String): View? {
         return null
     }
     if (root is TextView) {
-        val value = (root as TextView).text
+        val value = root.text
         if (value != null && value.toString().equals(text)) {
             return root
         }
     }
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             val found = findExactText(group.getChildAt(i), text)
             if (found != null) {
@@ -3523,7 +3523,7 @@ fun collectViews(root: View, views: MutableList<View>) {
     }
     views.add(root)
     if (root is android.view.ViewGroup) {
-        val group = root as android.view.ViewGroup
+        val group = root
         for (i in 0 until group.getChildCount()) {
             collectViews(group.getChildAt(i), views)
         }
