@@ -23,7 +23,7 @@ internal object ButtonLatencyBenchmarkFixtureSeeder {
     private val representativeDashboardKanji = setOf(
         "認", "改", "善", "統", "計", "復", "習", "集", "書", "字", "記", "録", "検", "索", "類", "似", "未", "熟", "弱", "点", "保", "留",
     )
-    private val representativeStudyKanji = setOf("保", "弱", "点")
+    private val representativeStudyKanji = setOf("未", "弱", "点")
 
     @JvmStatic
     fun seedIfNeeded(context: Context, store: LocalStore) {
