@@ -2752,6 +2752,47 @@ authorize a backend or production sync.
 Append one dated subsection per completed goal. Do not mark a goal complete
 from a plan, mock-only success, or a nearly exhausted execution budget.
 
+### Goal 164 completion evidence (2026-07-26)
+
+- Started from: `bd5d2dd0` (`origin/main`) on `desktop/support` in
+  `/home/bee/Documents/src/github/kanji_anki-desktop-support`; the required
+  plan-only baseline commit is `845569d4`.
+- Commits: `70b20a23 docs: define the desktop product and parity contract`;
+  `9dfd570b docs: reconcile the pending architecture goals`;
+  `a45c5ada test: encode the Android and desktop module graph`.
+- Implemented: added the architecture index and six accepted ADRs; reconciled
+  normal tag-only sync/write-back with the capability-gated additive Missing
+  Kanji exception; mapped every pending Goal 148-163 to this plan; marked only
+  the old desktop non-goal as superseded; and encoded the 34-module final DAG,
+  reviewed migration-only edges, rationales, platform separation, import
+  guards, and fail-closed unknown dependency handling. No source module moved
+  and no runtime code changed.
+- Validation: `git diff --check` passed;
+  `python3 -m unittest tools.test_module_boundaries` passed 17 tests; and
+  `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
+  ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew ciFast
+  ciQuality --no-daemon --console=plain` completed `BUILD SUCCESSFUL` in
+  12m03s with 110 actionable tasks (99 executed, two from cache, nine
+  up-to-date). The documented `/tmp/android-sdk` was absent, so the successful
+  rerun used the installed cached SDK containing platform/build-tools 36.
+- Live gates: not required. This goal changes documentation and architecture
+  tests only; it does not change Android/desktop runtime, schema, scheduler,
+  provider, sync, persistence, or release behavior.
+- Decisions: accepted loopback AnkiConnect-only desktop access, independent
+  installation-local Kani profiles, explicit nullable provider-FSRS
+  capability, shared SQL behind platform drivers, capability-routed
+  handwriting, and exact-commit but failure-independent platform publication.
+  Confirmed the absolute prohibition on Anki scheduling writes. Clarified that
+  `:provider-ankiconnect` consumes the platform `SecretStore` contract and that
+  widget refresh consumes committed app-event contracts.
+- Rollback: revert the three Goal 164 commits (and the plan-only baseline if
+  abandoning the epic). This removes only documentation and Python boundary
+  policy; it requires no schema migration, data conversion, provider action,
+  or user-state rollback.
+- Gaps/blockers: none for Goal 164. The branch remains local and unpushed;
+  Goal 168's explicit cross-OS push/CI authorization checkpoint remains in
+  force.
+
 Template:
 
 ```md
