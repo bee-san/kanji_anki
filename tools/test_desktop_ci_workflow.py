@@ -223,8 +223,18 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertNotIn("BOOTSTRAP", gate)
 
     def test_workflow_permissions_are_read_only(self) -> None:
-        permissions = _mapping_block(self.workflow, "permissions", 0)
-        self.assertEqual("  contents: read", permissions.strip("\n"))
+        self.assertRegex(self.workflow, r"(?m)^permissions: \{\}$")
+        for job_name in ("classify", "desktop_matrix"):
+            with self.subTest(job=job_name):
+                job = _mapping_block(self.workflow, job_name, 2)
+                permissions = _mapping_block(job, "permissions", 4)
+                self.assertEqual(
+                    "      contents: read",
+                    permissions.strip("\n"),
+                )
+        gate = _mapping_block(self.workflow, "desktop_confidence_gate", 2)
+        self.assertIn("    permissions: {}", gate)
+        self.assertEqual(2, self.workflow.count("contents: read"))
         self.assertNotRegex(self.workflow, r"(?m)^\s+[A-Za-z-]+:\s*write\s*$")
 
 
