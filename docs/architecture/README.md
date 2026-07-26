@@ -10,6 +10,9 @@ invariants or an explicitly superseding plan.
   the execution plan for the supported Android, Windows, Linux, and macOS
   architecture. It supersedes the Android-only target shape of pending Goals
   148-163 without reopening completed Goals 145-147.
+- [Desktop conversion baseline](../desktop-conversion-baseline.md) freezes the
+  pre-conversion module, source, toolchain, test, compile-time, and startup
+  measurements used to prove later moves preserve behavior and build health.
 - [Adaptive two-core scheduler](../adaptive-two-core-scheduler.md) is the
   canonical database-v31 scheduler and review-persistence contract.
 - [Database backup and restore](../database-backup-restore.md) defines the
