@@ -3,6 +3,7 @@ package dev.bee.kanjianki.buildlogic
 import java.io.File
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,28 +59,14 @@ class ComposeMultiplatformToolchainFunctionalTest {
             ).isFile,
         )
 
-        assertResolved(
-            result.output,
-            "org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.4.10",
-        )
-        assertResolved(result.output, "org.jetbrains.compose.runtime:runtime:1.11.1")
-        assertResolved(result.output, "org.jetbrains.compose.ui:ui:1.11.1")
-        assertResolved(
-            result.output,
-            "org.jetbrains.compose.material3:material3:1.11.0-alpha07",
-        )
-        assertResolved(
-            result.output,
-            "org.jetbrains.androidx.navigation:navigation-compose:2.9.2",
-        )
-        assertResolved(result.output, "org.jetbrains.skiko:skiko:0.144.6")
-        assertResolved(
-            result.output,
-            "org.jetbrains.compose.desktop:desktop-jvm-linux-x64:1.11.1",
-        )
-        assertResolved(
-            result.output,
-            "org.jetbrains.skiko:skiko-awt-runtime-linux-x64:0.144.6",
+        val resolvedCoordinates = result.output.lineSequence()
+            .filter { it.startsWith(RESOLUTION_PREFIX) }
+            .map { it.removePrefix(RESOLUTION_PREFIX) }
+            .toSet()
+        assertEquals(
+            "The selected Compose JVM graph must not contain stale or parallel versions.",
+            EXPECTED_COMPOSE_JVM_COORDINATES,
+            resolvedCoordinates,
         )
     }
 
@@ -92,10 +79,57 @@ class ComposeMultiplatformToolchainFunctionalTest {
         )
     }
 
-    private fun assertResolved(output: String, coordinate: String) {
-        assertTrue(
-            "Expected strict Compose JVM resolution to contain $coordinate.\n$output",
-            output.contains("compose-jvm-resolution=$coordinate"),
+    private companion object {
+        const val RESOLUTION_PREFIX = "compose-jvm-resolution="
+
+        val EXPECTED_COMPOSE_JVM_COORDINATES = setOf(
+            "org.jetbrains.androidx.navigation:navigation-common-desktop:2.9.2",
+            "org.jetbrains.androidx.navigation:navigation-common:2.9.2",
+            "org.jetbrains.androidx.navigation:navigation-compose-desktop:2.9.2",
+            "org.jetbrains.androidx.navigation:navigation-compose:2.9.2",
+            "org.jetbrains.androidx.navigation:navigation-runtime-desktop:2.9.2",
+            "org.jetbrains.androidx.navigation:navigation-runtime:2.9.2",
+            "org.jetbrains.compose.animation:animation-core-desktop:1.11.1",
+            "org.jetbrains.compose.animation:animation-core:1.11.1",
+            "org.jetbrains.compose.animation:animation-desktop:1.11.1",
+            "org.jetbrains.compose.animation:animation:1.11.1",
+            "org.jetbrains.compose.desktop:desktop-jvm-linux-x64:1.11.1",
+            "org.jetbrains.compose.desktop:desktop-jvm:1.11.1",
+            "org.jetbrains.compose.desktop:desktop:1.11.1",
+            "org.jetbrains.compose.foundation:foundation-desktop:1.11.1",
+            "org.jetbrains.compose.foundation:foundation-layout-desktop:1.11.1",
+            "org.jetbrains.compose.foundation:foundation-layout:1.11.1",
+            "org.jetbrains.compose.foundation:foundation:1.11.1",
+            "org.jetbrains.compose.material3:material3-desktop:1.11.0-alpha07",
+            "org.jetbrains.compose.material3:material3:1.11.0-alpha07",
+            "org.jetbrains.compose.material:material-desktop:1.11.1",
+            "org.jetbrains.compose.material:material-ripple-desktop:1.11.1",
+            "org.jetbrains.compose.material:material-ripple:1.11.1",
+            "org.jetbrains.compose.material:material:1.11.1",
+            "org.jetbrains.compose.runtime:runtime-desktop:1.11.1",
+            "org.jetbrains.compose.runtime:runtime-saveable-desktop:1.11.1",
+            "org.jetbrains.compose.runtime:runtime-saveable:1.11.1",
+            "org.jetbrains.compose.runtime:runtime:1.11.1",
+            "org.jetbrains.compose.ui:ui-backhandler-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-backhandler:1.11.1",
+            "org.jetbrains.compose.ui:ui-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-geometry-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-geometry:1.11.1",
+            "org.jetbrains.compose.ui:ui-graphics-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-graphics:1.11.1",
+            "org.jetbrains.compose.ui:ui-text-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-text:1.11.1",
+            "org.jetbrains.compose.ui:ui-tooling-preview-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-tooling-preview:1.11.1",
+            "org.jetbrains.compose.ui:ui-unit-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-unit:1.11.1",
+            "org.jetbrains.compose.ui:ui-util-desktop:1.11.1",
+            "org.jetbrains.compose.ui:ui-util:1.11.1",
+            "org.jetbrains.compose.ui:ui:1.11.1",
+            "org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.4.10",
+            "org.jetbrains.skiko:skiko-awt-runtime-linux-x64:0.144.6",
+            "org.jetbrains.skiko:skiko-awt:0.144.6",
+            "org.jetbrains.skiko:skiko:0.144.6",
         )
     }
 }
