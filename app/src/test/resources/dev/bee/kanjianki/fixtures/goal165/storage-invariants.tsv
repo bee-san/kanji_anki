@@ -1,0 +1,16 @@
+# format=1; all payloads are synthetic and contain no collection data
+wal	api-26-29	result=io_error;writer_invoked=false;destination=missing
+wal	api-30-plus	result=success;destination=published_non_empty
+wal	partial-failure	result=io_error;destination=missing
+wal	missing-output	result=io_error;destination=missing
+wal	preexisting-destination	result=io_error;writer_invoked=false;destination=preserved
+restore	SAFETY_BACKUP_CREATED	live=old;staged=true;marker=MISSING;wal=true;shm=true;safety=true;restore_dir=true;retry=RETRY_NEEDED;startup=true
+restore	MARKER_READY	live=old;staged=true;marker=SAFETY_READY;wal=true;shm=true;safety=true;restore_dir=true;retry=BLOCK_STARTUP;startup=false
+restore	DATABASE_REPLACED	live=restored;staged=false;marker=SAFETY_READY;wal=true;shm=true;safety=true;restore_dir=true;retry=BLOCK_STARTUP;startup=false
+restore	SIDECARS_DELETED	live=restored;staged=false;marker=SAFETY_READY;wal=false;shm=false;safety=true;restore_dir=true;retry=BLOCK_STARTUP;startup=false
+restore	MARKER_DELETED	live=restored;staged=false;marker=MISSING;wal=false;shm=false;safety=true;restore_dir=true;retry=RETRY_NEEDED;startup=true
+coverage	wal-committed-content	dev.bee.kanjianki.backup.DatabaseBackupWorkerRobolectricTest#androidEnvironmentSnapshotsCommittedContentWhileWriterRemainsOpen
+coverage	wal-connected-device	dev.bee.kanjianki.backup.DatabaseBackupWorkerInstrumentedTest#workerProducesIntegralBackupThatIncludesCommittedWalContent
+coverage	restore-idempotent-retry	dev.bee.kanjianki.backup.StagedRestoreApplierTest#rerunAfterCrashAtEveryStepCompletesIdempotently
+coverage	restore-fsync-boundaries	dev.bee.kanjianki.backup.StagedRestoreApplierTest#directorySyncFailuresRemainSafeAtMarkerSidecarAndFinalBoundaries
+coverage	restore-marker-fail-closed	dev.bee.kanjianki.backup.StagedRestoreApplierTest#legacyMarkerOnlyStatePreservesAmbiguousLiveDatabaseAndSidecars
