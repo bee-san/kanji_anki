@@ -159,6 +159,38 @@ tasks.register<Exec>("testCiScripts") {
     commandLine("python3", "-m", "unittest", "discover", "-s", "ci/tests", "-p", "test_*.py")
 }
 
+tasks.register<Exec>("generateDesktopIcons") {
+    group = "build setup"
+    description = "Generates committed PNG, ICO, and ICNS package icons from the canonical SVG."
+    inputs.file(layout.projectDirectory.file("branding/kani-app-icon.svg"))
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_icons.py"))
+    outputs.files(
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.png"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.ico"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.icns"),
+        layout.projectDirectory.file(
+            "desktop-app/src/main/packaging/icons/icon-manifest.json",
+        ),
+    )
+    commandLine("python3", "tools/generate_desktop_icons.py", "--write")
+}
+
+tasks.register<Exec>("verifyDesktopIcons") {
+    group = "verification"
+    description = "Fails when a desktop package icon diverges from the canonical SVG."
+    inputs.file(layout.projectDirectory.file("branding/kani-app-icon.svg"))
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_icons.py"))
+    inputs.files(
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.png"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.ico"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.icns"),
+        layout.projectDirectory.file(
+            "desktop-app/src/main/packaging/icons/icon-manifest.json",
+        ),
+    )
+    commandLine("python3", "tools/generate_desktop_icons.py", "--check")
+}
+
 tasks.register("testBuildLogic") {
     group = "verification"
     description = "Runs convention-plugin tests, including the Android library fixture."

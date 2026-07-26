@@ -1,7 +1,9 @@
+import dev.bee.kanjianki.buildlogic.KaniDesktopIdentity
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
@@ -63,6 +65,38 @@ tasks.withType<AbstractArchiveTask>().configureEach {
 
 compose.desktop {
     application {
-        mainClass = "dev.bee.kanjianki.desktop.MainKt"
+        mainClass = KaniDesktopIdentity.MAIN_CLASS
+        nativeDistributions {
+            targetFormats(
+                TargetFormat.Dmg,
+                TargetFormat.Pkg,
+                TargetFormat.Msi,
+                TargetFormat.Exe,
+                TargetFormat.Deb,
+                TargetFormat.Rpm,
+            )
+            packageName = KaniDesktopIdentity.APPLICATION_NAME
+            packageVersion = libs.findVersion("appVersionName").get().requiredVersion
+            description = KaniDesktopIdentity.DESCRIPTION
+            vendor = KaniDesktopIdentity.VENDOR
+
+            macOS {
+                bundleID = KaniDesktopIdentity.DESKTOP_ID
+                iconFile.set(
+                    project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.icns"),
+                )
+            }
+            windows {
+                upgradeUuid = KaniDesktopIdentity.WINDOWS_UPGRADE_UUID
+                iconFile.set(
+                    project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.ico"),
+                )
+            }
+            linux {
+                iconFile.set(
+                    project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.png"),
+                )
+            }
+        }
     }
 }

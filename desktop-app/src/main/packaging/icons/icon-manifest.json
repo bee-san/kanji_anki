@@ -1,0 +1,47 @@
+{
+  "generator": "tools/generate_desktop_icons.py",
+  "generator_version": 1,
+  "outputs": {
+    "kani.icns": {
+      "chunks": [
+        "is32",
+        "s8mk",
+        "il32",
+        "l8mk",
+        "ih32",
+        "h8mk",
+        "it32",
+        "t8mk",
+        "ic08",
+        "ic09",
+        "ic10"
+      ],
+      "sha256": "90af45ceb54e33dd7c377c8a11c1f42aa7c056231865563f5b1bff0c1df8baa4"
+    },
+    "kani.ico": {
+      "frames": [
+        16,
+        24,
+        32,
+        48,
+        64,
+        128,
+        256
+      ],
+      "sha256": "4b1a5b0259070a501483b2a293d2f7e16a7860a53e6ee09f3c21f5f155544f93"
+    },
+    "kani.png": {
+      "height": 512,
+      "sha256": "51d582eeed54f143a9064a34a425aca084e03ca25a2a10073baaddae63ffb573",
+      "width": 512
+    }
+  },
+  "source": "branding/kani-app-icon.svg",
+  "source_sha256": "e386ced41eddeaa57ee6ced6c9750e3cdca816118840eefa454f1666d7a5135f",
+  "tools": {
+    "imagemagick": "7.1.2-27",
+    "optipng": "7.9.1",
+    "png2icns": "0.8.1",
+    "rsvg-convert": "2.62.3"
+  }
+}

@@ -10,6 +10,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +23,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlinx.coroutines.delay
 
 internal const val FOUNDATION_TITLE = "Kani desktop foundation"
 internal const val SMOKE_READY_MARKER = "KANI_DESKTOP_SMOKE_READY"
@@ -72,6 +77,7 @@ internal fun runDesktop(
         Files.createTempDirectory("kani-desktop-smoke-")
     },
     windowRunner: (Path, Boolean) -> Unit = ::openFoundationWindow,
+    smokeReadyReporter: () -> Unit = ::reportSmokeReady,
 ) {
     val dataSession = selectDataSession(
         options = options,
@@ -85,12 +91,20 @@ internal fun runDesktop(
             deleteTemporaryDataRoot(dataSession.root)
         }
     }
+    if (options.smokeTest) {
+        smokeReadyReporter()
+    }
 }
 
 internal fun deleteTemporaryDataRoot(dataRoot: Path) {
     check(dataRoot.toFile().deleteRecursively()) {
         "Failed to delete temporary desktop data root"
     }
+}
+
+private fun reportSmokeReady() {
+    println("$SMOKE_READY_MARKER temporary_data=true")
+    System.out.flush()
 }
 
 internal fun selectDataSession(
@@ -121,31 +135,41 @@ internal fun defaultDesktopDataRoot(): Path {
 }
 
 private fun openFoundationWindow(dataRoot: Path, smokeTest: Boolean) {
-    application {
-        Window(
-            onCloseRequest = ::exitApplication,
-            title = FOUNDATION_TITLE,
-            state = rememberWindowState(width = 760.dp, height = 480.dp),
-        ) {
-            KaniDesktopFoundation()
-            if (smokeTest) {
-                LaunchedEffect(dataRoot) {
-                    withFrameNanos { }
-                    Files.writeString(
-                        dataRoot.resolve("smoke-rendered"),
-                        "$FOUNDATION_TITLE\n",
-                    )
-                    // Compose Desktop terminates the application process when
-                    // exitApplication runs, so clean up before requesting exit
-                    // rather than relying only on runDesktop's finally block.
-                    deleteTemporaryDataRoot(dataRoot)
-                    println("$SMOKE_READY_MARKER temporary_data=true")
-                    exitApplication()
+    application(exitProcessOnExit = false) {
+        var showWindow by remember { mutableStateOf(true) }
+        if (showWindow) {
+            Window(
+                onCloseRequest = {
+                    showWindow = false
+                },
+                title = FOUNDATION_TITLE,
+                state = rememberWindowState(width = 760.dp, height = 480.dp),
+            ) {
+                KaniDesktopFoundation()
+                if (smokeTest) {
+                    LaunchedEffect(dataRoot) {
+                        repeat(SMOKE_RENDER_FRAME_COUNT) {
+                            withFrameNanos { }
+                        }
+                        delay(SMOKE_SETTLE_MILLIS)
+                        Files.writeString(
+                            dataRoot.resolve("smoke-rendered"),
+                            "$FOUNDATION_TITLE\n",
+                        )
+                        showWindow = false
+                    }
                 }
+            }
+        } else {
+            LaunchedEffect(Unit) {
+                exitApplication()
             }
         }
     }
 }
+
+private const val SMOKE_RENDER_FRAME_COUNT = 3
+private const val SMOKE_SETTLE_MILLIS = 250L
 
 @Composable
 internal fun KaniDesktopFoundation() {

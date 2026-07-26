@@ -40,6 +40,7 @@ class DesktopLauncherTest {
     @Test
     fun smokeLaunchUsesAndDeletesOnlyItsTemporaryRoot() {
         var normalRootResolved = false
+        var smokeReadyReported = false
         val temporaryRoot = Files.createTempDirectory("kani-desktop-launcher-test-")
 
         runDesktop(
@@ -57,10 +58,15 @@ class DesktopLauncherTest {
                 assertTrue(smokeTest)
                 Files.writeString(dataRoot.resolve("fixture"), FOUNDATION_TITLE)
             },
+            smokeReadyReporter = {
+                assertFalse(Files.exists(temporaryRoot))
+                smokeReadyReported = true
+            },
         )
 
         assertFalse(normalRootResolved)
         assertFalse(Files.exists(temporaryRoot))
+        assertTrue(smokeReadyReported)
     }
 
     @Test
