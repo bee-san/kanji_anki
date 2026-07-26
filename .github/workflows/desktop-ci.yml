@@ -1,14 +1,10 @@
 name: Desktop CI
 
-# Goal 168 bootstrap note: the desktop/support push trigger and the guarded
-# verification-metadata write/aggregation path are temporary. After the three
-# host artifacts are reviewed and merged, remove bootstrap write mode, change
-# the push branch to main, and retain the strict PR/main matrix.
 on:
   workflow_dispatch:
   push:
     branches:
-      - desktop/support
+      - main
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -41,16 +37,10 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          REF: ${{ github.ref }}
-          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           readonly zero_sha='0000000000000000000000000000000000000000'
           if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
-          elif [ "${EVENT_NAME}" = "push" ] \
-            && [ "${REPOSITORY}" = "bee-san/kanji_anki" ] \
-            && [ "${REF}" = "refs/heads/desktop/support" ]; then
             python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
           elif [ "${EVENT_NAME}" = "pull_request" ]; then
             git diff --name-only --diff-filter=ACDMRT -z "${BASE_SHA}" "${HEAD_SHA}" \
@@ -91,8 +81,6 @@ jobs:
             runner: macos-15
             runner_arch: ARM64
             gradle_command: ./gradlew
-    env:
-      VERIFICATION_MODE: ${{ github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' && 'bootstrap-write' || 'strict' }}
 
     steps:
       - name: Check out repository
@@ -124,32 +112,7 @@ jobs:
           expected = os.environ['EXPECTED_ARCH'];
           assert actual == expected, f'expected {expected}, got {actual}'"
 
-      - name: Snapshot checked-in verification metadata
-        run: >-
-          python ci/scripts/capture_verification_metadata.py snapshot
-          --metadata gradle/verification-metadata.xml
-          --output build/verification-bootstrap/baseline.xml
-
-      - name: Run authorized verification-metadata bootstrap
-        if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support'
-        run: >-
-          ${{ matrix.gradle_command }}
-          ciDesktop ciDesktopPackage
-          :app:processDebugResources
-          -x testBuildLogic
-          --write-verification-metadata sha256
-          --no-daemon --no-build-cache
-
-      - name: Validate build logic against generated host metadata
-        if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support'
-        run: >-
-          ${{ matrix.gradle_command }}
-          testBuildLogic
-          --dependency-verification=strict
-          --no-daemon --no-build-cache
-
-      - name: Run permanent strict desktop gate
-        if: github.event_name != 'push' || github.repository != 'bee-san/kanji_anki' || github.ref != 'refs/heads/desktop/support'
+      - name: Run strict desktop gate
         run: >-
           ${{ matrix.gradle_command }}
           ciDesktop ciDesktopPackage
@@ -173,89 +136,13 @@ jobs:
         run: python ci/scripts/assert_verification_metadata_scope.py
 
       - name: Assert strict mode did not mutate verification metadata
-        if: github.event_name != 'push' || github.repository != 'bee-san/kanji_anki' || github.ref != 'refs/heads/desktop/support'
         run: git diff --exit-code -- gradle/verification-metadata.xml
-
-      - name: Capture full host verification metadata
-        run: >-
-          python ci/scripts/capture_verification_metadata.py capture
-          --baseline build/verification-bootstrap/baseline.xml
-          --metadata gradle/verification-metadata.xml
-          --host-id ${{ matrix.host_id }}
-          --runner-label ${{ matrix.runner }}
-          --runner-os ${{ runner.os }}
-          --runner-arch ${{ runner.arch }}
-          --event-name ${{ github.event_name }}
-          --repository ${{ github.repository }}
-          --ref ${{ github.ref }}
-          --commit-sha ${{ github.sha }}
-          --mode ${{ env.VERIFICATION_MODE }}
-          --output-directory build/verification-bootstrap/${{ matrix.host_id }}
-
-      - name: Upload full host verification metadata
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: verification-metadata-${{ matrix.host_id }}
-          path: build/verification-bootstrap/${{ matrix.host_id }}/
-          if-no-files-found: error
-          retention-days: 7
-
-  aggregate_verification_metadata:
-    name: Aggregate verification metadata for review
-    needs: desktop_matrix
-    if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' && needs.desktop_matrix.result == 'success'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Download separately named host metadata
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          pattern: verification-metadata-*
-          path: artifacts
-          merge-multiple: false
-
-      - name: Validate host manifests and payloads
-        run: >-
-          python3 ci/scripts/validate_verification_metadata_artifacts.py
-          --input-directory artifacts
-          --baseline gradle/verification-metadata.xml
-          --expected-commit-sha ${{ github.sha }}
-          --expected-repository ${{ github.repository }}
-          --expected-ref ${{ github.ref }}
-          --expected-event-name push
-          --expected-mode bootstrap-write
-
-      - name: Merge host metadata deterministically
-        run: >-
-          python3 tools/merge_verification_metadata.py
-          --baseline gradle/verification-metadata.xml
-          --input-directory artifacts
-          --output artifacts/verification-metadata-merged.xml
-          --manifest artifacts/verification-metadata-merge-manifest.json
-          --review-summary artifacts/verification-metadata-review.md
-
-      - name: Upload combined metadata for review
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: verification-metadata-combined-review
-          path: |
-            artifacts/verification-metadata-merged.xml
-            artifacts/verification-metadata-merged.xml.diff
-            artifacts/verification-metadata-merge-manifest.json
-            artifacts/verification-metadata-review.md
-          if-no-files-found: error
-          retention-days: 7
 
   desktop_confidence_gate:
     name: Desktop confidence gate
     needs:
       - classify
       - desktop_matrix
-      - aggregate_verification_metadata
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -264,8 +151,6 @@ jobs:
     steps:
       - name: Confirm required desktop jobs passed
         env:
-          AGGREGATE_RESULT: ${{ needs.aggregate_verification_metadata.result }}
-          BOOTSTRAP: ${{ github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' }}
           CLASSIFY_RESULT: ${{ needs.classify.result }}
           MATRIX_RESULT: ${{ needs.desktop_matrix.result }}
           RUN_DESKTOP: ${{ needs.classify.outputs.run_desktop }}
@@ -276,10 +161,4 @@ jobs:
             test "${MATRIX_RESULT}" = "success"
           else
             test "${MATRIX_RESULT}" = "skipped"
-          fi
-          if [ "${BOOTSTRAP}" = "true" ]; then
-            test "${RUN_DESKTOP}" = "true"
-            test "${AGGREGATE_RESULT}" = "success"
-          else
-            test "${AGGREGATE_RESULT}" = "skipped"
           fi

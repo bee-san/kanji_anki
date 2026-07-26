@@ -46,27 +46,23 @@ def _string_list(document: str, key: str, indentation: int) -> list[str]:
 
 
 class DesktopCiWorkflowContractTest(unittest.TestCase):
-    TRUSTED_BOOTSTRAP = (
-        "github.event_name == 'push' && "
-        "github.repository == 'bee-san/kanji_anki' && "
-        "github.ref == 'refs/heads/desktop/support'"
-    )
-
     def setUp(self) -> None:
         self.workflow = DESKTOP_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_bootstrap_trigger_is_exact_and_required_gate_has_no_path_filter(self) -> None:
+    def test_permanent_trigger_is_exact_and_required_gate_has_no_path_filter(
+        self,
+    ) -> None:
         on_block = _mapping_block(self.workflow, "on", 0)
         push_block = _mapping_block(on_block, "push", 2)
 
-        self.assertEqual(["desktop/support"], _string_list(push_block, "branches", 4))
+        self.assertEqual(["main"], _string_list(push_block, "branches", 4))
         self.assertIn("workflow_dispatch:", on_block)
         self.assertIn("pull_request:", on_block)
         self.assertNotIn("pull_request_target:", self.workflow)
         self.assertNotIn("paths:", on_block)
         classify = _mapping_block(self.workflow, "classify", 2)
-        self.assertIn('[ "${REPOSITORY}" = "bee-san/kanji_anki" ]', classify)
-        self.assertIn('[ "${REF}" = "refs/heads/desktop/support" ]', classify)
+        self.assertNotIn("bee-san/kanji_anki", classify)
+        self.assertNotIn("desktop/support", self.workflow)
         self.assertIn(
             "python3 ci/scripts/classify_desktop_ci.py --force run",
             classify,
@@ -104,60 +100,24 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertIn("actual = os.environ['RUNNER_ARCH']", matrix_job)
         self.assertIn("assert actual == expected", matrix_job)
 
-    def test_bootstrap_write_mode_is_unreachable_from_untrusted_pr_code(self) -> None:
+    def test_matrix_has_one_unconditional_strict_desktop_gate(self) -> None:
         matrix_job = _mapping_block(self.workflow, "desktop_matrix", 2)
-        bootstrap = matrix_job.split(
-            "      - name: Run authorized verification-metadata bootstrap",
-            maxsplit=1,
-        )[1].split(
-            "      - name: Validate build logic against generated host metadata",
-            maxsplit=1,
-        )[0]
-        bootstrap_build_logic = matrix_job.split(
-            "      - name: Validate build logic against generated host metadata",
-            maxsplit=1,
-        )[1].split(
-            "      - name: Run permanent strict desktop gate",
-            maxsplit=1,
-        )[0]
         strict = matrix_job.split(
-            "      - name: Run permanent strict desktop gate",
+            "      - name: Run strict desktop gate",
             maxsplit=1,
         )[1].split(
-            "      - name: Assert strict mode did not mutate verification metadata",
+            "      - name: Upload failed desktop diagnostics",
             maxsplit=1,
         )[0]
 
-        self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", bootstrap)
-        self.assertEqual(1, self.workflow.count("--write-verification-metadata sha256"))
-        self.assertIn("ciDesktop ciDesktopPackage", bootstrap)
-        self.assertIn(":app:processDebugResources", bootstrap)
-        self.assertIn("-x testBuildLogic", bootstrap)
-        self.assertIn("--write-verification-metadata sha256", bootstrap)
-
-        self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", bootstrap_build_logic)
-        self.assertIn("testBuildLogic", bootstrap_build_logic)
-        self.assertIn(
-            "--dependency-verification=strict",
-            bootstrap_build_logic,
-        )
-        self.assertNotIn(
-            "--write-verification-metadata",
-            bootstrap_build_logic,
-        )
-
-        for denied_clause in (
-            "github.event_name != 'push'",
-            "github.repository != 'bee-san/kanji_anki'",
-            "github.ref != 'refs/heads/desktop/support'",
-        ):
-            with self.subTest(denied_clause=denied_clause):
-                self.assertIn(denied_clause, strict)
+        self.assertNotRegex(strict, r"(?m)^        if:")
+        self.assertEqual(1, matrix_job.count("${{ matrix.gradle_command }}"))
         self.assertIn("ciDesktop ciDesktopPackage", strict)
         self.assertNotIn(":app:processDebugResources", strict)
         self.assertIn("--dependency-verification=strict", strict)
         self.assertNotIn("--write-verification-metadata", strict)
         self.assertNotIn("-x testBuildLogic", strict)
+        self.assertIn("--no-daemon --no-build-cache", strict)
         self.assertIn(
             "python ci/scripts/assert_verification_metadata_scope.py",
             matrix_job,
@@ -171,6 +131,9 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             "git diff --exit-code -- gradle/verification-metadata.xml",
             matrix_job,
         )
+        self.assertNotIn("--write-verification-metadata", self.workflow)
+        self.assertNotIn("VERIFICATION_MODE", self.workflow)
+        self.assertNotIn("verification-bootstrap", self.workflow)
         self.assertNotIn("secrets.", self.workflow)
 
     def test_gradle_wrapper_java_and_cache_policy_are_pinned(self) -> None:
@@ -206,19 +169,8 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
                     continue
                 self.assertRegex(action, r"^[^@]+@[0-9a-f]{40}$")
 
-    def test_each_host_uploads_full_metadata_manifest_and_diff_separately(self) -> None:
+    def test_each_host_retains_failure_diagnostics_and_mutation_guards(self) -> None:
         matrix_job = _mapping_block(self.workflow, "desktop_matrix", 2)
-        self.assertIn(
-            "python ci/scripts/capture_verification_metadata.py capture",
-            matrix_job,
-        )
-        self.assertIn("name: verification-metadata-${{ matrix.host_id }}", matrix_job)
-        self.assertIn(
-            "path: build/verification-bootstrap/${{ matrix.host_id }}/",
-            matrix_job,
-        )
-        self.assertIn("if-no-files-found: error", matrix_job)
-        self.assertEqual(2, matrix_job.count("retention-days: 7"))
 
         diagnostics = matrix_job.split(
             "      - name: Upload failed desktop diagnostics",
@@ -238,79 +190,37 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertIn("core/build/reports/tests/test/", diagnostics)
         self.assertIn("if-no-files-found: warn", diagnostics)
         self.assertIn("retention-days: 7", diagnostics)
+        self.assertEqual(1, matrix_job.count("retention-days: 7"))
 
-        capture_script = (
-            ROOT / "ci/scripts/capture_verification_metadata.py"
-        ).read_text(encoding="utf-8")
-        for suffix in (".xml", ".diff", ".manifest.json"):
-            with self.subTest(suffix=suffix):
-                self.assertIn(
-                    f'f\"verification-metadata-{{host_id}}{suffix}\"',
-                    capture_script,
-                )
-
-    def test_bootstrap_aggregation_uses_all_host_artifacts_and_review_outputs(self) -> None:
-        aggregate = _mapping_block(
-            self.workflow,
+    def test_bootstrap_and_metadata_aggregation_paths_are_absent(self) -> None:
+        for forbidden in (
+            "Run authorized verification-metadata bootstrap",
+            "Validate build logic against generated host metadata",
+            "Capture full host verification metadata",
+            "Upload full host verification metadata",
             "aggregate_verification_metadata",
-            2,
-        )
-        self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", aggregate)
-        self.assertIn("needs.desktop_matrix.result == 'success'", aggregate)
-        self.assertIn("pattern: verification-metadata-*", aggregate)
-        self.assertIn("merge-multiple: false", aggregate)
-        self.assertIn(
-            "python3 ci/scripts/validate_verification_metadata_artifacts.py",
-            aggregate,
-        )
-        for expected_binding in (
-            "--expected-commit-sha ${{ github.sha }}",
-            "--expected-repository ${{ github.repository }}",
-            "--expected-ref ${{ github.ref }}",
-            "--expected-event-name push",
+            "capture_verification_metadata.py",
+            "validate_verification_metadata_artifacts.py",
+            "merge_verification_metadata.py",
+            "actions/download-artifact@",
             "--expected-mode bootstrap-write",
         ):
-            with self.subTest(expected_binding=expected_binding):
-                self.assertIn(expected_binding, aggregate)
-        validator = (
-            ROOT / "ci/scripts/validate_verification_metadata_artifacts.py"
-        ).read_text(encoding="utf-8")
-        self.assertIn('"runner_os": runner_os', validator)
-        self.assertIn('"macos": ("macos-15", "ARM64", "macOS")', validator)
-        self.assertLess(
-            aggregate.index("Validate host manifests and payloads"),
-            aggregate.index("Merge host metadata deterministically"),
-        )
-        self.assertIn("python3 tools/merge_verification_metadata.py", aggregate)
-        for expected in (
-            "--baseline gradle/verification-metadata.xml",
-            "--input-directory artifacts",
-            "--output artifacts/verification-metadata-merged.xml",
-            "--manifest artifacts/verification-metadata-merge-manifest.json",
-            "--review-summary artifacts/verification-metadata-review.md",
-            "artifacts/verification-metadata-merged.xml.diff",
-        ):
-            with self.subTest(expected=expected):
-                self.assertIn(expected, aggregate)
-        self.assertIn("if-no-files-found: error", aggregate)
-        self.assertEqual(1, aggregate.count("retention-days: 7"))
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, self.workflow)
 
-    def test_always_present_confidence_gate_validates_skip_and_bootstrap_states(self) -> None:
+    def test_always_present_confidence_gate_validates_run_and_skip_states(self) -> None:
         gate = _mapping_block(self.workflow, "desktop_confidence_gate", 2)
         self.assertIn("name: Desktop confidence gate", gate)
         self.assertIn("if: always()", gate)
         self.assertIn("permissions: {}", gate)
-        for dependency in (
-            "- classify",
-            "- desktop_matrix",
-            "- aggregate_verification_metadata",
-        ):
-            with self.subTest(dependency=dependency):
-                self.assertIn(dependency, gate)
+        self.assertEqual(
+            ["classify", "desktop_matrix"],
+            _string_list(gate, "needs", 4),
+        )
         self.assertIn('test "${MATRIX_RESULT}" = "success"', gate)
         self.assertIn('test "${MATRIX_RESULT}" = "skipped"', gate)
-        self.assertIn('test "${AGGREGATE_RESULT}" = "success"', gate)
-        self.assertIn('test "${AGGREGATE_RESULT}" = "skipped"', gate)
+        self.assertNotIn("AGGREGATE_RESULT", gate)
+        self.assertNotIn("BOOTSTRAP", gate)
 
     def test_workflow_permissions_are_read_only(self) -> None:
         permissions = _mapping_block(self.workflow, "permissions", 0)
