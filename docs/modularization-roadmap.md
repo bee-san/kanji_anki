@@ -1,5 +1,13 @@
 # Modularization Roadmap
 
+Status: current-structure baseline and historical Android extraction analysis.
+The extraction order and target module names below are superseded for pending
+implementation by the
+[desktop support goals](../plans/desktop-support-goals-2026-07-26.md). See the
+[architecture index](architecture/README.md) for the accepted decisions and
+active contracts. The current-graph observations remain useful until their
+corresponding desktop-support goals replace them with completion evidence.
+
 Analysis of the current module structure, proposed extraction targets, dependency
 graph, and effort estimates for breaking up the monolithic `:app` module.
 
