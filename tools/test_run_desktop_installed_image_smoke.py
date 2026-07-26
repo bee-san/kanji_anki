@@ -201,6 +201,39 @@ class InstalledImageSmokeContractTest(unittest.TestCase):
             platform="linux",
         )
 
+    def test_macos_accepts_only_the_known_software_gl_warning(self) -> None:
+        warning = (
+            "WARNING: GL pipe is running in software mode "
+            "(Renderer ID=0x1020400)\n"
+        )
+        smoke.verify_process_result(
+            subprocess.CompletedProcess(
+                ["Kani"],
+                0,
+                stdout=f"{smoke.SMOKE_READY_MARKER}\n",
+                stderr=warning,
+            ),
+            platform="darwin",
+        )
+
+        for platform, stderr in (
+            ("linux", warning),
+            ("macos", warning.rstrip()),
+            ("macos", f"{warning}unexpected\n"),
+            ("macos", "WARNING: unrelated renderer warning\n"),
+        ):
+            with self.subTest(platform=platform, stderr=stderr):
+                self.assert_result_rejected(
+                    subprocess.CompletedProcess(
+                        ["Kani"],
+                        0,
+                        stdout=f"{smoke.SMOKE_READY_MARKER}\n",
+                        stderr=stderr,
+                    ),
+                    "unexpected stderr",
+                    platform=platform,
+                )
+
     def test_rejects_any_stderr(self) -> None:
         self.assert_result_rejected(
             subprocess.CompletedProcess(

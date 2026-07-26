@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,10 @@ SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE = "KANI_DESKTOP_SMOKE_RESULT_FILE"
 SMOKE_RESULT_FILENAME = "smoke-ready"
 SMOKE_TEMPORARY_PREFIX = "kani-desktop-smoke-"
 DEFAULT_TIMEOUT_SECONDS = 120
+MACOS_SOFTWARE_GL_WARNING = re.compile(
+    r"WARNING: GL pipe is running in software mode "
+    r"\(Renderer ID=0x[0-9A-Fa-f]+\)\n",
+)
 
 
 class DesktopInstalledImageSmokeError(RuntimeError):
@@ -99,10 +104,11 @@ def verify_process_result(
             f"({result.returncode}); stdout={result.stdout!r}; "
             f"stderr={result.stderr!r}",
         )
+    host = normalized_platform(platform)
     expected_stdout = f"{SMOKE_READY_MARKER}\n"
     allowed_stdout = (
         {"", expected_stdout}
-        if normalized_platform(platform) == "windows"
+        if host == "windows"
         else {expected_stdout}
     )
     if result.stdout not in allowed_stdout:
@@ -110,7 +116,11 @@ def verify_process_result(
             "installed image stdout violated the host smoke policy; "
             f"allowed={sorted(allowed_stdout)!r}; actual={result.stdout!r}",
         )
-    if result.stderr:
+    macos_software_gl_warning = (
+        host == "macos"
+        and MACOS_SOFTWARE_GL_WARNING.fullmatch(result.stderr) is not None
+    )
+    if result.stderr and not macos_software_gl_warning:
         raise DesktopInstalledImageSmokeError(
             "installed image emitted unexpected stderr; "
             f"actual={result.stderr!r}",
