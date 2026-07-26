@@ -113,6 +113,35 @@ class MissingKanjiScreenModelTest {
     }
 
     @Test
+    fun reportLoaderRejectsAnIncompleteFinalDictionaryPage() {
+        val lookup = object : DictionaryLookup() {
+            override fun lookupKanji(literal: String?): KanjiEntry? = null
+
+            override fun kanjiCount(): Int = 1
+
+            override fun kanjiByJitenRank(
+                range: JitenRankRange,
+                offset: Int,
+                limit: Int,
+            ): KanjiEntryPage = KanjiEntryPage(
+                entries = listOf(entry("一", 1, "one")),
+                totalEligible = 2,
+                nextOffset = null,
+            )
+        }
+
+        val failure = assertThrows(IllegalStateException::class.java) {
+            MissingKanjiReportLoader.load(
+                dictionary = lookup,
+                observedKanji = emptySet(),
+                range = MissingKanjiFrequencyRange.TOP_1000,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("returned 1 of 2 rows"))
+    }
+
+    @Test
     fun reportLoaderStopsBeforeQueryingAnInterruptedThread() {
         val lookup = TrackingLookup(listOf(entry("一", 1, "one")))
 

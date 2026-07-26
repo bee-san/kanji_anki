@@ -31,6 +31,7 @@ val sonarMainBinaries = listOf(
     rootPath("writing-core/build/classes/kotlin/main"),
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
+    rootPath("desktop-app/build/classes/kotlin/main"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     sonarAppMainBinaries,
 )
@@ -43,6 +44,7 @@ val sonarTestBinaries = listOf(
     rootPath("writing-core/build/classes/kotlin/test"),
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
+    rootPath("desktop-app/build/classes/kotlin/test"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
@@ -55,6 +57,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
@@ -112,12 +115,13 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/sync/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/widget/KaniWidget.kt",
 )
-val testSonarCoverageExclusions = listOf(
+val alwaysSonarCoverageExclusions = listOf(
     "**/src/test/**",
     "**/src/androidTest/**",
     "**/src/debug/**",
+    "desktop-app/src/main/kotlin/dev/bee/kanjianki/desktop/DesktopFoundationWindow.kt",
 )
-val sonarCoverageExclusions = testSonarCoverageExclusions + if (sonarFullCoverage) {
+val sonarCoverageExclusions = alwaysSonarCoverageExclusions + if (sonarFullCoverage) {
     emptyList()
 } else {
     fastSonarCoverageExclusions
@@ -338,6 +342,8 @@ tasks.register("ciQuality") {
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
+        ":desktop-app:jacocoTestReport",
+        ":desktop-app:jar",
         ":app:compileDebugKotlin",
         ":app:compileDebugJavaWithJavac",
     )

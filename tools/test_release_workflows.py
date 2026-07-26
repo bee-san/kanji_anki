@@ -234,6 +234,7 @@ class WorkflowAnalysisIntegrityTest(unittest.TestCase):
 
         self.assertNotIn("github.event.before", workflow)
         self.assertNotIn("changed-areas", workflow)
+        self.assertEqual(2, workflow.count("- 'desktop-app/**'"))
         self.assertIn("head.repo.full_name == github.repository", workflow)
         self.assertIn("bash .github/scripts/run-sonar-analysis.sh fast", workflow)
         self.assertIn("robolectric-android-all", workflow)
@@ -243,6 +244,25 @@ class WorkflowAnalysisIntegrityTest(unittest.TestCase):
         self.assertIn("dependsOn(sonarPreflight)", root_gradle)
         self.assertIn("sonarAppMainBinaries", root_gradle)
         self.assertIn('rootPath("core/build/classes/java/test")', root_gradle)
+        self.assertIn(
+            'rootPath("desktop-app/build/classes/kotlin/main")',
+            root_gradle,
+        )
+        self.assertIn(
+            'rootPath("desktop-app/build/classes/kotlin/test")',
+            root_gradle,
+        )
+        self.assertIn(
+            'rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml")',
+            root_gradle,
+        )
+        self.assertIn(
+            '"desktop-app/src/main/kotlin/dev/bee/kanjianki/desktop/'
+            'DesktopFoundationWindow.kt"',
+            root_gradle,
+        )
+        self.assertIn('":desktop-app:jacocoTestReport"', root_gradle)
+        self.assertIn('":desktop-app:jar"', root_gradle)
         self.assertNotIn("existingSonarPaths", root_gradle)
         self.assertNotIn("src/main/java", root_gradle)
 

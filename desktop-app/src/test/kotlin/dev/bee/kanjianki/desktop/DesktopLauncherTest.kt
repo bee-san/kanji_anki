@@ -225,6 +225,63 @@ class DesktopLauncherTest {
     }
 
     @Test
+    fun smokeDataRootRejectsAResultWithoutAUsableParent() {
+        val fileSystemRoot = requireNotNull(Path.of("").toAbsolutePath().root)
+        val missingParentFailure = assertThrows(IllegalArgumentException::class.java) {
+            createSmokeTemporaryDataRoot(
+                mapOf(
+                    SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE to fileSystemRoot.toString(),
+                ),
+            )
+        }
+        assertTrue(
+            missingParentFailure.message.orEmpty().contains("parent directory"),
+        )
+
+        val resultDirectory = Files.createTempDirectory("kani-desktop-missing-parent-test-")
+        try {
+            val missingResultFile = resultDirectory.resolve("missing").resolve("ready")
+            val absentDirectoryFailure = assertThrows(IllegalArgumentException::class.java) {
+                createSmokeTemporaryDataRoot(
+                    mapOf(
+                        SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE to
+                            missingResultFile.toString(),
+                    ),
+                )
+            }
+            assertTrue(
+                absentDirectoryFailure.message.orEmpty().contains("does not exist"),
+            )
+        } finally {
+            resultDirectory.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun defaultDataRootUsesTheUserHomeAndRequiresIt() {
+        assertEquals(
+            Path.of("test-user-home", ".kani"),
+            defaultDesktopDataRoot("test-user-home"),
+        )
+
+        val failure = assertThrows(IllegalArgumentException::class.java) {
+            defaultDesktopDataRoot(null)
+        }
+        assertTrue(failure.message.orEmpty().contains("user.home"))
+    }
+
+    @Test
+    fun temporaryDataDeletionFailureIsNotSilentlyIgnored() {
+        val failure = assertThrows(IllegalStateException::class.java) {
+            deleteTemporaryDataRoot(Path.of("retained-smoke-data")) {
+                false
+            }
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Failed to delete"))
+    }
+
+    @Test
     fun smokeReadinessNeverOverwritesAPreexistingResult() {
         val resultDirectory = Files.createTempDirectory("kani-desktop-result-existing-")
         val resultFile = resultDirectory.resolve("ready")
