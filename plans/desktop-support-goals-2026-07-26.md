@@ -3060,12 +3060,16 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   native formats were declared, stale icon bytes could be re-manifested
   without regenerating from the SVG, and an early normal window close could
   qualify as smoke readiness. `3c7c3074` and `e517c9fb` close those gaps and
-  add mutation-sensitive coverage; independent re-audits follow this evidence
-  commit and must clear before Goal 168 begins. Goal 168 still owns the
-  three-host strict dependency/bootstrap matrix and CI smoke coverage; Goal
-  204 owns the release-packaging JDK pin and installed-package qualification.
-  The branch remains local and unpushed, and Goal 168's explicit cross-OS
-  push/CI authorization checkpoint remains in force.
+  add mutation-sensitive coverage. Three independent final audits approved
+  `ed067aaf`: the scope audit found no Android-production or Goal 168 leakage;
+  the build-state audit repeated the strict package dry-run, canonical icon
+  check, and boundary tests; and the smoke/shutdown audit repeated the former
+  icon exploit, all five launcher tests, and a clean Temurin installed-image
+  launch. No Goal 167 blocker remains. Goal 168 still owns the three-host
+  strict dependency/bootstrap matrix and CI smoke coverage; Goal 204 owns the
+  release-packaging JDK pin and installed-package qualification. The branch
+  remains local and unpushed, and Goal 168's explicit cross-OS push/CI
+  authorization checkpoint remains in force.
 
 Template:
 
