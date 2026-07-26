@@ -69,11 +69,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg,
-                TargetFormat.Pkg,
                 TargetFormat.Msi,
-                TargetFormat.Exe,
                 TargetFormat.Deb,
-                TargetFormat.Rpm,
             )
             packageName = KaniDesktopIdentity.APPLICATION_NAME
             packageVersion = libs.findVersion("appVersionName").get().requiredVersion

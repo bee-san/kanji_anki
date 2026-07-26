@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.buildlogic
 
+import java.io.DataInputStream
 import java.io.File
 import java.util.Properties
 import org.gradle.testkit.runner.BuildTask
@@ -28,6 +29,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
                 "compileKotlin",
                 "test",
                 "jacocoTestReport",
+                "jar",
                 "tasks",
                 "--all",
                 "--no-build-cache",
@@ -39,6 +41,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertSuccessful(result.task(":compileKotlin"), ":compileKotlin")
         assertSuccessful(result.task(":test"), ":test")
         assertSuccessful(result.task(":jacocoTestReport"), ":jacocoTestReport")
+        assertSuccessful(result.task(":jar"), ":jar")
         for (taskName in REQUIRED_DESKTOP_APPLICATION_TASK_NAMES) {
             assertTrue("$taskName was not registered", result.output.contains(taskName))
         }
@@ -47,6 +50,13 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
                 projectDir,
                 "build/reports/jacoco/test/jacocoTestReport.xml",
             ).let { it.isFile && it.length() > 0L },
+        )
+        assertJvm17Class(
+            File(
+                projectDir,
+                "build/classes/kotlin/main/dev/bee/kanjianki/desktop/" +
+                    "conventions/fixture/DesktopFixtureKt.class",
+            ),
         )
     }
 
@@ -94,6 +104,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
                 "compileAndroidMain",
                 "testAndroidHostTest",
                 "compileAndroidDeviceTest",
+                "desktopJar",
                 "jacocoDesktopTestReport",
                 "jacocoDesktopTestCoverageVerification",
                 "--no-build-cache",
@@ -112,13 +123,21 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
                     "jacocoDesktopTestReport.xml",
             ).let { it.isFile && it.length() > 0L },
         )
-        assertTrue(
+        assertJvm17Class(
             File(
                 projectDir,
                 "build/classes/kotlin/desktop/main/dev/bee/kanjianki/" +
                     "multiplatform/compose/library/conventions/fixture/" +
                     "SharedFixtureKt.class",
-            ).isFile,
+            ),
+        )
+        assertJvm17Class(
+            File(
+                projectDir,
+                "build/classes/kotlin/android/main/dev/bee/kanjianki/" +
+                    "multiplatform/compose/library/conventions/fixture/" +
+                    "AndroidFixtureKt.class",
+            ),
         )
     }
 
@@ -194,6 +213,16 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertTrue(desktopConvention.contains("id(\"org.jetbrains.kotlin.jvm\")"))
         assertFalse(desktopConvention.contains("org.jetbrains.kotlin.multiplatform"))
         assertFalse(desktopConvention.contains("com.android."))
+        assertTrue(desktopConvention.contains("jvmToolchain(javaVersion)"))
+        assertTrue(desktopConvention.contains("isPreserveFileTimestamps = false"))
+        assertTrue(desktopConvention.contains("isReproducibleFileOrder = true"))
+        assertEquals(
+            setOf("Dmg", "Msi", "Deb"),
+            Regex("""TargetFormat\.([A-Za-z]+)""")
+                .findAll(desktopConvention)
+                .map { match -> match.groupValues[1] }
+                .toSet(),
+        )
 
         for (pluginId in REQUIRED_SHARED_PLUGIN_IDS) {
             assertTrue("$pluginId must be owned by the shared convention", sharedConvention.contains(pluginId))
@@ -204,6 +233,11 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertTrue(sharedConvention.contains("sourceSetTreeName = \"test\""))
         assertTrue(sharedConvention.contains("androidResources"))
         assertTrue(sharedConvention.contains("jvm(\"desktop\")"))
+        assertTrue(sharedConvention.contains("jvmToolchain(javaVersion)"))
+        assertEquals(2, Regex("""enableCoverage\s*=\s*true""").findAll(sharedConvention).count())
+        assertTrue(sharedConvention.contains("testCoverage {"))
+        assertTrue(sharedConvention.contains("isPreserveFileTimestamps = false"))
+        assertTrue(sharedConvention.contains("isReproducibleFileOrder = true"))
         assertFalse(sharedConvention.contains("androidTarget("))
         assertFalse(sharedConvention.contains("androidLibrary {"))
         assertFalse(sharedConvention.contains("id(\"com.android.library\")"))
@@ -272,6 +306,15 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertTrue(output.contains("Unnecessary non-null assertion"))
     }
 
+    private fun assertJvm17Class(classFile: File) {
+        assertTrue("${classFile.path} was not compiled", classFile.isFile)
+        DataInputStream(classFile.inputStream()).use { input ->
+            assertEquals(0xCAFEBABE.toInt(), input.readInt())
+            input.readUnsignedShort()
+            assertEquals(61, input.readUnsignedShort())
+        }
+    }
+
     private fun assertSuccessful(task: BuildTask?, path: String) {
         assertNotNull("$path was not present in the fixture build", task)
         val outcome = requireNotNull(task).outcome
@@ -288,6 +331,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
             ":compileAndroidMain",
             ":testAndroidHostTest",
             ":compileAndroidDeviceTest",
+            ":desktopJar",
             ":jacocoDesktopTestReport",
             ":jacocoDesktopTestCoverageVerification",
         )

@@ -57,6 +57,7 @@ class DesktopLauncherTest {
                 assertEquals(temporaryRoot, dataRoot)
                 assertTrue(smokeTest)
                 Files.writeString(dataRoot.resolve("fixture"), FOUNDATION_TITLE)
+                DesktopWindowResult.SMOKE_RENDERED
             },
             smokeReadyReporter = {
                 assertFalse(Files.exists(temporaryRoot))
@@ -67,6 +68,35 @@ class DesktopLauncherTest {
         assertFalse(normalRootResolved)
         assertFalse(Files.exists(temporaryRoot))
         assertTrue(smokeReadyReported)
+    }
+
+    @Test
+    fun smokeLaunchRejectsWindowCloseBeforeRendering() {
+        var smokeReadyReported = false
+        val temporaryRoot = Files.createTempDirectory("kani-desktop-early-close-test-")
+
+        val failure = assertThrows(IllegalStateException::class.java) {
+            runDesktop(
+                options = DesktopLaunchOptions(
+                    smokeTest = true,
+                    temporaryData = true,
+                ),
+                normalDataRoot = {
+                    throw AssertionError("normal root must not be resolved")
+                },
+                temporaryDataRoot = { temporaryRoot },
+                windowRunner = { _, _ ->
+                    DesktopWindowResult.CLOSED
+                },
+                smokeReadyReporter = {
+                    smokeReadyReported = true
+                },
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("before rendering completed"))
+        assertFalse(smokeReadyReported)
+        assertFalse(Files.exists(temporaryRoot))
     }
 
     @Test

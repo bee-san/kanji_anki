@@ -63,5 +63,12 @@ class KaniDesktopIdentityTest {
                 convention.contains("/kani.$extension"),
             )
         }
+        assertEquals(
+            setOf("Dmg", "Msi", "Deb"),
+            Regex("""TargetFormat\.([A-Za-z]+)""")
+                .findAll(convention)
+                .map { match -> match.groupValues[1] }
+                .toSet(),
+        )
     }
 }

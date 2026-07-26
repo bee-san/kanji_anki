@@ -66,6 +66,11 @@ internal data class DesktopDataSession(
     val deleteAfterLaunch: Boolean,
 )
 
+internal enum class DesktopWindowResult {
+    CLOSED,
+    SMOKE_RENDERED,
+}
+
 fun main(args: Array<String>) {
     runDesktop(DesktopLaunchOptions.parse(args))
 }
@@ -76,7 +81,7 @@ internal fun runDesktop(
     temporaryDataRoot: () -> Path = {
         Files.createTempDirectory("kani-desktop-smoke-")
     },
-    windowRunner: (Path, Boolean) -> Unit = ::openFoundationWindow,
+    windowRunner: (Path, Boolean) -> DesktopWindowResult = ::openFoundationWindow,
     smokeReadyReporter: () -> Unit = ::reportSmokeReady,
 ) {
     val dataSession = selectDataSession(
@@ -84,12 +89,15 @@ internal fun runDesktop(
         normalDataRoot = normalDataRoot,
         temporaryDataRoot = temporaryDataRoot,
     )
-    try {
+    val windowResult = try {
         windowRunner(dataSession.root, options.smokeTest)
     } finally {
         if (dataSession.deleteAfterLaunch) {
             deleteTemporaryDataRoot(dataSession.root)
         }
+    }
+    check(!options.smokeTest || windowResult == DesktopWindowResult.SMOKE_RENDERED) {
+        "Desktop smoke window closed before rendering completed"
     }
     if (options.smokeTest) {
         smokeReadyReporter()
@@ -134,7 +142,11 @@ internal fun defaultDesktopDataRoot(): Path {
     )
 }
 
-private fun openFoundationWindow(dataRoot: Path, smokeTest: Boolean) {
+private fun openFoundationWindow(
+    dataRoot: Path,
+    smokeTest: Boolean,
+): DesktopWindowResult {
+    val smokeSentinel = dataRoot.resolve("smoke-rendered")
     application(exitProcessOnExit = false) {
         var showWindow by remember { mutableStateOf(true) }
         if (showWindow) {
@@ -153,7 +165,7 @@ private fun openFoundationWindow(dataRoot: Path, smokeTest: Boolean) {
                         }
                         delay(SMOKE_SETTLE_MILLIS)
                         Files.writeString(
-                            dataRoot.resolve("smoke-rendered"),
+                            smokeSentinel,
                             "$FOUNDATION_TITLE\n",
                         )
                         showWindow = false
@@ -165,6 +177,15 @@ private fun openFoundationWindow(dataRoot: Path, smokeTest: Boolean) {
                 exitApplication()
             }
         }
+    }
+    return if (
+        smokeTest &&
+        Files.isRegularFile(smokeSentinel) &&
+        Files.readString(smokeSentinel) == "$FOUNDATION_TITLE\n"
+    ) {
+        DesktopWindowResult.SMOKE_RENDERED
+    } else {
+        DesktopWindowResult.CLOSED
     }
 }
 
