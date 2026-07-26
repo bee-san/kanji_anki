@@ -31,6 +31,8 @@ internal const val SMOKE_READY_MARKER = "KANI_DESKTOP_SMOKE_READY"
 internal const val SMOKE_READY_LINE = "$SMOKE_READY_MARKER temporary_data=true"
 internal const val SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE =
     "KANI_DESKTOP_SMOKE_RESULT_FILE"
+internal const val SMOKE_RENDER_API_PROPERTY = "skiko.renderApi"
+internal const val SMOKE_RENDER_API = "SOFTWARE_FAST"
 
 internal data class DesktopLaunchOptions(
     val smokeTest: Boolean,
@@ -76,7 +78,18 @@ internal enum class DesktopWindowResult {
 }
 
 fun main(args: Array<String>) {
-    runDesktop(DesktopLaunchOptions.parse(args))
+    val options = DesktopLaunchOptions.parse(args)
+    configureSmokeRenderer(options)
+    runDesktop(options)
+}
+
+internal fun configureSmokeRenderer(
+    options: DesktopLaunchOptions,
+    propertySetter: (String, String) -> Unit = System::setProperty,
+) {
+    if (options.smokeTest) {
+        propertySetter(SMOKE_RENDER_API_PROPERTY, SMOKE_RENDER_API)
+    }
 }
 
 internal fun runDesktop(

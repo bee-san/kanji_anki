@@ -38,13 +38,22 @@ in write mode:
 
 ```sh
 # Ubuntu and macOS
-./gradlew ciDesktop ciDesktopPackage --write-verification-metadata sha256
+./gradlew ciDesktop ciDesktopPackage -x testBuildLogic \
+  --write-verification-metadata sha256
+./gradlew testBuildLogic --dependency-verification=strict
 ```
 
 ```powershell
 # Windows
-.\gradlew.bat ciDesktop ciDesktopPackage --write-verification-metadata sha256
+.\gradlew.bat ciDesktop ciDesktopPackage -x testBuildLogic `
+  --write-verification-metadata sha256
+.\gradlew.bat testBuildLogic --dependency-verification=strict
 ```
+
+The nested TestKit builds deliberately run in a second strict invocation. That
+ordering lets each fixture copy the complete host-generated root metadata
+instead of racing the outer write-mode build or creating unreviewed,
+fixture-local metadata.
 
 Copy each complete generated file to its exact platform name:
 

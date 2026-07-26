@@ -39,6 +39,26 @@ class DesktopLauncherTest {
     }
 
     @Test
+    fun smokeLaunchForcesTheDeterministicSoftwareRendererOnly() {
+        val properties = mutableMapOf<String, String>()
+        configureSmokeRenderer(
+            DesktopLaunchOptions(smokeTest = true, temporaryData = true),
+            properties::put,
+        )
+        assertEquals(
+            mapOf(SMOKE_RENDER_API_PROPERTY to SMOKE_RENDER_API),
+            properties,
+        )
+
+        properties.clear()
+        configureSmokeRenderer(
+            DesktopLaunchOptions(smokeTest = false, temporaryData = false),
+            properties::put,
+        )
+        assertTrue(properties.isEmpty())
+    }
+
+    @Test
     fun smokeLaunchUsesAndDeletesOnlyItsTemporaryRoot() {
         var normalRootResolved = false
         var smokeReadyReported = false

@@ -97,17 +97,21 @@ class DesktopCiClassifierTest(unittest.TestCase):
             input=b"README.md\0desktop-app/build.gradle.kts\0",
             check=True,
             capture_output=True,
-        ).stdout.decode("utf-8")
-        self.assertIn("run_desktop=true\n", classified)
+        ).stdout.decode("utf-8").splitlines()
+        self.assertIn("run_desktop=true", classified)
+        self.assertIn("reason=desktop or shared module", classified)
 
         forced = subprocess.run(
             [sys.executable, str(SCRIPT), "--force", "run"],
             check=True,
             capture_output=True,
             text=True,
-        ).stdout
+        ).stdout.splitlines()
         self.assertEqual(
-            "run_desktop=true\nreason=desktop matrix explicitly forced to run\n",
+            [
+                "run_desktop=true",
+                "reason=desktop matrix explicitly forced to run",
+            ],
             forced,
         )
 

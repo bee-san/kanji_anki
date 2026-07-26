@@ -100,6 +100,13 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             "      - name: Run authorized verification-metadata bootstrap",
             maxsplit=1,
         )[1].split(
+            "      - name: Validate build logic against generated host metadata",
+            maxsplit=1,
+        )[0]
+        bootstrap_build_logic = matrix_job.split(
+            "      - name: Validate build logic against generated host metadata",
+            maxsplit=1,
+        )[1].split(
             "      - name: Run permanent strict desktop gate",
             maxsplit=1,
         )[0]
@@ -114,7 +121,19 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", bootstrap)
         self.assertEqual(1, self.workflow.count("--write-verification-metadata sha256"))
         self.assertIn("ciDesktop ciDesktopPackage", bootstrap)
+        self.assertIn("-x testBuildLogic", bootstrap)
         self.assertIn("--write-verification-metadata sha256", bootstrap)
+
+        self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", bootstrap_build_logic)
+        self.assertIn("testBuildLogic", bootstrap_build_logic)
+        self.assertIn(
+            "--dependency-verification=strict",
+            bootstrap_build_logic,
+        )
+        self.assertNotIn(
+            "--write-verification-metadata",
+            bootstrap_build_logic,
+        )
 
         for denied_clause in (
             "github.event_name != 'push'",
@@ -126,6 +145,7 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertIn("ciDesktop ciDesktopPackage", strict)
         self.assertIn("--dependency-verification=strict", strict)
         self.assertNotIn("--write-verification-metadata", strict)
+        self.assertNotIn("-x testBuildLogic", strict)
         self.assertIn(
             "python ci/scripts/assert_verification_metadata_scope.py",
             matrix_job,
@@ -186,7 +206,24 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             matrix_job,
         )
         self.assertIn("if-no-files-found: error", matrix_job)
-        self.assertEqual(1, matrix_job.count("retention-days: 7"))
+        self.assertEqual(2, matrix_job.count("retention-days: 7"))
+
+        diagnostics = matrix_job.split(
+            "      - name: Upload failed desktop diagnostics",
+            maxsplit=1,
+        )[1].split(
+            "      - name: Confirm tracked change scope",
+            maxsplit=1,
+        )[0]
+        self.assertIn("if: failure()", diagnostics)
+        self.assertIn(
+            "name: desktop-diagnostics-${{ matrix.host_id }}",
+            diagnostics,
+        )
+        self.assertIn("desktop-app/build/compose/logs/", diagnostics)
+        self.assertIn("build-logic/build/test-results/test/", diagnostics)
+        self.assertIn("if-no-files-found: warn", diagnostics)
+        self.assertIn("retention-days: 7", diagnostics)
 
         capture_script = (
             ROOT / "ci/scripts/capture_verification_metadata.py"

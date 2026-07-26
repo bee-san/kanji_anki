@@ -135,7 +135,16 @@ jobs:
         run: >-
           ${{ matrix.gradle_command }}
           ciDesktop ciDesktopPackage
+          -x testBuildLogic
           --write-verification-metadata sha256
+          --no-daemon --no-build-cache
+
+      - name: Validate build logic against generated host metadata
+        if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support'
+        run: >-
+          ${{ matrix.gradle_command }}
+          testBuildLogic
+          --dependency-verification=strict
           --no-daemon --no-build-cache
 
       - name: Run permanent strict desktop gate
@@ -145,6 +154,17 @@ jobs:
           ciDesktop ciDesktopPackage
           --dependency-verification=strict
           --no-daemon --no-build-cache
+
+      - name: Upload failed desktop diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: desktop-diagnostics-${{ matrix.host_id }}
+          path: |
+            desktop-app/build/compose/logs/
+            build-logic/build/test-results/test/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Confirm tracked change scope
         run: python ci/scripts/assert_verification_metadata_scope.py
