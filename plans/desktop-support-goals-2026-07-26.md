@@ -3071,6 +3071,111 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   remains local and unpushed, and Goal 168's explicit cross-OS push/CI
   authorization checkpoint remains in force.
 
+### Goal 168 completion evidence (2026-07-26)
+
+- Started from: `13f77e69` on `desktop/support` in
+  `/home/bee/Documents/src/github/kanji_anki-desktop-support`. The authorized
+  cross-host bootstrap began from that clean Goal 167 evidence commit; the
+  permanent draft PR targets `bd5d2dd0` on `main`.
+- Commits: `39dcc03d ci: bootstrap cross-platform desktop verification`;
+  `704d08e4 fix: harden the desktop bootstrap across hosts`; `01ec51b1 fix:
+  make desktop packaging host-portable`; `6fcf44a0 fix: normalize desktop
+  smoke behavior across hosts`; `a97324d3 fix: recognize the macOS software
+  renderer notice`; `e2129c69 ci: capture host AAPT2 bootstrap metadata`;
+  `2adabe39 build: trust reviewed desktop host artifacts`; `a86e46e5 ci:
+  enforce the permanent desktop matrix`; `090c1f92 fix: include desktop
+  coverage in quality analysis`; and `7b08d133 ci: scope desktop workflow
+  permissions`. The exact preceding implementation SHA that passed every
+  final gate is `7b08d133`.
+- Implemented: added root `ciDesktop`, `ciDesktopPackage`, and current-host
+  `ciAll` aggregates while keeping `ciFast` and `ciRelease` Android-only;
+  added an always-present classified desktop workflow for Ubuntu 24.04 X64,
+  Windows 2025 X64, and macOS 15 ARM64; and pinned wrapper validation,
+  Java/action versions, cache isolation, architecture assertions, failure
+  diagnostics, package/image smoke, and verification-metadata mutation
+  guards. Android CI now treats every planned desktop/shared/build/release
+  path as a full Android release input. The explicitly authorized temporary
+  workflow generated host metadata independently, retained the three host
+  manifests/artifacts, validated their provenance, and deterministically
+  merged them. The reviewed delta is additive only: four components, seven
+  artifacts, seven SHA-256 values, no deletion, with combined metadata
+  SHA-256
+  `f4c63cf5ae1791d764d1b4a84d3c22afe9e595058d7721f74a4f2f8df2772266`.
+  The permanent workflow contains no bootstrap/write/merge/download path.
+  Final audit work also imports `:desktop-app` bytecode and JaCoCo XML into
+  Sonar, covers launcher/error behavior, isolates only the three-host
+  smoke-tested Compose/native-window boundary from line coverage, and moves
+  repository read permission to the two checkout jobs.
+- Validation:
+  `python -m unittest tools.test_desktop_ci_workflow
+  tools.test_release_workflows` passed 44 tests; the full Python surfaces run
+  by the Gradle gates passed 124 tool tests and 96 CI tests.
+  `./gradlew :desktop-app:test :desktop-app:jacocoTestReport --no-daemon
+  --no-build-cache --dependency-verification=strict --console=plain` passed
+  all 13 launcher tests. Its included launcher report records 79/98 covered
+  lines and 42/42 covered branches. The focused
+  `:app:testDebugUnitTest --tests
+  dev.bee.kanjianki.MissingKanjiScreenModelTest` passed and covers the only
+  incidental changed Android line. `./gradlew ciQuality sonarPreflight
+  --no-daemon --no-build-cache --dependency-verification=strict
+  --console=plain` completed `BUILD SUCCESSFUL` in 6m23s with 120 actionable
+  tasks. `./gradlew smokeDesktopInstalledImage --no-daemon --no-build-cache
+  --dependency-verification=strict --console=plain` completed `BUILD
+  SUCCESSFUL` in 21s and emitted exactly
+  `KANI_DESKTOP_SMOKE_READY temporary_data=true`. YAML parsing,
+  `git diff --check`, strict metadata scope/diff checks, deterministic icon
+  checks, and independent coverage/security review all passed.
+- Live gates: authorized bootstrap run
+  [30209692669](https://github.com/bee-san/kanji_anki/actions/runs/30209692669)
+  passed independently on all three hosts at `e2129c69`; the downloaded
+  combined metadata and all four generated audit files were byte-identical
+  to an independent local revalidation. Permanent run
+  [30212024639](https://github.com/bee-san/kanji_anki/actions/runs/30212024639)
+  passed at `7b08d133`: Ubuntu 24.04 X64 built
+  `kani_0.4.33-1_amd64.deb` and finished its strict gate in 7m59s; Windows
+  2025 X64 (current image `windows-2025-vs2026`) built `Kani-0.4.33.msi` and
+  finished in 10m30s; macOS 15 ARM64 built `Kani-1.4.33.dmg` and finished in
+  9m15s. Every host ran 18 CI-script tests, 68 desktop-tooling tests (one
+  intentional Windows skip), emitted the exact temporary-data readiness
+  marker, passed tracked-scope validation, and left
+  `gradle/verification-metadata.xml` unchanged. The always-present confidence
+  gate passed. Android CI run
+  [30212024636](https://github.com/bee-san/kanji_anki/actions/runs/30212024636)
+  passed its full deterministic surface and aggregate; Android device-smoke
+  run
+  [30212024635](https://github.com/bee-san/kanji_anki/actions/runs/30212024635)
+  passed API 26, API 35, and the API 35 risk suite. Sonar run
+  [30212024632](https://github.com/bee-san/kanji_anki/actions/runs/30212024632)
+  passed in 15m04s; its external quality gate is `OK` with 86.6% new-code
+  coverage, A ratings for reliability/security/maintainability, zero
+  duplication, 100% reviewed hotspots, and zero open issues. A copied
+  real-collection AnkiDroid gate is not required because Goal 168 changes no
+  provider, sync, persistence, scheduler, or Android product behavior.
+- Decisions: kept `ciAll` explicitly current-host-only and preserved the
+  `Android CI -> Android Release -> Desktop Release` trigger semantics without
+  coupling Android validation to desktop signing. Kept untrusted PR jobs
+  secret-free, cache-write-free, and token-write-free. Trusted only
+  independently downloaded Google Maven/Maven Central bytes: Windows adds
+  PE X86-64 AAPT2 plus Compose/Skiko X64 artifacts, macOS adds Mach-O ARM64
+  Compose/Skiko artifacts, and Linux required no new host artifact. Kept
+  normal verification permanently strict and treated installed-image smoke,
+  rather than JVM line instrumentation, as the authoritative renderer/window
+  boundary test on each OS. The feature PR remains draft and unmerged.
+- Rollback: revert `7b08d133`, `090c1f92`, `a86e46e5`, `2adabe39`,
+  `e2129c69`, `a97324d3`, `6fcf44a0`, `01ec51b1`, `704d08e4`, and
+  `39dcc03d` in that reverse chronological order. This removes only CI,
+  verification metadata, host-portable package/smoke adjustments, coverage
+  wiring, and their tests/docs; it requires no database migration, provider
+  rollback, or user-state conversion.
+- Gaps/blockers: none. The local workstation lacks `dpkg-deb`, so its direct
+  native-DEB attempt stopped at the host-tool prerequisite after `ciDesktop`
+  had passed; the authoritative Ubuntu 24.04 strict matrix built and smoked
+  the DEB successfully. Two independent final audits approved the metadata
+  provenance and the Sonar/least-privilege closure. Draft PR
+  [#592](https://github.com/bee-san/kanji_anki/pull/592) is open, mergeable,
+  has a fully green implementation head at `7b08d133`, and is intentionally
+  not merged.
+
 Template:
 
 ```md
