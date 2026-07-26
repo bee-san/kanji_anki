@@ -2793,6 +2793,64 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   Goal 168's explicit cross-OS push/CI authorization checkpoint remains in
   force.
 
+### Goal 165 completion evidence (2026-07-26)
+
+- Started from: `6459eafc` on `desktop/support` in
+  `/home/bee/Documents/src/github/kanji_anki-desktop-support`; the final
+  implementation commit that passed the gates is `ed089883`.
+- Commits: `6593a4b8 test: freeze schema and transaction baselines`;
+  `bed0d80f test: freeze provider scheduler and UI baselines`;
+  `ed089883 docs: record desktop conversion performance baselines`.
+- Implemented: added sanitized, provenance-pinned schema fixtures for fresh
+  v33 and v1/v30/v31/v32 migration paths; deterministic schema fingerprints
+  and transaction/storage goldens; fake-provider and adaptive-scheduler
+  snapshots; 63 paired Android PNG/semantics route-state goldens; rollback-safe
+  sharded record/compare tooling; and a reproducible source, toolchain, test,
+  compile, and cold-start performance baseline. No production source module
+  moved or changed.
+- Validation: the focused schema/transaction regression selection passed 110
+  tests across 18 suites; the forced scheduler run
+  `./gradlew :core:test --tests
+  dev.bee.kanjianki.core.AdaptiveSchedulerGoldenSnapshotTest --rerun-tasks
+  --no-daemon --console=plain` completed `BUILD SUCCESSFUL`; the static UI
+  validator reported exactly 63 PNGs and 63 semantics snapshots; and
+  `python3 -m unittest ci.tests.test_classify_device_smoke` passed 21 tests.
+  The final
+  `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
+  ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew ciFast
+  ciQuality --no-daemon --console=plain` completed `BUILD SUCCESSFUL` in
+  5m28s with 110 actionable tasks (21 executed, 27 from cache, 62 up-to-date).
+  Its result tree contains 3,247 passing Gradle/JUnit tests, while the
+  independently rerun `tools`, `scripts/tests`, and `ci/tests` suites passed
+  73, 94, and 77 tests respectively: 3,491 deterministic checks in total.
+  `git diff --check` passed.
+- Live gates: on the API 35 Android emulator, the fake-provider production-path
+  comparison completed `OK (1 test)` with terminal instrumentation code `-1`,
+  zero fatal logcat matches, and byte-for-byte record regeneration. The UI
+  recorder produced the exact 63/63 set in six bounded shards at font scales
+  1.0 and 2.0; two subsequent clean comparison runs each reported seven
+  passing shard/contract invocations, seven terminal `-1` codes, and no
+  fatal, failure, dead-object, UiAutomation, or SIGKILL matches. A real
+  AnkiDroid collection run is not required because this goal adds only
+  test/debug assets, scripts, and documentation and changes no production
+  provider or sync behavior.
+- Decisions: confirmed schema v33 and stats cache format 11 as the conversion
+  baseline; froze token-first review persistence, successful-run-only sync
+  history, WAL-safe snapshot/restore failure behavior, the v31 two-core
+  adaptive routes, the provider's capability differences and note-tag-only
+  normal write surface, and the Android UI shell/route semantics. Compile
+  medians are 78.459s clean and 18.618s incremental; the representative
+  Android cold-start median is 1,852ms under the documented host-load caveat.
+- Rollback: revert `ed089883`, `bed0d80f`, and `6593a4b8` in that order. This
+  removes only documentation, tests, debug fixtures, assets, and CI helper
+  scripts; it requires no database migration, provider write, user-data
+  conversion, or runtime rollback.
+- Gaps/blockers: none for Goal 165. Three independent read-only audits found no
+  blocker and confirmed deterministic, mutation-sensitive fixtures with no
+  personal collection content or production-source change. The branch remains
+  local and unpushed; Goal 168's explicit cross-OS push/CI authorization
+  checkpoint remains in force.
+
 Template:
 
 ```md
