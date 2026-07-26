@@ -24,7 +24,10 @@ repair tools.
   repair appearance is practice-only: it cannot add another lapse, change
   stability/difficulty, or move a long-term threshold.
 - Contextual reading is the terminal core. It never demotes back to recognition.
-- Kani's AnkiDroid write surface remains note tags only.
+- Kani's normal sync/write-back surface remains note tags only. The explicit
+  Missing Kanji flow is a separate, capability-gated additive writer restricted
+  to Kani's dedicated model/deck with CSV as a complete fallback. Neither path
+  writes Anki scheduling state.
 
 ## Persisted routing state
 

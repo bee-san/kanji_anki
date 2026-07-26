@@ -431,15 +431,21 @@ when `hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` /
 
 ## Provider Write-Back, Backup, And Widget Notes
 
-Kani's AnkiDroid write surface is deliberately note-tag-only. Sync may add
-`kani_archived` to fully imported suspended notes and, when the user enables
+Kani's normal sync/write-back surface is deliberately note-tag-only. Sync may
+add `kani_archived` to fully imported suspended notes and, when the user enables
 the default-off `tag_repaired_cards` setting, add `kani_repaired` to fully
 suspended notes whose kanji have passed the repair gate. Both paths use
 idempotent per-note read-modify-write, isolate failures, and retry on a later
 sync; neither may fail an otherwise committed sync. Repaired tagging is also
 manual-confirm-only: the Home confirmation shows the proposal count and the
-automatic sync runner is not authorized to perform this write-back. Kani never writes card
-queue, due date, interval, ease, deck, or any other Anki scheduling state.
+automatic sync runner is not authorized to perform this write-back.
+
+The only accepted non-tag provider write is the explicit Missing Kanji flow.
+It may create additive notes only in Kani's dedicated model/deck after the
+provider capability/spec gate passes, remains idempotent, and keeps CSV as a
+complete fallback. It never rewrites a user's existing model or notes. Kani
+never writes card queue, due date, interval, ease, deck options, suspension,
+FSRS state, or any other Anki scheduling state.
 Successful repaired-note writes stamp `suspended_archive.restored_at`, and the
 Home hand-off copies `tag:kani_repaired is:suspended` so the user can review
 and unsuspend the cards in AnkiDroid.
