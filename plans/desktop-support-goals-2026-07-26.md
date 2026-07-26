@@ -2969,7 +2969,9 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
 - Commits: `b293c4ed build: add desktop and multiplatform conventions`;
   `d8640e09 build: register the desktop application foundation`;
   `65f28879 feat: add the Kani desktop smoke launcher`; and
-  `ec05da55 build: fix desktop package identity and icon sources`.
+  `ec05da55 build: fix desktop package identity and icon sources`;
+  `3c7c3074 fix: enforce desktop package and smoke contracts`; and
+  `e517c9fb test: verify icons against the canonical render`.
 - Implemented: added reusable normal-JVM desktop-application and
   Android-KMP/desktop shared-Compose library conventions. The shared
   convention is the sole owner of the AGP 9.1 `kotlin { android { ... } }`
@@ -2985,10 +2987,11 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   pinned `Kani`, `dev.bee.kanjianki.desktop`, main class, description,
   vendor, and Windows upgrade UUID
   `C972670E-BCCD-4D5E-9ACC-2C8877ABA799`. Added one hand-authored vector
-  source plus deterministic PNG/ICO/ICNS generation and a pure verification
-  path. The committed manifest pins the 512px PNG, seven ICO frames, eleven
-  ICNS chunks, source/output SHA-256 values, and the reviewed generator tool
-  versions.
+  source plus deterministic PNG/ICO/ICNS generation and a
+  regeneration-and-byte-comparison verification path. The committed manifest
+  pins the 512px PNG, seven ICO frames, eleven ICNS chunks, source/output
+  SHA-256 values, and the reviewed generator tool versions. Native package
+  tasks are restricted to the three supported formats: DMG, MSI, and DEB.
 - Validation:
   `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
   ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew
@@ -2999,22 +3002,30 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   including compiled common/desktop/Android-main/host/device KMP fixtures,
   shared resource access, common-test inheritance, Robolectric resources,
   coverage, task registration, archive policy, package identity, and
-  intentional warning-as-error failures. `python3 -m unittest
-  tools.test_module_boundaries` passed 17 tests, and `git diff --check`
-  passed. A checksum-verified Eclipse Temurin 17.0.20+8 control
+  intentional warning-as-error failures. After the independent audit fixes,
+  `./gradlew testBuildLogic :desktop-app:test --no-build-cache --no-daemon
+  --dependency-verification=strict --console=plain` passed in 2m10s with all
+  26 build-logic tests and five desktop-launcher tests, including early-window
+  close rejection before readiness. `python3 -m unittest discover -s tools -p
+  'test_*.py'` passed all 75 tests, including the icon-source mutation test;
+  direct `python3 tools/generate_desktop_icons.py --check` and
+  `git diff --check` passed. A checksum-verified Eclipse Temurin 17.0.20+8 control
   (`OpenJDK17U-jdk_x64_linux_hotspot_17.0.20_8.tar.gz`, SHA-256
   `be7668bc030d578b83d6d5ef9221d6d6729bbbca8cf94a7d52e16ac68b5a5a35`)
-  rebuilt `:desktop-app:createDistributable` with all eight packaging tasks
-  executed in 25s under no-build-cache, rerun-tasks, and strict verification.
-  Its runtime reports Java 17.0.20, and its launcher has no dynamic
-  `libstdc++.so.6` dependency. Five consecutive packaged launches each
-  exited zero, emitted exactly one readiness marker with no native warning,
-  and left zero `kani-desktop-smoke-*` roots. Finally,
+  rebuilt `:desktop-app:createDistributable` with all 17 tasks executed in
+  1m13s under no-build-cache, rerun-tasks, and strict verification. A
+  `packageDistributionForCurrentOS --dry-run` under that JDK exposed only
+  `packageDeb`, `packageDmg`, and `packageMsi`, with no RPM, PKG, or EXE task.
+  The installed-image runtime reports Java 17.0.20, and its launcher has no
+  dynamic `libstdc++.so.6` dependency. Five consecutive packaged launches
+  each exited zero, emitted exactly one readiness marker with no native
+  warning, and left zero `kani-desktop-smoke-*` roots. Finally,
   `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
   ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew ciFast
   ciQuality --no-build-cache --no-daemon --dependency-verification=strict
-  --console=plain` completed `BUILD SUCCESSFUL` in 12m04s with 110 actionable
-  tasks (68 executed, 42 up-to-date).
+  --console=plain` completed a clean `BUILD SUCCESSFUL` in 12m04s with 110
+  actionable tasks (68 executed, 42 up-to-date), then passed again after all
+  audit fixes in 34s with 110 actionable tasks (4 executed, 106 up-to-date).
 - Live gates: a real AnkiDroid emulator run is not required. Goal 167 adds
   build conventions, an isolated project-dependency-empty desktop host,
   package metadata/icons, and desktop-only launcher behavior; it changes no
@@ -3025,8 +3036,10 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   shared libraries; used the new Android-KMP plugin instead of classic
   Android plugins or `androidTarget`; made the convention the single owner of
   both Android test builders; kept `compose.desktop.currentOs` in the app
-  rather than shared production code; and made readiness certify renderer
-  startup, orderly window removal, and temporary-profile deletion. The local
+  rather than shared production code; restricted declared package formats to
+  the supported DMG/MSI/DEB set; and made readiness certify renderer startup,
+  an explicit smoke-render result, orderly window removal, and
+  temporary-profile deletion. The local
   Arch/CachyOS OpenJDK 17.0.19 `jpackage` launcher was independently traced
   to a pre-JVM helper crash caused by dynamic `libstdc++` linkage, matching
   OpenJDK [JDK-8348560](https://bugs.openjdk.org/browse/JDK-8348560) and the
@@ -3036,18 +3049,23 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   control proves the Kani image and smoke contract. Goal 204 remains the
   owner of the formal per-host packaging-JDK vendor, patch, URL, checksum,
   and launcher-linkage pin.
-- Rollback: revert `ec05da55`, `65f28879`, `d8640e09`, and `b293c4ed` in
-  that order. This removes only the isolated desktop module, convention
-  plugins/fixtures, package identity/icons, reviewed verification metadata,
-  and settings/boundary registration; it requires no schema migration,
-  provider action, data conversion, or user-state rollback.
+- Rollback: revert `e517c9fb`, `3c7c3074`, `ec05da55`, `65f28879`,
+  `d8640e09`, and `b293c4ed` in that order. This removes only the isolated
+  desktop module, convention plugins/fixtures, package identity/icons,
+  reviewed verification metadata, and settings/boundary registration; it
+  requires no schema migration, provider action, data conversion, or
+  user-state rollback.
 - Gaps/blockers: none in the Goal 167 implementation or local Linux/Android
-  gates. Independent read-only audits follow this evidence commit and must
-  clear before Goal 168 begins. Goal 168 still owns the three-host strict
-  dependency/bootstrap matrix and CI smoke coverage; Goal 204 owns the
-  release-packaging JDK pin and installed-package qualification. The branch
-  remains local and unpushed, and Goal 168's explicit cross-OS push/CI
-  authorization checkpoint remains in force.
+  gates. Initial independent audits found three contract gaps: unsupported
+  native formats were declared, stale icon bytes could be re-manifested
+  without regenerating from the SVG, and an early normal window close could
+  qualify as smoke readiness. `3c7c3074` and `e517c9fb` close those gaps and
+  add mutation-sensitive coverage; independent re-audits follow this evidence
+  commit and must clear before Goal 168 begins. Goal 168 still owns the
+  three-host strict dependency/bootstrap matrix and CI smoke coverage; Goal
+  204 owns the release-packaging JDK pin and installed-package qualification.
+  The branch remains local and unpushed, and Goal 168's explicit cross-OS
+  push/CI authorization checkpoint remains in force.
 
 Template:
 
