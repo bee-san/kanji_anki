@@ -1,4 +1,4 @@
-import org.gradle.accessors.dm.LibrariesForLibs
+import org.gradle.api.artifacts.VersionCatalogsExtension
 
 // Shared configuration for the pure-JVM Kotlin library modules (core, domain,
 // sync-domain, dictionary-core, writing-core, update-core, fsrs-java): toolchain 17,
@@ -12,18 +12,19 @@ plugins {
     jacoco
 }
 
-val libs = the<LibrariesForLibs>()
+val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+val javaVersion = libs.findVersion("jvmTarget").get().requiredVersion.toInt()
 
 val conventionExtension = extensions.create("kaniLibrary", KaniLibraryConventionExtension::class.java)
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(libs.versions.jvmTarget.get().toInt()))
+        languageVersion.set(JavaLanguageVersion.of(javaVersion))
     }
 }
 
 kotlin {
-    jvmToolchain(libs.versions.jvmTarget.get().toInt())
+    jvmToolchain(javaVersion)
     compilerOptions {
         allWarningsAsErrors.set(true)
     }
@@ -34,7 +35,7 @@ tasks.withType<Test>().configureEach {
 }
 
 jacoco {
-    toolVersion = libs.versions.jacoco.get()
+    toolVersion = libs.findVersion("jacoco").get().requiredVersion
 }
 
 // Resolve the excludes lazily: the extension's coverageExcludes list is populated
@@ -97,5 +98,5 @@ tasks.named("check") {
 }
 
 dependencies {
-    "testImplementation"(libs.junit)
+    "testImplementation"(libs.findLibrary("junit").get())
 }
