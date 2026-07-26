@@ -75,7 +75,13 @@ FINAL_MODULES = frozenset(
         *DESKTOP_MODULES,
     },
 )
-EXPECTED_CURRENT_MODULES = frozenset({*CURRENT_SHARED_JVM_MODULES, "app"})
+EXPECTED_CURRENT_MODULES = frozenset(
+    {
+        *CURRENT_SHARED_JVM_MODULES,
+        "app",
+        "desktop-app",
+    },
+)
 MODULE_CLASSES = {
     **dict.fromkeys(CURRENT_SHARED_JVM_MODULES, "shared-jvm-policy"),
     **dict.fromkeys(NEW_SHARED_JVM_MODULES, "shared-jvm-application"),
@@ -105,6 +111,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),
     "app": frozenset({"core", "dictionary-core", "update-core", "writing-core"}),
+    "desktop-app": frozenset(),
 }
 FINAL_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
