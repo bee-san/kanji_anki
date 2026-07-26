@@ -39,9 +39,3 @@ If you study vocab with no individual Kanji study but find some Kanji are hard, 
 <img width="416" height="845" alt="image" src="https://github.com/user-attachments/assets/ae7fcf8b-e4a6-4c15-93f4-44b5a2897780" />
 <img width="481" height="847" alt="image" src="https://github.com/user-attachments/assets/4cf4eef9-dd34-497b-9363-eb1f3224e9f9" />
 <img width="647" height="847" alt="image" src="https://github.com/user-attachments/assets/6863e0e8-26d7-42e2-8a97-990668a96fb9" />
-
-
-
-
-- [x] Build the screenshot-driven Cheap Ralph UX improvement loop from `docs/plans/cheap-ralph/2026-06-09-screenshot-driven-ux-improvement-loop.md`: deterministically capture every view, store screenshot manifests, ask a design critic for machine-readable improved-view targets, implement one accepted issue per iteration in a scratch checkout, and gate apply/commit on before/after screenshots, compile/tests, forbidden-path guards, diff limits, and design-critic improvement. Default to review-only and never treat compile-only success as visual validation.
-<!-- cheap-ralph-queue:end -->
