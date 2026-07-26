@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.buildlogic
 
 import java.io.File
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.Properties
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,6 +28,10 @@ class AlignedBuildToolchainContractTest {
             wrapper.getProperty("distributionSha256Sum"),
         )
         assertEquals("true", wrapper.getProperty("validateDistributionUrl"))
+        assertEquals(
+            "55243ef57851f12b070ad14f7f5bb8302daceeebc5bce5ece5fa6edb23e1145c",
+            sha256(repositoryFile("gradle/wrapper/gradle-wrapper.jar")),
+        )
 
         val catalog = repositoryText("gradle/libs.versions.toml")
         assertEquals("9.1.0", catalogVersion(catalog, "agp"))
@@ -170,6 +176,9 @@ class AlignedBuildToolchainContractTest {
     private fun repositoryFile(path: String): File = File(repositoryRoot, path)
 
     private fun repositoryText(path: String): String = repositoryFile(path).readText()
+
+    private fun sha256(file: File): String =
+        HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(file.readBytes()))
 
     private fun catalogVersion(catalog: String, name: String): String {
         val match = Regex("""(?m)^${Regex.escape(name)}\s*=\s*"([^"]+)"\s*$""").find(catalog)

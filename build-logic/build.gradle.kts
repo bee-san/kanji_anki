@@ -37,6 +37,7 @@ tasks.withType<Test>().configureEach {
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle/libs.versions.toml"))
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle/verification-metadata.xml"))
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle/wrapper/gradle-wrapper.properties"))
+    inputs.file(rootProject.projectDir.parentFile.resolve("gradle/wrapper/gradle-wrapper.jar"))
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle.properties"))
     inputs.file(rootProject.projectDir.parentFile.resolve("settings.gradle.kts"))
     inputs.file(rootProject.projectDir.parentFile.resolve("build.gradle.kts"))
