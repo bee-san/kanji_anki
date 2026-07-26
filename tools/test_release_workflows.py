@@ -164,7 +164,14 @@ class WorkflowSupplyChainTest(unittest.TestCase):
                 gradle_indices = [
                     index
                     for index, line in enumerate(block)
-                    if "./gradlew" in line and not line.lstrip().startswith("#")
+                    if (
+                        (
+                            "./gradlew" in line
+                            and "gradle_command:" not in line
+                        )
+                        or "${{ matrix.gradle_command }}" in line
+                    )
+                    and not line.lstrip().startswith("#")
                 ]
                 if not gradle_indices:
                     continue

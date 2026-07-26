@@ -1,0 +1,262 @@
+name: Desktop CI
+
+# Goal 168 bootstrap note: the desktop/support push trigger and the guarded
+# verification-metadata write/aggregation path are temporary. After the three
+# host artifacts are reviewed and merged, remove bootstrap write mode, change
+# the push branch to main, and retain the strict PR/main matrix.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - desktop/support
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    name: Classify desktop impact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run_desktop: ${{ steps.impact.outputs.run_desktop }}
+      reason: ${{ steps.impact.outputs.reason }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: impact
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REF: ${{ github.ref }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          readonly zero_sha='0000000000000000000000000000000000000000'
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
+          elif [ "${EVENT_NAME}" = "push" ] \
+            && [ "${REPOSITORY}" = "bee-san/kanji_anki" ] \
+            && [ "${REF}" = "refs/heads/desktop/support" ]; then
+            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
+          elif [ "${EVENT_NAME}" = "pull_request" ]; then
+            git diff --name-only --diff-filter=ACDMRT -z "${BASE_SHA}" "${HEAD_SHA}" \
+              | python3 ci/scripts/classify_desktop_ci.py --null >> "${GITHUB_OUTPUT}"
+          elif [ "${BEFORE_SHA}" = "${zero_sha}" ] \
+            || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
+          else
+            git diff --name-only --diff-filter=ACDMRT -z "${BEFORE_SHA}" "${HEAD_SHA}" \
+              | python3 ci/scripts/classify_desktop_ci.py --null >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Report selected lane
+        env:
+          REASON: ${{ steps.impact.outputs.reason }}
+          RUN_DESKTOP: ${{ steps.impact.outputs.run_desktop }}
+        run: echo "run_desktop=${RUN_DESKTOP} - ${REASON}"
+
+  desktop_matrix:
+    name: Desktop ${{ matrix.host_id }} (${{ matrix.runner_arch }})
+    needs: classify
+    if: needs.classify.outputs.run_desktop == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_id: linux
+            runner: ubuntu-24.04
+            runner_arch: X64
+            gradle_command: xvfb-run -a ./gradlew
+          - host_id: windows
+            runner: windows-2025
+            runner_arch: X64
+            gradle_command: ./gradlew.bat
+          - host_id: macos
+            runner: macos-15
+            runner_arch: ARM64
+            gradle_command: ./gradlew
+    env:
+      VERIFICATION_MODE: ${{ github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' && 'bootstrap-write' || 'strict' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
+
+      - name: Set up Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle without shared state
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-disabled: true
+
+      - name: Install Android SDK packages
+        uses: ./.github/actions/setup-android-sdk
+
+      - name: Confirm runner architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.runner_arch }}
+        run: >-
+          python -c "import os;
+          actual = os.environ['RUNNER_ARCH'];
+          expected = os.environ['EXPECTED_ARCH'];
+          assert actual == expected, f'expected {expected}, got {actual}'"
+
+      - name: Snapshot checked-in verification metadata
+        run: >-
+          python ci/scripts/capture_verification_metadata.py snapshot
+          --metadata gradle/verification-metadata.xml
+          --output build/verification-bootstrap/baseline.xml
+
+      - name: Run authorized verification-metadata bootstrap
+        if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support'
+        run: >-
+          ${{ matrix.gradle_command }}
+          ciDesktop ciDesktopPackage
+          --write-verification-metadata sha256
+          --no-daemon --no-build-cache
+
+      - name: Run permanent strict desktop gate
+        if: github.event_name != 'push' || github.repository != 'bee-san/kanji_anki' || github.ref != 'refs/heads/desktop/support'
+        run: >-
+          ${{ matrix.gradle_command }}
+          ciDesktop ciDesktopPackage
+          --dependency-verification=strict
+          --no-daemon --no-build-cache
+
+      - name: Confirm tracked change scope
+        run: python ci/scripts/assert_verification_metadata_scope.py
+
+      - name: Assert strict mode did not mutate verification metadata
+        if: github.event_name != 'push' || github.repository != 'bee-san/kanji_anki' || github.ref != 'refs/heads/desktop/support'
+        run: git diff --exit-code -- gradle/verification-metadata.xml
+
+      - name: Capture full host verification metadata
+        run: >-
+          python ci/scripts/capture_verification_metadata.py capture
+          --baseline build/verification-bootstrap/baseline.xml
+          --metadata gradle/verification-metadata.xml
+          --host-id ${{ matrix.host_id }}
+          --runner-label ${{ matrix.runner }}
+          --runner-os ${{ runner.os }}
+          --runner-arch ${{ runner.arch }}
+          --event-name ${{ github.event_name }}
+          --repository ${{ github.repository }}
+          --ref ${{ github.ref }}
+          --commit-sha ${{ github.sha }}
+          --mode ${{ env.VERIFICATION_MODE }}
+          --output-directory build/verification-bootstrap/${{ matrix.host_id }}
+
+      - name: Upload full host verification metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verification-metadata-${{ matrix.host_id }}
+          path: build/verification-bootstrap/${{ matrix.host_id }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  aggregate_verification_metadata:
+    name: Aggregate verification metadata for review
+    needs: desktop_matrix
+    if: github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' && needs.desktop_matrix.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Download separately named host metadata
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: verification-metadata-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: Validate host manifests and payloads
+        run: >-
+          python3 ci/scripts/validate_verification_metadata_artifacts.py
+          --input-directory artifacts
+          --baseline gradle/verification-metadata.xml
+          --expected-commit-sha ${{ github.sha }}
+          --expected-repository ${{ github.repository }}
+          --expected-ref ${{ github.ref }}
+          --expected-event-name push
+          --expected-mode bootstrap-write
+
+      - name: Merge host metadata deterministically
+        run: >-
+          python3 tools/merge_verification_metadata.py
+          --baseline gradle/verification-metadata.xml
+          --input-directory artifacts
+          --output artifacts/verification-metadata-merged.xml
+          --manifest artifacts/verification-metadata-merge-manifest.json
+          --review-summary artifacts/verification-metadata-review.md
+
+      - name: Upload combined metadata for review
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verification-metadata-combined-review
+          path: |
+            artifacts/verification-metadata-merged.xml
+            artifacts/verification-metadata-merged.xml.diff
+            artifacts/verification-metadata-merge-manifest.json
+            artifacts/verification-metadata-review.md
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop_confidence_gate:
+    name: Desktop confidence gate
+    needs:
+      - classify
+      - desktop_matrix
+      - aggregate_verification_metadata
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Confirm required desktop jobs passed
+        env:
+          AGGREGATE_RESULT: ${{ needs.aggregate_verification_metadata.result }}
+          BOOTSTRAP: ${{ github.event_name == 'push' && github.repository == 'bee-san/kanji_anki' && github.ref == 'refs/heads/desktop/support' }}
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          MATRIX_RESULT: ${{ needs.desktop_matrix.result }}
+          RUN_DESKTOP: ${{ needs.classify.outputs.run_desktop }}
+        run: |
+          set -euo pipefail
+          test "${CLASSIFY_RESULT}" = "success"
+          if [ "${RUN_DESKTOP}" = "true" ]; then
+            test "${MATRIX_RESULT}" = "success"
+          else
+            test "${MATRIX_RESULT}" = "skipped"
+          fi
+          if [ "${BOOTSTRAP}" = "true" ]; then
+            test "${RUN_DESKTOP}" = "true"
+            test "${AGGREGATE_RESULT}" = "success"
+          else
+            test "${AGGREGATE_RESULT}" = "skipped"
+          fi

@@ -37,12 +37,21 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
 
     def test_runtime_provider_scheduler_database_and_ui_paths_are_full(self) -> None:
         full_paths = (
+            "application/src/main/kotlin/dev/bee/kanjianki/application/StudyUseCase.kt",
             "app/src/main/kotlin/dev/bee/kanjianki/anki/AnkiDroidGateway.kt",
+            "data-api/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
+            "data-sql/src/main/kotlin/dev/bee/kanjianki/data/SqlStudyRepository.kt",
             "core/src/main/kotlin/dev/bee/kanjianki/core/BridgeScheduler.kt",
             "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore.kt",
             "app/src/main/kotlin/dev/bee/kanjianki/MainActivityStudy.kt",
             "app/src/main/res/values/strings.xml",
+            "feature-study/src/commonMain/kotlin/dev/bee/kanjianki/study/StudyRoute.kt",
+            "platform-contracts/src/main/kotlin/dev/bee/kanjianki/platform/KaniClock.kt",
+            "presentation-api/src/commonMain/kotlin/dev/bee/kanjianki/presentation/StudyState.kt",
+            "reference-assets/src/commonMain/composeResources/values/strings.xml",
             "sync-domain/src/main/kotlin/dev/bee/kanjianki/sync/SyncPolicy.kt",
+            "sync-engine/src/main/kotlin/dev/bee/kanjianki/sync/SyncEngine.kt",
+            "ui-common/src/commonMain/kotlin/dev/bee/kanjianki/ui/KaniTheme.kt",
         )
         for path in full_paths:
             with self.subTest(path=path):
@@ -85,6 +94,19 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
     def test_test_only_and_build_changes_use_compact_smoke(self) -> None:
         self.assert_level("smoke", "app/src/test/kotlin/dev/bee/kanjianki/ExampleTest.kt")
         self.assert_level("smoke", ".github/workflows/android-ci.yml")
+        self.assert_level("smoke", ".gitattributes")
+
+    def test_desktop_host_only_and_branding_changes_use_compact_smoke(self) -> None:
+        smoke_paths = (
+            "desktop-app/src/main/kotlin/dev/bee/kanjianki/desktop/Main.kt",
+            "data-desktop/src/main/kotlin/dev/bee/kanjianki/data/DesktopDatabase.kt",
+            "platform-desktop/src/main/kotlin/dev/bee/kanjianki/platform/DesktopFiles.kt",
+            "provider-ankiconnect/src/main/kotlin/dev/bee/kanjianki/anki/AnkiConnect.kt",
+            "branding/desktop/kani.svg",
+        )
+        for path in smoke_paths:
+            with self.subTest(path=path):
+                self.assert_level("smoke", path)
 
     def test_release_and_r8_inputs_run_the_minified_full_lane(self) -> None:
         full_paths = (

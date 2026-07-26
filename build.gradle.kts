@@ -197,6 +197,95 @@ tasks.register("testBuildLogic") {
     dependsOn(gradle.includedBuild("build-logic").task(":test"))
 }
 
+val desktopPythonExecutable = if (
+    System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+) {
+    "python"
+} else {
+    "python3"
+}
+
+tasks.register<Exec>("testDesktopTooling") {
+    group = "verification"
+    description = "Runs host-portable desktop gate, icon-contract, boundary, and smoke-runner tests."
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "unittest",
+        "tools.test_desktop_ci_gates",
+        "tools.test_desktop_ci_workflow",
+        "tools.test_generate_desktop_icons",
+        "tools.test_merge_verification_metadata",
+        "tools.test_module_boundaries",
+        "tools.test_run_desktop_installed_image_smoke",
+    )
+}
+
+tasks.register<Exec>("testDesktopCiScripts") {
+    group = "verification"
+    description = "Runs host-portable desktop CI classifier and verification-metadata artifact tests."
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "unittest",
+        "ci.tests.test_capture_verification_metadata",
+        "ci.tests.test_classify_desktop_ci",
+        "ci.tests.test_verification_metadata_artifact_validation",
+    )
+}
+
+val desktopCiTasks = listOf(
+    "testBuildLogic",
+    ":fsrs-java:check",
+    ":core:check",
+    ":domain:check",
+    ":sync-domain:check",
+    ":writing-core:check",
+    ":dictionary-core:check",
+    ":update-core:check",
+    ":desktop-app:check",
+    "testDesktopCiScripts",
+    "testDesktopTooling",
+)
+
+tasks.register("ciDesktop") {
+    group = "verification"
+    description = "Runs deterministic desktop, shared JVM, build-logic, icon-contract, and tooling checks for the current host."
+    dependsOn(desktopCiTasks)
+}
+
+val desktopInstalledImageDirectory =
+    layout.projectDirectory.dir("desktop-app/build/compose/binaries/main/app")
+
+val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImage") {
+    group = "verification"
+    description = "Runs the current-host installed desktop image in isolated temporary-data smoke mode."
+    dependsOn(":desktop-app:createDistributable")
+    mustRunAfter(":desktop-app:packageDistributionForCurrentOS")
+    inputs.file(
+        layout.projectDirectory.file(
+            "tools/run_desktop_installed_image_smoke.py",
+        ),
+    )
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    commandLine(
+        desktopPythonExecutable,
+        "tools/run_desktop_installed_image_smoke.py",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
+tasks.register("ciDesktopPackage") {
+    group = "verification"
+    description = "Builds the current-host desktop image and native package, then runs the installed-image smoke contract."
+    dependsOn(
+        ":desktop-app:packageDistributionForCurrentOS",
+        smokeDesktopInstalledImage,
+    )
+}
+
 val fastCiTasks = listOf(
     "testBuildLogic",
     ":fsrs-java:test",
@@ -260,5 +349,15 @@ tasks.register("ciRelease") {
     dependsOn(
         "ciFast",
         ":app:assembleRelease",
+    )
+}
+
+tasks.register("ciAll") {
+    group = "verification"
+    description = "Aggregates Android, quality, desktop, and current-host desktop-package confidence gates without making cross-host claims."
+    dependsOn(
+        "ciQuality",
+        "ciDesktop",
+        "ciDesktopPackage",
     )
 }

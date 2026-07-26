@@ -23,10 +23,14 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import kotlinx.coroutines.delay
 
 internal const val FOUNDATION_TITLE = "Kani desktop foundation"
 internal const val SMOKE_READY_MARKER = "KANI_DESKTOP_SMOKE_READY"
+internal const val SMOKE_READY_LINE = "$SMOKE_READY_MARKER temporary_data=true"
+internal const val SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE =
+    "KANI_DESKTOP_SMOKE_RESULT_FILE"
 
 internal data class DesktopLaunchOptions(
     val smokeTest: Boolean,
@@ -78,11 +82,10 @@ fun main(args: Array<String>) {
 internal fun runDesktop(
     options: DesktopLaunchOptions,
     normalDataRoot: () -> Path = ::defaultDesktopDataRoot,
-    temporaryDataRoot: () -> Path = {
-        Files.createTempDirectory("kani-desktop-smoke-")
-    },
+    temporaryDataRoot: () -> Path = ::createSmokeTemporaryDataRoot,
     windowRunner: (Path, Boolean) -> DesktopWindowResult = ::openFoundationWindow,
-    smokeReadyReporter: () -> Unit = ::reportSmokeReady,
+    smokeResultFile: () -> Path = ::smokeResultFileFromEnvironment,
+    smokeReadyReporter: (Path) -> Unit = ::reportSmokeReady,
 ) {
     val dataSession = selectDataSession(
         options = options,
@@ -100,7 +103,7 @@ internal fun runDesktop(
         "Desktop smoke window closed before rendering completed"
     }
     if (options.smokeTest) {
-        smokeReadyReporter()
+        smokeReadyReporter(smokeResultFile())
     }
 }
 
@@ -110,8 +113,45 @@ internal fun deleteTemporaryDataRoot(dataRoot: Path) {
     }
 }
 
-private fun reportSmokeReady() {
-    println("$SMOKE_READY_MARKER temporary_data=true")
+internal fun smokeResultFileFromEnvironment(
+    environment: Map<String, String> = System.getenv(),
+): Path {
+    val configuredPath = requireNotNull(
+        environment[SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE],
+    ) {
+        "$SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE is required in smoke mode"
+    }
+    require(configuredPath.isNotBlank()) {
+        "$SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE must not be blank"
+    }
+    return Path.of(configuredPath).also { resultFile ->
+        require(resultFile.isAbsolute) {
+            "$SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE must be an absolute path"
+        }
+    }
+}
+
+internal fun createSmokeTemporaryDataRoot(
+    environment: Map<String, String> = System.getenv(),
+): Path {
+    val resultFile = smokeResultFileFromEnvironment(environment)
+    val resultDirectory = requireNotNull(resultFile.parent) {
+        "$SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE must have a parent directory"
+    }
+    require(Files.isDirectory(resultDirectory)) {
+        "smoke result parent directory does not exist: $resultDirectory"
+    }
+    return Files.createTempDirectory(resultDirectory, "kani-desktop-smoke-")
+}
+
+internal fun reportSmokeReady(resultFile: Path) {
+    Files.writeString(
+        resultFile,
+        "$SMOKE_READY_LINE\n",
+        StandardOpenOption.CREATE_NEW,
+        StandardOpenOption.WRITE,
+    )
+    println(SMOKE_READY_LINE)
     System.out.flush()
 }
 
