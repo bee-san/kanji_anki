@@ -1,4 +1,5 @@
 import dev.bee.kanjianki.buildlogic.KaniDesktopIdentity
+import dev.bee.kanjianki.buildlogic.KaniDesktopPackageVersions
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.testing.Test
@@ -14,6 +15,7 @@ plugins {
 
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 val javaVersion = libs.findVersion("jvmTarget").get().requiredVersion.toInt()
+val kaniVersionName = libs.findVersion("appVersionName").get().requiredVersion
 
 java {
     toolchain {
@@ -73,12 +75,14 @@ compose.desktop {
                 TargetFormat.Deb,
             )
             packageName = KaniDesktopIdentity.APPLICATION_NAME
-            packageVersion = libs.findVersion("appVersionName").get().requiredVersion
+            packageVersion = kaniVersionName
             description = KaniDesktopIdentity.DESCRIPTION
             vendor = KaniDesktopIdentity.VENDOR
 
             macOS {
                 bundleID = KaniDesktopIdentity.DESKTOP_ID
+                packageVersion =
+                    KaniDesktopPackageVersions.macOsJpackage(kaniVersionName)
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.icns"),
                 )

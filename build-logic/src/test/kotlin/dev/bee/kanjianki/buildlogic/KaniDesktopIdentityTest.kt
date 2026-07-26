@@ -3,6 +3,7 @@ package dev.bee.kanjianki.buildlogic
 import java.io.File
 import java.util.UUID
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +32,25 @@ class KaniDesktopIdentityTest {
                 Regex("[A-Za-z0-9.-]+"),
             ),
         )
+    }
+
+    @Test
+    fun macOsJpackageVersionIsValidReversibleAndMonotonic() {
+        assertEquals(
+            "1.4.33",
+            KaniDesktopPackageVersions.macOsJpackage("0.4.33"),
+        )
+        assertEquals(
+            "2.0.0",
+            KaniDesktopPackageVersions.macOsJpackage("1.0.0"),
+        )
+        assertEquals(
+            "13.34.56",
+            KaniDesktopPackageVersions.macOsJpackage("12.34.56"),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            KaniDesktopPackageVersions.macOsJpackage("not-semantic")
+        }
     }
 
     @Test
@@ -63,6 +83,12 @@ class KaniDesktopIdentityTest {
                 convention.contains("/kani.$extension"),
             )
         }
+        assertTrue(
+            "macOS package version must use the jpackage-compatible mapping",
+            convention.contains(
+                "KaniDesktopPackageVersions.macOsJpackage(kaniVersionName)",
+            ),
+        )
         assertEquals(
             setOf("Dmg", "Msi", "Deb"),
             Regex("""TargetFormat\.([A-Za-z]+)""")

@@ -76,9 +76,8 @@ class InstalledImageSmokeContractTest(unittest.TestCase):
                     kwargs["env"][smoke.SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE],
                 )
                 self.assertFalse(result_file.exists())
-                result_file.write_text(
-                    f"{smoke.SMOKE_READY_MARKER}\n",
-                    encoding="utf-8",
+                result_file.write_bytes(
+                    f"{smoke.SMOKE_READY_MARKER}\n".encode("utf-8"),
                 )
                 return subprocess.CompletedProcess(
                     command,
@@ -173,9 +172,8 @@ class InstalledImageSmokeContractTest(unittest.TestCase):
                 environment = kwargs["env"]
                 Path(
                     environment[smoke.SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE],
-                ).write_text(
-                    f"{smoke.SMOKE_READY_MARKER}\n",
-                    encoding="utf-8",
+                ).write_bytes(
+                    f"{smoke.SMOKE_READY_MARKER}\n".encode("utf-8"),
                 )
                 return subprocess.CompletedProcess(
                     command,
@@ -225,9 +223,8 @@ class InstalledImageSmokeContractTest(unittest.TestCase):
                 (temporary_root / "kani-desktop-smoke-leaked").mkdir()
                 Path(
                     environment[smoke.SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE],
-                ).write_text(
-                    f"{smoke.SMOKE_READY_MARKER}\n",
-                    encoding="utf-8",
+                ).write_bytes(
+                    f"{smoke.SMOKE_READY_MARKER}\n".encode("utf-8"),
                 )
                 return subprocess.CompletedProcess(
                     command,
@@ -280,7 +277,7 @@ class InstalledImageSmokeContractTest(unittest.TestCase):
                 environment = kwargs["env"]
                 Path(
                     environment[smoke.SMOKE_RESULT_FILE_ENVIRONMENT_VARIABLE],
-                ).write_text("almost ready\n", encoding="utf-8")
+                ).write_bytes(b"almost ready\n")
                 return subprocess.CompletedProcess(
                     command,
                     0,

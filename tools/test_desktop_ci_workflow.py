@@ -71,6 +71,12 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             "python3 ci/scripts/classify_desktop_ci.py --force run",
             classify,
         )
+        attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8")
+        self.assertIn(
+            "gradle/verification-metadata.xml text eol=lf",
+            attributes,
+        )
+        self.assertIn("branding/kani-app-icon.svg text eol=lf", attributes)
 
     def test_matrix_pins_exact_supported_host_labels_and_architectures(self) -> None:
         matrix_job = _mapping_block(self.workflow, "desktop_matrix", 2)
