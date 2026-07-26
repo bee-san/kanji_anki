@@ -1,7 +1,8 @@
 [versions]
 # Toolchain / build
 agp = "9.1.0"
-kotlin = "2.0.21"
+kotlin = "2.4.10"
+composeMultiplatform = "1.11.1"
 sonarqube = "7.3.0.8198"
 jacoco = "0.8.14"
 androidCompileSdk = "36"
@@ -22,7 +23,8 @@ androidxTestExtJunit = "1.2.1"
 androidxTestUiautomator = "2.3.0"
 
 # AndroidX / Compose / ML Kit
-composeBom = "2026.04.01"
+composeBom = "2026.05.01"
+composeMaterial3 = "1.5.0-alpha17"
 activityCompose = "1.13.0"
 lifecycleRuntime = "2.9.1"
 lifecycleViewmodel = "2.9.1"
@@ -30,13 +32,15 @@ coroutines = "1.10.2"
 workRuntime = "2.11.2"
 glance = "1.1.1"
 mlkitDigitalInk = "19.0.0"
-navigationCompose = "2.9.8"
+composeNavigation = "2.9.2"
+skiko = "0.144.6"
 
 [libraries]
 # Used by build-logic convention plugins to apply Android and Kotlin plugins.
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
+compose-gradle-plugin = { module = "org.jetbrains.compose:compose-gradle-plugin", version.ref = "composeMultiplatform" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
@@ -47,12 +51,13 @@ androidx-test-uiautomator = { module = "androidx.test.uiautomator:uiautomator", 
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }
-compose-material3 = { module = "androidx.compose.material3:material3" }
-compose-material3-wsc = { module = "androidx.compose.material3:material3-window-size-class" }
+compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "composeMaterial3" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version = "1.4.1" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+compose-navigation = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "composeNavigation" }
+skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
 
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntime" }
@@ -63,12 +68,13 @@ androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "workRuntime" }
 androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 androidx-glance-appwidget-testing = { module = "androidx.glance:glance-appwidget-testing", version.ref = "glance" }
-androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 mlkit-digital-ink = { module = "com.google.mlkit:digital-ink-recognition", version.ref = "mlkitDigitalInk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }

@@ -240,7 +240,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material3.wsc)
     implementation(libs.compose.ui)
     implementation(libs.androidx.profileinstaller)
     implementation(project(":update-core"))

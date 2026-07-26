@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.android.gradle.plugin)
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.kotlin.compose.gradle.plugin)
+    implementation(libs.compose.gradle.plugin)
     // Expose the generated version-catalog accessor (LibrariesForLibs) to the
     // precompiled script plugins so they can reference libs.* just like build files.
     implementation(files(libs.javaClass.superclass.protectionDomain.codeSource.location))

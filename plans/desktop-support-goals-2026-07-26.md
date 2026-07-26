@@ -130,10 +130,10 @@ greenfield architecture:
 - `LocalStoreSchema.DB_VERSION` is 33. V31 carries the adaptive scheduler
   contract, v32 mnemonic state, and v33 Missing Kanji state. Desktop must
   preserve all of them.
-- The build currently uses Gradle 9.4.1, AGP 9.1.0, Kotlin 2.0.21, Java 17,
-  and the Android Compose toolchain. The app module uses AGP's built-in
-  kotlinc, while the catalog Kotlin version owns the JVM and Compose compiler
-  plugins.
+- The build currently uses Gradle 9.4.1, AGP 9.1.0, Kotlin 2.4.10, Java 17,
+  and Compose Multiplatform 1.11.1's aligned Android dependency line. The app
+  module uses AGP's built-in kotlinc, while the catalog Kotlin version owns the
+  JVM and Compose compiler plugins.
 - Successful `Android CI` on `main` automatically starts Android release
   publication. Incomplete desktop work must stay on a feature branch/worktree
   unless the user explicitly authorizes a merge.
@@ -596,15 +596,23 @@ record the official evidence. Do not silently bump versions while executing a
 later feature goal.
 
 - Kotlin/Gradle/AGP compatibility:
-  <https://kotlinlang.org/docs/multiplatform/multiplatform-compatibility-guide.html>
+  <https://kotlinlang.org/docs/gradle-configure-project.html>
 - Compose Multiplatform versions and target support:
   <https://kotlinlang.org/docs/multiplatform/compose-compatibility-and-versioning.html>
+- Compose Multiplatform 1.11.1 dependency mapping:
+  <https://kotlinlang.org/docs/multiplatform/whats-new-compose-111.html>
 - Compose compiler setup:
   <https://kotlinlang.org/docs/multiplatform/compose-compiler.html>
 - AGP built-in Kotlin migration/coupling:
   <https://developer.android.com/build/migrate-to-built-in-kotlin>
 - Android Kotlin version support:
   <https://developer.android.com/build/kotlin-support>
+- AGP 9.1 compatibility and patch notes:
+  <https://developer.android.com/build/releases/agp-9-1-0-release-notes>
+- Android Compose BOM mapping:
+  <https://developer.android.com/develop/ui/compose/bom/bom-mapping>
+- Compose Multiplatform Navigation:
+  <https://kotlinlang.org/docs/multiplatform/compose-navigation-routing.html>
 - AGP 9 Kotlin Multiplatform Android library plugin:
   <https://developer.android.com/kotlin/multiplatform/plugin>
 - AndroidX bundled SQLite multiplatform support:
@@ -626,10 +634,23 @@ later feature goal.
 - GitHub downstream workflow trigger rules:
   <https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow>
 
-The planning target is Kotlin 2.4.10 and Compose Multiplatform 1.11.1 because
-the current Compose release requires Kotlin 2.1 or newer and that pair is
-compatible with the current Gradle/AGP range at plan time. This is a
-time-sensitive implementation baseline, not permission to skip the refresh.
+Goal 166 refreshed this evidence on 2026-07-26. Kotlin/KGP 2.4.10 officially
+supports Gradle 7.6.3 through 9.5.0 and AGP 8.5.2 through 9.1.0. Therefore the
+selected fully supported tuple is Gradle 9.4.1, AGP 9.1.0, JDK 17, and
+Kotlin/Compose compiler 2.4.10. AGP 9.1.1 exists, but it is one patch beyond
+Kotlin's published compatibility ceiling; the Goal 166 stop condition keeps
+this branch on 9.1.0 rather than forcing an unqualified combination.
+
+Compose Multiplatform 1.11.1 explicitly pairs with Kotlin/Compose compiler
+2.4.10. Its Android variants map runtime, UI, and foundation to Jetpack
+Compose 1.11.2, Material3 `1.11.0-alpha07` to Jetpack Material3
+`1.5.0-alpha17`, and Navigation `2.9.2` to Jetpack Navigation `2.9.7`; its
+desktop renderer uses Skiko `0.144.6` / Skia milestone 144. Android therefore
+uses BOM `2026.05.01` for the 1.11.2 core line, pins the mapped Material3
+version explicitly, removes the unused Android-only Navigation 2.9.8 pin, and
+reserves the multiplatform Navigation coordinate for both hosts. This is a
+time-sensitive implementation baseline and must be refreshed again before a
+future dependency upgrade.
 
 ## `/goal` execution contract
 
