@@ -20,17 +20,20 @@
 
 Kani cures your Kanji blindness by analysing your Anki, locating your hard kanji, working out why it's hard for you, and creating specialised learning loops to teach you the Kanji in the least amount of time possible.
 
-Kani is an AnkiDroid companion app for Japanese learners who repeatedly miss the same kanji — the painful "kanji blindness" loop where similar-looking characters keep tripping you up.
-
-Kani borrows the parts of Anki that make recall durable: saved evidence from your own cards, FSRS-style review timing, and a repeatable review habit. It intentionally differs from Anki by narrowing the surface area to kanji repair. Kani reads AnkiDroid, builds a small local focus queue, and asks you to practice the characters that are causing real misses instead of managing another general-purpose deck.
-
-Kani helps you:
-
 1. Find kanji that keep causing trouble in your AnkiDroid reviews.
-2. Focus on why they are hard, such as unfamiliar characters, visually similar kanji, or unusual readings.
+2. Focus on why they are hard, such as unfamiliar characters, visually similar kanji, unuusal readings
 3. Study them through a small, structured queue instead of another full SRS backlog.
-4. Compare later AnkiDroid evidence so repaired kanji can retire from the queue.
- append the approved ideas as unchecked queue entries in the requested order.
+4. Once Kani is sure you know the Kanji, it will unsuspend the card from Anki
+
+Features:
+* FSRS 7
+* Specially designed to make you spend the least amount of time in app as possible
+* Customised study ladders for each kanji, based on why you fail that kanji
+* Can use your GSM + Subminer data to optimise the algorithm
+
+Think of it as a mix between Full on Wanikani / RTK and vocab with no Kanji study.
+
+If you study vocab with no individual Kanji study but find some Kanji are hard, this app is for you.
 
 <img width="472" height="847" alt="image" src="https://github.com/user-attachments/assets/8b62e8a4-b93c-4bff-9348-71dd8c24321c" />
 <img width="416" height="845" alt="image" src="https://github.com/user-attachments/assets/ae7fcf8b-e4a6-4c15-93f4-44b5a2897780" />
