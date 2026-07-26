@@ -2880,7 +2880,8 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   `4f84cd66 build: make Android compiler ownership explicit`;
   `20d4734e test: cover the aligned build toolchain`; plus the two
   validation-forced follow-ups `9a3ad349 build: refresh Gradle wrapper
-  artifacts` and `5b8b4cfa test: clear writing-core Kotlin warnings`.
+  artifacts` and `5b8b4cfa test: clear writing-core Kotlin warnings`, and the
+  audit-forced `e0689757 test: reject mixed Compose JVM graphs`.
 - Implemented: aligned the supported tuple on Gradle 9.4.1, AGP 9.1.0,
   JDK 17, Kotlin/KGP/Compose compiler 2.4.10, and Compose Multiplatform
   1.11.1; kept `:app` on AGP built-in Kotlin with no
@@ -2893,9 +2894,11 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   Material3 `1.11.0-alpha07`, Navigation 2.9.2, and Skiko 0.144.6. The shared
   catalog deliberately bypasses the Compose plugin's older
   `compose.material3` convenience version and pins the release-table
-  Material3 coordinate. Strict verification gained 212 reviewed components
-  and 341 artifact checksums across the Kotlin/Compose plugin and Linux JVM
-  runtime graphs.
+  Material3 coordinate. The fixture compares the entire selected
+  Compose/Navigation/Skiko/compiler coordinate set to an exact allowlist, so
+  a stale or parallel version cannot hide beside the required coordinates.
+  Strict verification gained 212 reviewed components and 341 artifact
+  checksums across the Kotlin/Compose plugin and Linux JVM runtime graphs.
 - Validation: `./gradlew testBuildLogic --no-build-cache --no-daemon
   --dependency-verification=strict --console=plain` completed
   `BUILD SUCCESSFUL` in 4m09s with 18 passing tests, including intentional
@@ -2905,12 +2908,18 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin
   --no-build-cache --no-daemon --dependency-verification=strict
   --console=plain` completed `BUILD SUCCESSFUL` in 3m27s with 58 actionable
-  tasks (49 executed, nine up-to-date). The final
+  tasks (49 executed, nine up-to-date). The initial complete
   `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
   ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew ciFast
   ciQuality --no-daemon --dependency-verification=strict --console=plain`
   completed `BUILD SUCCESSFUL` in 5m30s with 101 actionable tasks (16
-  executed, 85 up-to-date). Its result tree contains 3,254 passing
+  executed, 85 up-to-date). After independent audit strengthened the mixed
+  graph assertion, `./gradlew -p build-logic test --tests
+  dev.bee.kanjianki.buildlogic.ComposeMultiplatformToolchainFunctionalTest
+  --no-build-cache --no-daemon --dependency-verification=strict
+  --console=plain` passed in 1m04s, and the final `ciFast ciQuality` command
+  above passed again in 1m34s with 101 actionable tasks (five executed, 96
+  up-to-date). The result tree contains 3,254 passing
   Gradle/JUnit tests; the independently invoked `tools`, `scripts/tests`, and
   `ci/tests` suites passed 73, 94, and 77 tests respectively, for 3,498
   deterministic checks and zero failures.
@@ -2938,15 +2947,18 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   JetBrains Navigation 2.9.2. Confirmed that every Compose module must apply
   the Kotlin Compose compiler plugin and that no compatibility or dependency
   verification opt-out is present.
-- Rollback: revert `5b8b4cfa`, `9a3ad349`, `20d4734e`, `4f84cd66`, and
-  `e2fe8a71` in that order. This restores only build files, generated wrapper
-  artifacts, verification metadata, tests, and behavior-neutral compiler
-  cleanups; it requires no schema migration, provider action, collection
-  repair, or user-state rollback.
+- Rollback: revert `e0689757`, `5b8b4cfa`, `9a3ad349`, `20d4734e`,
+  `4f84cd66`, and `e2fe8a71` in that order. This restores only build files,
+  generated wrapper artifacts, verification metadata, tests, and
+  behavior-neutral compiler cleanups; it requires no schema migration,
+  provider action, collection repair, or user-state rollback.
 - Gaps/blockers: none for Goal 166. The strict native verification additions
   in this goal cover the deterministic Linux JVM fixture; Goal 168 still owns
   resolving and reviewing Windows and macOS native artifacts on their actual
-  runners. Independent audits found no production-behavior blocker. The
+  runners. Independent audits found no production-behavior blocker; one audit
+  found that the original graph test asserted presence without excluding a
+  parallel stale version, and `e0689757` closed that test-contract gap with
+  an exact selected-coordinate allowlist before the final green gate. The
   branch remains local and unpushed, and the Goal 168 cross-OS push/CI
   authorization checkpoint remains in force.
 
