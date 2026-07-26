@@ -11,13 +11,16 @@ import struct
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_SOURCE = REPO_ROOT / "branding/kani-app-icon.svg"
+CANONICAL_SOURCE_REFERENCE = "branding/kani-app-icon.svg"
 OUTPUT_DIRECTORY = REPO_ROOT / "desktop-app/src/main/packaging/icons"
 MANIFEST_PATH = OUTPUT_DIRECTORY / "icon-manifest.json"
+OUTPUT_FILENAMES = ("kani.png", "kani.ico", "kani.icns")
 PNG_SIZES = (16, 24, 32, 48, 64, 128, 256, 512, 1024)
 ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
 ICNS_SIZES = (16, 32, 48, 128, 256, 512, 1024)
@@ -175,14 +178,18 @@ def verify_generator_tools() -> None:
             )
 
 
-def output_manifest(source: Path, output_directory: Path) -> dict[str, object]:
+def output_manifest(
+    source: Path,
+    output_directory: Path,
+    source_reference: str = CANONICAL_SOURCE_REFERENCE,
+) -> dict[str, object]:
     png_path = output_directory / "kani.png"
     ico_path = output_directory / "kani.ico"
     icns_path = output_directory / "kani.icns"
     width, height = png_dimensions(png_path)
     return {
         "generator": "tools/generate_desktop_icons.py",
-        "generator_version": 1,
+        "generator_version": 2,
         "outputs": {
             "kani.icns": {
                 "chunks": list(icns_chunks(icns_path)),
@@ -198,16 +205,16 @@ def output_manifest(source: Path, output_directory: Path) -> dict[str, object]:
                 "width": width,
             },
         },
-        "source": source.relative_to(REPO_ROOT).as_posix(),
+        "source": source_reference,
         "source_sha256": sha256(source),
         "tools": EXPECTED_TOOLS,
     }
 
 
-def generate_icon_set() -> None:
-    verify_vector_source(CANONICAL_SOURCE)
+def render_icon_set(source: Path, output_directory: Path) -> None:
+    verify_vector_source(source)
     verify_generator_tools()
-    OUTPUT_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    output_directory.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="kani-desktop-icons-") as temporary:
         temporary_directory = Path(temporary)
@@ -223,7 +230,7 @@ def generate_icon_set() -> None:
                     str(size),
                     "--output",
                     str(rendered),
-                    str(CANONICAL_SOURCE),
+                    str(source),
                 ],
             )
             run_generator_command(
@@ -251,9 +258,16 @@ def generate_icon_set() -> None:
         )
 
         for generated in (generated_png, generated_ico, generated_icns):
-            shutil.copyfile(generated, OUTPUT_DIRECTORY / generated.name)
+            shutil.copyfile(generated, output_directory / generated.name)
 
-    manifest = output_manifest(CANONICAL_SOURCE, OUTPUT_DIRECTORY)
+
+def generate_icon_set() -> None:
+    render_icon_set(CANONICAL_SOURCE, OUTPUT_DIRECTORY)
+    manifest = output_manifest(
+        CANONICAL_SOURCE,
+        OUTPUT_DIRECTORY,
+        CANONICAL_SOURCE_REFERENCE,
+    )
     MANIFEST_PATH.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -261,20 +275,52 @@ def generate_icon_set() -> None:
     verify_icon_set()
 
 
-def verify_icon_set() -> None:
-    verify_vector_source(CANONICAL_SOURCE)
-    if not MANIFEST_PATH.is_file():
-        raise IconVerificationError(f"missing icon manifest: {MANIFEST_PATH}")
-    actual_manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    expected_manifest = output_manifest(CANONICAL_SOURCE, OUTPUT_DIRECTORY)
+def verify_icon_set(
+    source: Path = CANONICAL_SOURCE,
+    output_directory: Path = OUTPUT_DIRECTORY,
+    manifest_path: Path = MANIFEST_PATH,
+    source_reference: str = CANONICAL_SOURCE_REFERENCE,
+    renderer: Callable[[Path, Path], None] = render_icon_set,
+) -> None:
+    verify_vector_source(source)
+    if not manifest_path.is_file():
+        raise IconVerificationError(f"missing icon manifest: {manifest_path}")
+    actual_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    expected_manifest = output_manifest(
+        source,
+        output_directory,
+        source_reference,
+    )
     if actual_manifest != expected_manifest:
         raise IconVerificationError("desktop icon manifest does not match committed assets")
-    if png_dimensions(OUTPUT_DIRECTORY / "kani.png") != (512, 512):
+    if png_dimensions(output_directory / "kani.png") != (512, 512):
         raise IconVerificationError("Linux icon must be exactly 512x512")
-    if ico_sizes(OUTPUT_DIRECTORY / "kani.ico") != ICO_SIZES:
+    if ico_sizes(output_directory / "kani.ico") != ICO_SIZES:
         raise IconVerificationError("Windows icon frames do not match the reviewed sizes")
-    if icns_chunks(OUTPUT_DIRECTORY / "kani.icns") != EXPECTED_ICNS_CHUNKS:
+    if icns_chunks(output_directory / "kani.icns") != EXPECTED_ICNS_CHUNKS:
         raise IconVerificationError("macOS icon chunks do not match the reviewed set")
+
+    with tempfile.TemporaryDirectory(prefix="kani-desktop-icon-check-") as temporary:
+        regenerated_directory = Path(temporary)
+        renderer(source, regenerated_directory)
+        regenerated_manifest = output_manifest(
+            source,
+            regenerated_directory,
+            source_reference,
+        )
+        if regenerated_manifest != actual_manifest:
+            differing_outputs = [
+                filename
+                for filename in OUTPUT_FILENAMES
+                if (
+                    sha256(regenerated_directory / filename) !=
+                    sha256(output_directory / filename)
+                )
+            ]
+            raise IconVerificationError(
+                "desktop icons do not match a deterministic render of the " +
+                f"canonical SVG: {', '.join(differing_outputs)}",
+            )
 
 
 def main() -> None:

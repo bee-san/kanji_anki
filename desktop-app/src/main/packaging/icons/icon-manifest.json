@@ -1,6 +1,6 @@
 {
   "generator": "tools/generate_desktop_icons.py",
-  "generator_version": 1,
+  "generator_version": 2,
   "outputs": {
     "kani.icns": {
       "chunks": [
