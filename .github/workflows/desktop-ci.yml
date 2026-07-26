@@ -135,6 +135,7 @@ jobs:
         run: >-
           ${{ matrix.gradle_command }}
           ciDesktop ciDesktopPackage
+          :app:processDebugResources
           -x testBuildLogic
           --write-verification-metadata sha256
           --no-daemon --no-build-cache

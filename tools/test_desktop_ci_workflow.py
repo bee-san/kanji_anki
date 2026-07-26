@@ -131,6 +131,7 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
         self.assertIn(f"if: {self.TRUSTED_BOOTSTRAP}", bootstrap)
         self.assertEqual(1, self.workflow.count("--write-verification-metadata sha256"))
         self.assertIn("ciDesktop ciDesktopPackage", bootstrap)
+        self.assertIn(":app:processDebugResources", bootstrap)
         self.assertIn("-x testBuildLogic", bootstrap)
         self.assertIn("--write-verification-metadata sha256", bootstrap)
 
@@ -153,6 +154,7 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             with self.subTest(denied_clause=denied_clause):
                 self.assertIn(denied_clause, strict)
         self.assertIn("ciDesktop ciDesktopPackage", strict)
+        self.assertNotIn(":app:processDebugResources", strict)
         self.assertIn("--dependency-verification=strict", strict)
         self.assertNotIn("--write-verification-metadata", strict)
         self.assertNotIn("-x testBuildLogic", strict)

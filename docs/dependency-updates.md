@@ -38,22 +38,25 @@ in write mode:
 
 ```sh
 # Ubuntu and macOS
-./gradlew ciDesktop ciDesktopPackage -x testBuildLogic \
+./gradlew ciDesktop ciDesktopPackage :app:processDebugResources \
+  -x testBuildLogic \
   --write-verification-metadata sha256
 ./gradlew testBuildLogic --dependency-verification=strict
 ```
 
 ```powershell
 # Windows
-.\gradlew.bat ciDesktop ciDesktopPackage -x testBuildLogic `
+.\gradlew.bat ciDesktop ciDesktopPackage :app:processDebugResources `
+  -x testBuildLogic `
   --write-verification-metadata sha256
 .\gradlew.bat testBuildLogic --dependency-verification=strict
 ```
 
-The nested TestKit builds deliberately run in a second strict invocation. That
-ordering lets each fixture copy the complete host-generated root metadata
-instead of racing the outer write-mode build or creating unreviewed,
-fixture-local metadata.
+The bootstrap-only `:app:processDebugResources` probe records the host-specific
+AAPT2 artifact used by the nested Android build-logic fixtures. The fixtures
+then run in a second strict invocation. That ordering lets each fixture copy
+the complete host-generated root metadata instead of racing the outer
+write-mode build or creating unreviewed, fixture-local metadata.
 
 Copy each complete generated file to its exact platform name:
 
