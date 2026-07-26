@@ -2872,6 +2872,84 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   local and unpushed; Goal 168's explicit cross-OS push/CI authorization
   checkpoint remains in force.
 
+### Goal 166 completion evidence (2026-07-26)
+
+- Started from: `2870666a` on `desktop/support` in
+  `/home/bee/Documents/src/github/kanji_anki-desktop-support`.
+- Commits: `e2fe8a71 build: align Kotlin and Compose Multiplatform versions`;
+  `4f84cd66 build: make Android compiler ownership explicit`;
+  `20d4734e test: cover the aligned build toolchain`; plus the two
+  validation-forced follow-ups `9a3ad349 build: refresh Gradle wrapper
+  artifacts` and `5b8b4cfa test: clear writing-core Kotlin warnings`.
+- Implemented: aligned the supported tuple on Gradle 9.4.1, AGP 9.1.0,
+  JDK 17, Kotlin/KGP/Compose compiler 2.4.10, and Compose Multiplatform
+  1.11.1; kept `:app` on AGP built-in Kotlin with no
+  `org.jetbrains.kotlin.android`; made Kotlin warnings fatal across the app,
+  JVM libraries, Android library conventions, and build logic; replaced the
+  deprecated JVM-default flag with `JvmDefaultMode.NO_COMPATIBILITY`; and
+  regenerated the matching official Gradle wrapper. Added static ownership
+  contracts, positive and negative Android/JVM TestKit fixtures, and a
+  compiled Compose JVM fixture that resolves runtime/UI 1.11.1, explicit
+  Material3 `1.11.0-alpha07`, Navigation 2.9.2, and Skiko 0.144.6. The shared
+  catalog deliberately bypasses the Compose plugin's older
+  `compose.material3` convenience version and pins the release-table
+  Material3 coordinate. Strict verification gained 212 reviewed components
+  and 341 artifact checksums across the Kotlin/Compose plugin and Linux JVM
+  runtime graphs.
+- Validation: `./gradlew testBuildLogic --no-build-cache --no-daemon
+  --dependency-verification=strict --console=plain` completed
+  `BUILD SUCCESSFUL` in 4m09s with 18 passing tests, including intentional
+  warning failures for AGP built-in Kotlin and JVM KGP. The clean command
+  `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
+  ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew clean
+  :app:compileDebugKotlin :app:compileDebugAndroidTestKotlin
+  --no-build-cache --no-daemon --dependency-verification=strict
+  --console=plain` completed `BUILD SUCCESSFUL` in 3m27s with 58 actionable
+  tasks (49 executed, nine up-to-date). The final
+  `ANDROID_HOME=/home/bee/.cache/codex-android-sdk
+  ANDROID_SDK_ROOT=/home/bee/.cache/codex-android-sdk ./gradlew ciFast
+  ciQuality --no-daemon --dependency-verification=strict --console=plain`
+  completed `BUILD SUCCESSFUL` in 5m30s with 101 actionable tasks (16
+  executed, 85 up-to-date). Its result tree contains 3,254 passing
+  Gradle/JUnit tests; the independently invoked `tools`, `scripts/tests`, and
+  `ci/tests` suites passed 73, 94, and 77 tests respectively, for 3,498
+  deterministic checks and zero failures.
+- Wrapper/dependency evidence: `./gradlew wrapper --gradle-version 9.4.1
+  --distribution-type bin --gradle-distribution-sha256-sum
+  2ab2958f2a1e51120c326cad6f385153bb11ee93b3c216c5fccebfdfbb7ec6cb
+  --validate-url --no-daemon --dependency-verification=strict
+  --console=plain` passed in 25s. The regenerated wrapper JAR SHA-256 is
+  `55243ef57851f12b070ad14f7f5bb8302daceeebc5bce5ece5fa6edb23e1145c`,
+  matching Gradle's published 9.4.1 checksum. The Compose JVM fixture passed
+  with strict verification and printed the exact selected compiler, runtime,
+  UI, Material3, Navigation, desktop, and Skiko coordinates; the losing
+  Material3/Navigation transitive requests resolved upward to the selected
+  1.11.1 graph rather than creating parallel runtime versions.
+- Live gates: not required. Goal 166 changes build ownership, dependency
+  metadata, generated wrapper files, compiler diagnostics, and
+  behavior-neutral nullability/interoperability expressions only; it changes
+  no schema, provider query/write, sync transaction, scheduler transition, or
+  user-facing Android behavior.
+- Decisions: retained AGP 9.1.0 because Kotlin 2.4.10's published support
+  matrix stops at 9.1.0, rather than forcing the available but unsupported
+  AGP 9.1.1 patch. Confirmed the Android mappings of Compose runtime/UI
+  1.11.2 and Material3 `1.5.0-alpha17`, while the desktop artifact graph uses
+  Compose runtime/UI 1.11.1 and Material3 `1.11.0-alpha07`; both hosts share
+  JetBrains Navigation 2.9.2. Confirmed that every Compose module must apply
+  the Kotlin Compose compiler plugin and that no compatibility or dependency
+  verification opt-out is present.
+- Rollback: revert `5b8b4cfa`, `9a3ad349`, `20d4734e`, `4f84cd66`, and
+  `e2fe8a71` in that order. This restores only build files, generated wrapper
+  artifacts, verification metadata, tests, and behavior-neutral compiler
+  cleanups; it requires no schema migration, provider action, collection
+  repair, or user-state rollback.
+- Gaps/blockers: none for Goal 166. The strict native verification additions
+  in this goal cover the deterministic Linux JVM fixture; Goal 168 still owns
+  resolving and reviewing Windows and macOS native artifacts on their actual
+  runners. Independent audits found no production-behavior blocker. The
+  branch remains local and unpushed, and the Goal 168 cross-OS push/CI
+  authorization checkpoint remains in force.
+
 Template:
 
 ```md
