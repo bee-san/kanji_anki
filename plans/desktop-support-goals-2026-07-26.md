@@ -514,7 +514,7 @@ Dependency direction:
 :data-android -> :data-sql, :backup-core
 :data-desktop -> :data-sql, :backup-core
 :provider-ankidroid -> :sync-api, Android APIs
-:provider-ankiconnect -> :sync-api, JVM HTTP/JSON APIs
+:provider-ankiconnect -> :sync-api, :platform-contracts, JVM HTTP/JSON APIs
 ```
 
 Rules:

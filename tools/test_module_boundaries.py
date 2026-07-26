@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Architecture contracts for Kani's current and target module graphs."""
+"""Architecture contracts for Kani's current, migration, and final module graphs."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PURE_MODULES = (
+CURRENT_SHARED_JVM_MODULES = (
     "domain",
     "dictionary-core",
     "fsrs-java",
@@ -18,36 +18,81 @@ PURE_MODULES = (
     "update-core",
     "core",
 )
-FEATURE_MODULES = frozenset(
+NEW_SHARED_JVM_MODULES = frozenset(
     {
-        "feature-home",
-        "feature-study",
-        "feature-stats",
-        "feature-settings",
+        "application",
+        "backup-core",
+        "data-api",
+        "data-sql",
+        "platform-contracts",
+        "reference-assets",
+        "sync-api",
+        "sync-engine",
     },
 )
-TARGET_ANDROID_MODULES = frozenset(
+LEAF_FEATURE_MODULES = frozenset(
+    {
+        "feature-games",
+        "feature-home",
+        "feature-missing-kanji",
+        "feature-settings",
+        "feature-stats",
+        "feature-study",
+    },
+)
+SHARED_PRESENTATION_MODULES = frozenset(
+    {
+        "feature-shell",
+        "presentation-api",
+        "ui-common",
+        *LEAF_FEATURE_MODULES,
+    },
+)
+ANDROID_MODULES = frozenset(
     {
         "app",
-        "automation",
-        "data",
-        "sync-android",
-        "ui-common",
+        "automation-android",
+        "data-android",
+        "platform-android",
+        "provider-ankidroid",
         "widget",
-        *FEATURE_MODULES,
     },
 )
-TARGET_MODULES = frozenset({*PURE_MODULES, *TARGET_ANDROID_MODULES})
-EXPECTED_CURRENT_MODULES = frozenset({*PURE_MODULES, "app"})
+DESKTOP_MODULES = frozenset(
+    {
+        "data-desktop",
+        "desktop-app",
+        "platform-desktop",
+        "provider-ankiconnect",
+    },
+)
+FINAL_MODULES = frozenset(
+    {
+        *CURRENT_SHARED_JVM_MODULES,
+        *NEW_SHARED_JVM_MODULES,
+        *SHARED_PRESENTATION_MODULES,
+        *ANDROID_MODULES,
+        *DESKTOP_MODULES,
+    },
+)
+EXPECTED_CURRENT_MODULES = frozenset({*CURRENT_SHARED_JVM_MODULES, "app"})
 MODULE_CLASSES = {
-    **dict.fromkeys(PURE_MODULES, "pure-jvm"),
-    "data": "persistence",
-    "ui-common": "shared-ui",
-    **dict.fromkeys(FEATURE_MODULES, "feature"),
-    "sync-android": "android-platform",
-    "automation": "android-platform",
+    **dict.fromkeys(CURRENT_SHARED_JVM_MODULES, "shared-jvm-policy"),
+    **dict.fromkeys(NEW_SHARED_JVM_MODULES, "shared-jvm-application"),
+    "presentation-api": "shared-presentation-api",
+    "ui-common": "shared-presentation-ui",
+    **dict.fromkeys(LEAF_FEATURE_MODULES, "shared-feature"),
+    "feature-shell": "shared-feature-aggregator",
+    "data-android": "android-data-adapter",
+    "provider-ankidroid": "android-provider-adapter",
+    "platform-android": "android-platform-adapter",
+    "automation-android": "android-automation-adapter",
     "widget": "android-platform",
-    "app": "composition-root",
+    "app": "android-composition-root",
+    "data-desktop": "desktop-data-adapter",
+    "provider-ankiconnect": "desktop-provider-adapter",
+    "platform-desktop": "desktop-platform-adapter",
+    "desktop-app": "desktop-composition-root",
 }
 CURRENT_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
@@ -61,7 +106,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     ),
     "app": frozenset({"core", "dictionary-core", "update-core", "writing-core"}),
 }
-TARGET_PROJECT_DEPENDENCIES = {
+FINAL_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
     "dictionary-core": frozenset(),
     "fsrs-java": frozenset(),
@@ -71,43 +116,103 @@ TARGET_PROJECT_DEPENDENCIES = {
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),
-    "data": frozenset(
-        {"core", "dictionary-core", "sync-domain", "update-core"},
+    "data-api": frozenset({"core", "sync-domain"}),
+    "sync-api": frozenset({"core", "sync-domain"}),
+    "platform-contracts": frozenset(),
+    "application": frozenset(
+        {
+            "core",
+            "data-api",
+            "platform-contracts",
+            "reference-assets",
+            "sync-engine",
+            "update-core",
+        },
     ),
-    "ui-common": frozenset({"core"}),
-    "feature-home": frozenset(
-        {"core", "data", "sync-android", "ui-common"},
+    "sync-engine": frozenset(
+        {
+            "core",
+            "data-api",
+            "dictionary-core",
+            "platform-contracts",
+            "sync-api",
+            "sync-domain",
+        },
     ),
-    "feature-study": frozenset(
-        {"core", "data", "dictionary-core", "ui-common", "writing-core"},
+    "data-sql": frozenset(
+        {"core", "data-api", "dictionary-core", "sync-domain"},
     ),
-    "feature-stats": frozenset({"core", "data", "ui-common"}),
-    "feature-settings": frozenset(
-        {"automation", "core", "data", "ui-common"},
+    "backup-core": frozenset({"data-api", "platform-contracts"}),
+    "reference-assets": frozenset({"dictionary-core", "writing-core"}),
+    "presentation-api": frozenset(),
+    "ui-common": frozenset({"presentation-api"}),
+    **{
+        feature: frozenset({"presentation-api", "ui-common"})
+        for feature in LEAF_FEATURE_MODULES
+    },
+    "feature-shell": frozenset(
+        {"presentation-api", "ui-common", *LEAF_FEATURE_MODULES},
     ),
-    "sync-android": frozenset(
-        {"core", "data", "dictionary-core", "sync-domain"},
+    "data-android": frozenset({"backup-core", "data-sql"}),
+    "provider-ankidroid": frozenset({"sync-api"}),
+    "platform-android": frozenset({"platform-contracts", "writing-core"}),
+    "automation-android": frozenset({"application", "platform-contracts"}),
+    "widget": frozenset(
+        {"application", "core", "platform-contracts", "presentation-api"},
     ),
-    "automation": frozenset({"core", "data", "update-core"}),
-    "widget": frozenset({"core", "data", "ui-common"}),
     "app": frozenset(
         {
-            "automation",
-            "data",
-            "feature-home",
-            "feature-settings",
-            "feature-stats",
-            "feature-study",
-            "sync-android",
-            "ui-common",
+            "application",
+            "automation-android",
+            "data-android",
+            "feature-shell",
+            "platform-android",
+            "provider-ankidroid",
             "widget",
         },
     ),
+    "data-desktop": frozenset({"backup-core", "data-sql"}),
+    "provider-ankiconnect": frozenset({"platform-contracts", "sync-api"}),
+    "platform-desktop": frozenset({"platform-contracts"}),
+    "desktop-app": frozenset(
+        {
+            "application",
+            "data-desktop",
+            "feature-shell",
+            "platform-desktop",
+            "provider-ankiconnect",
+        },
+    ),
 }
-ALLOWED_PROJECT_DEPENDENCIES = {
-    module: CURRENT_PROJECT_DEPENDENCIES.get(module, frozenset())
-    | TARGET_PROJECT_DEPENDENCIES.get(module, frozenset())
-    for module in TARGET_MODULES
+MIGRATION_ONLY_PROJECT_DEPENDENCIES = {
+    "app": frozenset(
+        {
+            "backup-core",
+            "core",
+            "data-api",
+            "data-sql",
+            "dictionary-core",
+            "feature-games",
+            "feature-home",
+            "feature-missing-kanji",
+            "feature-settings",
+            "feature-stats",
+            "feature-study",
+            "platform-contracts",
+            "presentation-api",
+            "reference-assets",
+            "sync-api",
+            "sync-engine",
+            "ui-common",
+            "update-core",
+            "writing-core",
+        },
+    ),
+}
+MIGRATION_PROJECT_DEPENDENCIES = {
+    module: FINAL_PROJECT_DEPENDENCIES[module]
+    | MIGRATION_ONLY_PROJECT_DEPENDENCIES.get(module, frozenset())
+    for module in FINAL_MODULES
 }
 EDGE_RATIONALES = {
     ("sync-domain", "domain"): "Sync-domain shares domain value models.",
@@ -117,53 +222,88 @@ EDGE_RATIONALES = {
     ("core", "sync-domain"): "Core policy consumes pure sync contracts.",
     ("core", "fsrs-java"): "Core delegates memory scheduling to FSRS.",
     ("core", "update-core"): "Core consumes pure update policy.",
-    ("data", "core"): "Persistence implements core-owned state contracts.",
-    ("data", "dictionary-core"): "Persistence installs dictionary content.",
-    ("data", "sync-domain"): "Persistence stores pure sync-domain models.",
-    ("data", "update-core"): "Persistence stores update metadata.",
-    ("ui-common", "core"): "Shared UI renders core value models.",
-    ("feature-home", "core"): "Home renders core dashboard models.",
-    ("feature-home", "data"): "Home consumes its repository contracts.",
-    ("feature-home", "sync-android"): "Home invokes the public sync action contract.",
-    ("feature-home", "ui-common"): "Home uses the shared shell and controls.",
-    ("feature-study", "core"): "Study delegates all scheduler decisions to core.",
-    ("feature-study", "data"): "Study consumes its repository contract.",
-    ("feature-study", "dictionary-core"): "Study consumes dictionary interfaces.",
-    ("feature-study", "ui-common"): "Study uses shared controls and tokens.",
-    ("feature-study", "writing-core"): "Study uses pure writing evaluation models.",
-    ("feature-stats", "core"): "Stats renders core analytics models.",
-    ("feature-stats", "data"): "Stats consumes its repository contract.",
-    ("feature-stats", "ui-common"): "Stats uses shared charts and surfaces.",
-    ("feature-settings", "automation"): "Settings invokes public automation actions.",
-    ("feature-settings", "core"): "Settings edits core preference models.",
-    ("feature-settings", "data"): "Settings consumes its repository contract.",
-    ("feature-settings", "ui-common"): "Settings uses shared controls and tokens.",
-    ("sync-android", "core"): "Android sync applies core admission policy.",
-    ("sync-android", "data"): "Android sync commits through sync repositories.",
-    ("sync-android", "dictionary-core"): "Provider mapping uses dictionary models.",
-    ("sync-android", "sync-domain"): "Android sync implements pure sync contracts.",
-    ("automation", "core"): "Automation evaluates core reminder and fit policy.",
-    ("automation", "data"): "Automation persists through repositories.",
-    ("automation", "update-core"): "Updater workers execute pure update policy.",
-    ("widget", "core"): "Widgets render core eligibility models.",
-    ("widget", "data"): "Widgets load immutable repository snapshots.",
-    ("widget", "ui-common"): "Widgets share launch and presentation contracts.",
-    ("app", "automation"): "The composition root installs automation adapters.",
-    ("app", "data"): "The composition root constructs repository implementations.",
-    ("app", "feature-home"): "The navigation graph hosts Home.",
-    ("app", "feature-settings"): "The navigation graph hosts Settings.",
-    ("app", "feature-stats"): "The navigation graph hosts Stats.",
-    ("app", "feature-study"): "The navigation graph hosts Study.",
-    ("app", "sync-android"): "The composition root installs sync adapters.",
-    ("app", "ui-common"): "The composition root hosts the shared app shell.",
-    ("app", "widget"): "The application manifest installs widget components.",
-    ("app", "core"): "Migration-only app code still consumes core directly.",
+    ("data-api", "core"): "Repository contracts use canonical core models.",
+    ("data-api", "sync-domain"): "Repository contracts expose sync-domain values.",
+    ("sync-api", "core"): "Provider envelopes wrap canonical core snapshots.",
+    ("sync-api", "sync-domain"): "Provider contracts reuse sync-domain models.",
+    ("application", "core"): "Application state machines invoke scheduler policy.",
+    ("application", "data-api"): "Application use cases consume repository ports.",
+    ("application", "platform-contracts"): "Application effects use platform ports.",
+    ("application", "reference-assets"): "Application use cases consume shared assets.",
+    ("application", "sync-engine"): "Application use cases invoke shared sync.",
+    ("application", "update-core"): "Application update flows use verified policy.",
+    ("sync-engine", "core"): "Sync normalization applies shared admission policy.",
+    ("sync-engine", "data-api"): "Sync publishes through repository ports.",
+    ("sync-engine", "dictionary-core"): "Sync reads shared dictionary contracts.",
+    ("sync-engine", "platform-contracts"): "Sync effects use platform ports.",
+    ("sync-engine", "sync-api"): "Sync orchestrates provider-neutral gateways.",
+    ("sync-engine", "sync-domain"): "Sync reuses canonical sync value models.",
+    ("data-sql", "core"): "Shared SQL persists canonical core state.",
+    ("data-sql", "data-api"): "Shared SQL implements repository contracts.",
+    ("data-sql", "dictionary-core"): "Shared SQL installs dictionary content.",
+    ("data-sql", "sync-domain"): "Shared SQL persists sync-domain models.",
+    ("backup-core", "data-api"): "Portable backup uses data-owned snapshot contracts.",
+    ("backup-core", "platform-contracts"): "Backup durability uses platform ports.",
+    ("reference-assets", "dictionary-core"): "Reference assets serve dictionary data.",
+    ("reference-assets", "writing-core"): "Reference assets serve writing models.",
+    ("ui-common", "presentation-api"): "Shared UI renders portable presentation DTOs.",
+    **{
+        (feature, "presentation-api"): (
+            f":{feature} consumes portable presentation state and actions."
+        )
+        for feature in LEAF_FEATURE_MODULES
+    },
+    **{
+        (feature, "ui-common"): f":{feature} uses shared Compose UI."
+        for feature in LEAF_FEATURE_MODULES
+    },
+    **{
+        ("feature-shell", feature): f"The shell hosts :{feature}."
+        for feature in LEAF_FEATURE_MODULES
+    },
+    ("feature-shell", "presentation-api"): "The shell consumes portable navigation state.",
+    ("feature-shell", "ui-common"): "The shell composes shared UI infrastructure.",
+    ("data-android", "backup-core"): "Android data implements portable backup.",
+    ("data-android", "data-sql"): "Android data supplies the shared SQL driver.",
+    ("provider-ankidroid", "sync-api"): "AnkiDroid implements provider contracts.",
+    ("platform-android", "platform-contracts"): "Android implements platform ports.",
+    ("platform-android", "writing-core"): "Android hosts the ML Kit writing adapter.",
+    ("automation-android", "application"): "Android automation invokes shared use cases.",
     (
-        "app",
-        "dictionary-core",
-    ): "Migration-only app code still constructs dictionary adapters.",
-    ("app", "update-core"): "Migration-only app code still executes update policy.",
-    ("app", "writing-core"): "Migration-only app code still hosts writing adapters.",
+        "automation-android",
+        "platform-contracts",
+    ): "Android automation implements background platform ports.",
+    ("widget", "application"): "Widgets invoke shared read use cases.",
+    ("widget", "core"): "Widgets retain canonical reminder eligibility policy.",
+    ("widget", "platform-contracts"): "Widgets consume committed app event contracts.",
+    ("widget", "presentation-api"): "Widgets consume portable display snapshots.",
+    ("app", "application"): "Android assembles shared application use cases.",
+    ("app", "automation-android"): "Android installs automation components.",
+    ("app", "data-android"): "Android installs its data driver.",
+    ("app", "feature-shell"): "Android hosts the shared product shell.",
+    ("app", "platform-android"): "Android installs platform adapters.",
+    ("app", "provider-ankidroid"): "Android installs its collection provider.",
+    ("app", "widget"): "Android installs widget components.",
+    ("data-desktop", "backup-core"): "Desktop data implements portable backup.",
+    ("data-desktop", "data-sql"): "Desktop data supplies the shared SQL driver.",
+    ("provider-ankiconnect", "sync-api"): "AnkiConnect implements provider contracts.",
+    (
+        "provider-ankiconnect",
+        "platform-contracts",
+    ): "AnkiConnect obtains authentication through the SecretStore port.",
+    ("platform-desktop", "platform-contracts"): "Desktop implements platform ports.",
+    ("desktop-app", "application"): "Desktop assembles shared application use cases.",
+    ("desktop-app", "data-desktop"): "Desktop installs its data driver.",
+    ("desktop-app", "feature-shell"): "Desktop hosts the shared product shell.",
+    ("desktop-app", "platform-desktop"): "Desktop installs platform adapters.",
+    ("desktop-app", "provider-ankiconnect"): "Desktop installs its collection provider.",
+    **{
+        ("app", dependency): (
+            f"Migration-only Android host access to :{dependency} is removed "
+            "when its final owner is wired."
+        )
+        for dependency in MIGRATION_ONLY_PROJECT_DEPENDENCIES["app"]
+    },
 }
 PROJECT_CALL = re.compile(r"\bproject\s*\(")
 PROJECT_DEPENDENCY = re.compile(
@@ -171,6 +311,10 @@ PROJECT_DEPENDENCY = re.compile(
 )
 TYPE_SAFE_PROJECT_ACCESSOR = re.compile(r"\bprojects\.[A-Za-z0-9_.]+")
 ANDROID_IMPORT = re.compile(r"^import\s+(android|androidx)\.", re.MULTILINE)
+COMMON_PLATFORM_IMPORT = re.compile(
+    r"^import\s+(android|androidx|java\.awt|javax\.swing)\.",
+    re.MULTILINE,
+)
 KANI_REFERENCE = re.compile(
     r"\b(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
 )
@@ -226,6 +370,23 @@ def parse_project_dependencies(build_script: str, module: str) -> set[str]:
     return set(dependencies)
 
 
+def validate_project_dependencies(
+    module: str,
+    dependencies: set[str] | frozenset[str],
+    allowed_graph: dict[str, frozenset[str]],
+) -> None:
+    if module not in allowed_graph:
+        raise AssertionError(f"unknown project module :{module}")
+    unknown = set(dependencies) - set(allowed_graph)
+    if unknown:
+        formatted = ", ".join(f":{dependency}" for dependency in sorted(unknown))
+        raise AssertionError(f":{module} has unknown project dependencies: {formatted}")
+    forbidden = set(dependencies) - set(allowed_graph[module])
+    if forbidden:
+        formatted = ", ".join(f":{dependency}" for dependency in sorted(forbidden))
+        raise AssertionError(f":{module} has forbidden project dependencies: {formatted}")
+
+
 def project_dependencies(module: str) -> set[str]:
     build_script = (ROOT / module / "build.gradle.kts").read_text(encoding="utf-8")
     return parse_project_dependencies(build_script, module)
@@ -271,51 +432,120 @@ class ModuleBoundaryTest(unittest.TestCase):
                 with self.assertRaisesRegex(AssertionError, "unparsed"):
                     parse_project_dependencies(unsupported, "fixture")
 
-    def test_target_modules_have_one_architecture_class(self) -> None:
-        self.assertEqual(TARGET_MODULES, frozenset(MODULE_CLASSES))
-        self.assertEqual(TARGET_MODULES, frozenset(TARGET_PROJECT_DEPENDENCIES))
-        for module, dependencies in TARGET_PROJECT_DEPENDENCIES.items():
+    def test_final_modules_have_one_architecture_class(self) -> None:
+        self.assertEqual(FINAL_MODULES, frozenset(MODULE_CLASSES))
+        self.assertEqual(FINAL_MODULES, frozenset(FINAL_PROJECT_DEPENDENCIES))
+        self.assertEqual(FINAL_MODULES, frozenset(MIGRATION_PROJECT_DEPENDENCIES))
+        for module, dependencies in FINAL_PROJECT_DEPENDENCIES.items():
             with self.subTest(module=module):
-                self.assertLessEqual(dependencies, TARGET_MODULES)
+                self.assertLessEqual(dependencies, FINAL_MODULES)
+
+    def test_migration_graph_is_final_graph_plus_reviewed_temporary_edges(self) -> None:
+        self.assertTrue(MIGRATION_ONLY_PROJECT_DEPENDENCIES)
+        for module, dependencies in MIGRATION_ONLY_PROJECT_DEPENDENCIES.items():
+            with self.subTest(module=module):
+                self.assertIn(module, FINAL_MODULES)
+                self.assertLessEqual(dependencies, FINAL_MODULES)
+                self.assertFalse(
+                    dependencies & FINAL_PROJECT_DEPENDENCIES[module],
+                    "migration-only edges must not be final edges",
+                )
+        for module in FINAL_MODULES:
+            with self.subTest(module=module):
+                self.assertEqual(
+                    FINAL_PROJECT_DEPENDENCIES[module]
+                    | MIGRATION_ONLY_PROJECT_DEPENDENCIES.get(module, frozenset()),
+                    MIGRATION_PROJECT_DEPENDENCIES[module],
+                )
 
     def test_settings_contains_the_reviewed_current_module_set(self) -> None:
         settings = (ROOT / "settings.gradle.kts").read_text(encoding="utf-8")
         included = set(re.findall(r'include\(\s*"\:([^\"]+)"\s*\)', settings))
         self.assertEqual(EXPECTED_CURRENT_MODULES, included)
-        self.assertLessEqual(included, TARGET_MODULES)
+        self.assertLessEqual(included, FINAL_MODULES)
 
     def test_current_project_dependency_edges_match_the_reviewed_dag(self) -> None:
         for module, expected in CURRENT_PROJECT_DEPENDENCIES.items():
             with self.subTest(module=module):
                 actual = project_dependencies(module)
                 self.assertEqual(expected, actual)
-                self.assertLessEqual(actual, ALLOWED_PROJECT_DEPENDENCIES[module])
+                validate_project_dependencies(
+                    module,
+                    actual,
+                    MIGRATION_PROJECT_DEPENDENCIES,
+                )
+
+    def test_unknown_or_unreviewed_project_edges_fail_closed(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "unknown project module"):
+            validate_project_dependencies(
+                "unreviewed-module",
+                set(),
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
+        with self.assertRaisesRegex(AssertionError, "unknown project dependencies"):
+            validate_project_dependencies(
+                "domain",
+                {"unreviewed-module"},
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
+        with self.assertRaisesRegex(AssertionError, "forbidden project dependencies"):
+            validate_project_dependencies(
+                "domain",
+                {"core"},
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
 
     def test_every_allowed_dependency_edge_has_a_rationale(self) -> None:
         allowed_edges = {
             (module, dependency)
-            for module, dependencies in ALLOWED_PROJECT_DEPENDENCIES.items()
+            for module, dependencies in MIGRATION_PROJECT_DEPENDENCIES.items()
             for dependency in dependencies
         }
         self.assertEqual(allowed_edges, set(EDGE_RATIONALES))
         self.assertTrue(all(reason.strip() for reason in EDGE_RATIONALES.values()))
 
-    def test_feature_modules_cannot_depend_on_each_other(self) -> None:
-        for module in FEATURE_MODULES:
+    def test_leaf_feature_modules_cannot_depend_on_each_other(self) -> None:
+        for module in LEAF_FEATURE_MODULES:
             with self.subTest(module=module):
-                other_features = FEATURE_MODULES - {module}
                 self.assertFalse(
-                    ALLOWED_PROJECT_DEPENDENCIES[module] & other_features,
-                    f":{module} may not depend on another feature module",
+                    FINAL_PROJECT_DEPENDENCIES[module]
+                    & (LEAF_FEATURE_MODULES | {"feature-shell"}),
+                    f":{module} may not depend on another feature or the shell",
                 )
 
-    def test_current_and_target_dependency_graphs_are_acyclic(self) -> None:
+    def test_shared_and_host_module_directions_are_platform_safe(self) -> None:
+        shared_modules = (
+            set(CURRENT_SHARED_JVM_MODULES)
+            | NEW_SHARED_JVM_MODULES
+            | SHARED_PRESENTATION_MODULES
+        )
+        platform_modules = ANDROID_MODULES | DESKTOP_MODULES
+        for module in shared_modules:
+            with self.subTest(shared=module):
+                self.assertFalse(
+                    FINAL_PROJECT_DEPENDENCIES[module] & platform_modules,
+                    f":{module} may not depend on a host/platform module",
+                )
+
+        jvm_modules = set(CURRENT_SHARED_JVM_MODULES) | NEW_SHARED_JVM_MODULES
+        for module in SHARED_PRESENTATION_MODULES:
+            with self.subTest(presentation=module):
+                self.assertFalse(
+                    FINAL_PROJECT_DEPENDENCIES[module] & jvm_modules,
+                    f":{module} common presentation may not depend on JVM modules",
+                )
+
+        self.assertFalse(FINAL_PROJECT_DEPENDENCIES["app"] & DESKTOP_MODULES)
+        self.assertFalse(FINAL_PROJECT_DEPENDENCIES["desktop-app"] & ANDROID_MODULES)
+
+    def test_current_migration_and_final_dependency_graphs_are_acyclic(self) -> None:
         current_graph = {
             module: project_dependencies(module)
             for module in CURRENT_PROJECT_DEPENDENCIES
         }
         self.assert_acyclic(current_graph)
-        self.assert_acyclic(TARGET_PROJECT_DEPENDENCIES)
+        self.assert_acyclic(MIGRATION_PROJECT_DEPENDENCIES)
+        self.assert_acyclic(FINAL_PROJECT_DEPENDENCIES)
 
     def assert_acyclic(self, graph: dict[str, frozenset[str] | set[str]]) -> None:
         visiting: set[str] = set()
@@ -335,15 +565,49 @@ class ModuleBoundaryTest(unittest.TestCase):
         for module in graph:
             visit(module)
 
-    def test_pure_jvm_sources_do_not_import_android_apis(self) -> None:
+    def test_included_shared_jvm_sources_do_not_import_android_apis(self) -> None:
         violations = []
-        for module in PURE_MODULES:
+        shared_jvm_modules = sorted(
+            module
+            for module in EXPECTED_CURRENT_MODULES
+            if MODULE_CLASSES[module].startswith("shared-jvm-")
+        )
+        for module in shared_jvm_modules:
             source_root = ROOT / module / "src/main"
             sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
             for source in sources:
                 if ANDROID_IMPORT.search(source.read_text(encoding="utf-8")):
                     violations.append(source.relative_to(ROOT).as_posix())
         self.assertEqual([], violations, "pure JVM modules must not import Android APIs")
+
+    def test_included_common_presentation_sources_do_not_import_platform_apis(
+        self,
+    ) -> None:
+        for forbidden_import in (
+            "import android.content.Context",
+            "import androidx.compose.ui.platform.LocalContext",
+            "import java.awt.Desktop",
+            "import javax.swing.JFrame",
+        ):
+            with self.subTest(forbidden_import=forbidden_import):
+                self.assertIsNotNone(COMMON_PLATFORM_IMPORT.search(forbidden_import))
+        self.assertIsNone(COMMON_PLATFORM_IMPORT.search("import kotlinx.coroutines.flow.Flow"))
+
+        violations = []
+        presentation_modules = sorted(
+            EXPECTED_CURRENT_MODULES & SHARED_PRESENTATION_MODULES
+        )
+        for module in presentation_modules:
+            source_root = ROOT / module / "src/commonMain"
+            sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
+            for source in sources:
+                if COMMON_PLATFORM_IMPORT.search(source.read_text(encoding="utf-8")):
+                    violations.append(source.relative_to(ROOT).as_posix())
+        self.assertEqual(
+            [],
+            violations,
+            "common presentation must not import Android, AWT, or Swing APIs",
+        )
 
     def test_persistence_reference_policy_rejects_application_layers(self) -> None:
         for forbidden in (
