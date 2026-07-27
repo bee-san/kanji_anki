@@ -3176,6 +3176,84 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   has a fully green implementation head at `7b08d133`, and is intentionally
   not merged.
 
+### Goal 169 completion evidence (2026-07-27)
+
+- Started from: `291c66e7` on `desktop/support` in
+  `/Users/skerraut/kanji_anki`. The exact preceding implementation SHA that
+  passed the final gates is `085958e2`.
+- Commits: `ef76a43d refactor: introduce the device settings platform
+  contract`; `e6217184 refactor: split portable and device-local settings`;
+  `77790f48 refactor: extract the portable data repository API`; and
+  `085958e2 test: enforce data API implementation boundaries`.
+- Implemented: added pure-JVM `:platform-contracts` typed reader, snapshot,
+  atomic editor/store, value types, and stable device-local key namespace.
+  The temporary Android host implementation uses synchronous
+  `SharedPreferences.commit`, snapshots grouped reads, serializes edits, and
+  fails closed after a durability failure. Portable scheduler, import, study,
+  appearance, repository snapshots, commands, review commit values,
+  `StoreResult`, and focused repository fakes now live in pure-JVM
+  `:data-api`, which depends only on `:core` and `:sync-domain`. The five
+  repository interfaces expose no Android, SQLite, Activity, provider
+  implementation, or raw database type. Atomic review commit and sync
+  publication remain one repository operation each; the transaction-only
+  `StaleReviewCommitException` remains internal to the Android app host.
+- Migration: reminder history/configuration, automatic sync/update state, and
+  debug logging moved out of portable SQLite settings without changing their
+  stored values. `LocalStore` construction still does not open SQLite.
+  `LocalStoreBase.onOpen` performs one direct legacy query on first actual
+  database use, durably commits missing values to the device store before
+  deleting all legacy keys, records a durable completion marker, invalidates
+  settings caches, and retries safely after interruption. Portable backups no
+  longer contain those host-local values. No database schema version or
+  scheduler record changed.
+- Validation: focused extraction checks passed
+  `./gradlew :data-api:check :app:testDebugUnitTest
+  :app:compileDebugAndroidTestKotlin
+  :app:compileDebugAndroidTestJavaWithJavac --no-daemon
+  --dependency-verification=strict --console=plain` with 1,538 app tests and
+  17 `:data-api` tests, all with zero failures or skips.
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  ciFast ciQuality ciDesktop --no-daemon --dependency-verification=strict
+  --console=plain` completed `BUILD SUCCESSFUL` in 55s with 133 actionable
+  tasks (51 executed, 82 up-to-date). The result trees contain 3,300 passing
+  Gradle/JUnit tests and no failures or skips. The independently invoked
+  `tools`, `scripts/tests`, and `ci/tests` suites passed 126, 94, and 96 tests
+  respectively; the tools total includes all 19 module-boundary tests.
+  `./gradlew sonarPreflight --no-daemon --dependency-verification=strict
+  --console=plain` then passed with every new Kotlin/Java/test-fixture
+  bytecode directory and JaCoCo XML present. `git diff --check` passed. The
+  first aggregate attempt exposed one stale exact-list expectation in the
+  desktop gate; the boundary commit added both `:platform-contracts` and
+  `:data-api` to that contract before the final green run.
+- Live gates: a copied-collection AnkiDroid run is not required. Goal 169
+  moves contracts and host-local settings ownership, but changes no provider
+  query/write, sync publication behavior, card/note interpretation, scheduler
+  transition, database schema, or user-facing study behavior. Android unit,
+  instrumentation compilation, lint, and all shared/desktop deterministic
+  surfaces passed.
+- Decisions: device-local settings are not portable backup state; secret
+  values remain outside `DeviceSettingsStore`, which may hold only host secret
+  references. Migration is lazy on first database/device-settings access so
+  startup object construction remains side-effect free. Existing core and
+  sync-domain models remain canonical rather than being copied into
+  `:data-api`. Generated Java/Kotlin default-argument compatibility and every
+  exported payload family have focused API tests with 100% class coverage.
+  Root `ciFast`, `ciQuality`, `ciDesktop`, and deterministic Sonar inputs now
+  all include `:data-api`.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `085958e2`, `77790f48`, `e6217184`, and `ef76a43d` in that order before any
+  distribution. This restores source/module ownership with no schema or
+  provider rollback. If the migration were ever shipped before rollback, add
+  a forward compatibility step that copies the typed device values back to
+  their legacy SQLite keys before reverting `e6217184`; reverting directly
+  after users have migrated would otherwise reset host-local automation and
+  notification preferences to defaults.
+- Gaps/blockers: none for Goal 169. The Android implementation intentionally
+  remains in the app host until Goal 177, and shared SQL implementation work
+  remains owned by Goals 178-185. The branch is four commits ahead of the
+  last pushed `origin/desktop/support` head and remains unpushed; the existing
+  draft PR is intentionally not updated without explicit authorization.
+
 Template:
 
 ```md
