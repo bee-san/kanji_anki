@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,6 +77,7 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                 fontSize = 15.sp
             )
             model.options.forEach { option ->
+                val selected = option.mode == selectedMode
                 OutlinedButton(
                     onClick = {
                         withButtonTrace("study-sort-option-${option.mode}") {
@@ -84,12 +87,16 @@ fun SettingsNewCardSortPanel(model: SettingsNewCardSortPanelModel) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 50.dp)
-                        .testTag("new-card-sort-option-${option.mode}"),
+                        .testTag("new-card-sort-option-${option.mode}")
+                        .semantics { this.selected = selected },
                     shape = StudySortButtonShape,
-                    border = BorderStroke(1.dp, StudySortButtonBorder),
+                    border = BorderStroke(
+                        width = if (selected) 2.dp else 1.dp,
+                        color = if (selected) StudySortPinkDark else StudySortButtonBorder,
+                    ),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = StudySortWhite,
-                        contentColor = StudySortInk
+                        containerColor = if (selected) KaniTheme.colors.pill else StudySortWhite,
+                        contentColor = if (selected) StudySortPinkDark else StudySortInk,
                     )
                 ) {
                     Column(
