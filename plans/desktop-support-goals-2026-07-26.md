@@ -2374,16 +2374,50 @@ reusing Android installation code.
 **Done when:** A co-hosted checksum alone is insufficient, failed verification
 never opens a package, and Android still selects only its verified APK.
 
-### Goal 203: Qualify accessibility, input, localization, and performance
+### Goal 203: Add Anki-style Study keybindings and qualify desktop usability
 
 **Depends on:** Goal 202.
 
-**Outcome:** Desktop support is usable beyond the happy-path developer machine.
+**Outcome:** Desktop Study has a deliberate, configurable keyboard workflow
+that is familiar to Anki users, and desktop support is usable beyond the
+happy-path developer machine.
 
 **Work:**
 
-- Audit keyboard-only navigation, focus order/visibility, shortcuts, dialogs,
-  menus, tables/charts alternatives, and screen-reader semantics.
+- Add a portable Study command/keybinding model owned by shared presentation
+  code. Platform hosts translate native key events into commands; they never
+  call scheduler or repository operations directly.
+- Ship Anki-compatible defaults where Kani has the same semantic action:
+  `Space`/`Enter` reveals a self-graded card, `1` submits Fail/Again, `3`
+  submits Pass/Good, and `Space`/`Enter` invokes the single safe default action
+  after reveal or persisted feedback. Do not invent selectable Hard/Easy
+  ratings: `2` and `4` remain unbound unless the current task genuinely exposes
+  those actions. `Ctrl+Z` on Windows/Linux and `Cmd+Z` on macOS request the
+  existing guarded review undo.
+- Define task-specific bindings instead of forcing flashcard grading shortcuts
+  onto every surface. Number keys select visible multiple-choice options;
+  `Enter` submits typed answers only after IME composition completes; writing
+  shortcuts cannot bypass ink evaluation, manufacture recognition, or expose
+  ratings forbidden by the writing contract. Continue and undo remain subject
+  to the same APPLIED/token/revision authority as pointer input.
+- Add a Settings keybinding editor with per-command remapping, conflict and
+  reserved-OS-shortcut validation, platform-labelled modifiers, and reset to
+  defaults. Store bindings as device-local settings so backup transfer does
+  not impose macOS modifiers on Windows/Linux. Unknown commands and malformed
+  stored bindings fail open to the reviewed defaults.
+- Centralize dispatch precedence. Text fields, IME composition, menus, and
+  modal dialogs consume their own keys first; global Study bindings do not
+  capture printable input from an editor. Ignore key-up duplicates and
+  auto-repeat for commit, continue, and undo commands. Match number-row and
+  numpad keys consistently without depending on keyboard layout.
+- Expose active accelerators through native menus and accessible action
+  semantics, and show current bindings in the keybinding editor. Keep pointer
+  and touch actions fully supported.
+- Add reducer, host-adapter, focus/IME, duplicate-event, rapid-input,
+  process-recreation, and end-to-end tests proving keyboard and pointer paths
+  dispatch the same command exactly once.
+- Audit all remaining keyboard-only navigation, focus order/visibility,
+  dialogs, menus, tables/charts alternatives, and screen-reader semantics.
 - Test Windows and macOS accessibility bridges with the current Compose
   support. Record Linux screen-reader limitations from official Compose
   documentation rather than claiming parity.
@@ -2401,14 +2435,20 @@ never opens a package, and Android still selects only its verified APK.
 
 **Planned commits:**
 
-1. `test: add desktop keyboard scaling and locale matrices`
-2. `fix: close desktop accessibility and input gaps`
-3. `perf: enforce desktop startup sync and Study budgets`
-4. `docs: record supported desktop accessibility behavior`
+1. `feat: add portable Study commands and default keybindings`
+2. `feat: add desktop keybinding settings and host dispatch`
+3. `test: prove Study keyboard and pointer parity`
+4. `test: add desktop scaling accessibility and locale matrices`
+5. `fix: close remaining desktop accessibility and input gaps`
+6. `perf: enforce desktop startup sync and Study budgets`
+7. `docs: record supported desktop accessibility and keybinding behavior`
 
-**Done when:** No critical route is mouse-only; focus and grade actions are
-safe; supported platform accessibility claims match evidence; performance
-budgets pass on release hardware/runners.
+**Done when:** A user can complete and undo every compatible Study task without
+a pointer; default and remapped bindings dispatch the same guarded commands as
+visible controls exactly once; typing, IME, writing, dialogs, and stale
+callbacks cannot trigger an unintended grade; no critical route is mouse-only;
+supported platform accessibility claims match evidence; performance budgets
+pass on release hardware/runners.
 
 ### Goal 204: Build native distributions and installed-package smoke tests
 
