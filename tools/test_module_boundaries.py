@@ -80,6 +80,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         *CURRENT_SHARED_JVM_MODULES,
         "platform-contracts",
         "data-api",
+        "application",
         "app",
         "desktop-app",
     },
@@ -111,6 +112,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "update-core": frozenset(),
     "platform-contracts": frozenset(),
     "data-api": frozenset({"core", "sync-domain"}),
+    "application": frozenset({"data-api", "platform-contracts"}),
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),

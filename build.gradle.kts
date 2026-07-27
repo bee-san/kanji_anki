@@ -29,6 +29,7 @@ val sonarMainBinaries = listOf(
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
     rootPath("data-api/build/classes/kotlin/main"),
+    rootPath("application/build/classes/kotlin/main"),
     rootPath("writing-core/build/classes/kotlin/main"),
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
@@ -46,6 +47,7 @@ val sonarTestBinaries = listOf(
     rootPath("data-api/build/classes/kotlin/test"),
     rootPath("data-api/build/classes/java/test"),
     rootPath("data-api/build/classes/kotlin/testFixtures"),
+    rootPath("application/build/classes/kotlin/test"),
     rootPath("writing-core/build/classes/kotlin/test"),
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
@@ -61,6 +63,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("application/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -252,6 +255,7 @@ val desktopCiTasks = listOf(
     ":domain:check",
     ":sync-domain:check",
     ":data-api:check",
+    ":application:check",
     ":writing-core:check",
     ":dictionary-core:check",
     ":update-core:check",
@@ -316,6 +320,9 @@ val fastCiTasks = listOf(
     ":data-api:test",
     ":data-api:jacocoTestReport",
     ":data-api:jacocoTestCoverageVerification",
+    ":application:test",
+    ":application:jacocoTestReport",
+    ":application:jacocoTestCoverageVerification",
     ":writing-core:test",
     ":writing-core:jacocoTestReport",
     ":writing-core:jacocoTestCoverageVerification",
@@ -355,6 +362,7 @@ tasks.register("ciQuality") {
         ":domain:jar",
         ":sync-domain:jar",
         ":data-api:jar",
+        ":application:jar",
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
