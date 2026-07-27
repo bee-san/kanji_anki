@@ -210,6 +210,31 @@ class RepositoryPayloadsTest {
             SettingsSaveCommand.FsrsFitSummary("{\"status\":\"adopted\"}"),
             SettingsSaveCommand.ResetFsrsPersonalization,
             SettingsSaveCommand.LearningSteps(learningSteps),
+            SettingsSaveCommand.NoteTypeFields(
+                "Kiku",
+                "Expression",
+                "Reading",
+                "Meaning",
+                "Sentence",
+                "Frequency",
+                "FrequencySort",
+            ),
+            SettingsSaveCommand.ImportFilters(
+                activeCards = true,
+                suspendedCards = false,
+                taggedCards = true,
+                tags = "focus",
+                weakCards = true,
+                weakDifficulty = 8.0,
+                weakLapses = 4,
+                minMatchingCards = 2,
+                browserQueryCards = true,
+                browserQuery = "tag:focus",
+                tagRepairedCards = true,
+            ),
+            SettingsSaveCommand.FrequencyRange(100, 2_000),
+            SettingsSaveCommand.DeckLimits(12, 40),
+            SettingsSaveCommand.LadderThresholds(30, 4),
         )
         val snapshot = SettingsSnapshot(
             sync = syncSettings,
@@ -231,7 +256,7 @@ class RepositoryPayloadsTest {
             preserveExistingWeights = false,
         )
 
-        assertEquals(12, commands.size)
+        assertEquals(17, commands.size)
         assertTrue((commands[0] as SettingsSaveCommand.Sync).tagRepairedCards)
         assertEquals(80, (commands[1] as SettingsSaveCommand.AdaptiveWorkload).value.workPercent)
         assertEquals(15, (commands[2] as SettingsSaveCommand.StudyAhead).minutes)
@@ -244,6 +269,26 @@ class RepositoryPayloadsTest {
         assertEquals("{\"status\":\"adopted\"}", (commands[9] as SettingsSaveCommand.FsrsFitSummary).summaryJson)
         assertSame(SettingsSaveCommand.ResetFsrsPersonalization, commands[10])
         assertSame(learningSteps, (commands[11] as SettingsSaveCommand.LearningSteps).value)
+        assertEquals(
+            "Expression",
+            commands.filterIsInstance<SettingsSaveCommand.NoteTypeFields>().single().expressionField,
+        )
+        assertEquals(
+            "tag:focus",
+            commands.filterIsInstance<SettingsSaveCommand.ImportFilters>().single().browserQuery,
+        )
+        assertEquals(
+            2_000,
+            commands.filterIsInstance<SettingsSaveCommand.FrequencyRange>().single().maxRank,
+        )
+        assertEquals(
+            40,
+            commands.filterIsInstance<SettingsSaveCommand.DeckLimits>().single().activeQueueCap,
+        )
+        assertEquals(
+            4,
+            commands.filterIsInstance<SettingsSaveCommand.LadderThresholds>().single().demotionFailStreak,
+        )
         assertEquals(KaniThemeChoice.DARK, snapshot.themeChoice)
         assertFalse(fit.preserveExistingWeights)
     }

@@ -246,6 +246,31 @@ class RepositoryAdaptersTest {
             SettingsSaveCommand.FsrsFitSummary("{\"status\":\"tested\"}"),
             SettingsSaveCommand.ResetFsrsPersonalization,
             SettingsSaveCommand.LearningSteps(initial.learningSteps),
+            SettingsSaveCommand.NoteTypeFields(
+                "Custom Japanese",
+                "Front",
+                "Kana",
+                "Back",
+                "Sentence",
+                "Frequency",
+                "FrequencySort",
+            ),
+            SettingsSaveCommand.ImportFilters(
+                activeCards = true,
+                suspendedCards = false,
+                taggedCards = true,
+                tags = "focus",
+                weakCards = true,
+                weakDifficulty = 8.0,
+                weakLapses = 4,
+                minMatchingCards = 2,
+                browserQueryCards = true,
+                browserQuery = "tag:focus",
+                tagRepairedCards = true,
+            ),
+            SettingsSaveCommand.FrequencyRange(100, 2_000),
+            SettingsSaveCommand.DeckLimits(12, 40),
+            SettingsSaveCommand.LadderThresholds(30, 4),
         )
 
         commands.forEach { command ->
@@ -265,6 +290,19 @@ class RepositoryAdaptersTest {
         val actual = repository.load().valueOrNull()
         assertEquals(15, actual?.studyAheadMinutes)
         assertEquals(initial.themeChoice, actual?.themeChoice)
+        assertEquals("Custom Japanese", actual?.sync?.modelName)
+        assertEquals("Front", actual?.sync?.expressionField)
+        assertTrue(actual?.sync?.importActiveCards == true)
+        assertFalse(actual?.sync?.importSuspendedCards ?: true)
+        assertEquals("tag:focus", actual?.sync?.importBrowserQuery)
+        assertTrue(actual?.tagRepairedCards == true)
+        assertEquals(100, actual?.sync?.suspendedRankMin)
+        assertEquals(2_000, actual?.sync?.suspendedRankMax)
+        assertEquals(12, actual?.sync?.newPerDay)
+        assertEquals(40, actual?.sync?.activeQueueCap)
+        assertEquals(30, actual?.sync?.ladderPromotionIntervalDays)
+        assertEquals(4, actual?.sync?.ladderDemotionFailStreak)
+        assertEquals(4, actual?.sync?.realDueReviewsToMove)
     }
 
     @Test
