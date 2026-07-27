@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.core
+package dev.bee.kanjianki.data
 
 /**
  * Structured error boundary for database operations. UI layers map this to

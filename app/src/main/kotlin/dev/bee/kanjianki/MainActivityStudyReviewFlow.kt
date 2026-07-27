@@ -679,9 +679,10 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             choiceLog,
             similarChoice,
         )
-        if (commit.disposition == ReviewCommitDisposition.APPLIED && commit.item != null) {
+        val committedItem = commit.item
+        if (commit.disposition == ReviewCommitDisposition.APPLIED && committedItem != null) {
             activity.studyUndoState.capture(
-                AppliedReviewSnapshot(request.token, item, commit.item),
+                AppliedReviewSnapshot(request.token, item, committedItem),
                 result.appliedRating,
                 now,
             )

@@ -239,6 +239,7 @@ dependencies {
     androidTestImplementation(composeBom)
 
     implementation(project(":core"))
+    implementation(project(":data-api"))
     implementation(project(":dictionary-core"))
     implementation(project(":platform-contracts"))
     implementation(libs.androidx.activity.compose)

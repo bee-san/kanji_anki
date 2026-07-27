@@ -79,6 +79,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
     {
         *CURRENT_SHARED_JVM_MODULES,
         "platform-contracts",
+        "data-api",
         "app",
         "desktop-app",
     },
@@ -109,12 +110,14 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
     "platform-contracts": frozenset(),
+    "data-api": frozenset({"core", "sync-domain"}),
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),
     "app": frozenset(
         {
             "core",
+            "data-api",
             "dictionary-core",
             "platform-contracts",
             "update-core",
@@ -361,15 +364,16 @@ RECORD_DEFINITION_FILES = {
     "core/src/main/kotlin/dev/bee/kanjianki/core/RecordsStudyModels.kt",
 }
 REPOSITORY_CONTRACTS = {
-    "HomeRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/HomeRepository.kt",
-    "StudyRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
-    "StatsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
-    "SettingsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
-    "SyncRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
+    "HomeRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/HomeRepository.kt",
+    "StudyRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
+    "StatsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
+    "SettingsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
+    "SyncRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
 }
 REPOSITORY_MODEL_FILES = (
-    "app/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/StoreResult.kt",
 )
 REPOSITORY_FORBIDDEN_TOKENS = (
     "LocalStore",
@@ -658,6 +662,7 @@ class ModuleBoundaryTest(unittest.TestCase):
         source_roots = (
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data",
             ROOT / "app/src/main/java/dev/bee/kanjianki/data",
+            ROOT / "data-api/src/main",
             ROOT / "data/src/main",
         )
         for source_root in source_roots:
@@ -732,7 +737,8 @@ class ModuleBoundaryTest(unittest.TestCase):
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt"
         ).read_text(encoding="utf-8")
         fakes = (
-            ROOT / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ROOT
+            / "data-api/src/testFixtures/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
         ).read_text(encoding="utf-8")
 
         self.assertEqual(1, study_adapter.count("store.commitReview(command)"))

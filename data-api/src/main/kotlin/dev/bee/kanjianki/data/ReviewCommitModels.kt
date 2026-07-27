@@ -11,9 +11,6 @@ enum class ReviewCommitDisposition {
     STALE,
 }
 
-/** Aborts the owning review transaction and maps the result to STALE. */
-internal class StaleReviewCommitException : RuntimeException()
-
 class ReviewCommitResult(
     @JvmField val disposition: ReviewCommitDisposition,
     @JvmField val item: RecordsStudyModels.StudyItem?,

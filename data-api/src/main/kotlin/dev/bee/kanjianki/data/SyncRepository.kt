@@ -9,7 +9,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SimilarKanjiIndex
-import dev.bee.kanjianki.core.StoreResult
 
 /** Atomic provider-mirror, queue-publication, history, and write-back storage. */
 interface SyncRepository {

@@ -4,7 +4,6 @@ import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.core.StoreResult
 
 /** Portable scheduler, import, study, and appearance settings. */
 interface SettingsRepository {

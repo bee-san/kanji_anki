@@ -7,7 +7,6 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
-import dev.bee.kanjianki.core.StoreResult
 
 /** Persistence capabilities owned by the Study route and its coordinators. */
 interface StudyRepository {

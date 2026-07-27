@@ -5,7 +5,6 @@ import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.core.StoreResult
 import dev.bee.kanjianki.data.CommitFsrsFitCommand
 import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
@@ -23,6 +22,7 @@ import dev.bee.kanjianki.data.SettingsRepository
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.data.SkipLegacyRepairCommand
+import dev.bee.kanjianki.data.StoreResult
 import dev.bee.kanjianki.data.StatsRepository
 import dev.bee.kanjianki.data.StatsSnapshot
 import dev.bee.kanjianki.data.StoredSyncState

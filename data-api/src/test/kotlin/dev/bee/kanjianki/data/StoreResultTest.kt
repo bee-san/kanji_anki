@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.core
+package dev.bee.kanjianki.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

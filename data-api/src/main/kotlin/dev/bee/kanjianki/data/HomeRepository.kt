@@ -2,7 +2,6 @@ package dev.bee.kanjianki.data
 
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
-import dev.bee.kanjianki.core.StoreResult
 
 /** Persistence capabilities owned by Home and its browse/detail flows. */
 interface HomeRepository {

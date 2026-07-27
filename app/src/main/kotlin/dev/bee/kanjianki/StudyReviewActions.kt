@@ -61,10 +61,11 @@ internal object StudyReviewActions {
                 similarChoice = similarChoice,
             )
         )
-        if (commit.disposition != ReviewCommitDisposition.APPLIED || commit.item == null) {
+        val committedItem = commit.item
+        if (commit.disposition != ReviewCommitDisposition.APPLIED || committedItem == null) {
             return commit
         }
-        recorder.recordReviewOutcome(request.kanji, result.appliedRating, beforeReview, commit.item)
+        recorder.recordReviewOutcome(request.kanji, result.appliedRating, beforeReview, committedItem)
         if (MainActivityBase.RATING_AGAIN != result.appliedRating) {
             marker.markStudyRunPassed(request.kanji)
         }

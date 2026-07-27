@@ -6,7 +6,6 @@ import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import dev.bee.kanjianki.core.RecordsBase
-import dev.bee.kanjianki.core.StoreResult
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
 
 /** Persistence capabilities owned by the analytics feature. */
