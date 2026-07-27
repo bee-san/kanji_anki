@@ -3324,6 +3324,81 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   local and unpushed; the existing draft PR is intentionally not updated
   without explicit authorization.
 
+### Goal 171 completion evidence (2026-07-27)
+
+- Started from: `4cf9b77b` on `desktop/support` in
+  `/Users/skerraut/kanji_anki`. The exact preceding implementation SHA that
+  passed the final gates is `2fee18ed`.
+- Commits: `9b775bf0 refactor: route Home and Browse through repositories`;
+  `748789e3 refactor: route Settings Stats and Games through repositories`;
+  and `2fee18ed test: cover repository-backed non-study state`.
+- Implemented: Home, Browse, Settings, Stats, and Games route code now loads
+  immutable `:data-api` snapshots through `HomeUseCases`, `SettingsUseCases`,
+  and `StatsUseCases` instead of issuing direct `LocalStore`, raw SQL, cursor,
+  or database calls. Home/Browse reads, local suspension, mnemonic writes,
+  game data, new-card-sort preview data, and Stats cache refreshes have narrow
+  repository operations. Settings route construction reads one portable
+  snapshot per screen and one atomic device-settings snapshot; grouped note
+  fields, import filters, frequency bounds, deck limits, ladder thresholds,
+  workload, learning, retention, ladder, sort, theme, and personalization
+  writes use typed commands, with grouped SQLite writes committed atomically.
+  Reminder, auto-sync, update, and debug-log values remain host-local through
+  `DeviceSettingsStore`. The workload status reads only Home and Study
+  snapshots, deliberately bypassing the full Home route and repaired-tag
+  consent preview. Stats presentation consumes repository DTOs, while a
+  test-source adapter retains focused legacy-store projection tests without
+  reintroducing production coupling.
+- Validation: focused Settings, Stats, Games, repository-adapter, and Android
+  instrumentation-compilation checks passed
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  :app:testDebugUnitTest --tests
+  'dev.bee.kanjianki.MainActivitySettingsStudyBehaviorAsyncTest' --tests
+  'dev.bee.kanjianki.MainActivitySettingsScreenComposeTest' --tests
+  'dev.bee.kanjianki.SettingsChromeLocaleTest' --tests
+  'dev.bee.kanjianki.MainActivityGamesCacheTest' --tests
+  'dev.bee.kanjianki.MainActivityGamesCopyComposeTest' --tests
+  'dev.bee.kanjianki.MainActivityGamesRoundComposeTest' --tests
+  'dev.bee.kanjianki.data.RepositoryAdaptersTest' --tests
+  'dev.bee.kanjianki.progress.*'
+  :app:compileDebugAndroidTestJavaWithJavac`. The fake-repository lifecycle
+  and typed-command checks then passed their focused `:application:test`,
+  `:data-api:test`, and `:app:testDebugUnitTest` invocation.
+  `python3 -m unittest tools.test_module_boundaries` passed all 19 tests, and
+  `git diff --check` passed. The final aggregate command
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  ciFast ciQuality ciDesktop` completed `BUILD SUCCESSFUL` in 3m32s with 142
+  actionable tasks (21 executed, 121 up-to-date). The result trees contain
+  3,296 passing Gradle/JUnit tests and zero failures, errors, or skips. The
+  aggregate Python tooling, asset/script, CI, and desktop-tooling surfaces
+  passed their established 126, 94, 96, and 70 tests respectively. Android
+  lint, instrumentation compilation, deterministic coverage verification,
+  shared checks, and desktop checks all passed.
+- Live gates: a copied-collection AnkiDroid run is not required. Goal 171
+  changes UI-to-repository orchestration and immutable projections, but no
+  provider query/write, sync normalization/publication, database schema,
+  scheduler transition, backup format, or Anki scheduling state. Existing
+  route/Compose tests, baseline fixture compilation, Android lint, and the
+  deterministic aggregate gates passed.
+- Decisions: portable database state crosses route boundaries only as
+  immutable repository DTOs; host-local automation and update state stays in
+  `DeviceSettingsStore`. Repository failures are normalized to typed
+  transient/permanent application exceptions so the existing cancellable
+  route loader can retain loading, retry, stale-result, and recreation
+  behavior. Atomic Settings commands preserve the legacy
+  `real_due_reviews_to_move` demotion fallback. Fresh installs preserve the
+  established automatic-update status copy. Compatibility methods shared
+  with Study and sync remain temporarily in the Activity base for Goals 172
+  and 173 rather than broadening this migration.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `2fee18ed`, `748789e3`, and `9b775bf0` in that order. This restores direct
+  Android-host reads and test wiring without a schema migration, provider
+  action, backup conversion, or user-state rollback.
+- Gaps/blockers: none for Goal 171. Direct persistence calls remain only in
+  the sequential Study, sync, and Android platform compatibility surfaces
+  assigned to Goals 172, 173, and 177. The branch remains local and unpushed;
+  the existing draft PR is intentionally not updated without explicit
+  authorization.
+
 Template:
 
 ```md
