@@ -118,6 +118,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     ),
     "app": frozenset(
         {
+            "application",
             "core",
             "data-api",
             "dictionary-core",

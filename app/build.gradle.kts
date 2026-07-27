@@ -238,6 +238,7 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
+    implementation(project(":application"))
     implementation(project(":core"))
     implementation(project(":data-api"))
     implementation(project(":dictionary-core"))

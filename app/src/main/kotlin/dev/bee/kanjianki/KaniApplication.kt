@@ -6,6 +6,13 @@ import dev.bee.kanjianki.backup.StagedRestoreApplier
 import dev.bee.kanjianki.widget.KaniWidgetEventHooks
 
 class KaniApplication : Application(), Configuration.Provider {
+    private var ownedContainer: AndroidKaniContainer? = null
+
+    internal val container: AndroidKaniContainer
+        get() = checkNotNull(ownedContainer) {
+            "Kani container is unavailable before staged restore completes"
+        }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setJobSchedulerJobIdRange(10_000, 11_000)
@@ -22,14 +29,28 @@ class KaniApplication : Application(), Configuration.Provider {
             // Stop before any initializer or Android component can open SQLite.
             "Restore cleanup must finish before Kani can start"
         }
-        KaniWidgetEventHooks.DEFAULT.restoreCompleted(this, restoreResult)
-        // Debug-only: mirror study-load timing probes to a shareable file under
-        // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
-        StudyLoadDebugLog.init(this)
-        // User-toggleable diagnostic log (Settings > Automation > Debug log). Resolves the
-        // persisted switch on its own background thread, so this never blocks process start,
-        // and writes an app-start line when the switch is on.
-        AppDebugLog.init(this)
+        val processContainer = AndroidKaniContainer(this)
+        ownedContainer = processContainer
+        try {
+            KaniWidgetEventHooks.DEFAULT.restoreCompleted(this, restoreResult)
+            // Debug-only: mirror study-load timing probes to a shareable file under
+            // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
+            StudyLoadDebugLog.init(this)
+            // User-toggleable diagnostic log (Settings > Automation > Debug log). Resolves the
+            // persisted switch on its own background thread, so this never blocks process start,
+            // and writes an app-start line when the switch is on.
+            AppDebugLog.init(this)
+        } catch (failure: Throwable) {
+            ownedContainer = null
+            processContainer.close()
+            throw failure
+        }
+    }
+
+    override fun onTerminate() {
+        ownedContainer?.close()
+        ownedContainer = null
+        super.onTerminate()
     }
 
     /**
