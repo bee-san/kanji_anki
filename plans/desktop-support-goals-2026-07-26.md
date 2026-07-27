@@ -3439,6 +3439,74 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   the existing draft PR is intentionally not updated without explicit
   authorization.
 
+### Goal 172 completion evidence (2026-07-27)
+
+- Started from: `10a45ad0` on `desktop/support` in
+  `/local/home/skerraut/kanji_anki`. The exact preceding implementation SHA
+  that passed the final gates is `76c3a14b`.
+- Commits: `c6106199 refactor: route Study persistence through
+  StudyRepository`; `ed2eb13f refactor: extract the Study session state
+  machine`; and `76c3a14b test: prove token revision and recovery behavior`.
+  Support commit `81b90147 fix: support verification metadata capture on
+  Python 3.9` replaces the Python-3.10-only `Path.write_text(newline=...)`
+  call exposed by this host's standard gate. The intervening `6779d1fb docs:
+  define desktop Study keybinding support` is separate Goal 203 planning work
+  and is not part of Goal 172.
+- Implemented: every Study queue, plan, review commit, undo, token-recovery,
+  repair, mnemonic, task-timing, and refresh persistence path now crosses
+  `StudyUseCases` and the narrow atomic `StudyRepository`; Study production
+  code has no `LocalStore`, raw SQL, cursor, or database import. The
+  authoritative session reducer, tracker, immutable route state, feedback,
+  token/revision claim, recovery, runtime interaction state, and undo
+  authority now live in pure-JVM `:application`; `StudySessionViewModel` is a
+  thin Android lifecycle/`StateFlow` wrapper. Portable state tests moved from
+  `:app` to `:application`, while Android lifecycle tests remain in `:app`.
+  New tests cover durable process-death restoration, duplicate applied
+  callbacks, stale scheduler revisions, undo authority, and concurrent rapid
+  input. Duplicate applied callbacks cannot replace the accepted undo
+  snapshot or publish a second runtime revision, and only an accepted
+  `APPLIED` commit advances Study state.
+- Validation: focused `:application:test` and
+  `MainActivityStudyFlashcardComposeUnitTest` runs passed after the component
+  test was corrected to publish immutable feedback through Compose-observed
+  state. `python3 -m unittest tools.test_module_boundaries` passed all 19
+  tests; the Python 3.9 metadata capture/validation checks passed all 23
+  focused tests; `git diff --check` and both implementation-commit
+  `git show --check` runs passed. The final committed-tree command
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  ciFast ciQuality ciDesktop sonarPreflight --no-daemon
+  --dependency-verification=strict --console=plain` completed `BUILD
+  SUCCESSFUL` in 18s with 143 actionable tasks (7 executed, 136 up-to-date).
+  The result trees contain 3,305 passing module/app tests plus 27 passing
+  build-logic tests, with zero failures, errors, or skips. The aggregate
+  Python surfaces passed 126 dictionary/tooling, 94 Ralph-script, 96 CI, 18
+  desktop-CI-script, and 70 desktop-tooling tests. Android lint,
+  instrumentation compilation, deterministic coverage verification,
+  shared/desktop checks, and Sonar input preflight all passed.
+- Live gates: a copied-collection AnkiDroid run is not required. Goal 172
+  changes Study-to-repository orchestration and in-process state ownership,
+  but does not change provider queries/writes, sync normalization/publication,
+  database schema, scheduler transitions, backup format, or Anki scheduling
+  state. The required deterministic review transaction, recovery, lifecycle,
+  Compose, instrumentation-compilation, and golden-timeline surfaces passed;
+  no emulator was attached for an optional runtime replay.
+- Decisions: `:application` is the sole portable owner of authoritative Study
+  session progress, feedback, revisions, commit/recovery, and undo state.
+  Android observes immutable snapshots and cannot bypass the state machine by
+  mutating UI-local authority. Review-token release remains limited to
+  retryable persistence failures and successful undo, preserving the ability
+  to answer an explicitly restored pre-review token while suppressing late
+  duplicate callbacks.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `76c3a14b`, `ed2eb13f`, and `c6106199` in that order to restore Android-owned
+  Study state and direct host persistence adapters. This requires no schema,
+  provider, scheduler-record, or user-data rollback. Keep `81b90147` unless
+  Python 3.9 support is deliberately dropped; it is independent of Study.
+- Gaps/blockers: none for Goal 172. Sync publication remains the next direct
+  persistence surface and is assigned to Goal 173. The branch remains local
+  and unpushed; no PR, remote branch, tag, release, or external service was
+  changed.
+
 Template:
 
 ```md
