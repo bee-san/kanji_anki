@@ -21,8 +21,8 @@ import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.SyncStatus
-import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.StudyStreakSnapshot
+import dev.bee.kanjianki.data.SyncStatusSnapshot
 
 internal fun homeMetricCardTestTag(label: String): String = "home-metric-card-$label"
 
@@ -44,9 +44,9 @@ internal fun syncTileUpToDate(
 
 internal fun homeMetricModels(
     home: MainActivityHome,
-    sync: LocalStoreBase.SyncStatus?,
+    sync: SyncStatusSnapshot?,
     provider: AnkiDroidGateway.ProviderStatus,
-    streak: StudyStatsStore.StudyStreak?,
+    streak: StudyStreakSnapshot?,
     plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
     dailyPlan: DailyStudyPlan? = null
 ): List<HomeMetricModel> {
@@ -55,7 +55,7 @@ internal fun homeMetricModels(
             R.drawable.ic_sync_24,
             MainActivityUiSupport.TEAL,
             HomeTextCopy.syncMetricLabel(),
-            HomeTextCopy.homeSyncValue(sync?.finishedAt),
+            HomeTextCopy.homeSyncValue(sync?.finishedAtMillis),
             HomeTextCopy.syncMetricStatus(
                 syncTileUpToDate(
                     canSync = provider.canSync,

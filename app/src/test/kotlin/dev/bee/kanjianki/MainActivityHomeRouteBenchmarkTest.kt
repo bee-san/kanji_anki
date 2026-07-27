@@ -12,7 +12,7 @@ import dev.bee.kanjianki.core.StudyCollectionLookup
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyQueueSeeder
 import dev.bee.kanjianki.core.StudyRatings
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.RecentMistakeSnapshot
 import java.util.Locale
 import kotlin.system.measureNanoTime
 import org.junit.Assert.assertEquals
@@ -359,10 +359,10 @@ class MainActivityHomeRouteBenchmarkTest {
         }
     }
 
-    private fun benchmarkRecentMistakes(count: Int): List<StudyStatsStore.RecentMistake> {
+    private fun benchmarkRecentMistakes(count: Int): List<RecentMistakeSnapshot> {
         return List(count) { index ->
             val kanji = "字$index"
-            StudyStatsStore.RecentMistake(
+            RecentMistakeSnapshot(
                 kanji,
                 if (index % 2 == 0) StudyRatings.AGAIN else StudyRatings.GOOD,
                 1_725_000_000_000L + index * 60_000L,

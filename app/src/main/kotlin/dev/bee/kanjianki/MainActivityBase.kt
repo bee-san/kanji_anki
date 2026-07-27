@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.application.HomeUseCases
+import dev.bee.kanjianki.application.StatsUseCases
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
@@ -36,8 +38,11 @@ import dev.bee.kanjianki.core.study.StrokeGuide
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
+import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.KaniThemeChoice
 import java.util.concurrent.ExecutorService
@@ -111,6 +116,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     lateinit var gateway: AnkiDroidGateway
 
+    lateinit var homeUseCases: HomeUseCases
+        private set
+
+    lateinit var deviceSettingsStore: DeviceSettingsStore
+        private set
+
+    lateinit var statsUseCases: StatsUseCases
+        private set
+
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
 
@@ -131,6 +145,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         if (!::gateway.isInitialized) {
             gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: container.ankiDroidGateway
         }
+        if (!::homeUseCases.isInitialized) homeUseCases = container.homeUseCases
+        if (!::deviceSettingsStore.isInitialized) {
+            deviceSettingsStore = container.deviceSettingsStore
+        }
+        if (!::statsUseCases.isInitialized) statsUseCases = container.statsUseCases
     }
 
     @JvmField
@@ -682,6 +701,25 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     fun settings(): RecordsSyncModels.Settings {
         return SyncSettings.fromStore(store)
+    }
+
+    internal fun manualSyncEngine(
+        gateway: CollectionGateway,
+        progress: SyncProgress.Listener,
+        confirmedRepairedNoteIds: Set<Long>,
+    ): ManualSyncEngine = ManualSyncEngine(
+        this,
+        store,
+        gateway,
+        settings(),
+        progress,
+        dev.bee.kanjianki.time.AppClock.systemClock(),
+        repairedWriteBackAuthorized = true,
+        confirmedRepairedNoteIds = confirmedRepairedNoteIds,
+    )
+
+    internal fun activateAutoSyncAfterFirstSuccess() {
+        store.activateAutoSyncAfterFirstSuccess()
     }
 
     fun studyLadderSettings(): RecordsBase.StudyLadderSettings {

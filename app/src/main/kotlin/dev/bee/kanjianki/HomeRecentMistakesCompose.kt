@@ -33,7 +33,7 @@ import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTextCopy
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.RecentMistakeSnapshot
 
 internal fun homeRecentMistakesCardTestTag(kanji: String): String = "home-recent-mistakes-card-$kanji"
 
@@ -49,7 +49,7 @@ private fun homeRecentMistakesCardDescription(model: HomeRecentMistakesCardModel
 
 internal fun homeRecentMistakesPanelModel(
     home: MainActivityHome,
-    mistakes: List<StudyStatsStore.RecentMistake>,
+    mistakes: List<RecentMistakeSnapshot>,
     rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 ): HomeRecentMistakesPanelModel {
     return homeRecentMistakesPanelModel(
@@ -60,7 +60,7 @@ internal fun homeRecentMistakesPanelModel(
 }
 
 internal fun homeRecentMistakesPanelModel(
-    mistakes: List<StudyStatsStore.RecentMistake>,
+    mistakes: List<RecentMistakeSnapshot>,
     rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
     onCardClick: (String) -> Unit,
 ): HomeRecentMistakesPanelModel {

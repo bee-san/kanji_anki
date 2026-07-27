@@ -34,6 +34,7 @@ class RepositoryPayloadsTest {
             studyStreak = streak,
             dueLegacyWritingRepairs = emptyList(),
             repairedHandoffKanji = listOf("直"),
+            consecutiveFailedSyncs = 2,
         )
         val detail = HomeKanjiDetailSnapshot(
             kanji = "休",
@@ -89,6 +90,7 @@ class RepositoryPayloadsTest {
         val skipRepair = SkipLegacyRepairCommand(5L, "skip-token", 1_400L)
 
         assertEquals("success", home.latestSync?.status)
+        assertEquals(2, home.consecutiveFailedSyncs)
         assertEquals("休", detail.kanji)
         assertEquals("person by a tree", saveMnemonic.note)
         assertTrue(suspend.suspended)

@@ -2,7 +2,9 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.KaniContainer
+import dev.bee.kanjianki.application.StatsUseCases
 import dev.bee.kanjianki.data.AndroidDeviceSettingsStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.SqliteHomeRepository
@@ -33,6 +35,13 @@ internal class AndroidKaniContainer(
     override val settingsRepository = SqliteSettingsRepository(localStore)
     override val syncRepository = SqliteSyncRepository(localStore)
     override val deviceSettingsStore = AndroidDeviceSettingsStore(appContext)
+    val homeUseCases = HomeUseCases(
+        homeRepository,
+        studyRepository,
+        settingsRepository,
+        syncRepository,
+    )
+    val statsUseCases = StatsUseCases(statsRepository)
 
     override val userIoExecutor: ExecutorService =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "kani-user-io") }

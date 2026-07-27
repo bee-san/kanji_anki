@@ -10,7 +10,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudyRatings
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.RecentMistakeSnapshot
+import dev.bee.kanjianki.data.StudyStreakSnapshot
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -110,14 +111,14 @@ class MainActivityHomeFocusQueueCoverageTest {
             )
             assertEquals("字C", focusCard.kanji)
             assertTrue(focusCard.tags.isNotEmpty())
-            assertEquals(MainActivityBase.GOLD, activity.streakAccent(StudyStatsStore.StudyStreak(4, 9, true, 5, NOW_MILLIS)))
-            assertEquals(MainActivityBase.MUTED, activity.streakAccent(StudyStatsStore.StudyStreak(0, 0, false, 0, 0L)))
+            assertEquals(MainActivityBase.GOLD, activity.streakAccent(StudyStreakSnapshot(4, 9, true, 5, NOW_MILLIS)))
+            assertEquals(MainActivityBase.MUTED, activity.streakAccent(StudyStreakSnapshot(0, 0, false, 0, 0L)))
             assertEquals(MainActivityBase.CORAL, activity.rowColor(sampleItem("字D", RecordsBase.SchedulerPhase.REVIEW, totalReviews = 1), NOW_MILLIS))
             assertEquals(MainActivityBase.BLUE, activity.rowColor(sampleItem("字E", RecordsBase.SchedulerPhase.REVIEW, totalReviews = 1).copyBuilder().state(StudyLadderRules.STATE_LEARNING).build(), NOW_MILLIS - 1))
             assertEquals(MainActivityUiSupport.PINK_STROKE, activity.rowColor(sampleItem("字F", RecordsBase.SchedulerPhase.REVIEW, totalReviews = 1), NOW_MILLIS - 1))
             val recentPanel = homeRecentMistakesPanelModel(
                 home = activity,
-                mistakes = listOf(StudyStatsStore.RecentMistake("字D", StudyRatings.AGAIN, NOW_MILLIS)),
+                mistakes = listOf(RecentMistakeSnapshot("字D", StudyRatings.AGAIN, NOW_MILLIS)),
                 rowsByKanji = mapOf("字D" to sampleRow("字D")),
             )
             assertEquals(1, recentPanel.cards.size)

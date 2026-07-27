@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
@@ -9,65 +8,69 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
-import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
-import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
-import dev.bee.kanjianki.data.StatsCacheStore
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.RecentMistakeSnapshot
+import dev.bee.kanjianki.data.StatsSnapshot
+import dev.bee.kanjianki.data.StudyStreakSnapshot
+import kotlinx.coroutines.runBlocking
 
 internal data class RecentMistakesRouteData(
-    val mistakes: List<StudyStatsStore.RecentMistake>,
+    val mistakes: List<RecentMistakeSnapshot>,
     val rowsByKanji: Map<String, RecordsImportModels.DashboardRow>,
 )
 
-internal interface RecentMistakesRouteDataSource {
-    fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot?
-    fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake>
-    fun studyItemsForKanji(kanji: Collection<String>): List<RecordsStudyModels.StudyItem>
-    fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow>
-    fun settings(): RecordsSyncModels.Settings = RecordsSyncModels.Settings.kikuDefaults()
-    fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> = emptyMap()
-}
-
-internal fun recentMistakesRouteData(source: RecentMistakesRouteDataSource): RecentMistakesRouteData {
-    val snapshot = source.cachedStatsSnapshotOrNull()
-    val historicalMistakes = if (snapshot != null && snapshot.cacheFormatVersion >= STATS_CACHE_FORMAT_VERSION) {
-        snapshot.recentMistakes
-    } else {
-        source.recentMistakes(STATS_RECENT_MISTAKE_LIMIT)
-    }
+internal fun recentMistakesRouteData(
+    snapshot: StatsSnapshot,
+    rows: List<RecordsImportModels.DashboardRow>,
+    items: List<RecordsStudyModels.StudyItem>,
+    settings: RecordsSyncModels.Settings,
+): RecentMistakesRouteData {
+    val historicalMistakes = snapshot.recentMistakes
     if (historicalMistakes.isEmpty()) {
         return RecentMistakesRouteData(emptyList(), emptyMap())
     }
-    val rowsByKanji = source.activeDashboardRowsByKanji()
-    val items = source.studyItemsForKanji(rowsByKanji.keys)
+    val rowsByKanji = rows.associateBy { it.kanji }
+    val evidenceStatusByKanji = snapshot.kanjiRepairEvidence.associate {
+        it.kanji to it.status
+    }
     val eligibleKanji = StudyProjectionEligibilityPolicy.eligibleDashboardKanji(
-        rowsByKanji.values.toList(),
+        rows,
         items,
-        source.settings(),
-        source.evidenceStatusByKanji(),
+        settings,
+        evidenceStatusByKanji,
     )
     val mistakes = historicalMistakes.filter { eligibleKanji.contains(it.kanji) }
     return RecentMistakesRouteData(mistakes, if (mistakes.isEmpty()) emptyMap() else rowsByKanji)
 }
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
+    private val studyQueueCompatibility by lazy {
+        StudyQueueCompatibilityAccess(home)
+    }
     fun renderFocusQueue() {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.focusQueueTitle(),
             traceName = "focus-queue-route",
             load = {
                 val now = System.currentTimeMillis()
-                val rows = home.store.activeDashboardRows()
-                val items = if (rows.isEmpty()) {
-                    emptyList()
+                val snapshot = runBlocking { home.homeUseCases.loadRoute(now) }
+                val rows = snapshot.home.activeRows
+                val items = snapshot.home.studyItems
+                val plan = if (rows.isEmpty()) {
+                    null
                 } else {
-                    home.store.studyItemsForKanji(rows.map { it.kanji })
+                    homeStudyPlan(snapshot, rows, items, now)
                 }
-                val plan = if (rows.isEmpty()) null else home.adaptivePlan(rows, items, now)
                 val entries = if (rows.isEmpty()) {
                     emptyList()
                 } else {
-                    home.queuedEntries(rows, items, now, plan)
+                    queuedEntries(
+                        rows,
+                        items,
+                        now,
+                        plan,
+                        snapshot.study.studyAheadMinutes,
+                        snapshot.study.studyLadder,
+                    )
                 }
 
                 HomeFocusQueueScreenModel(
@@ -79,7 +82,11 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
                         entries = entries,
                         nowMillis = now,
                         plan = plan,
-                        matureSupportThreshold = if (rows.isEmpty()) 0 else home.settings().matureSupportThreshold,
+                        matureSupportThreshold = if (rows.isEmpty()) {
+                            0
+                        } else {
+                            snapshot.settings.sync.matureSupportThreshold
+                        },
                     ) { kanji -> home.renderDetail(kanji, false, "") },
                     onSync = home::confirmSync
                 )
@@ -92,38 +99,35 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         )
     }
 
+    private fun homeStudyPlan(
+        snapshot: dev.bee.kanjianki.application.HomeRouteSnapshot,
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan = MainActivityStudyPlanProvider(home).adaptivePlan(
+        rows = rows,
+        items = items,
+        now = now,
+        streakDays = snapshot.study.studyStreak.currentDays,
+        settings = snapshot.settings.sync,
+        reviewStats = snapshot.study.recentReviewStats,
+        studiedKanji = snapshot.study.studiedKanjiToday,
+        workload = snapshot.study.adaptiveWorkload,
+    )
+
     fun renderRecentMistakes() {
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.recentMistakesTitle(),
             traceName = "recent-mistakes-route",
             load = {
+                val now = System.currentTimeMillis()
+                val homeSnapshot = runBlocking { home.homeUseCases.loadRoute(now) }
+                val statsSnapshot = runBlocking { home.statsUseCases.loadForDisplay(now) }
                 recentMistakesRouteData(
-                    object : RecentMistakesRouteDataSource {
-                        override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-                            return home.store.cachedStatsSnapshotOrNull()
-                        }
-
-                        override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
-                            return home.store.recentMistakes(limit)
-                        }
-
-                        override fun studyItemsForKanji(
-                            kanji: Collection<String>,
-                        ): List<RecordsStudyModels.StudyItem> {
-                            return home.store.studyItemsForKanji(kanji)
-                        }
-
-                        override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
-                            return home.store.activeDashboardRowsByKanji()
-                        }
-
-                        override fun settings(): RecordsSyncModels.Settings = home.settings()
-
-                        override fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> {
-                            return StudyStatsStore(home.store).kanjiRepairEvidence()
-                                .associate { it.kanji to it.status }
-                        }
-                    }
+                    statsSnapshot,
+                    homeSnapshot.home.activeRows,
+                    homeSnapshot.home.studyItems,
+                    homeSnapshot.settings.sync,
                 )
             },
             render = { data ->
@@ -153,7 +157,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         )
     }
 
-    fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {
+    fun streakAccent(streak: StudyStreakSnapshot?): Int {
         return if (streak != null && streak.studiedToday) {
             MainActivityBase.GOLD
         } else {
@@ -162,7 +166,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     }
 
     fun studyAheadMillis(): Long {
-        return home.store.studyAheadMinutes() * 60_000L
+        return studyQueueCompatibility.studyAheadMillis()
     }
 
     fun studyQueue(
@@ -172,36 +176,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        val scheduler = BridgeScheduler.withWeights(home.store.schedulerFsrsWeights())
-        return HomeStudyQueueActions.studyQueue(
-            HomeStudyQueueActions.StudyQueueRequest(
-                rows,
-                now,
-                persist,
-                plan,
-                home.store::studyItems,
-                home::settings,
-                home::startOfDay,
-                home::studyLadderSettings,
-                home::adaptivePlan,
-                scheduler::seedQueue,
-                object : HomeStudyQueueActions.StudyItemsWriter {
-                    override fun annotateSimilarKanjiAvailability(
-                        items: List<RecordsStudyModels.StudyItem>,
-                    ): List<RecordsStudyModels.StudyItem> {
-                        return home.store.annotateSimilarKanjiAvailability(items)
-                    }
-
-                    override fun replaceStudyItems(
-                        items: List<RecordsStudyModels.StudyItem>,
-                        baseline: List<RecordsStudyModels.StudyItem>,
-                    ) {
-                        home.store.replaceStudyItems(items, null, 0L, null, baseline)
-                    }
-                },
-            ),
-            currentItems,
-        )
+        return studyQueueCompatibility.studyQueue(rows, now, persist, plan, currentItems)
     }
 
     fun queuedEntries(
@@ -210,8 +185,33 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         now: Long,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
     ): List<MainActivityBase.QueueEntry> {
-        return FocusQueuePolicy.queuedEntries(rows, items, now, studyAheadMillis(), plan, home.studyLadderSettings())
+        return FocusQueuePolicy.queuedEntries(
+            rows,
+            items,
+            now,
+            studyAheadMillis(),
+            plan,
+            home.studyLadderSettings(),
+        )
             .map { entry -> MainActivityBase.QueueEntry(entry.row, entry.item) }
+    }
+
+    fun queuedEntries(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
+        studyAheadMinutes: Int,
+        ladder: dev.bee.kanjianki.core.RecordsBase.StudyLadderSettings,
+    ): List<MainActivityBase.QueueEntry> {
+        return FocusQueuePolicy.queuedEntries(
+            rows,
+            items,
+            now,
+            studyAheadMinutes * 60_000L,
+            plan,
+            ladder,
+        ).map { entry -> MainActivityBase.QueueEntry(entry.row, entry.item) }
     }
 
     fun rowColor(item: RecordsStudyModels.StudyItem, now: Long): Int {

@@ -3,6 +3,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.update.GitHubUpdater
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 
 /**
  * Shows the automatic-update permission dialog on the home screen when the
@@ -18,15 +19,22 @@ internal fun MainActivityHome.maybeShowUpdatePermissionPrompt(snapshot: HomeUpda
         pendingVersion = snapshot.pendingVersion,
         onAllow = Runnable {
             pendingUpdatePermissionDialog = null
-            store.recordInstallPermissionPrompted(snapshot.lastVersion)
+            recordInstallPermissionPrompted(snapshot.lastVersion)
             rerenderLatestHomeRoute()
             startActivity(GitHubUpdater.installPermissionIntent(this))
         },
         onNotNow = Runnable {
             pendingUpdatePermissionDialog = null
-            store.recordInstallPermissionPrompted(snapshot.lastVersion)
+            recordInstallPermissionPrompted(snapshot.lastVersion)
             rerenderLatestHomeRoute()
         },
     )
     rerenderLatestHomeRoute()
+}
+
+private fun MainActivityHome.recordInstallPermissionPrompted(version: String) {
+    deviceSettingsStore.edit {
+        put(DeviceSettingKeys.updatePermissionPromptShown, true)
+        put(DeviceSettingKeys.updatePermissionPromptLastVersion, version)
+    }
 }

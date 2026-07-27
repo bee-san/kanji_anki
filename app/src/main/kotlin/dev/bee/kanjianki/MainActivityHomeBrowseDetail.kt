@@ -15,6 +15,10 @@ import dev.bee.kanjianki.core.TimelineCopy
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.KanjiNeighborPanelPolicy
 import dev.bee.kanjianki.core.study.StrokeOrderDiagramPolicy
+import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
+import dev.bee.kanjianki.data.SaveMnemonicCommand
+import dev.bee.kanjianki.data.SetLocalSuspensionCommand
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
     private data class BrowseRouteData(
@@ -44,11 +48,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             load = {
                 // Project Browse from persisted scheduler membership before the row cap. The
                 // management view also admits local suspensions so users can reverse them.
-                val items = home.store.searchStudyQueueInventory(
-                    requestedQuery,
-                    onlySimilarKanji,
-                    includeLocallySuspended = showSuspended,
-                )
+                val items = runBlocking {
+                    home.homeUseCases.searchStudyInventory(
+                        requestedQuery,
+                        onlySimilarKanji,
+                        includeLocallySuspended = showSuspended,
+                    )
+                }
                 BrowseRouteData(browseScreenModel(home, requestedQuery, items, onlySimilarKanji, showSuspended))
             },
             render = { data ->
@@ -185,11 +191,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         home.renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.browseActionLabel(),
             load = {
-                val timeline = home.store.timelineForKanji(kanji)
+                val snapshot = runBlocking {
+                    home.homeUseCases.loadKanjiDetail(kanji, System.currentTimeMillis())
+                }
+                val timeline = snapshot.timeline
                 val row = timeline.currentRow
                 val inventory = timeline.inventoryItem
                 val displayKanji = HomeTextCopy.detailDisplayKanji(kanji, row, inventory)
-                val mnemonicNote = home.store.kanjiMnemonicNote(displayKanji)
+                val mnemonicNote = snapshot.mnemonic
                 val isMissing = inventory == null &&
                     row == null &&
                     timeline.currentStudyItem == null &&
@@ -216,8 +225,9 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
                         mnemonicNote,
                         fromBrowse,
                         requestedQuery,
-                        inventory != null && inventory.suspended,
+                        snapshot.locallySuspended,
                         customBackAction,
+                        snapshot,
                     )
                 }
                 BrowseDetailRouteData(detailModel, missingModel)
@@ -258,6 +268,7 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         browseQuery: String?,
         suspended: Boolean,
         customBackAction: Runnable? = null,
+        detailSnapshot: HomeKanjiDetailSnapshot? = null,
     ): BrowseDetailScreenModel {
         val stuck = isStuck(timeline.currentStudyItem, suspended)
         return BrowseDetailScreenModel(
@@ -265,7 +276,14 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             detailIdentityModel(row, inventory, suspended, timeline.currentStudyItem),
             strokeOrderModel(displayKanji),
             detailReasonPanelModel(row, inventory),
-            neighborsModel(displayKanji),
+            detailSnapshot?.let {
+                neighborsModel(
+                    displayKanji,
+                    it.similarPairs,
+                    it.wrongPickCounts,
+                    it.inventory,
+                )
+            },
             inventory?.let(::localInventoryPanelModel),
             mnemonicNoteModel(displayKanji, mnemonicNote, stuck),
             detailActionsModel(
@@ -312,11 +330,13 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
         )
     }
 
-    fun neighborsModel(kanji: String): BrowseNeighborPanelModel? {
-        val pairs = home.store.similarPairsForKanji(kanji)
+    fun neighborsModel(
+        kanji: String,
+        pairs: List<RecordsImportModels.SimilarKanjiPair>,
+        wrongPicks: Map<String, Map<String, Int>>,
+        inventory: List<RecordsImportModels.KanjiInventoryItem>,
+    ): BrowseNeighborPanelModel? {
         if (pairs.isEmpty()) return null
-        val wrongPicks = home.store.choiceWrongPickCounts(System.currentTimeMillis())
-        val inventory = home.store.searchKanjiInventory("", false)
         val meanings = inventory.associate { it.kanji to it.primaryMeaning }
         val rows = KanjiNeighborPanelPolicy.build(kanji, pairs, wrongPicks, meanings)
         if (rows.isEmpty()) return null
@@ -410,7 +430,11 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     private fun saveMnemonicNote(displayKanji: String, note: String) {
         val normalizedNote = note.trim()
         home.io.execute {
-            home.store.saveKanjiMnemonicNote(displayKanji, normalizedNote, System.currentTimeMillis())
+            runBlocking {
+                home.homeUseCases.saveMnemonic(
+                    SaveMnemonicCommand(displayKanji, normalizedNote, System.currentTimeMillis()),
+                )
+            }
             home.postToMainIfActive {
                 val message = if (normalizedNote.isEmpty()) {
                     HomeTextCopy.mnemonicNoteClearedToast()
@@ -471,7 +495,15 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
             HomeTextCopy.localSuspendButtonLabel(suspended),
             Runnable {
                 home.io.execute {
-                    home.store.setKanjiLocallySuspended(displayKanji, !suspended, System.currentTimeMillis())
+                    runBlocking {
+                        home.homeUseCases.setLocalSuspension(
+                            SetLocalSuspensionCommand(
+                                listOf(displayKanji),
+                                !suspended,
+                                System.currentTimeMillis(),
+                            ),
+                        )
+                    }
                     home.postToMainIfActive {
                         Toast.makeText(home, HomeTextCopy.localSuspendToast(suspended), Toast.LENGTH_SHORT).show()
                         renderDetail(displayKanji, fromBrowse, browseQuery ?: "")

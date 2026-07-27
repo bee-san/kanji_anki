@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanRequest
 import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.core.FocusedStudyPlanPolicy
+import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -14,6 +15,8 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyPlanSelectionPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
+import dev.bee.kanjianki.data.StudyStreakSnapshot
 import java.util.Collections
 import java.util.Locale
 
@@ -53,19 +56,48 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                 activity.store.studiedKanjiSince(activity.startOfDay(now))
             }
         }
+        val workload = studyPlanPhase("workload-settings") {
+            AdaptiveWorkloadSnapshot(
+                activity.store.adaptiveLoadWorkPercent(),
+                activity.store.adaptiveLoadMaxItems(),
+                activity.store.adaptiveLoadMode(),
+            )
+        }
+        adaptivePlan(
+            rows = rows,
+            items = items,
+            now = now,
+            streakDays = streakDays,
+            settings = settings,
+            reviewStats = reviewStats,
+            studiedKanji = studiedKanji,
+            workload = workload,
+        )
+    }
+
+    fun adaptivePlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        streakDays: Int,
+        settings: RecordsSyncModels.Settings,
+        reviewStats: RecordsSchedulerModels.ReviewStats,
+        studiedKanji: Set<String>,
+        workload: AdaptiveWorkloadSnapshot,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
         val readingExposure = studyPlanPhase("reading-exposure") {
             withStudyLoadProbe("adaptivePlan.readingExposureRead") {
                 ReadingExposureMediaReader().read()
             }
         }
-        val workload = studyPlanPhase("workload-settings") {
+        val workloadPolicy = studyPlanPhase("workload-settings") {
             AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                activity.store.adaptiveLoadWorkPercent(),
-                activity.store.adaptiveLoadMode(),
-                activity.store.adaptiveLoadMaxItems(),
+                workload.workPercent,
+                workload.mode,
+                workload.maxItems,
             )
         }
-        studyPlanPhase("planner-compute") {
+        return studyPlanPhase("planner-compute") {
             withStudyLoadProbe("adaptivePlan.plannerCompute") {
                 AdaptiveLoadPlanner().plan(
                     AdaptiveLoadPlanner.PlanRequest.builder(
@@ -74,7 +106,7 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                         reviewStats,
                         streakDays,
                         studiedKanji,
-                        workload,
+                        workloadPolicy,
                         now,
                     )
                         .settings(settings)
@@ -124,6 +156,43 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
                 lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
                 autoSyncEnabled = autoSync.enabled,
                 consecutiveFailedSyncs = activity.store.consecutiveFailedSyncCount(),
+            ),
+        )
+    }
+
+    fun dailyStudyPlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        streak: StudyStreakSnapshot,
+        lastSuccessfulSyncAtMillis: Long?,
+        ladder: RecordsBase.StudyLadderSettings,
+        autoSyncEnabled: Boolean,
+        consecutiveFailedSyncs: Int,
+    ): DailyStudyPlan {
+        val eligibleItems = StudyProjectionEligibilityPolicy.eligibleStudyItems(
+            items,
+            rows,
+            ladder,
+        )
+        return DailyStudyPlanPolicy.plan(
+            DailyStudyPlanRequest(
+                nowMillis = now,
+                dueAtMillis = eligibleItems.map { it.dueAtMillis },
+                studiedToday = streak.studiedToday,
+                streak = StudyStreakPolicy.Streak(
+                    currentDays = streak.currentDays,
+                    bestDays = streak.bestDays,
+                    studiedToday = streak.studiedToday,
+                    reviewsToday = streak.reviewsToday,
+                    lastStudyAtMillis = streak.lastStudyAtMillis,
+                ),
+                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else {
+                    eligibleItems.count { it.totalReviews == 0 }
+                },
+                lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
+                autoSyncEnabled = autoSyncEnabled,
+                consecutiveFailedSyncs = consecutiveFailedSyncs,
             ),
         )
     }

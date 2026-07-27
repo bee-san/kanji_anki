@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.bee.kanjianki.data.SetLocalSuspensionCommand
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,7 @@ private data class BrowseSelectionWriteRequest(
 )
 
 /**
- * Serializes Browse selection writes outside the Activity-owned executor/store.
+ * Serializes Browse selection writes outside the Activity-owned executor.
  *
  * The ViewModel and application context survive configuration changes, while the
  * replayed completion lets the recreated Activity refresh a Browse load that raced
@@ -52,7 +53,7 @@ private data class BrowseSelectionWriteRequest(
 internal class BrowseSelectionWriteViewModel @JvmOverloads constructor(
     application: Application,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val persist: (Context, BrowseSelectionMutation) -> Unit = ::persistBrowseSelection,
+    private val persist: suspend (Context, BrowseSelectionMutation) -> Unit = ::persistBrowseSelection,
 ) : AndroidViewModel(application) {
     private val nextWriteId = AtomicLong(0L)
     private val requests = Channel<BrowseSelectionWriteRequest>(Channel.UNLIMITED)
@@ -114,23 +115,21 @@ internal class BrowseSelectionWriteViewModel @JvmOverloads constructor(
     }
 }
 
-private fun persistBrowseSelection(
+private suspend fun persistBrowseSelection(
     context: Context,
     mutation: BrowseSelectionMutation,
 ) {
-    context.requireKaniContainer().openLocalStore().use { store ->
-        when (mutation) {
-            is BrowseSelectionMutation.Single -> store.setKanjiLocallySuspended(
-                mutation.kanji,
-                mutation.suspended,
-                mutation.changedAtMillis,
-            )
-
-            is BrowseSelectionMutation.Bulk -> store.setKanjiLocallySuspendedForKanji(
-                mutation.kanji,
-                mutation.suspended,
-                mutation.changedAtMillis,
-            )
-        }
+    val command = when (mutation) {
+        is BrowseSelectionMutation.Single -> SetLocalSuspensionCommand(
+            listOf(mutation.kanji),
+            mutation.suspended,
+            mutation.changedAtMillis,
+        )
+        is BrowseSelectionMutation.Bulk -> SetLocalSuspensionCommand(
+            mutation.kanji,
+            mutation.suspended,
+            mutation.changedAtMillis,
+        )
     }
+    context.requireKaniContainer().homeUseCases.setLocalSuspension(command)
 }

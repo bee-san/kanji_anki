@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.CommitFsrsFitCommand
 import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
+import dev.bee.kanjianki.data.HomeGameDataSnapshot
 import dev.bee.kanjianki.data.HomeRepository
 import dev.bee.kanjianki.data.HomeSnapshot
 import dev.bee.kanjianki.data.RecordRepairedWriteBackCommand
@@ -41,8 +42,15 @@ class FakeHomeRepository : HomeRepository {
     var searchHandler:
         suspend (String, Boolean) -> StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
         unconfigured2("searchInventory")
+    var studySearchHandler:
+        suspend (String, Boolean, Boolean) -> StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
+        { _, _, _ -> StoreResult.ok(emptyList()) }
     var detailHandler: suspend (String, Long) -> StoreResult<HomeKanjiDetailSnapshot> =
         unconfigured2("loadKanjiDetail")
+    var gameDataResult: StoreResult<HomeGameDataSnapshot> = StoreResult.ok(
+        HomeGameDataSnapshot(emptyList(), emptyList(), emptyList()),
+    )
+    var downgradeNoticeResult: StoreResult<Int?> = StoreResult.ok(null)
     var saveMnemonicHandler: suspend (SaveMnemonicCommand) -> StoreResult<Unit> =
         { StoreResult.ok(Unit) }
     var suspensionHandler: suspend (SetLocalSuspensionCommand) -> StoreResult<Unit> =
@@ -60,10 +68,21 @@ class FakeHomeRepository : HomeRepository {
     ): StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
         searchHandler(query, onlySimilarKanji)
 
+    override suspend fun searchStudyInventory(
+        query: String,
+        onlySimilarKanji: Boolean,
+        includeLocallySuspended: Boolean,
+    ): StoreResult<List<RecordsImportModels.KanjiInventoryItem>> =
+        studySearchHandler(query, onlySimilarKanji, includeLocallySuspended)
+
     override suspend fun loadKanjiDetail(
         kanji: String,
         nowMillis: Long,
     ): StoreResult<HomeKanjiDetailSnapshot> = detailHandler(kanji, nowMillis)
+
+    override suspend fun loadGameData(): StoreResult<HomeGameDataSnapshot> = gameDataResult
+
+    override suspend fun consumeDowngradeNotice(): StoreResult<Int?> = downgradeNoticeResult
 
     override suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit> {
         mnemonicCommands += command

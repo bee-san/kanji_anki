@@ -1,5 +1,7 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.platform.DeviceSettingKeys
+
 /** Reports install permission while honoring the test override seam. */
 internal fun canRequestPackageInstalls(activity: MainActivityBase): Boolean {
     MainActivityRuntimeOverrides.installPermission?.let { return it }
@@ -12,14 +14,19 @@ internal fun canRequestPackageInstalls(activity: MainActivityBase): Boolean {
  * snapshot and never performs settings-table reads or PackageManager IPC.
  */
 internal fun MainActivityHome.loadUpdatePermissionPromptSnapshot(): HomeUpdatePermissionPromptSnapshot? {
-    val status = store.autoUpdateStatus()
+    val settings = deviceSettingsStore.snapshot()
+    val lastCheckAt = settings.read(DeviceSettingKeys.autoUpdateLastCheckAt) ?: 0L
+    val pendingPackage = settings.read(DeviceSettingKeys.autoUpdatePendingPackage).orEmpty()
+    val lastVersion = settings.read(DeviceSettingKeys.autoUpdateLastVersion).orEmpty()
     return HomeUpdatePermissionPromptSnapshots.create(
-        autoUpdateEnabled = status.enabled,
+        autoUpdateEnabled = settings.read(DeviceSettingKeys.autoUpdateEnabled) ?: true,
         canRequestPackageInstalls = canRequestPackageInstalls(this),
-        hasCompletedUpdateCheck = status.lastCheckAtMillis > 0L,
-        firstPromptShown = store.installPermissionPromptShown(),
-        hasPendingUpdate = status.hasPendingUpdate(),
-        latestVersion = status.lastVersion,
-        lastPromptedVersion = store.installPermissionPromptLastVersion(),
+        hasCompletedUpdateCheck = lastCheckAt > 0L,
+        firstPromptShown = settings.read(DeviceSettingKeys.updatePermissionPromptShown) ?: false,
+        hasPendingUpdate = pendingPackage.isNotEmpty(),
+        latestVersion = lastVersion,
+        lastPromptedVersion = settings.read(
+            DeviceSettingKeys.updatePermissionPromptLastVersion,
+        ).orEmpty(),
     )
 }

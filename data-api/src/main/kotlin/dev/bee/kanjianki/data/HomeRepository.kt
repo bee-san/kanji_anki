@@ -12,10 +12,20 @@ interface HomeRepository {
         onlySimilarKanji: Boolean = false,
     ): StoreResult<List<RecordsImportModels.KanjiInventoryItem>>
 
+    suspend fun searchStudyInventory(
+        query: String,
+        onlySimilarKanji: Boolean,
+        includeLocallySuspended: Boolean,
+    ): StoreResult<List<RecordsImportModels.KanjiInventoryItem>>
+
     suspend fun loadKanjiDetail(
         kanji: String,
         nowMillis: Long,
     ): StoreResult<HomeKanjiDetailSnapshot>
+
+    suspend fun loadGameData(): StoreResult<HomeGameDataSnapshot>
+
+    suspend fun consumeDowngradeNotice(): StoreResult<Int?>
 
     suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit>
 
@@ -31,6 +41,7 @@ data class HomeSnapshot(
     val studyStreak: StudyStreakSnapshot,
     val dueLegacyWritingRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
     val repairedHandoffKanji: List<String>,
+    val consecutiveFailedSyncs: Int,
 )
 
 data class HomeKanjiDetailSnapshot(
@@ -43,6 +54,12 @@ data class HomeKanjiDetailSnapshot(
     val wrongPickCounts: Map<String, Map<String, Int>>,
     val inventory: List<RecordsImportModels.KanjiInventoryItem>,
     val locallySuspended: Boolean,
+)
+
+data class HomeGameDataSnapshot(
+    val activeRows: List<RecordsImportModels.DashboardRow>,
+    val inventory: List<RecordsImportModels.KanjiInventoryItem>,
+    val similarPairs: List<RecordsImportModels.SimilarKanjiPair>,
 )
 
 data class SaveMnemonicCommand(

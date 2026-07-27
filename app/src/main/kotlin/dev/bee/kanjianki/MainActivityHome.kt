@@ -25,18 +25,14 @@ import dev.bee.kanjianki.core.RepairedHandoffPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
-import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.data.StatsCacheStore
-import dev.bee.kanjianki.data.StatsPrecomputeStore
-import dev.bee.kanjianki.data.StudyStatsStore
-import dev.bee.kanjianki.data.dismissRepairedHandoff
-import dev.bee.kanjianki.data.pendingRepairedHandoffKanji
-import dev.bee.kanjianki.data.repairedWriteBackPreview
+import dev.bee.kanjianki.application.HomeRouteSnapshot
+import dev.bee.kanjianki.data.StudyStreakSnapshot
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.AutoSyncScheduler
-import dev.bee.kanjianki.core.SyncSettings
 import java.util.Locale
 import java.util.concurrent.RejectedExecutionException
+import kotlinx.coroutines.runBlocking
 
 internal abstract class MainActivityHome : MainActivityBase() {
     // Written on the main thread and read from a background route-load lambda, so it is
@@ -72,11 +68,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
             background = maintenance,
-            // The process store outlives every Activity, so maintenance can safely
-            // share its caches across recreation.
-            isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
+            isFresh = {
+                runBlocking { statsUseCases.isFresh(System.currentTimeMillis()) }
+            },
             refresh = { generatedAt ->
-                StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt)
+                runBlocking { statsUseCases.refresh(generatedAt) }
             },
             onError = ::reportStatsPrecomputeError,
         )
@@ -88,6 +84,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
     internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
     private var confirmedRepairedNoteIds: Set<Long> = emptySet()
     private var lastObservedBrowseSelectionWriteId = 0L
+    @Volatile
+    private var latestHomeSnapshot: HomeRouteSnapshot? = null
 
     abstract fun renderGames()
 
@@ -121,10 +119,13 @@ internal abstract class MainActivityHome : MainActivityBase() {
         renderAsyncHomeRoute(
             loadingTitle = HomeTextCopy.appTitle(),
             load = {
-                val downgradeVersion = store.consumeDowngradeNotice()
-                buildHomeScreenModel() to downgradeVersion
+                val now = System.currentTimeMillis()
+                val snapshot = runBlocking { homeUseCases.loadRoute(now) }
+                val downgradeVersion = runBlocking { homeUseCases.consumeDowngradeNotice() }
+                Triple(buildHomeScreenModel(snapshot, now), snapshot, downgradeVersion)
             },
-            render = { (model, downgradeVersion) ->
+            render = { (model, snapshot, downgradeVersion) ->
+                latestHomeSnapshot = snapshot
                 renderHomeScreen(
                     model,
                     initialScrollY = screenshotScrollY(),
@@ -158,28 +159,33 @@ internal abstract class MainActivityHome : MainActivityBase() {
         ).show()
     }
 
-    private fun buildHomeScreenModel(): HomeScreenModel = homeLoadPhase(
+    private fun buildHomeScreenModel(
+        routeSnapshot: HomeRouteSnapshot,
+        now: Long,
+    ): HomeScreenModel = homeLoadPhase(
         phase = "total",
         details = { model -> "preview_cards=${model.previewCards.size}" },
     ) {
-        val now = System.currentTimeMillis()
-        val sync = homeLoadPhase("latest-sync") { store.latestSync() }
+        val homeSnapshot = routeSnapshot.home
+        val studySnapshot = routeSnapshot.study
+        val settingsRepositorySnapshot = routeSnapshot.settings
+        val sync = homeLoadPhase("latest-sync") { homeSnapshot.latestSync }
         val latestSuccessfulSyncAt = homeLoadPhase("latest-successful-sync") {
-            store.latestSuccessfulSyncFinishedAt()
+            homeSnapshot.latestSuccessfulSyncAtMillis
         }
-        val streak = homeLoadPhase("study-streak") { store.studyStreak(now) }
-        val settingsSnapshot = homeLoadPhase("settings") { settings() }
+        val streak = homeLoadPhase("study-streak") { homeSnapshot.studyStreak }
+        val settingsSnapshot = homeLoadPhase("settings") { settingsRepositorySnapshot.sync }
         val rows = homeLoadPhase(
             phase = "dashboard",
             details = { loaded -> "rows=${loaded.size}" },
         ) {
-            store.activeDashboardRows()
+            homeSnapshot.activeRows
         }
         val studyItems = homeLoadPhase(
             phase = "study-items",
             details = { loaded -> "rows=${loaded.size}" },
         ) {
-            if (rows.isEmpty()) emptyList() else store.studyItemsForKanji(rows.map { it.kanji })
+            homeSnapshot.studyItems
         }
         val deckOverviewRows = homeLoadPhase(
             phase = "deck-overview",
@@ -192,34 +198,60 @@ internal abstract class MainActivityHome : MainActivityBase() {
                     studyItems = studyItems,
                     dashboardRows = rows,
                     nowMillis = now,
-                    locallySuspendedKanji = store.locallySuspendedKanji(),
+                    locallySuspendedKanji = homeSnapshot.locallySuspendedKanji,
                 ).rows()
             }
         }
         val homeItems = studyItems
         val dailyPlan = homeLoadPhase("daily-plan") {
-            homeStudyPlanProvider.dailyStudyPlan(rows, homeItems, now, streak, latestSuccessfulSyncAt)
+            homeStudyPlanProvider.dailyStudyPlan(
+                rows = rows,
+                items = homeItems,
+                now = now,
+                streak = streak,
+                lastSuccessfulSyncAtMillis = latestSuccessfulSyncAt,
+                ladder = studySnapshot.studyLadder,
+                autoSyncEnabled = deviceSettingsStore.read(DeviceSettingKeys.autoSyncEnabled) ?: false,
+                consecutiveFailedSyncs = homeSnapshot.consecutiveFailedSyncs,
+            )
         }
         val homePlan = homeLoadPhase("adaptive-plan") {
             if (rows.isEmpty()) {
                 null
             } else {
-                homeStudyPlanProvider.adaptivePlan(rows, homeItems, now, streak.currentDays, settingsSnapshot)
+                homeStudyPlanProvider.adaptivePlan(
+                    rows = rows,
+                    items = homeItems,
+                    now = now,
+                    streakDays = streak.currentDays,
+                    settings = settingsSnapshot,
+                    reviewStats = studySnapshot.recentReviewStats,
+                    studiedKanji = studySnapshot.studiedKanjiToday,
+                    workload = studySnapshot.adaptiveWorkload,
+                )
             }
         }
         val studyNowCount = homeLoadPhase("study-now-count") {
-            val ladder = studyLadderSettings()
+            val ladder = studySnapshot.studyLadder
             val studyItemCount = if (homePlan == null || rows.isEmpty()) {
                 0
             } else {
                 StudyNowCountCoordinator.count(
                     StudyNowCountCoordinator.Request(
                         queue = StudyNowCountCoordinator.QueueInput(rows, homeItems, settingsSnapshot, ladder),
-                        timing = StudyNowCountCoordinator.Timing(now, startOfDay(now), studyAheadMillis()),
+                        timing = StudyNowCountCoordinator.Timing(
+                            now,
+                            startOfDay(now),
+                            studySnapshot.studyAheadMinutes * 60_000L,
+                        ),
                         mode = StudyNowCountCoordinator.Mode(homePlan, false),
                         pipeline = StudyNowCountCoordinator.Pipeline(
-                            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
-                            annotator = store::annotateSimilarKanjiAvailability,
+                            scheduler = BridgeScheduler.withWeights(
+                                studySnapshot.schedulerFsrsWeights?.toDoubleArray(),
+                            ),
+                            annotator = { items ->
+                                runBlocking { homeUseCases.annotateCapabilities(items) }
+                            },
                             replanner = { seeded ->
                                 homeStudyPlanProvider.adaptivePlan(
                                     rows,
@@ -234,7 +266,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
                 ).studyItemCount
             }
             val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-                store.dueSimilarWritingRepairs(now).map(StudySessionProgressTracker::similarRepairProgressKey)
+                homeSnapshot.dueLegacyWritingRepairs
+                    .map(StudySessionProgressTracker::similarRepairProgressKey)
             } else {
                 emptyList()
             }
@@ -244,12 +277,23 @@ internal abstract class MainActivityHome : MainActivityBase() {
             phase = "queue-entries",
             details = { loaded -> "rows=${loaded.size}" },
         ) {
-            if (rows.isEmpty()) emptyList() else queuedEntries(rows, homeItems, now, homePlan)
+            if (rows.isEmpty()) {
+                emptyList()
+            } else {
+                focusQueue.queuedEntries(
+                    rows,
+                    homeItems,
+                    now,
+                    homePlan,
+                    studySnapshot.studyAheadMinutes,
+                    studySnapshot.studyLadder,
+                )
+            }
         }
         val provider = homeLoadPhase("provider-status") { gateway.status() }
         val matureSupportThreshold = settingsSnapshot.matureSupportThreshold
         val repairedHandoff = homeLoadPhase("repaired-handoff") {
-            RepairedHandoffPolicy.card(store.pendingRepairedHandoffKanji())?.let { card ->
+            RepairedHandoffPolicy.card(homeSnapshot.repairedHandoffKanji)?.let { card ->
                 HomeRepairedHandoffCardModel(
                     card = card,
                     onCopySearch = { copyRepairedAnkiSearch(card.search) },
@@ -261,7 +305,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             loadUpdatePermissionPromptSnapshot()
         }
         val updateCheckFailedLine = homeLoadPhase("update-check-failed") {
-            val failedAt = store.updateCheckFailedAt()
+            val failedAt = deviceSettingsStore.read(DeviceSettingKeys.updateCheckFailedAt) ?: 0L
             if (failedAt > 0L && (now - failedAt) < UPDATE_CHECK_FAILURE_EXPIRY_MS) {
                 HomeTextCopy.updateCheckFailedLine()
             } else {
@@ -323,7 +367,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         // of relying on postToMainIfActive's isFinishing guard.
         lifecycleScope.launch {
             withContext(dispatchers.io) {
-                store.dismissRepairedHandoff()
+                homeUseCases.dismissRepairedHandoff()
             }
             renderHome()
         }
@@ -413,13 +457,29 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
     }
 
-    fun streakAccent(streak: StudyStatsStore.StudyStreak?): Int {
+    fun streakAccent(streak: StudyStreakSnapshot?): Int {
         return focusQueue.streakAccent(streak)
     }
 
     fun confirmSync() {
         confirmedRepairedNoteIds = emptySet()
-        val consent = currentSyncConsent()
+        renderAsyncHomeRoute(
+            loadingTitle = HomeTextCopy.appTitle(),
+            traceName = "sync-consent",
+            load = {
+                val snapshot = runBlocking {
+                    homeUseCases.loadRoute(System.currentTimeMillis())
+                }
+                snapshot to currentSyncConsent(snapshot)
+            },
+            render = { (snapshot, consent) ->
+                latestHomeSnapshot = snapshot
+                showSyncConsent(consent)
+            },
+        )
+    }
+
+    private fun showSyncConsent(consent: SyncConsent) {
         val plan = consent.plan
         pendingHomeSyncDialog = HomeSyncConfirmDialogModels.create(
             message = plan.body(),
@@ -439,24 +499,23 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     protected open fun importOnboardingPlan(): HomeImportOnboardingPolicy.Plan {
-        return currentSyncConsent().plan
+        val snapshot = checkNotNull(latestHomeSnapshot) {
+            "Home sync consent requires a loaded Home snapshot"
+        }
+        return currentSyncConsent(snapshot).plan
     }
 
-    private fun currentSyncConsent(): SyncConsent {
-        val current = settings()
+    private fun currentSyncConsent(snapshot: HomeRouteSnapshot): SyncConsent {
+        val current = snapshot.settings.sync
         val provider = gateway.status()
-        val tagRepaired = SyncSettings.tagRepairedCards(store)
-        val repairedProposal = if (tagRepaired) {
-            store.repairedWriteBackPreview(current.matureSupportThreshold)
-        } else {
-            null
-        }
+        val tagRepaired = snapshot.settings.tagRepairedCards
+        val repairedProposal = snapshot.repairedWriteBackProposal
         return SyncConsent(
             plan = HomeImportOnboardingPolicy.plan(
                 provider.installed,
                 provider.permissionGranted,
                 provider.canSync,
-                onboardingLastSync(),
+                onboardingLastSync(snapshot),
                 provider.permission,
                 current,
                 tagRepaired,
@@ -466,8 +525,8 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
 
-    private fun onboardingLastSync(): HomeImportOnboardingPolicy.LastSync? {
-        val sync = store.latestSync() ?: return null
+    private fun onboardingLastSync(snapshot: HomeRouteSnapshot): HomeImportOnboardingPolicy.LastSync? {
+        val sync = snapshot.home.latestSync ?: return null
         return HomeImportOnboardingPolicy.LastSync(sync.status, sync.importedKanji, sync.errorMessage)
     }
 
@@ -524,19 +583,10 @@ internal abstract class MainActivityHome : MainActivityBase() {
             io,
             { task -> postToMainIfActive { task.run() } },
             { progress ->
-                ManualSyncEngine(
-                    this,
-                    store,
-                    syncGateway,
-                    settings(),
-                    progress,
-                    dev.bee.kanjianki.time.AppClock.systemClock(),
-                    repairedWriteBackAuthorized = true,
-                    confirmedRepairedNoteIds = repairedNoteIds,
-                ).run()
+                manualSyncEngine(syncGateway, progress, repairedNoteIds).run()
             },
             {
-                store.activateAutoSyncAfterFirstSuccess()
+                activateAutoSyncAfterFirstSuccess()
                 AutoSyncScheduler.schedule(this)
             },
             this::renderSyncResult,
@@ -756,7 +806,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private fun <T> warmThemeThen(load: () -> T): () -> T {
         return {
             if (isStoreInitialized()) {
-                runCatching { store.appThemeChoice() }
+                runCatching {
+                    runBlocking { homeUseCases.loadSettings() }
+                }
             }
             load()
         }
@@ -803,7 +855,6 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     private fun handleBrowseSelectionWriteCompletion() {
-        store.clearLocallySuspendedCache()
         val route = currentBrowseRouteAfterSelectionWrite(
             currentRoute = currentRoute,
             currentHomeRoute = currentHomeRouteRestoration,

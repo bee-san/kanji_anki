@@ -2,7 +2,6 @@ package dev.bee.kanjianki
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -15,7 +14,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.data.STATS_RECENT_MISTAKE_LIMIT
 import dev.bee.kanjianki.data.StatsCacheStore
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.toRepositorySnapshot
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -403,33 +402,14 @@ class RecentMistakesRetiredProjectionTest {
     }
 
     private fun routeData(targetStore: LocalStore = store): RecentMistakesRouteData {
+        val snapshot = targetStore.cachedStatsSnapshotOrNull()
+            ?: targetStore.recomputeStatsSnapshotSynchronously(now)
+        val rows = targetStore.activeDashboardRows()
         return recentMistakesRouteData(
-            object : RecentMistakesRouteDataSource {
-                override fun cachedStatsSnapshotOrNull(): StatsCacheStore.Snapshot? {
-                    return targetStore.cachedStatsSnapshotOrNull()
-                }
-
-                override fun recentMistakes(limit: Int): List<StudyStatsStore.RecentMistake> {
-                    return targetStore.recentMistakes(limit)
-                }
-
-                override fun studyItemsForKanji(
-                    kanji: Collection<String>,
-                ): List<RecordsStudyModels.StudyItem> {
-                    return targetStore.studyItemsForKanji(kanji)
-                }
-
-                override fun activeDashboardRowsByKanji(): Map<String, RecordsImportModels.DashboardRow> {
-                    return targetStore.activeDashboardRowsByKanji()
-                }
-
-                override fun settings(): RecordsSyncModels.Settings = SyncSettings.fromStore(targetStore)
-
-                override fun evidenceStatusByKanji(): Map<String, KanjiRepairEvidencePolicy.Status> {
-                    return StudyStatsStore(targetStore).kanjiRepairEvidence()
-                        .associate { it.kanji to it.status }
-                }
-            },
+            snapshot.toRepositorySnapshot(),
+            rows,
+            targetStore.studyItemsForKanji(rows.map { it.kanji }),
+            SyncSettings.fromStore(targetStore),
         )
     }
 
