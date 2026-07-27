@@ -308,6 +308,7 @@ class RepositoryPayloadsTest {
             plan
         }
         val planning = SyncQueuePlanningSnapshot(
+            providerRows = emptyList(),
             rows = emptyList(),
             activeRows = emptyList(),
             currentItems = emptyList(),
@@ -322,6 +323,7 @@ class RepositoryPayloadsTest {
             recentReviewStats = reviewStats,
             currentStudyStreakDays = 3,
             studiedKanjiToday = emptySet(),
+            syncStartedAtMillis = 1_000L,
             nowMillis = 2_000L,
         )
         val publication = SyncPublicationCommand(

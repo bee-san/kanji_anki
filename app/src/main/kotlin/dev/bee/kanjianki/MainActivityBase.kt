@@ -20,6 +20,7 @@ import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
 import dev.bee.kanjianki.application.StudyUseCases
+import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
@@ -46,10 +47,12 @@ import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.KaniThemeChoice
 import java.io.File
 import java.util.concurrent.ExecutorService
+import kotlinx.coroutines.runBlocking
 
 internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
@@ -135,6 +138,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     lateinit var studyUseCases: StudyUseCases
         private set
 
+    lateinit var syncUseCases: SyncUseCases
+        private set
+
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
 
@@ -162,6 +168,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         if (!::statsUseCases.isInitialized) statsUseCases = container.statsUseCases
         if (!::settingsUseCases.isInitialized) settingsUseCases = container.settingsUseCases
         if (!::studyUseCases.isInitialized) studyUseCases = container.studyUseCases
+        if (!::syncUseCases.isInitialized) syncUseCases = container.syncUseCases
     }
 
     @JvmField
@@ -726,16 +733,19 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         gateway: CollectionGateway,
         progress: SyncProgress.Listener,
         confirmedRepairedNoteIds: Set<Long>,
-    ): ManualSyncEngine = ManualSyncEngine(
-        this,
-        store,
-        gateway,
-        settings(),
-        progress,
-        dev.bee.kanjianki.time.AppClock.systemClock(),
-        repairedWriteBackAuthorized = true,
-        confirmedRepairedNoteIds = confirmedRepairedNoteIds,
-    )
+    ): ManualSyncEngine {
+        val settingsSnapshot = runBlocking { syncUseCases.loadSettings() }
+        return createManualSyncEngine(
+            this,
+            syncUseCases,
+            gateway,
+            settingsSnapshot,
+            progress,
+            dev.bee.kanjianki.time.AppClock.systemClock(),
+            repairedWriteBackAuthorized = true,
+            confirmedRepairedNoteIds = confirmedRepairedNoteIds,
+        )
+    }
 
     internal fun activateAutoSyncAfterFirstSuccess() {
         store.activateAutoSyncAfterFirstSuccess()

@@ -78,7 +78,7 @@ class ManualSyncEngineRepairedWriteBackTest {
     fun convenienceConstructorDefaultsToNoWriteBackAuthorization() {
         store.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, 1)
         val gateway = RecordingGateway()
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             gateway,
@@ -193,7 +193,7 @@ class ManualSyncEngineRepairedWriteBackTest {
         progress: SyncProgress.Listener = SyncProgress.NONE,
         repairedWriteBackAuthorized: Boolean = true,
         confirmedRepairedNoteIds: Set<Long>? = null,
-    ): ManualSyncEngine = ManualSyncEngine(
+    ): ManualSyncEngine = createManualSyncEngine(
         context,
         store,
         gateway,

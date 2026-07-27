@@ -15,6 +15,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.time.AppClock
@@ -130,7 +131,7 @@ class Goal165ProviderBaselineInstrumentedTest {
         context.deleteDatabase(DATABASE_NAME)
         LocalStore(context).use { store ->
             val settings = RecordsSyncModels.Settings.kikuDefaults()
-            val engine = ManualSyncEngine(
+            val engine = createManualSyncEngine(
                 context,
                 store,
                 gateway(),

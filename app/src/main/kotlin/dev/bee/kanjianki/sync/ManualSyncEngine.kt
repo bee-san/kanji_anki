@@ -1,56 +1,52 @@
 package dev.bee.kanjianki.sync
 
-import android.content.Context
 import android.util.Log
 import dev.bee.kanjianki.AppDebugLog
-import dev.bee.kanjianki.R
-import dev.bee.kanjianki.ReadingExposureMediaReader
 import dev.bee.kanjianki.StudyNowCountCoordinator
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.application.ManualSyncQueuePlanner
+import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
-import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.BridgeScheduler
-import dev.bee.kanjianki.core.DictionaryLookup
-import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KanjiAnalyzer
 import dev.bee.kanjianki.core.KanjiImportSelector
-import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
-import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.LocalDayPolicy
-import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
-import dev.bee.kanjianki.core.MissingKanjiTextCopy
+import dev.bee.kanjianki.core.ReadingExposureModels
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
-import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.core.SuspendedImportPolicy
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
-import dev.bee.kanjianki.data.DictionaryStore
-import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.data.recordRepairedWriteBack
-import dev.bee.kanjianki.data.repairedWriteBackProposal
+import dev.bee.kanjianki.data.RecordRepairedWriteBackCommand
+import dev.bee.kanjianki.data.RecordSyncFailureCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
+import dev.bee.kanjianki.data.StoredSyncState
+import dev.bee.kanjianki.data.SyncPublicationCommand
+import dev.bee.kanjianki.data.SyncTimingSnapshot
 import dev.bee.kanjianki.time.AppClock
-import dev.bee.kanjianki.widget.KaniWidgetUpdater
-import java.io.IOException
-import java.io.InputStreamReader
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.runBlocking
 
-internal class ManualSyncEngine {
-    private val context: Context
-    private val store: LocalStore
-    private val gateway: CollectionGateway
-    private val settings: RecordsSyncModels.Settings
-    private val progress: SyncProgress.Listener
-    private val clock: AppClock
-    private val repairedWriteBackAuthorized: Boolean
-    private val confirmedRepairedNoteIds: Set<Long>?
+internal class ManualSyncEngine(
+    private val syncUseCases: SyncUseCases,
+    private val gateway: CollectionGateway,
+    private val settingsSnapshot: SettingsSnapshot,
+    private val progress: SyncProgress.Listener,
+    private val clock: AppClock,
+    private val assetReaders: SyncAssetReaders,
+    private val queuePlannerFactory:
+        (ReadingExposureModels.ExposureIndex) -> ManualSyncQueuePlanner,
+    postCommitEffects: SyncPostCommitEffects,
+    private val repairedWriteBackAuthorized: Boolean,
+    confirmedRepairedNoteIds: Set<Long>?,
+) {
+    private val settings: RecordsSyncModels.Settings = settingsSnapshot.sync
+    private val confirmedRepairedNoteIds: Set<Long>? = confirmedRepairedNoteIds?.toSet()
 
     /**
      * Seam for the post-sync reminder re-arm (D4). Defaults to the real
@@ -58,19 +54,15 @@ internal class ManualSyncEngine {
      * failure path does not.
      */
     @JvmField
-    internal var reminderRescheduler: Runnable = Runnable {
-        dev.bee.kanjianki.reminders.ReminderScheduler.schedule(context)
-    }
+    internal var reminderRescheduler: Runnable = postCommitEffects.reminderRescheduler
 
     /** Refreshes any installed widget from the same committed queue snapshot. */
     @JvmField
-    internal var widgetRefresher: Runnable = Runnable {
-        KaniWidgetUpdater.requestUpdate(context)
-    }
+    internal var widgetRefresher: Runnable = postCommitEffects.widgetRefresher
 
     /** Persists the best-effort provider cleanup summary after the sync commit. */
     internal var removalMessagePersister: (Long, String?) -> Unit = { syncId, message ->
-        store.updateSyncRemovalMessage(syncId, message)
+        runBlocking { syncUseCases.updateRemovalMessage(syncId, message) }
     }
 
     /** Re-reads the committed queue so the returned Study count includes mid-sync review merges. */
@@ -81,48 +73,24 @@ internal class ManualSyncEngine {
 
     internal var repairedProposalProvider:
         (RecordsSyncModels.CollectionSnapshot, Int) -> RepairedWriteBackPolicy.Proposal =
-        { snapshot, threshold -> store.repairedWriteBackProposal(snapshot, threshold) }
+        { snapshot, threshold ->
+            runBlocking { syncUseCases.repairedWriteBackProposal(snapshot, threshold) }
+        }
 
     internal var repairedWriteBackRecorder:
         (RepairedWriteBackPolicy.Proposal, Set<Long>, Long, Long) -> List<String> =
         { proposal, tagged, occurredAt, syncId ->
-            store.recordRepairedWriteBack(proposal, tagged, occurredAt, syncId)
+            runBlocking {
+                syncUseCases.recordRepairedWriteBack(
+                    RecordRepairedWriteBackCommand(
+                        proposal,
+                        tagged,
+                        occurredAt,
+                        syncId,
+                    ),
+                )
+            }
         }
-
-    constructor(
-        context: Context,
-        store: LocalStore,
-        gateway: CollectionGateway,
-        settings: RecordsSyncModels.Settings,
-    ) : this(context, store, gateway, settings, SyncProgress.NONE)
-
-    constructor(
-        context: Context,
-        store: LocalStore,
-        gateway: CollectionGateway,
-        settings: RecordsSyncModels.Settings,
-        progress: SyncProgress.Listener?,
-    ) : this(context, store, gateway, settings, progress, AppClock.systemClock())
-
-    constructor(
-        context: Context,
-        store: LocalStore,
-        gateway: CollectionGateway,
-        settings: RecordsSyncModels.Settings,
-        progress: SyncProgress.Listener?,
-        clock: AppClock?,
-        repairedWriteBackAuthorized: Boolean = false,
-        confirmedRepairedNoteIds: Set<Long>? = null,
-    ) {
-        this.context = context.applicationContext
-        this.store = store
-        this.gateway = gateway
-        this.settings = settings
-        this.progress = progress ?: SyncProgress.NONE
-        this.clock = AppClock.orSystem(clock)
-        this.repairedWriteBackAuthorized = repairedWriteBackAuthorized
-        this.confirmedRepairedNoteIds = confirmedRepairedNoteIds?.toSet()
-    }
 
     fun run(): SyncResult {
         if (!RUNNING.compareAndSet(false, true)) {
@@ -142,9 +110,10 @@ internal class ManualSyncEngine {
         AppDebugLog.log("sync start model=${settings.modelName}")
         try {
             val snapshot = gateway.readCollection(settings, progress)
-            rejectTransientEmptySnapshot(snapshot)
+            val storedState = runBlocking { syncUseCases.loadStoredState() }
+            rejectTransientEmptySnapshot(snapshot, storedState)
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS))
-            val ranks = loadRanks()
+            val ranks = assetReaders.loadRanks()
             val selectedImports = KanjiImportSelector(
                 ranks,
                 settings.suspendedRankMin,
@@ -152,7 +121,7 @@ internal class ManualSyncEngine {
             ).importFrom(snapshot, settings)
             val currentSuspendedImports = SuspendedImportPolicy.suspendedImportsOnly(selectedImports)
             val storedSuspendedImports = if (settings.importSuspendedCards) {
-                storedImportsWithDurableProviderRoute(snapshot, store.suspendedImports())
+                storedImportsWithDurableProviderRoute(snapshot, storedState)
             } else {
                 emptyList()
             }
@@ -162,59 +131,31 @@ internal class ManualSyncEngine {
                 settings,
             )
             val rows = KanjiAnalyzer().rebuildSelectedSources(snapshot, analysisImports, ranks, settings)
-            val similarKanjiIndex = loadSimilarKanjiIndex()
+            val similarKanjiIndex = assetReaders.loadSimilarKanjiIndex()
+            val dictionary = assetReaders.loadDictionary()
+            val queuePlanner = queuePlannerFactory(assetReaders.loadReadingExposure())
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.SAVING_LOCAL_DATA))
             val finished = clock.nowMillis()
-            var syncId = 0L
-            lateinit var plan: RecordsSchedulerModels.AdaptiveLoadPlan
-            var activeRows = emptyList<RecordsImportModels.DashboardRow>()
-            store.publishSyncAtomically {
-                // Keep the provider mirror, dashboard/inventory derivations, and
-                // reconciled queue unpublished until every local phase succeeds.
-                syncId = store.saveSuccessfulSync(
-                    snapshot,
-                    currentSuspendedImports,
-                    rows,
-                    settings,
-                    LocalStoreBase.SyncTiming(started, finished),
-                    null,
-                    similarKanjiIndex,
-                    selectedImports,
-                    LocalStoreBase.STATUS_PENDING,
-                    loadDictionary(),
+            progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
+            val publication = runBlocking {
+                syncUseCases.publish(
+                    SyncPublicationCommand(
+                        snapshot = snapshot,
+                        imports = currentSuspendedImports,
+                        auditImports = selectedImports,
+                        rows = rows,
+                        settings = settings,
+                        timing = SyncTimingSnapshot(started, finished),
+                        removalMessage = null,
+                        similarIndex = similarKanjiIndex,
+                        dictionary = dictionary,
+                        queuePlanner = queuePlanner,
+                    ),
                 )
-
-                progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
-                val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
-                val queueRows = ManualKanjiAdmissionPolicy.mergeRows(
-                    providerRows = rows,
-                    candidates = store.missingKanjiStore().manualSources().map { source -> source.candidate },
-                    reasonText = MissingKanjiTextCopy.dictionarySourceReason(),
-                )
-                activeRows = SuspendedImportPolicy.activeRows(queueRows, store.locallySuspendedKanji())
-                // Seeding is a durable reconciliation, so it must see every persisted family.
-                // Admission and planning stay scoped to rows that are not locally suspended.
-                val currentItems = store.studyItems()
-                val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
-                val activeItems = currentItems.filter { it.kanji in activeKanji }
-                plan = adaptivePlan(activeRows, activeItems, finished)
-                val evidenceStatusByKanji = repairEvidenceStatusByKanji(rows, started)
-                var seeded = scheduler.seedQueue(
-                    queueRows,
-                    activeRows,
-                    currentItems,
-                    settings,
-                    finished,
-                    startOfDay(finished),
-                    plan,
-                    store.studyLadderSettings(),
-                    evidenceStatusByKanji,
-                )
-                seeded = store.annotateSimilarKanjiAvailability(seeded)
-                // Pass the pre-seed baseline so queue publication preserves any review
-                // saved before this outer write transaction acquired its lock.
-                store.commitPendingSyncStudyItems(seeded, syncId, finished, settings, currentItems)
             }
+            val syncId = publication.syncId
+            val activeRows = publication.activeRows
+            val plan = publication.adaptiveLoadPlan
             committedState = CommittedSyncState(rows.size, currentSuspendedImports.size, plan)
             // A sync replaces the whole study queue: cards can land newly overdue or
             // the queue can empty. Re-arm the reminder from fresh state so the alarm
@@ -244,7 +185,7 @@ internal class ManualSyncEngine {
             var syncMessage = removal.message
             committedMessage = syncMessage
             try {
-                if (repairedWriteBackAuthorized && SyncSettings.tagRepairedCards(store)) {
+                if (repairedWriteBackAuthorized && settingsSnapshot.tagRepairedCards) {
                     val proposal = try {
                         repairedProposalProvider(snapshot, settings.matureSupportThreshold)
                     } catch (error: Exception) {
@@ -385,35 +326,54 @@ internal class ManualSyncEngine {
         // The atomic queue commit can merge a review saved while sync was in flight;
         // derive the post-sync plan/count from the committed queue, not the stale
         // pre-merge seeded snapshot.
+        val queue = runBlocking { syncUseCases.loadCommittedStudyQueue(countedAt) }
+        val activeKanji = activeRows.mapTo(HashSet()) { it.kanji }
         val postSyncItems = if (activeRows.isEmpty()) {
             emptyList()
         } else {
-            store.studyItemsForKanji(activeRows.map { it.kanji })
+            runBlocking { syncUseCases.loadCommittedStudyItems(activeKanji) }
+        }
+        val planner = queuePlannerFactory(assetReaders.loadReadingExposure())
+        val replan = { items: List<RecordsStudyModels.StudyItem> ->
+            planner.adaptivePlan(
+                rows = activeRows,
+                items = items,
+                settings = settings,
+                workload = queue.adaptiveWorkload,
+                recentReviewStats = queue.recentReviewStats,
+                currentStudyStreakDays = queue.studyStreak.currentDays,
+                studiedKanjiToday = queue.studiedKanjiToday,
+                nowMillis = countedAt,
+            )
         }
         val postSyncPlan = if (activeRows.isEmpty()) {
             null
         } else {
-            adaptivePlan(activeRows, postSyncItems, countedAt)
+            replan(postSyncItems)
         }
-        val ladder = store.studyLadderSettings()
+        val ladder = queue.studyLadder
         val studyNow = StudyNowCountCoordinator.count(
             StudyNowCountCoordinator.Request(
                 queue = StudyNowCountCoordinator.QueueInput(activeRows, postSyncItems, settings, ladder),
                 timing = StudyNowCountCoordinator.Timing(
                     countedAt,
                     startOfDay(countedAt),
-                    store.studyAheadMinutes() * 60_000L,
+                    queue.studyAheadMinutes * 60_000L,
                 ),
                 mode = StudyNowCountCoordinator.Mode(postSyncPlan, false),
                 pipeline = StudyNowCountCoordinator.Pipeline(
-                    scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
-                    annotator = store::annotateSimilarKanjiAvailability,
-                    replanner = { seeded -> adaptivePlan(activeRows, seeded, countedAt) },
+                    scheduler = BridgeScheduler.withWeights(
+                        queue.schedulerFsrsWeights?.toDoubleArray(),
+                    ),
+                    annotator = { items ->
+                        runBlocking { syncUseCases.annotateCapabilities(items) }
+                    },
+                    replanner = replan,
                 ),
             ),
         )
         val repairTaskKeys = if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            store.dueSimilarWritingRepairs(countedAt)
+            queue.dueLegacyWritingRepairs
                 .map(StudySessionProgressTracker::similarRepairProgressKey)
         } else {
             emptyList()
@@ -483,144 +443,47 @@ internal class ManualSyncEngine {
         error: Throwable,
     ) {
         try {
-            store.saveFailedSync(started, finished, status, errorCode, error.message)
+            runBlocking {
+                syncUseCases.recordFailure(
+                    RecordSyncFailureCommand(
+                        startedAtMillis = started,
+                        finishedAtMillis = finished,
+                        status = status,
+                        errorCode = errorCode,
+                        errorMessage = error.message,
+                    ),
+                )
+            }
         } catch (persistError: Exception) {
             persistError.addSuppressed(error)
             Log.e(TAG, "Failed to persist sync failure row.", persistError)
         }
     }
 
-    internal fun repairEvidenceStatusByKanji(
-        rows: List<RecordsImportModels.DashboardRow>,
-        currentSyncAtMillis: Long? = null,
-    ): Map<String, KanjiRepairEvidencePolicy.Status> {
-        if (rows.isEmpty()) {
-            return emptyMap()
-        }
-        val activeKanji = rows.mapTo(HashSet()) { it.kanji }
-        if (currentSyncAtMillis != null) {
-            val rowsByKanji = rows.associateBy { it.kanji }
-            return store.kanjiRepairEvidenceInputs()
-                .asSequence()
-                .filter { it.kanji() in activeKanji }
-                .associate { input ->
-                    val row = rowsByKanji.getValue(input.kanji())
-                    input.kanji() to currentEvidenceStatus(input, row, currentSyncAtMillis)
-                }
-        }
-        val statusByKanji = HashMap<String, KanjiRepairEvidencePolicy.Status>()
-        for (evidence in store.kanjiRepairEvidence()) {
-            if (evidence.kanji in activeKanji) {
-                statusByKanji[evidence.kanji] = evidence.status
-            }
-        }
-        return statusByKanji
-    }
-
-    private fun currentEvidenceStatus(
-        input: KanjiRepairEvidencePolicy.Input,
-        row: RecordsImportModels.DashboardRow,
-        currentSyncAtMillis: Long,
-    ): KanjiRepairEvidencePolicy.Status {
-        val isPostReviewSample = currentSyncAtMillis > input.lastReviewAtMillis()
-        val currentSnapshot = KanjiRepairEvidencePolicy.Snapshot(
-            row.weaknessScore,
-            row.matureSupportCount,
-            currentSyncAtMillis,
-            row.activeExampleCount,
-            row.suspendedExampleCount,
-            row.reasonCode,
-        )
-        val updated = KanjiRepairEvidencePolicy.Input(
-            input.kanji(),
-            input.before(),
-            if (isPostReviewSample) currentSnapshot else input.after(),
-            input.kaniReviews(),
-            input.postReviewSamples() + if (isPostReviewSample) 1 else 0,
-            input.writingFailures(),
-            input.lastMistakeAtMillis(),
-            input.firstReviewAtMillis(),
-            input.lastReviewAtMillis(),
-            maxOf(input.lastSyncAtMillis(), currentSyncAtMillis),
-            input.ladder(),
-        )
-        return KanjiRepairEvidencePolicy.summarize(updated).status()
-    }
-
     private fun storedImportsWithDurableProviderRoute(
         snapshot: RecordsSyncModels.CollectionSnapshot,
-        imports: List<RecordsImportModels.SuspendedImport>,
+        storedState: StoredSyncState,
     ): List<RecordsImportModels.SuspendedImport> {
+        val imports = storedState.suspendedImports
         if (imports.isEmpty()) return emptyList()
         val durableCardIds = snapshot.cards.mapTo(HashSet<Long>()) { it.cardId }
-        durableCardIds.addAll(store.unrestoredSuspendedArchiveCardIds())
+        durableCardIds.addAll(storedState.unrestoredSuspendedArchiveCardIds)
         return imports.filter { imported ->
             imported.sources.any { source -> source.cardId in durableCardIds }
         }
     }
 
-    private fun rejectTransientEmptySnapshot(snapshot: RecordsSyncModels.CollectionSnapshot) {
+    private fun rejectTransientEmptySnapshot(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        storedState: StoredSyncState,
+    ) {
         val incomplete = snapshot.notes.isEmpty() || snapshot.cards.isEmpty()
-        val hasDurableLocalState = store.studyItems().isNotEmpty() || store.hasPersistedCollectionMirror()
+        val hasDurableLocalState =
+            storedState.studyItems.isNotEmpty() || storedState.hasCollectionMirror
         if (incomplete && hasDurableLocalState) {
             throw AnkiDroidGateway.SyncFailure.retryable(
                 "AnkiDroid returned an incomplete collection; existing study progress was preserved.",
             )
-        }
-    }
-
-    private fun adaptivePlan(
-        rows: List<RecordsImportModels.DashboardRow>,
-        items: List<RecordsStudyModels.StudyItem>,
-        nowMillis: Long,
-    ): RecordsSchedulerModels.AdaptiveLoadPlan {
-        val planner = AdaptiveLoadPlanner()
-        val dayStart = startOfDay(nowMillis)
-        val studiedToday = store.studiedKanjiSince(dayStart)
-        return planner.plan(
-            AdaptiveLoadPlanner.PlanRequest.builder(
-                rows,
-                items,
-                store.reviewStatsSince(nowMillis - 7 * 86_400_000L),
-                store.studyStreak(nowMillis).currentDays,
-                studiedToday,
-                AdaptiveLoadPlanner.WorkloadPolicy.fromSettings(
-                    store.adaptiveLoadWorkPercent(),
-                    store.adaptiveLoadMode(),
-                    store.adaptiveLoadMaxItems(),
-                ),
-                nowMillis,
-            )
-                .settings(settings)
-                .readingExposure(ReadingExposureMediaReader().read())
-                .build(),
-        )
-    }
-
-    @Throws(IOException::class)
-    fun loadRanks(): JitenKanjiRanks {
-        return DictionaryStore.open(context).jitenRanks()
-    }
-
-    // The bundled KANJIDIC2 lookup feeds KanjiReadingAligner during the sync
-    // save (Goal 77). Returns null if the dictionary cannot be opened so a
-    // dictionary hiccup degrades to empty reading-usage tables rather than
-    // failing the whole sync.
-    fun loadDictionary(): DictionaryLookup? {
-        return try {
-            DictionaryStore.open(context)
-        } catch (_: IOException) {
-            null
-        }
-    }
-
-    @Throws(IOException::class)
-    fun loadSimilarKanjiIndex(): SimilarKanjiIndex {
-        InputStreamReader(
-            context.resources.openRawResource(R.raw.similar_kanji),
-            StandardCharsets.UTF_8,
-        ).use { reader ->
-            return SimilarKanjiIndex.parseTsv(reader)
         }
     }
 

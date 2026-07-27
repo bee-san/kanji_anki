@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 
 /**
  * Debug-only fixture for the button-latency benchmark's normal-app routes.
@@ -28,7 +29,7 @@ internal object ButtonLatencyBenchmarkFixtureSeeder {
     @JvmStatic
     fun seedIfNeeded(context: Context, store: LocalStore) {
         val settings = benchmarkSettings()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FixtureGateway(representativeSnapshot(settings)),

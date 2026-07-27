@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -192,7 +193,7 @@ class RetiredLifecycleRealProviderInstrumentedTest {
         assertTrue("real provider sync failed: ${result.message}", result.success)
     }
 
-    private fun runSync(store: LocalStore) = ManualSyncEngine(
+    private fun runSync(store: LocalStore) = createManualSyncEngine(
         context,
         store,
         AnkiDroidGateway(context),

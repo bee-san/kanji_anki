@@ -22,14 +22,13 @@ class AutoSyncRetryWorker internal constructor(
     override fun doWork(): Result {
         val appContext = applicationContext
         val container = containerProvider.get()
-        container.openLocalStore().use { store ->
-            val sync = AutoSyncRunner(
-                appContext,
-                store,
-                container.newAnkiDroidGateway(SyncCancellation { isStopped }),
-            ).run()
-            return workerResult(sync, runAttemptCount)
-        }
+        val sync = createAutoSyncRunner(
+            appContext,
+            container.syncUseCases,
+            container.deviceSettingsStore,
+            container.newAnkiDroidGateway(SyncCancellation { isStopped }),
+        ).run()
+        return workerResult(sync, runAttemptCount)
     }
 
     companion object {

@@ -78,6 +78,9 @@ fun interface SyncQueuePlanner {
 }
 
 data class SyncQueuePlanningSnapshot(
+    /** Provider-derived rows used for sync evidence classification. */
+    val providerRows: List<RecordsImportModels.DashboardRow>,
+    /** Provider rows plus durable manual dictionary sources used for queue reconciliation. */
     val rows: List<RecordsImportModels.DashboardRow>,
     val activeRows: List<RecordsImportModels.DashboardRow>,
     val currentItems: List<RecordsStudyModels.StudyItem>,
@@ -92,6 +95,7 @@ data class SyncQueuePlanningSnapshot(
     val recentReviewStats: RecordsSchedulerModels.ReviewStats,
     val currentStudyStreakDays: Int,
     val studiedKanjiToday: Set<String>,
+    val syncStartedAtMillis: Long,
     val nowMillis: Long,
 )
 

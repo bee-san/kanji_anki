@@ -52,7 +52,7 @@ class ManualSyncEngineInstrumentedTest {
     @Test
     fun successfulSyncArchivesSuspendedCardsBuildsRowsAndSeedsStudy() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FakeGateway(snapshot(settings), AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done")),
@@ -91,7 +91,7 @@ class ManualSyncEngineInstrumentedTest {
     fun nullProgressListenerUsesNoopProgressAndStillSyncs() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
 
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FakeGateway(snapshot(settings), AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
@@ -109,7 +109,7 @@ class ManualSyncEngineInstrumentedTest {
         store.saveAdaptiveLoadMode(AdaptiveLoadPlanner.MODE_MANUAL)
         store.saveAdaptiveLoadWorkPercent(0)
 
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FakeGateway(manyProblemSnapshot(), AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
@@ -135,7 +135,7 @@ class ManualSyncEngineInstrumentedTest {
         )
         val gateway = RecordingGateway(snapshot, AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"))
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertTrue(store.suspendedImports().isEmpty())
@@ -160,7 +160,7 @@ class ManualSyncEngineInstrumentedTest {
         )
         val gateway = RecordingGateway(snapshot, AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done"))
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertEquals(1, store.latestSync()!!.suspendedCards)
@@ -183,7 +183,7 @@ class ManualSyncEngineInstrumentedTest {
         )
         val gateway = RecordingGateway(snapshot, AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done"))
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertEquals(1, gateway.selectedSuspendedImports.size)
@@ -216,7 +216,7 @@ class ManualSyncEngineInstrumentedTest {
             ),
         )
 
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FakeGateway(snapshot, AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
@@ -242,7 +242,7 @@ class ManualSyncEngineInstrumentedTest {
         )
         val gateway = RecordingGateway(snapshot, AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done"))
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertTrue(store.suspendedImports().isEmpty())
@@ -256,7 +256,7 @@ class ManualSyncEngineInstrumentedTest {
     @Test
     fun failedSyncPersistsConfigError() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FailingGateway(),
@@ -273,7 +273,7 @@ class ManualSyncEngineInstrumentedTest {
     @Test
     fun retryableSyncFailurePersistsRetryableError() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             RetryableGateway(),
@@ -290,7 +290,7 @@ class ManualSyncEngineInstrumentedTest {
     @Test
     fun unexpectedRuntimeExceptionPersistsRetryableError() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             RuntimeFailingGateway(),
@@ -315,7 +315,7 @@ class ManualSyncEngineInstrumentedTest {
         val threadFailure = AtomicReference<Throwable?>(null)
         val firstSync = Thread {
             try {
-                firstResult.set(ManualSyncEngine(context, store, blockingGateway, settings).run())
+                firstResult.set(createManualSyncEngine(context, store, blockingGateway, settings).run())
             } catch (error: Throwable) {
                 threadFailure.set(error)
             }
@@ -324,7 +324,7 @@ class ManualSyncEngineInstrumentedTest {
         firstSync.start()
         assertTrue(blockingGateway.awaitStarted())
 
-        val skipped = ManualSyncEngine(
+        val skipped = createManualSyncEngine(
             context,
             store,
             FakeGateway(snapshot(settings), AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")),
@@ -348,7 +348,7 @@ class ManualSyncEngineInstrumentedTest {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val events = mutableListOf<String>()
 
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             ProgressGateway(snapshot(settings), AnkiDroidGateway.RemovalSummary(1, 0, 0, "cleanup done")),

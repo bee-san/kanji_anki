@@ -49,6 +49,7 @@ internal class SqliteSyncRepository(
             val currentItems = store.studyItems().toList()
             val queuePlan = command.queuePlanner.plan(
                 SyncQueuePlanningSnapshot(
+                    providerRows = command.rows.toList(),
                     rows = queueRows,
                     activeRows = activeRows.toList(),
                     currentItems = currentItems,
@@ -69,6 +70,7 @@ internal class SqliteSyncRepository(
                     studiedKanjiToday = store.studiedKanjiSince(
                         LocalDayPolicy.localDayStart(nowMillis),
                     ).toSet(),
+                    syncStartedAtMillis = command.timing.startedAtMillis,
                     nowMillis = nowMillis,
                 ),
             )

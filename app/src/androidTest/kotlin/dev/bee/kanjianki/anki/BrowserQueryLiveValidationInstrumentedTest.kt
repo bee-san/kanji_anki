@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 import org.junit.After
 import org.junit.Assume
 import org.junit.Before
@@ -59,7 +60,7 @@ class BrowserQueryLiveValidationInstrumentedTest {
         val snapshot = gateway.readCollection(settings)
         assertLiveFixtureSnapshot(snapshot)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
         assertManualSyncSucceeded(result)
         assertSuspendedArchiveCleanup()
         assertBrowserQueryDashboardRow()

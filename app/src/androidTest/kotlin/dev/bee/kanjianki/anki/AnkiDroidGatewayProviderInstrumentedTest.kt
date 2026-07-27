@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.testing.DeviceSmoke
@@ -274,7 +275,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -294,7 +295,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "failSuspendedSearch", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -346,7 +347,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "rejectSchedulerProjection", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -369,7 +370,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "deferSchedulerProjectionFailure", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -386,7 +387,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "legacyTopLevelCardsUnsupported", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -402,7 +403,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "rejectFsrsProjection", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -606,7 +607,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val settings = browserQueryOnlySettings()
         context.contentResolver.call(providerUri(), "browserQueryMatchesActive", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.message, result.success)
         assertTrue(
@@ -650,7 +651,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val settings = browserQueryOnlySettings()
         context.contentResolver.call(providerUri(), "browserQueryMatchesMissingNote", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertTrue(result.message, result.success)
         assertEquals("success", store.latestSync()?.status)
@@ -716,7 +717,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val settings = browserQueryOnlySettings()
         context.contentResolver.call(providerUri(), "failBrowserQuery", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, settings).run()
+        val result = createManualSyncEngine(context, store, gateway, settings).run()
 
         assertFalse(result.success)
         assertTrue(result.message?.contains("could not run the browser query") == true)
@@ -729,7 +730,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "permanentProviderFailure", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
+        val result = createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
 
         assertFalse(result.success)
         assertTrue(result.message?.contains("model metadata cursor failed") == true)
@@ -742,7 +743,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "retryableProviderFailure", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
+        val result = createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
 
         assertFalse(result.success)
         assertTrue(result.message?.contains("AnkiDroid provider read failed: database locked") == true)
@@ -755,7 +756,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "rejectAllCardProjections", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
+        val result = createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
 
         assertFalse(result.success)
         assertTrue(result.message?.contains("AnkiDroid card projection failed") == true)
@@ -769,7 +770,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "nullCardCursor", null, null)
 
-        val result = ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
+        val result = createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults()).run()
 
         assertFalse(result.success)
         assertTrue(result.message?.contains("AnkiDroid returned no bulk card cursor") == true)

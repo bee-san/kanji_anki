@@ -40,7 +40,7 @@ class ManualSyncEngineFailureTest {
     }
 
     private fun engine(gateway: CollectionGateway): ManualSyncEngine {
-        return ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults())
+        return createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults())
     }
 
     private fun latestSyncRun(): Pair<String, String?> {

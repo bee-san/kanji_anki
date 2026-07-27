@@ -274,7 +274,7 @@ class AutoSyncJobService : JobService {
             val store = storeFactory()
             var result: AutoSyncRunner.Result? = null
             try {
-                result = AutoSyncRunner(context, store, gatewayFactory(cancellation)).run()
+                result = createAutoSyncRunner(context, store, gatewayFactory(cancellation)).run()
             } finally {
                 finishJob(
                     context,
