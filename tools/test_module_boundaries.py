@@ -388,6 +388,24 @@ REPOSITORY_FORBIDDEN_TOKENS = (
     "android.",
     "androidx.",
 )
+TOP_LEVEL_DECLARATION = re.compile(
+    r"^(?:(?:data|sealed|enum|fun)\s+)?(?:class|interface|object)\s+"
+    r"([A-Za-z][A-Za-z0-9_]*)\b",
+    re.MULTILINE,
+)
+DATA_API_REQUIRED_DECLARATIONS = frozenset(
+    {
+        *REPOSITORY_CONTRACTS,
+        "HomeSnapshot",
+        "ReviewCommitCommand",
+        "ReviewCommitResult",
+        "SettingsSnapshot",
+        "StatsSnapshot",
+        "StoreResult",
+        "StudyQueueSnapshot",
+        "SyncPublicationCommand",
+    },
+)
 
 
 def parse_project_dependencies(build_script: str, module: str) -> set[str]:
@@ -442,6 +460,25 @@ def declaration_body(source: str, declaration: str) -> str:
             if depth == 0:
                 return source[opening + 1 : index]
     raise AssertionError(f"{declaration} has no closing brace")
+
+
+def delimited_body(
+    source: str,
+    marker: str,
+    opening_delimiter: str,
+    closing_delimiter: str,
+) -> str:
+    start = source.index(marker)
+    opening = source.index(opening_delimiter, start + len(marker))
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == opening_delimiter:
+            depth += 1
+        elif source[index] == closing_delimiter:
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1 : index]
+    raise AssertionError(f"{marker} has no closing {closing_delimiter}")
 
 
 class ModuleBoundaryTest(unittest.TestCase):
@@ -724,6 +761,148 @@ class ModuleBoundaryTest(unittest.TestCase):
         self.assertEqual(1, sync.count("publish("))
         self.assertTrue(
             (ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt").exists(),
+        )
+
+    def test_data_api_uniquely_owns_contracts_without_implementation_details(
+        self,
+    ) -> None:
+        expected_files = {
+            *REPOSITORY_CONTRACTS.values(),
+            *REPOSITORY_MODEL_FILES,
+        }
+        data_api_root = ROOT / "data-api/src/main"
+        data_api_sources = sorted(
+            (*data_api_root.rglob("*.kt"), *data_api_root.rglob("*.java")),
+        )
+        self.assertEqual(
+            expected_files,
+            {source.relative_to(ROOT).as_posix() for source in data_api_sources},
+        )
+
+        owned_declarations = {}
+        for source in data_api_sources:
+            relative = source.relative_to(ROOT).as_posix()
+            content = source.read_text(encoding="utf-8")
+            for declaration in TOP_LEVEL_DECLARATION.findall(content):
+                self.assertNotIn(
+                    declaration,
+                    owned_declarations,
+                    f":data-api declares {declaration} more than once",
+                )
+                owned_declarations[declaration] = relative
+            for token in REPOSITORY_FORBIDDEN_TOKENS:
+                self.assertNotIn(
+                    token,
+                    content,
+                    f"{relative} contains implementation token {token}",
+                )
+        self.assertLessEqual(DATA_API_REQUIRED_DECLARATIONS, set(owned_declarations))
+
+        duplicate_owners = []
+        production_sources = sorted(
+            (
+                *ROOT.glob("*/src/main/**/*.kt"),
+                *ROOT.glob("*/src/main/**/*.java"),
+            ),
+        )
+        for source in production_sources:
+            if data_api_root in source.parents:
+                continue
+            declarations = set(
+                TOP_LEVEL_DECLARATION.findall(source.read_text(encoding="utf-8")),
+            )
+            for duplicate in sorted(declarations & set(owned_declarations)):
+                duplicate_owners.append(
+                    f"{duplicate}: {source.relative_to(ROOT).as_posix()}",
+                )
+        self.assertEqual(
+            [],
+            duplicate_owners,
+            ":data-api contracts must not be redefined by another module",
+        )
+
+        self.assertFalse(
+            (ROOT / "core/src/main/kotlin/dev/bee/kanjianki/core/StoreResult.kt").exists(),
+        )
+        self.assertFalse(
+            (
+                ROOT
+                / "data-api/src/main/kotlin/dev/bee/kanjianki/data/StaleReviewCommitException.kt"
+            ).exists(),
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "app/src/main/kotlin/dev/bee/kanjianki/data/StaleReviewCommitException.kt"
+            ).exists(),
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "data-api/src/testFixtures/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ).exists(),
+        )
+        self.assertFalse(
+            (
+                ROOT
+                / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ).exists(),
+        )
+
+    def test_data_api_is_in_shared_gates_and_sonar_inputs(self) -> None:
+        root_build = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+        desktop = delimited_body(root_build, "val desktopCiTasks = listOf", "(", ")")
+        fast = delimited_body(root_build, "val fastCiTasks = listOf", "(", ")")
+        quality = delimited_body(
+            root_build,
+            'tasks.register("ciQuality")',
+            "{",
+            "}",
+        )
+        sonar_main = delimited_body(
+            root_build,
+            "val sonarMainBinaries = listOf",
+            "(",
+            ")",
+        )
+        sonar_test = delimited_body(
+            root_build,
+            "val sonarTestBinaries = listOf",
+            "(",
+            ")",
+        )
+        sonar_coverage = delimited_body(
+            root_build,
+            "val sonarCoveragePaths = buildList<String>",
+            "{",
+            "}",
+        )
+
+        self.assertEqual(1, desktop.count('":data-api:check"'))
+        for task in (
+            ":data-api:test",
+            ":data-api:jacocoTestReport",
+            ":data-api:jacocoTestCoverageVerification",
+        ):
+            with self.subTest(fast_task=task):
+                self.assertEqual(1, fast.count(f'"{task}"'))
+        self.assertEqual(1, quality.count('":data-api:jar"'))
+        self.assertEqual(
+            1,
+            sonar_main.count('rootPath("data-api/build/classes/kotlin/main")'),
+        )
+        for path in (
+            "data-api/build/classes/kotlin/test",
+            "data-api/build/classes/java/test",
+            "data-api/build/classes/kotlin/testFixtures",
+        ):
+            with self.subTest(sonar_test_binary=path):
+                self.assertEqual(1, sonar_test.count(f'rootPath("{path}")'))
+        self.assertEqual(
+            1,
+            sonar_coverage.count(
+                'rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml")',
+            ),
         )
 
     def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:

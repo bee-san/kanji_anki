@@ -28,6 +28,7 @@ val sonarMainBinaries = listOf(
     rootPath("core/build/classes/kotlin/main"),
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
+    rootPath("data-api/build/classes/kotlin/main"),
     rootPath("writing-core/build/classes/kotlin/main"),
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
@@ -42,6 +43,9 @@ val sonarTestBinaries = listOf(
     rootPath("core/build/classes/java/test"),
     rootPath("domain/build/classes/kotlin/test"),
     rootPath("sync-domain/build/classes/kotlin/test"),
+    rootPath("data-api/build/classes/kotlin/test"),
+    rootPath("data-api/build/classes/java/test"),
+    rootPath("data-api/build/classes/kotlin/testFixtures"),
     rootPath("writing-core/build/classes/kotlin/test"),
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
@@ -56,6 +60,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -111,7 +116,6 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/HistoricalSyncStore.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/DictionaryStore.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/ReminderReceiverDailyActions.kt",
@@ -247,6 +251,7 @@ val desktopCiTasks = listOf(
     ":core:check",
     ":domain:check",
     ":sync-domain:check",
+    ":data-api:check",
     ":writing-core:check",
     ":dictionary-core:check",
     ":update-core:check",
@@ -308,6 +313,9 @@ val fastCiTasks = listOf(
     ":sync-domain:test",
     ":sync-domain:jacocoTestReport",
     ":sync-domain:jacocoTestCoverageVerification",
+    ":data-api:test",
+    ":data-api:jacocoTestReport",
+    ":data-api:jacocoTestCoverageVerification",
     ":writing-core:test",
     ":writing-core:jacocoTestReport",
     ":writing-core:jacocoTestCoverageVerification",
@@ -346,6 +354,7 @@ tasks.register("ciQuality") {
         ":core:jar",
         ":domain:jar",
         ":sync-domain:jar",
+        ":data-api:jar",
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
