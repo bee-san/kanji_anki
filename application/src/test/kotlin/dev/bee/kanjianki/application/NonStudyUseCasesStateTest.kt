@@ -150,18 +150,31 @@ class NonStudyUseCasesStateTest {
         assertEquals(45, afterRecreation.studyAheadMinutes)
     }
 
+    @Test
+    fun syncUseCasesLoadTheInjectedSettingsRepository() = runTest {
+        val repositories = Repositories()
+        val expected = settings(tagRepairedCards = true, studyAheadMinutes = 30)
+        repositories.settings.loadHandler = { StoreResult.ok(expected) }
+
+        val actual = repositories.syncUseCases().loadSettings()
+
+        assertEquals(expected, actual)
+    }
+
     private class Repositories {
         val home = FakeHomeRepository()
         val study = FakeStudyRepository()
         val settings = FakeSettingsRepository()
         val stats = FakeStatsRepository()
-        private val sync = FakeSyncRepository()
+        val sync = FakeSyncRepository()
 
         fun homeUseCases() = HomeUseCases(home, study, settings, sync)
 
         fun settingsUseCases() = SettingsUseCases(settings)
 
         fun statsUseCases() = StatsUseCases(stats)
+
+        fun syncUseCases() = SyncUseCases(sync, study, settings)
     }
 
     private companion object {

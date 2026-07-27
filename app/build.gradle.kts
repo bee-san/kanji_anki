@@ -266,6 +266,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.glance.appwidget.testing)
+    testImplementation(testFixtures(project(":data-api")))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
