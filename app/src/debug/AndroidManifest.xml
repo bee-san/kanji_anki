@@ -7,6 +7,10 @@
         <activity
             android:name="dev.bee.kanjianki.SevenItemRouteActivity"
             android:exported="false" />
+        <receiver
+            android:name="dev.bee.kanjianki.StartupBoundaryProbeReceiver"
+            android:exported="false"
+            android:process=":startup_boundary_probe" />
         <!--
             The share-sheet FileProvider (authority ${applicationId}.debuglog) is declared in the
             main manifest so release builds can share AppDebugLog's kani-debug.log too.

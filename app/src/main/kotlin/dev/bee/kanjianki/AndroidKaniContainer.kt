@@ -13,7 +13,6 @@ import dev.bee.kanjianki.data.SqliteSyncRepository
 import dev.bee.kanjianki.sync.SyncCancellation
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 
 internal fun interface AndroidContainerProvider {
     fun get(): AndroidKaniContainer
@@ -23,7 +22,6 @@ internal fun interface AndroidContainerProvider {
 internal class AndroidKaniContainer(
     context: Context,
 ) : KaniContainer {
-    private val closed = AtomicBoolean()
     private val appContext = context.applicationContext
 
     val localStore: LocalStore = AppLocalStoreFactory.create(appContext)
@@ -43,18 +41,18 @@ internal class AndroidKaniContainer(
             Thread(runnable, "kani-maintenance").apply { isDaemon = true }
         }
     val dispatchers = KaniDispatchers(userIoExecutor, maintenanceExecutor)
+    private val resourceShutdown = ProcessResourceShutdown(
+        { userIoExecutor.shutdownNow() },
+        { maintenanceExecutor.shutdownNow() },
+        localStore::close,
+    )
 
     fun openLocalStore(): LocalStore = AppLocalStoreFactory.create(appContext)
 
     fun newAnkiDroidGateway(cancellation: SyncCancellation): AnkiDroidGateway =
         AnkiDroidGateway(appContext, cancellation)
 
-    override fun close() {
-        if (!closed.compareAndSet(false, true)) return
-        userIoExecutor.shutdownNow()
-        maintenanceExecutor.shutdownNow()
-        localStore.close()
-    }
+    override fun close() = resourceShutdown.close()
 }
 
 internal fun Context.requireKaniContainer(): AndroidKaniContainer {

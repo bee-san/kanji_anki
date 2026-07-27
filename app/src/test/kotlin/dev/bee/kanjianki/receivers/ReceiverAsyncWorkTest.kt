@@ -36,6 +36,25 @@ class ReceiverAsyncWorkTest {
     }
 
     @Test
+    fun directReceiverInvocationDoesNotResolveTheProcessExecutor() {
+        val ran = AtomicInteger(0)
+        val providerCalls = AtomicInteger(0)
+
+        ReceiverAsyncWork.run(
+            NoopReceiver(),
+            executorProvider = {
+                providerCalls.incrementAndGet()
+                error("restore gate has not opened")
+            },
+        ) {
+            ran.incrementAndGet()
+        }
+
+        assertEquals(1, ran.get())
+        assertEquals(0, providerCalls.get())
+    }
+
+    @Test
     fun rejectedExecutorFinishesPendingWorkWithoutRunningIt() {
         val ran = AtomicInteger(0)
         val finished = AtomicInteger(0)
