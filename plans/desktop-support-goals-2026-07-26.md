@@ -3254,6 +3254,76 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   last pushed `origin/desktop/support` head and remains unpushed; the existing
   draft PR is intentionally not updated without explicit authorization.
 
+### Goal 170 completion evidence (2026-07-27)
+
+- Started from: `3f2b4655` on `desktop/support` in
+  `/Users/skerraut/kanji_anki`. The exact preceding implementation SHA that
+  passed the final gates is `b1bc65f7`.
+- Commits: `b92b4573 refactor: add the shared application module`;
+  `9b3bafdc refactor: add the process-owned Kani container`;
+  `a13594bb refactor: move Android dependency lifetime out of the activity`;
+  and `b1bc65f7 test: cover startup restore and shutdown ordering`.
+- Implemented: added pure-JVM `:application` with narrow repository,
+  device-settings, and task-executor ownership contracts plus a deterministic
+  desktop lifecycle that acquires the profile lock, applies restore, opens
+  data, starts services, builds presentation, and releases acquired resources
+  in reverse order. `KaniApplication` now creates one `AndroidKaniContainer`
+  only after the staged-restore result permits database-capable startup. That
+  process graph owns the primary `LocalStore`, repositories, AnkiDroid
+  gateway, user-I/O and maintenance executors, and coroutine dispatchers;
+  Activity recreation borrows them and no longer closes them. Workers,
+  receivers, services, widgets, schedulers, and process diagnostics resolve
+  the graph lazily, while short-lived concurrent database helpers remain
+  graph-owned factory products and close after each operation. WorkManager's
+  configuration and worker construction do not resolve the graph or open
+  SQLite.
+- Validation: `./gradlew :app:testDebugUnitTest :application:check --no-daemon
+  --dependency-verification=strict --console=plain --no-parallel` passed with
+  1,545 app tests and 12 application lifecycle tests, with zero failures or
+  skips. `python3 -m unittest tools.test_module_boundaries` passed all 19
+  tests, and `git diff --check` passed. The final aggregate command
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  ciFast ciQuality ciDesktop --no-daemon --dependency-verification=strict
+  --console=plain` completed `BUILD SUCCESSFUL` in 1m50s with 142 actionable
+  tasks (16 executed, 126 up-to-date). This checkout's `local.properties`
+  selects the prepared Homebrew SDK at
+  `/opt/homebrew/share/android-commandlinetools`; the persisted Gradle/JUnit
+  result trees contain 3,319 passing tests and no failures or skips. The
+  aggregate Python surfaces passed 126 tooling, 94 asset/script, 96 CI, and
+  70 desktop-tooling tests.
+- Live gates: on the API 35 arm64 emulator, the exact targeted command
+  `adb shell am instrument -w -e class
+  'dev.bee.kanjianki.ProcessContainerLifecycleInstrumentedTest,dev.bee.kanjianki.ColdStartRestoreBoundaryInstrumentedTest'
+  dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner` completed
+  `OK (2 tests)` in 2.387s. Recreation retained the exact process store,
+  gateway, executors, and dispatchers after Activity close. The cold-process
+  probe installed an invalid restore marker, preserved the database and all
+  sidecar fingerprints, and observed no receiver signal; logcat showed the
+  probe process fail in `KaniApplication.onCreate` with `Restore cleanup must
+  finish before Kani can start`, then start and run the receiver only after
+  marker cleanup. A copied-collection AnkiDroid run is not required because
+  this goal changes dependency lifetime and startup ordering, not provider
+  queries/writes, sync publication, scheduler behavior, or schema.
+- Decisions: process lifetime, rather than Activity lifetime, owns Android
+  database/executor resources. The restore gate is a one-attempt process
+  boundary; a blocked or failed attempt cannot expose a partial container.
+  AndroidX Startup and WorkManager may inspect configuration before
+  `Application.onCreate`, but dependency resolution remains lazy until a
+  worker executes after successful application startup. Desktop keeps the
+  profile lock through presentation shutdown and preserves the first failure
+  while suppressing later reverse-order close failures. No new mutable global
+  test override was introduced.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `b1bc65f7`, `a13594bb`, `9b3bafdc`, and `b92b4573` in that order. This
+  restores Activity-owned lifetime and removes only composition/lifecycle
+  code and tests; it requires no schema migration, provider action, backup
+  conversion, or user-state rollback.
+- Gaps/blockers: none for Goal 170. Android platform implementations remain in
+  `:app` until Goal 177, and route-level direct `LocalStore` calls remain for
+  the sequential repository migrations in Goals 171-173. The branch remains
+  local and unpushed; the existing draft PR is intentionally not updated
+  without explicit authorization.
+
 Template:
 
 ```md
