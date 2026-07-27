@@ -5,10 +5,14 @@ import dev.bee.kanjianki.core.FrequencyRetentionRanges
 import dev.bee.kanjianki.core.RetentionSettingsPolicy
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 
 internal class MainActivitySettingsRetentionPanel(private val activity: MainActivitySettings) {
-    fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
-        val current = activity.store.schedulerParameters()
+    fun retentionSettingsPanelModel(
+        snapshot: SettingsSnapshot = activity.loadSettingsSnapshot(),
+    ): SettingsRetentionPanelModel {
+        val current = snapshot.schedulerParameters
         val selected = intArrayOf(SettingsInputRules.retentionPercent(current.targetRetention))
         val state = SettingsRetentionState(
             current.frequencyRetentionEnabled,
@@ -26,7 +30,7 @@ internal class MainActivitySettingsRetentionPanel(private val activity: MainActi
             exampleRangesLabel = SettingsTextCopy.useExampleRangesLabel(),
             saveLabel = SettingsTextCopy.saveRetentionLabel(),
             onSave = SettingsRetentionSaveAction { retentionPercent, rankRetentionEnabled, rankRanges ->
-                saveRetention(retentionPercent, rankRetentionEnabled, rankRanges)
+                saveRetention(retentionPercent, rankRetentionEnabled, rankRanges, current)
             }
         )
     }
@@ -34,13 +38,14 @@ internal class MainActivitySettingsRetentionPanel(private val activity: MainActi
     private fun saveRetention(
         retentionPercent: Int,
         rankRetentionEnabled: Boolean,
-        rankRanges: String
+        rankRanges: String,
+        current: dev.bee.kanjianki.core.RecordsSchedulerModels.SchedulerParameters,
     ) {
         val request = RetentionSettingsPolicy.saveRequest(
             retentionPercent,
             rankRetentionEnabled,
             rankRanges,
-            activity.store.schedulerParameters()
+            current,
         )
         if (!request.valid) {
             Toast.makeText(activity, request.message, Toast.LENGTH_LONG).show()
@@ -49,7 +54,9 @@ internal class MainActivitySettingsRetentionPanel(private val activity: MainActi
         activity.runSettingsWrite(
             traceSection = "kani.settings.retention.save",
             write = {
-                activity.store.saveSchedulerParameters(request.parameters!!)
+                activity.saveSettings(
+                    SettingsSaveCommand.SchedulerParameters(request.parameters!!),
+                )
             },
         ) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()

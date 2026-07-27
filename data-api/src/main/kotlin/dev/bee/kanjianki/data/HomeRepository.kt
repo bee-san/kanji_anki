@@ -25,6 +25,10 @@ interface HomeRepository {
 
     suspend fun loadGameData(): StoreResult<HomeGameDataSnapshot>
 
+    suspend fun loadNewCardSortPreviewData(): StoreResult<HomeNewCardSortPreviewSnapshot>
+
+    suspend fun loadNewCardSortPreviewVersion(): StoreResult<Long>
+
     suspend fun consumeDowngradeNotice(): StoreResult<Int?>
 
     suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit>
@@ -60,6 +64,12 @@ data class HomeGameDataSnapshot(
     val activeRows: List<RecordsImportModels.DashboardRow>,
     val inventory: List<RecordsImportModels.KanjiInventoryItem>,
     val similarPairs: List<RecordsImportModels.SimilarKanjiPair>,
+)
+
+data class HomeNewCardSortPreviewSnapshot(
+    val activeRows: List<RecordsImportModels.DashboardRow>,
+    val similarPairs: List<RecordsImportModels.SimilarKanjiPair>,
+    val sourceVersion: Long,
 )
 
 data class SaveMnemonicCommand(

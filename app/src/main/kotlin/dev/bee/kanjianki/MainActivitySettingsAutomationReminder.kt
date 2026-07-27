@@ -9,13 +9,14 @@ import android.provider.Settings
 import android.widget.Toast
 import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.reminders.ReminderScheduler
 
 internal class MainActivitySettingsAutomationReminder(private val activity: MainActivitySettings) {
-    fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
-        val reminder = activity.store.reminderSettings()
+    fun reminderSettingsPanelModel(
+        state: SettingsDeviceState = activity.loadSettingsDeviceState(),
+    ): SettingsReminderPanelModel {
+        val reminder = state.reminder
         val notificationsAllowed = activity.notificationsAllowedForReminders()
         val blocked = reminder.enabled && !notificationsAllowed
         val selectedHour = intArrayOf(reminder.hour)
@@ -46,12 +47,17 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
                 null
             },
             onOpenNotificationSettings = notificationSettings?.action,
-            antiSpam = if (reminder.enabled) antiSpamModel() else null,
+            antiSpam = if (reminder.enabled) {
+                antiSpamModel(state.reminderAntiSpam)
+            } else {
+                null
+            },
         )
     }
 
-    private fun antiSpamModel(): SettingsReminderAntiSpamModel {
-        val settings = activity.store.reminderAntiSpamSettings()
+    private fun antiSpamModel(
+        settings: SettingsReminderAntiSpamState,
+    ): SettingsReminderAntiSpamModel {
         return SettingsReminderAntiSpamModel(
             quietHoursLabel = SettingsTextCopy.reminderQuietHoursLabel(
                 settings.quietStartMinuteOfDay,
@@ -86,11 +92,11 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         }
     }
 
-    private fun saveAntiSpam(settings: LocalStoreBase.ReminderAntiSpamSettings) {
+    private fun saveAntiSpam(settings: SettingsReminderAntiSpamState) {
         activity.runSettingsWrite(
             traceSection = "kani.settings.reminder.anti-spam.save",
             write = {
-                activity.store.saveReminderAntiSpamSettings(settings)
+                activity.deviceSettingsStore.saveReminderAntiSpam(settings)
             },
         ) {
             // Re-arm so quiet hours / max-per-day take effect immediately.
@@ -101,19 +107,19 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
 
     fun saveReminderFromSelection(hour: Int, minute: Int, enabled: Boolean) {
         val fields = ReminderSettingsSavePolicy.fields(enabled, hour, minute)
-        val reminder = LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute)
+        val reminder = SettingsReminderState(fields.enabled, fields.hour, fields.minute)
         if (!enabled) {
             disableReminder(reminder)
             return
         }
         ReminderScheduler.ensureNotificationChannel(activity)
         if (!activity.hasRuntimeNotificationPermissionForReminder()) {
-            activity.pendingReminderSettings = reminder
+            activity.setPendingReminderSettings(reminder)
             activity.runSettingsWrite(
                 traceSection = "kani.settings.reminder.save-before-permission",
                 write = {
-                    activity.store.saveReminderSettings(reminder)
-                    ReminderScheduler.schedule(activity, activity.store)
+                    activity.deviceSettingsStore.saveReminder(reminder)
+                    activity.rearmReminderFromProcessStore()
                 },
             ) {
                 activity.requestPostNotificationPermission()
@@ -127,16 +133,16 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
             toastMessage = ReminderSettingsSavePolicy.savedMessage(reminder.hour, reminder.minute, allowed),
             toastLength = if (allowed) Toast.LENGTH_SHORT else Toast.LENGTH_LONG,
             onSaved = {
-                ReminderScheduler.schedule(activity, reminder)
+                activity.rearmReminderFromProcessStore()
             },
         )
     }
 
-    private fun disableReminder(reminder: LocalStoreBase.ReminderSettings) {
+    private fun disableReminder(reminder: SettingsReminderState) {
         val fields = ReminderSettingsSavePolicy.fields(false, reminder.hour, reminder.minute)
         saveReminderSettings(
             traceSection = "kani.settings.reminder.disable",
-            reminder = LocalStoreBase.ReminderSettings(fields.enabled, fields.hour, fields.minute),
+            reminder = SettingsReminderState(fields.enabled, fields.hour, fields.minute),
             toastMessage = ReminderSettingsSavePolicy.disabledMessage(),
             toastLength = Toast.LENGTH_SHORT,
             onSaved = {
@@ -147,7 +153,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
 
     private fun saveReminderSettings(
         traceSection: String,
-        reminder: LocalStoreBase.ReminderSettings,
+        reminder: SettingsReminderState,
         toastMessage: String,
         toastLength: Int,
         onSaved: () -> Unit,
@@ -155,7 +161,7 @@ internal class MainActivitySettingsAutomationReminder(private val activity: Main
         activity.runSettingsWrite(
             traceSection = traceSection,
             write = {
-                activity.store.saveReminderSettings(reminder)
+                activity.deviceSettingsStore.saveReminder(reminder)
             },
         ) {
             onSaved()

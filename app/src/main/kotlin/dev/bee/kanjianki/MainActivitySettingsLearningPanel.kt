@@ -3,11 +3,15 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.LearningStepsSettingsPolicy
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 
 internal class MainActivitySettingsLearningPanel(private val activity: MainActivitySettings) {
-    fun learningStepsSettingsPanelModel(): SettingsLearningStepsPanelModel {
+    fun learningStepsSettingsPanelModel(
+        snapshot: SettingsSnapshot = activity.loadSettingsSnapshot(),
+    ): SettingsLearningStepsPanelModel {
         return SettingsLearningStepsPanelModels.create(
-            current = activity.store.learningStepSettings(),
+            current = snapshot.learningSteps,
             onSave = SettingsLearningStepsSaveAction { newStepsText, reviewStepsText ->
                 saveLearningSteps(newStepsText, reviewStepsText)
             },
@@ -23,7 +27,9 @@ internal class MainActivitySettingsLearningPanel(private val activity: MainActiv
         activity.runSettingsWrite(
             traceSection = "kani.settings.learning.save",
             write = {
-                SettingsWriteActions.saveLearningSteps(request, activity.store::saveLearningStepSettings)
+                activity.saveSettings(
+                    SettingsSaveCommand.LearningSteps(request.settings!!),
+                )
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.learningStepsSavedToast(), Toast.LENGTH_SHORT).show()

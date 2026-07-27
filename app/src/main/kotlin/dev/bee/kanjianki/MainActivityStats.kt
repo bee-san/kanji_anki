@@ -6,9 +6,11 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.KanjiImpactAnalyzer
 import dev.bee.kanjianki.core.StatsTextCopy
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.MatureSupportGainedSnapshot
+import dev.bee.kanjianki.data.WeakKanjiImprovedSnapshot
 import dev.bee.kanjianki.progress.progressAnalyticsSampleSnapshot
 import dev.bee.kanjianki.progress.progressAnalyticsSnapshot
+import kotlinx.coroutines.runBlocking
 
 internal abstract class MainActivityStats : MainActivityGames() {
     override fun renderStats() {
@@ -29,7 +31,12 @@ internal abstract class MainActivityStats : MainActivityGames() {
                 }
             },
             traceName = "stats-route",
-            load = { progressAnalyticsSnapshot(store, scheduleRefresh = this::scheduleStatsPrecomputeIfStaleAsync) },
+            load = {
+                val now = System.currentTimeMillis()
+                val stats = runBlocking { statsUseCases.loadForDisplay(now) }
+                val settings = runBlocking { settingsUseCases.load() }
+                progressAnalyticsSnapshot(stats, now, settings.studyLadder)
+            },
             render = { model ->
                 composeRoute(
                     selected = MainActivityBase.NAV_STATS_ROUTE,
@@ -58,7 +65,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
         return KanjiImpactAnalyzer.notHelpingRows(report)
     }
 
-    fun weaknessImprovementExamples(metric: StudyStatsStore.WeakKanjiImprovedMetric): List<String> {
+    fun weaknessImprovementExamples(metric: WeakKanjiImprovedSnapshot): List<String> {
         return metric.examples.take(3).map { example ->
             StatsTextCopy.weaknessImprovementExample(
                 example.kanji,
@@ -68,7 +75,7 @@ internal abstract class MainActivityStats : MainActivityGames() {
         }
     }
 
-    fun supportGainExamples(metric: StudyStatsStore.MatureSupportGainedMetric): List<String> {
+    fun supportGainExamples(metric: MatureSupportGainedSnapshot): List<String> {
         return metric.examples.map { example ->
             StatsTextCopy.supportGainExample(
                 example.kanji,

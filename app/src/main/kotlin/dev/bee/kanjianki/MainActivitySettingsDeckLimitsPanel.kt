@@ -3,7 +3,7 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.core.SyncSettings
+import dev.bee.kanjianki.data.SettingsSaveCommand
 
 internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainActivitySettings) {
     fun deckLimitsSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsDeckLimitsPanelModel {
@@ -26,8 +26,12 @@ internal class MainActivitySettingsDeckLimitsPanel(private val activity: MainAct
         activity.runSettingsWrite(
             traceSection = "kani.settings.deck-limits.save",
             write = {
-                activity.store.putIntSetting(SyncSettings.NEW_PER_DAY_SETTING_KEY, newPerDay.newPerDay)
-                activity.store.putIntSetting(SyncSettings.ACTIVE_QUEUE_CAP_SETTING_KEY, activeQueueCap.newPerDay)
+                activity.saveSettings(
+                    SettingsSaveCommand.DeckLimits(
+                        newPerDay.newPerDay,
+                        activeQueueCap.newPerDay,
+                    ),
+                )
             },
         ) {
             Toast.makeText(activity, newPerDay.message, Toast.LENGTH_SHORT).show()

@@ -80,7 +80,7 @@ private fun StudyStatsStore.KaniOutcomeStats.toRepositorySnapshot(): KaniOutcome
         adaptiveHealth = adaptiveHealth.toRepositorySnapshot(),
     )
 
-private fun StudyStatsStore.WeakKanjiImprovedMetric.toRepositorySnapshot(): WeakKanjiImprovedSnapshot =
+internal fun StudyStatsStore.WeakKanjiImprovedMetric.toRepositorySnapshot(): WeakKanjiImprovedSnapshot =
     WeakKanjiImprovedSnapshot(
         improvedCount,
         averageBeforeWeakness,
@@ -90,7 +90,7 @@ private fun StudyStatsStore.WeakKanjiImprovedMetric.toRepositorySnapshot(): Weak
         },
     )
 
-private fun StudyStatsStore.MatureSupportGainedMetric.toRepositorySnapshot(): MatureSupportGainedSnapshot =
+internal fun StudyStatsStore.MatureSupportGainedMetric.toRepositorySnapshot(): MatureSupportGainedSnapshot =
     MatureSupportGainedSnapshot(
         gainedSupportCount,
         matureSupportGained,

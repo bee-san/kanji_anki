@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.KanjiGameEngine
 import dev.bee.kanjianki.core.KanjiGameRoundState
 import dev.bee.kanjianki.core.RecordsImportModels
 import java.util.Random
+import kotlinx.coroutines.runBlocking
 
 internal abstract class MainActivityGames : MainActivityMissingKanji() {
     private val gameEngine by lazy { KanjiGameEngine() }
@@ -253,10 +254,11 @@ internal abstract class MainActivityGames : MainActivityMissingKanji() {
     }
 
     protected open fun gameData(): GameData {
+        val snapshot = runBlocking { homeUseCases.loadGameData() }
         return GameData(
-            rows = store.activeDashboardRows().orEmpty(),
-            inventory = store.searchKanjiInventory("").orEmpty(),
-            pairs = store.allLocalSimilarPairs().orEmpty()
+            rows = snapshot.activeRows,
+            inventory = snapshot.inventory,
+            pairs = snapshot.similarPairs,
         )
     }
 

@@ -3,10 +3,14 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 
 internal class MainActivitySettingsLadderThresholdPanel(private val activity: MainActivitySettings) {
-    fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
-        val current = activity.settings()
+    fun ladderThresholdSettingsPanelModel(
+        snapshot: SettingsSnapshot = activity.loadSettingsSnapshot(),
+    ): SettingsLadderThresholdPanelModel {
+        val current = snapshot.sync
         return SettingsLadderThresholdPanelModels.create(
             promotionIntervalDays = current.ladderPromotionIntervalDays,
             demotionFailStreak = current.ladderDemotionFailStreak,
@@ -25,7 +29,12 @@ internal class MainActivitySettingsLadderThresholdPanel(private val activity: Ma
         activity.runSettingsWrite(
             traceSection = "kani.settings.ladder-threshold.save",
             write = {
-                SettingsWriteActions.saveLadderThresholds(request, activity.store::putIntSetting)
+                activity.saveSettings(
+                    SettingsSaveCommand.LadderThresholds(
+                        request.promotionDays,
+                        request.failStreak,
+                    ),
+                )
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.ladderThresholdsSavedToast(), Toast.LENGTH_SHORT).show()

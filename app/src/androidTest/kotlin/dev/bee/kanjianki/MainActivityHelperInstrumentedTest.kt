@@ -18,6 +18,7 @@ import dev.bee.kanjianki.core.StudyTextCopy;
 import dev.bee.kanjianki.core.StatsTextCopy;
 import dev.bee.kanjianki.core.TimelineCopy;
 import dev.bee.kanjianki.core.StudyTaskCopy;
+import dev.bee.kanjianki.data.toRepositorySnapshot
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -1875,8 +1876,15 @@ private fun verifyWorkingStatsVerdict(activity: MainActivity, activeRow: Records
                 busyLadder.ladderDemotionFailStreak
         ).contains("fall after 1 misses"));
         assertTrue(activity.notHelpingRows(null).isEmpty());
-        assertEquals(3, activity.weaknessImprovementExamples(workingStats.weakKanjiImproved).size)
-        assertTrue(activity.supportGainExamples(workingStats.matureSupportGained).get(0).contains("0 -> 3 mature cards"));
+        assertEquals(
+                3,
+                activity.weaknessImprovementExamples(
+                        workingStats.weakKanjiImproved.toRepositorySnapshot()
+                ).size
+        )
+        assertTrue(activity.supportGainExamples(
+                workingStats.matureSupportGained.toRepositorySnapshot()
+        ).get(0).contains("0 -> 3 mature cards"));
         val queuedEntries = activity.queuedEntries(
                 listOf(activeRow),
                 listOf(studyItem("裂", RecordsBase.LadderRung.KANJI_MEANING, "review", 0L)),

@@ -3,6 +3,7 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
 
 internal class MainActivitySettingsAnkiSourceNoteType(private val activity: MainActivitySettings) {
     fun noteTypeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNoteTypePanelModel {
@@ -55,17 +56,16 @@ internal class MainActivitySettingsAnkiSourceNoteType(private val activity: Main
         activity.runSettingsWrite(
             traceSection = "kani.settings.note-type.save",
             write = {
-                SettingsWriteActions.saveNoteTypeFields(
-                    SettingsWriteActions.NoteTypeFieldWriteRequest(
-                        selectedNoteType,
-                        selectedExpressionField,
-                        fieldState.reading.trim(),
-                        fieldState.meaning.trim(),
-                        fieldState.sentence.trim(),
-                        fieldState.frequency.trim(),
-                        fieldState.frequencySort.trim()
+                activity.saveSettings(
+                    SettingsSaveCommand.NoteTypeFields(
+                        modelName = selectedNoteType,
+                        expressionField = selectedExpressionField,
+                        readingField = fieldState.reading.trim(),
+                        meaningField = fieldState.meaning.trim(),
+                        sentenceField = fieldState.sentence.trim(),
+                        frequencyField = fieldState.frequency.trim(),
+                        frequencySortField = fieldState.frequencySort.trim(),
                     ),
-                    activity.store::putStringSetting
                 )
             },
         ) {

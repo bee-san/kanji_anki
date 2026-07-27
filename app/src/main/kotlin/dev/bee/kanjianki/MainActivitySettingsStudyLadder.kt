@@ -3,10 +3,14 @@ package dev.bee.kanjianki
 import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 
 internal class MainActivitySettingsStudyLadder(private val activity: MainActivitySettings) {
-    fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
-        val ladder = activity.studyLadderSettings()
+    fun studyLadderSettingsPanelModel(
+        snapshot: SettingsSnapshot = activity.loadSettingsSnapshot(),
+    ): SettingsStudyLadderPanelModel {
+        val ladder = snapshot.studyLadder
         val restoreLabel = SettingsTextCopy.restoreDefaultLadderLabel()
         val rows = buildList {
             REQUIRED_CORE_RUNGS.forEachIndexed { index, rung ->
@@ -150,7 +154,7 @@ internal class MainActivitySettingsStudyLadder(private val activity: MainActivit
         activity.runSettingsWrite(
             traceSection = traceSection,
             write = {
-                activity.store.saveStudyLadderSettings(next)
+                activity.saveSettings(SettingsSaveCommand.StudyLadder(next))
             },
         ) {
             toastMessage?.let { Toast.makeText(activity, it, Toast.LENGTH_SHORT).show() }

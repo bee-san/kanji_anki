@@ -5,6 +5,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.data.HomeGameDataSnapshot
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
+import dev.bee.kanjianki.data.HomeNewCardSortPreviewSnapshot
 import dev.bee.kanjianki.data.HomeRepository
 import dev.bee.kanjianki.data.HomeSnapshot
 import dev.bee.kanjianki.data.SaveMnemonicCommand
@@ -66,6 +67,17 @@ class HomeUseCases(
 
     suspend fun loadGameData(): HomeGameDataSnapshot =
         homeRepository.loadGameData().valueOrThrow("load game data")
+
+    suspend fun loadHome(nowMillis: Long): HomeSnapshot =
+        homeRepository.loadHome(nowMillis).valueOrThrow("load home")
+
+    suspend fun loadNewCardSortPreviewData(): HomeNewCardSortPreviewSnapshot =
+        homeRepository.loadNewCardSortPreviewData()
+            .valueOrThrow("load new-card sort preview")
+
+    suspend fun loadNewCardSortPreviewVersion(): Long =
+        homeRepository.loadNewCardSortPreviewVersion()
+            .valueOrThrow("load new-card sort preview version")
 
     suspend fun loadSettings(): SettingsSnapshot =
         settingsRepository.load().valueOrThrow("load settings")

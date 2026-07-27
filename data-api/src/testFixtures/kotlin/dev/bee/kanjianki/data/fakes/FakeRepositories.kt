@@ -9,6 +9,7 @@ import dev.bee.kanjianki.data.CommitFsrsFitCommand
 import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
 import dev.bee.kanjianki.data.HomeGameDataSnapshot
+import dev.bee.kanjianki.data.HomeNewCardSortPreviewSnapshot
 import dev.bee.kanjianki.data.HomeRepository
 import dev.bee.kanjianki.data.HomeSnapshot
 import dev.bee.kanjianki.data.RecordRepairedWriteBackCommand
@@ -50,6 +51,10 @@ class FakeHomeRepository : HomeRepository {
     var gameDataResult: StoreResult<HomeGameDataSnapshot> = StoreResult.ok(
         HomeGameDataSnapshot(emptyList(), emptyList(), emptyList()),
     )
+    var newCardSortPreviewResult: StoreResult<HomeNewCardSortPreviewSnapshot> = StoreResult.ok(
+        HomeNewCardSortPreviewSnapshot(emptyList(), emptyList(), 0L),
+    )
+    var newCardSortPreviewVersionResult: StoreResult<Long> = StoreResult.ok(0L)
     var downgradeNoticeResult: StoreResult<Int?> = StoreResult.ok(null)
     var saveMnemonicHandler: suspend (SaveMnemonicCommand) -> StoreResult<Unit> =
         { StoreResult.ok(Unit) }
@@ -81,6 +86,12 @@ class FakeHomeRepository : HomeRepository {
     ): StoreResult<HomeKanjiDetailSnapshot> = detailHandler(kanji, nowMillis)
 
     override suspend fun loadGameData(): StoreResult<HomeGameDataSnapshot> = gameDataResult
+
+    override suspend fun loadNewCardSortPreviewData(): StoreResult<HomeNewCardSortPreviewSnapshot> =
+        newCardSortPreviewResult
+
+    override suspend fun loadNewCardSortPreviewVersion(): StoreResult<Long> =
+        newCardSortPreviewVersionResult
 
     override suspend fun consumeDowngradeNotice(): StoreResult<Int?> = downgradeNoticeResult
 

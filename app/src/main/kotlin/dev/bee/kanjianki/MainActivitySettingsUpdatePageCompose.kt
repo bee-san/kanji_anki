@@ -22,8 +22,8 @@ import dev.bee.kanjianki.updatecore.BackgroundAutoUpdateOptionPolicy
 internal fun settingsUpdatePanelModel(
     activity: MainActivitySettings,
     title: String,
+    status: SettingsAutoUpdateState = activity.loadSettingsDeviceState().autoUpdate,
 ): SettingsUpdatePanelModel {
-    val status = activity.store.autoUpdateStatus()
     val canInstallUpdates = canInstallUpdates(activity)
     return SettingsUpdatePanelModel(
         title = title,
@@ -97,7 +97,7 @@ private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Bool
     activity.runSettingsWrite(
         traceSection = "kani.settings.auto-update.toggle",
         write = {
-            activity.store.saveAutoUpdateEnabled(result.enabled())
+            activity.deviceSettingsStore.setAutoUpdateEnabled(result.enabled())
         },
     ) {
         if (result.enabled()) {
@@ -125,7 +125,7 @@ private fun autoUpdateInBackground(activity: MainActivitySettings, enabled: Bool
     activity.runSettingsWrite(
         traceSection = "kani.settings.auto-update.background",
         write = {
-            activity.store.saveAutoUpdateEnabled(result.enabled())
+            activity.deviceSettingsStore.setAutoUpdateEnabled(result.enabled())
         },
     ) {
         AutoUpdateScheduler.schedule(activity)

@@ -12,8 +12,9 @@ import dev.bee.kanjianki.core.SettingsTextCopy
  * problem can be sent after the switch is turned back off.
  */
 internal class MainActivitySettingsAutomationDebugLog(private val activity: MainActivitySettings) {
-    fun debugLogSettingsPanelModel(): SettingsDebugLogPanelModel {
-        val enabled = activity.store.debugLogEnabled()
+    fun debugLogSettingsPanelModel(
+        enabled: Boolean = activity.loadSettingsDeviceState().debugLogEnabled,
+    ): SettingsDebugLogPanelModel {
         return SettingsDebugLogPanelModel(
             title = SettingsTextCopy.debugLogTitle(),
             status = SettingsTextCopy.debugLogStatus(enabled),
@@ -36,7 +37,7 @@ internal class MainActivitySettingsAutomationDebugLog(private val activity: Main
         activity.runSettingsWrite(
             traceSection = if (enabled) "kani.settings.debug-log.enable" else "kani.settings.debug-log.disable",
             write = {
-                activity.store.saveDebugLogEnabled(result.enabled)
+                activity.deviceSettingsStore.setDebugLogEnabled(result.enabled)
                 AppDebugLog.setEnabled(activity, result.enabled)
             },
         ) {

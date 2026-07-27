@@ -53,6 +53,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.progress.progressAnalyticsSnapshot
+import kotlinx.coroutines.runBlocking
 
 /**
  * Executable render boundary for every catalog entry.
@@ -86,7 +87,15 @@ internal object AndroidRouteBaselineFixtureRenderer {
                 // Exercise the production empty-data projection and composable
                 // synchronously with a fixed clock. The ordinary route method uses
                 // wall time for its chart windows, which is not a stable golden.
-                val state = progressAnalyticsSnapshot(activity.store, FIXTURE_TIME_MILLIS)
+                val stats = runBlocking {
+                    activity.statsUseCases.loadForDisplay(FIXTURE_TIME_MILLIS)
+                }
+                val settings = runBlocking { activity.settingsUseCases.load() }
+                val state = progressAnalyticsSnapshot(
+                    stats,
+                    FIXTURE_TIME_MILLIS,
+                    settings.studyLadder,
+                )
                 activity.showFixture(MainActivityBase.NAV_STATS_ROUTE) {
                     ProgressAnalyticsDashboardScreen(state = state)
                 }

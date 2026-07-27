@@ -34,6 +34,39 @@ sealed interface SettingsSaveCommand {
         val tagRepairedCards: Boolean,
     ) : SettingsSaveCommand
 
+    data class NoteTypeFields(
+        val modelName: String,
+        val expressionField: String,
+        val readingField: String,
+        val meaningField: String,
+        val sentenceField: String,
+        val frequencyField: String,
+        val frequencySortField: String,
+    ) : SettingsSaveCommand
+
+    data class ImportFilters(
+        val activeCards: Boolean,
+        val suspendedCards: Boolean,
+        val taggedCards: Boolean,
+        val tags: String,
+        val weakCards: Boolean,
+        val weakDifficulty: Double,
+        val weakLapses: Int,
+        val minMatchingCards: Int,
+        val browserQueryCards: Boolean,
+        val browserQuery: String,
+        val tagRepairedCards: Boolean,
+    ) : SettingsSaveCommand
+
+    data class FrequencyRange(val minRank: Int, val maxRank: Int) : SettingsSaveCommand
+
+    data class DeckLimits(val newPerDay: Int, val activeQueueCap: Int) : SettingsSaveCommand
+
+    data class LadderThresholds(
+        val promotionIntervalDays: Int,
+        val demotionFailStreak: Int,
+    ) : SettingsSaveCommand
+
     data class AdaptiveWorkload(val value: AdaptiveWorkloadSnapshot) : SettingsSaveCommand
 
     data class StudyAhead(val minutes: Int) : SettingsSaveCommand

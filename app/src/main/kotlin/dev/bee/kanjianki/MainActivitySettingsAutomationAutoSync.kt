@@ -4,12 +4,12 @@ import android.widget.Toast
 import dev.bee.kanjianki.core.AutoSyncSettingsTogglePolicy
 import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 
 internal class MainActivitySettingsAutomationAutoSync(private val activity: MainActivitySettings) {
-    fun autoSyncSettingsPanelModel(): SettingsAutoSyncPanelModel {
-        val auto = activity.store.autoSyncSettings()
+    fun autoSyncSettingsPanelModel(
+        auto: SettingsAutoSyncState = activity.loadSettingsDeviceState().autoSync,
+    ): SettingsAutoSyncPanelModel {
         val action = autoSyncAction(auto)
         return SettingsAutoSyncPanelModel(
             title = SettingsTextCopy.dailyAnkiSyncTitle(),
@@ -33,7 +33,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         activity.runSettingsWrite(
             traceSection = "kani.settings.auto-sync.enable",
             write = {
-                activity.store.setAutoSyncEnabled(result.enabled)
+                activity.deviceSettingsStore.setAutoSyncEnabled(result.enabled)
             },
         ) {
             AutoSyncScheduler.schedule(activity)
@@ -47,7 +47,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         activity.runSettingsWrite(
             traceSection = "kani.settings.auto-sync.disable",
             write = {
-                activity.store.setAutoSyncEnabled(result.enabled)
+                activity.deviceSettingsStore.setAutoSyncEnabled(result.enabled)
             },
         ) {
             AutoSyncScheduler.cancel(activity)
@@ -56,7 +56,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
         }
     }
 
-    private fun autoSyncAction(auto: LocalStoreBase.AutoSyncSettings): AutoSyncActionModel? {
+    private fun autoSyncAction(auto: SettingsAutoSyncState): AutoSyncActionModel? {
         if (!auto.configured) {
             return null
         }
@@ -86,7 +86,7 @@ internal class MainActivitySettingsAutomationAutoSync(private val activity: Main
             return if (value > 0L) DateTextPolicy.shortDateTime(value) else ""
         }
 
-        fun lastAttemptText(auto: LocalStoreBase.AutoSyncSettings): String {
+        fun lastAttemptText(auto: SettingsAutoSyncState): String {
             return if (auto.lastAttemptAt > 0L && auto.lastAttemptAt != auto.lastSuccessAt) {
                 DateTextPolicy.shortDateTime(auto.lastAttemptAt)
             } else {

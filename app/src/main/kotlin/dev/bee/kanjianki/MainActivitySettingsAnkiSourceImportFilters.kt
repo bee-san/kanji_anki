@@ -5,7 +5,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsImportPreset
 import dev.bee.kanjianki.core.SettingsTextCopy
-import dev.bee.kanjianki.core.SyncSettings
+import dev.bee.kanjianki.data.SettingsSaveCommand
 import java.util.Locale
 
 internal class MainActivitySettingsAnkiSourceImportFilters(
@@ -14,6 +14,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
 ) {
     fun importFilterSettingsPanelModel(
         current: RecordsSyncModels.Settings,
+        tagRepairedCards: Boolean,
     ): SettingsImportFiltersPanelModel {
         val state = SettingsImportFiltersState(
             activeCards = current.importActiveCards,
@@ -26,7 +27,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             difficulty = decimalText(current.importWeakFsrsDifficultyThreshold),
             lapses = thresholdText(current.importWeakLapsesThreshold),
             minMatching = thresholdText(current.importMinMatchingCardsPerKanji),
-            tagRepairedCards = SyncSettings.tagRepairedCards(activity.store),
+            tagRepairedCards = tagRepairedCards,
         )
 
         return SettingsImportFiltersPanelModel(
@@ -34,7 +35,7 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
             summary = SettingsTextCopy.settingsImportSummary(current),
             body = SettingsTextCopy.importFiltersBody(),
             presetsTitle = SettingsTextCopy.presetsTitle(),
-            presets = presetButtons(),
+            presets = presetButtons(tagRepairedCards),
             state = state,
             activeCardsLabel = SettingsTextCopy.activeCardsLabel(),
             suspendedCardsLabel = SettingsTextCopy.suspendedCardsLabel(),
@@ -55,11 +56,13 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
         )
     }
 
-    private fun presetButtons(): List<SettingsImportPresetButtonModel> {
+    private fun presetButtons(tagRepairedCards: Boolean): List<SettingsImportPresetButtonModel> {
         return SettingsImportPreset.defaults().map { preset ->
             SettingsImportPresetButtonModel(
                 label = preset.label(),
-                onClick = SettingsImportFilterAction { applyPreset(preset) }
+                onClick = SettingsImportFilterAction {
+                    applyPreset(preset, tagRepairedCards)
+                }
             )
         }
     }
@@ -92,21 +95,20 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
         activity.runSettingsWrite(
             traceSection = "kani.settings.import-filters.save",
             write = {
-                SettingsWriteActions.saveImportFilters(
-                    SettingsWriteActions.ImportFilterWriteRequest(
-                        state.activeCards,
-                        state.suspendedCards,
-                        state.taggedCards,
-                        parsedTags.joinToString(" "),
-                        state.weakCards,
-                        parsedThresholds.difficulty,
-                        parsedThresholds.lapseThreshold,
-                        parsedThresholds.minCards,
-                        state.browserQueryCards,
-                        queryText,
-                        state.tagRepairedCards,
+                activity.saveSettings(
+                    SettingsSaveCommand.ImportFilters(
+                        activeCards = state.activeCards,
+                        suspendedCards = state.suspendedCards,
+                        taggedCards = state.taggedCards,
+                        tags = parsedTags.joinToString(" "),
+                        weakCards = state.weakCards,
+                        weakDifficulty = parsedThresholds.difficulty,
+                        weakLapses = parsedThresholds.lapseThreshold,
+                        minMatchingCards = parsedThresholds.minCards,
+                        browserQueryCards = state.browserQueryCards,
+                        browserQuery = queryText,
+                        tagRepairedCards = state.tagRepairedCards,
                     ),
-                    SettingsStoreWriter(activity)
                 )
             },
         ) {
@@ -115,46 +117,32 @@ internal class MainActivitySettingsAnkiSourceImportFilters(
         }
     }
 
-    private fun applyPreset(preset: SettingsImportPreset) {
+    private fun applyPreset(
+        preset: SettingsImportPreset,
+        tagRepairedCards: Boolean,
+    ) {
         activity.runSettingsWrite(
             traceSection = "kani.settings.import-filters.preset",
             write = {
-                SettingsWriteActions.saveImportFilters(
-                    SettingsWriteActions.ImportFilterWriteRequest(
-                        preset.activeCards(),
-                        preset.suspendedCards(),
-                        preset.taggedCards(),
-                        preset.tags(),
-                        preset.weakCards(),
-                        preset.weakDifficulty(),
-                        preset.weakLapses(),
-                        preset.minMatchingCards(),
-                        preset.browserQueryCards(),
-                        preset.browserQuery(),
-                        SyncSettings.tagRepairedCards(activity.store),
+                activity.saveSettings(
+                    SettingsSaveCommand.ImportFilters(
+                        activeCards = preset.activeCards(),
+                        suspendedCards = preset.suspendedCards(),
+                        taggedCards = preset.taggedCards(),
+                        tags = preset.tags(),
+                        weakCards = preset.weakCards(),
+                        weakDifficulty = preset.weakDifficulty(),
+                        weakLapses = preset.weakLapses(),
+                        minMatchingCards = preset.minMatchingCards(),
+                        browserQueryCards = preset.browserQueryCards(),
+                        browserQuery = preset.browserQuery(),
+                        tagRepairedCards = tagRepairedCards,
                     ),
-                    SettingsStoreWriter(activity)
                 )
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.importPresetSavedToast(), Toast.LENGTH_LONG).show()
             activity.renderSettingsImportSync(true)
-        }
-    }
-
-    private class SettingsStoreWriter(
-        private val activity: MainActivitySettings,
-    ) : SettingsWriteActions.SettingWriter {
-        override fun putIntSetting(key: String, value: Int) {
-            activity.store.putIntSetting(key, value)
-        }
-
-        override fun putStringSetting(key: String, value: String?) {
-            activity.store.putStringSetting(key, value)
-        }
-
-        override fun putDoubleSetting(key: String, value: Double) {
-            activity.store.putDoubleSetting(key, value)
         }
     }
 

@@ -67,6 +67,20 @@ internal class SqliteHomeRepository(
         }
     }
 
+    override suspend fun loadNewCardSortPreviewData() = safeStoreCall {
+        store.readSnapshot {
+            HomeNewCardSortPreviewSnapshot(
+                activeRows = store.activeDashboardRows().toList(),
+                similarPairs = store.allLocalSimilarPairs().toList(),
+                sourceVersion = store.newCardSortPreviewCacheVersion(),
+            )
+        }
+    }
+
+    override suspend fun loadNewCardSortPreviewVersion() = safeStoreCall {
+        store.newCardSortPreviewCacheVersion()
+    }
+
     override suspend fun consumeDowngradeNotice() = safeStoreCall {
         store.consumeDowngradeNotice()
     }

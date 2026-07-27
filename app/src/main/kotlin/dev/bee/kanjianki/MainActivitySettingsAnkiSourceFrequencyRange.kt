@@ -4,6 +4,7 @@ import android.widget.Toast
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
 
 internal class MainActivitySettingsAnkiSourceFrequencyRange(
     private val activity: MainActivitySettings,
@@ -51,17 +52,13 @@ internal class MainActivitySettingsAnkiSourceFrequencyRange(
         activity.runSettingsWrite(
             traceSection = "kani.settings.frequency-range.save",
             write = {
-                activity.store.putIntSetting(SUSPENDED_RANK_MIN_SETTING_KEY, rankRange.minRank)
-                activity.store.putIntSetting(SUSPENDED_RANK_MAX_SETTING_KEY, rankRange.maxRank)
+                activity.saveSettings(
+                    SettingsSaveCommand.FrequencyRange(rankRange.minRank, rankRange.maxRank),
+                )
             },
         ) {
             Toast.makeText(activity, SettingsTextCopy.frequencyRangeSavedToast(), Toast.LENGTH_LONG).show()
             activity.renderSettingsImportSync(true)
         }
-    }
-
-    private companion object {
-        const val SUSPENDED_RANK_MIN_SETTING_KEY = "suspended_rank_min"
-        const val SUSPENDED_RANK_MAX_SETTING_KEY = "suspended_rank_max"
     }
 }

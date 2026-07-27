@@ -13,65 +13,71 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
     }
 
     fun settingsImportSyncScreenModel(): SettingsSubmenuScreenModel {
-        val current = activity.settings()
+        val snapshot = activity.loadSettingsSnapshot()
+        val current = snapshot.sync
+        val device = activity.loadSettingsDeviceState()
         return submenuScreenModel(
             title = SettingsTextCopy.settingsAnkiSourceTitle(),
             body = SettingsTextCopy.settingsAnkiSourceBody(),
             panels = listOf(
                 activity.noteTypeSettingsPanelModel(current),
-                activity.importFilterSettingsPanelModel(current),
+                activity.importFilterSettingsPanelModel(current, snapshot.tagRepairedCards),
                 activity.frequencyRangeSettingsPanelModel(current),
-                activity.autoSyncSettingsPanelModel(),
+                activity.autoSyncSettingsPanelModel(device),
             ),
         )
     }
 
     fun settingsStudyBehaviorScreenModel(): SettingsSubmenuScreenModel {
-        val current = activity.settings()
+        val snapshot = activity.loadSettingsSnapshot()
+        val current = snapshot.sync
         return submenuScreenModel(
             title = SettingsTextCopy.settingsStudyBehaviorTitle(),
             body = SettingsTextCopy.settingsStudyBehaviorBody(),
             panels = listOf(
                 MainActivitySettingsStudySortPanel(activity).newCardSortSettingsPanelModel(current),
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
-                MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
-                MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
-                MainActivitySettingsPersonalizedScheduling(activity).panelModel(),
-                activity.learningStepsSettingsPanelModel(),
-                MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
-                MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
-                activity.ladderThresholdSettingsPanelModel(),
+                MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(snapshot),
+                MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(snapshot),
+                MainActivitySettingsPersonalizedScheduling(activity).panelModel(snapshot),
+                activity.learningStepsSettingsPanelModel(snapshot),
+                MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(snapshot),
+                MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(snapshot),
+                activity.ladderThresholdSettingsPanelModel(snapshot),
             ),
         )
     }
 
     fun settingsAutomationScreenModel(): SettingsSubmenuScreenModel {
+        val device = activity.loadSettingsDeviceState()
         return submenuScreenModel(
             title = SettingsTextCopy.settingsAutomationTitle(),
             body = SettingsTextCopy.settingsAutomationBody(),
             panels = listOf(
-                activity.reminderSettingsPanelModel(),
+                activity.reminderSettingsPanelModel(device),
                 SettingsUpdateOverviewPanelModel(
                     settingsUpdatePanelModel(
                         activity = activity,
                         title = SettingsTextCopy.appUpdatesTitle(),
+                        status = device.autoUpdate,
                     ),
                     SettingsTextCopy.openUpdaterLabel(),
                 ) {
                     activity.renderUpdate()
                 },
-                activity.debugLogSettingsPanelModel(),
+                activity.debugLogSettingsPanelModel(device),
                 activity.backupSettingsPanelModel(),
             ),
         )
     }
 
     fun settingsAppearanceScreenModel(): SettingsSubmenuScreenModel {
+        val snapshot = activity.loadSettingsSnapshot()
         return submenuScreenModel(
             title = SettingsTextCopy.settingsAppearanceTitle(),
             body = SettingsTextCopy.settingsAppearanceBody(),
             panels = listOf(
-                activity.themeSettingsPanelModel(),
+                activity.themeSettingsPanelModel(snapshot),
             ),
         )
     }

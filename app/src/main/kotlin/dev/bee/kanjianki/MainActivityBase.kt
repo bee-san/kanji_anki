@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.HomeUseCases
+import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.DailyStudyPlan
@@ -45,6 +46,7 @@ import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.KaniThemeChoice
+import java.io.File
 import java.util.concurrent.ExecutorService
 
 internal abstract class MainActivityBase : MainActivityUiSupport() {
@@ -125,6 +127,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     lateinit var statsUseCases: StatsUseCases
         private set
 
+    lateinit var settingsUseCases: SettingsUseCases
+        private set
+
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
 
@@ -150,6 +155,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             deviceSettingsStore = container.deviceSettingsStore
         }
         if (!::statsUseCases.isInitialized) statsUseCases = container.statsUseCases
+        if (!::settingsUseCases.isInitialized) settingsUseCases = container.settingsUseCases
     }
 
     @JvmField
@@ -720,6 +726,22 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     internal fun activateAutoSyncAfterFirstSuccess() {
         store.activateAutoSyncAfterFirstSuccess()
+    }
+
+    internal fun setPendingReminderSettings(value: SettingsReminderState) {
+        pendingReminderSettings = LocalStoreBase.ReminderSettings(
+            value.enabled,
+            value.hour,
+            value.minute,
+        )
+    }
+
+    internal fun rearmReminderFromProcessStore() {
+        ReminderScheduler.schedule(this, store)
+    }
+
+    internal fun snapshotBackupInto(destination: File) {
+        store.snapshotInto(destination)
     }
 
     fun studyLadderSettings(): RecordsBase.StudyLadderSettings {

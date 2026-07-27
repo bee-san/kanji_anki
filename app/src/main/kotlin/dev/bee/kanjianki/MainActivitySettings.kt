@@ -8,9 +8,12 @@ import androidx.compose.runtime.Composable
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
+import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
@@ -184,6 +187,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                 loadingTitle = SettingsTextCopy.updatePageTitle(),
                 back = Runnable { renderSettingsAutomation(true) },
                 load = {
+                    val updateStatus = loadSettingsDeviceState().autoUpdate
                     SettingsUpdatePageModel(
                         title = SettingsTextCopy.updatePageTitle(),
                         onHome = this@MainActivitySettings::renderHome,
@@ -192,6 +196,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
                         panel = settingsUpdatePanelModel(
                             activity = this@MainActivitySettings,
                             title = SettingsTextCopy.automaticUpdatesTitle(),
+                            status = updateStatus,
                         ),
                     )
                 },
@@ -229,7 +234,7 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     /**
      * Renders a settings route without blocking the main thread. The screen model (which reads
-     * many settings from the SQLite-backed store) is built on the background [io] executor and
+     * many settings from repositories) is built on the background [io] executor and
      * rendered on the main thread when ready, so tapping the Settings button (or any settings
      * sub-card) responds well under the 1s latency budget instead of freezing while ~30+ store
      * reads run on the click path. A lightweight loading screen is shown only if the build runs
@@ -318,8 +323,21 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         }
     }
 
-    fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
-        return ankiSource().importFilterSettingsPanelModel(current)
+    internal fun loadSettingsSnapshot(): SettingsSnapshot =
+        runBlocking { settingsUseCases.load() }
+
+    internal fun saveSettings(command: SettingsSaveCommand) {
+        runBlocking { settingsUseCases.save(command) }
+    }
+
+    internal fun loadSettingsDeviceState(): SettingsDeviceState =
+        deviceSettingsStore.snapshot().settingsDeviceState()
+
+    fun importFilterSettingsPanelModel(
+        current: RecordsSyncModels.Settings,
+        tagRepairedCards: Boolean = loadSettingsSnapshot().tagRepairedCards,
+    ): SettingsImportFiltersPanelModel {
+        return ankiSource().importFilterSettingsPanelModel(current, tagRepairedCards)
     }
 
     fun frequencyRangeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsFrequencyRangePanelModel {
@@ -334,28 +352,41 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsStudySortPanel(this).newCardSortSettingsPanelModel(current)
     }
 
-    fun workloadSettingsPanelModel(): SettingsWorkloadPanelModel {
-        return MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel()
+    fun workloadSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsWorkloadPanelModel {
+        return MainActivitySettingsWorkloadPanel(this).workloadSettingsPanelModel(snapshot)
     }
 
-    fun learningStepsSettingsPanelModel(): SettingsLearningStepsPanelModel {
-        return MainActivitySettingsLearningPanel(this).learningStepsSettingsPanelModel()
+    fun learningStepsSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsLearningStepsPanelModel {
+        return MainActivitySettingsLearningPanel(this).learningStepsSettingsPanelModel(snapshot)
     }
 
-    fun studyLadderSettingsPanelModel(): SettingsStudyLadderPanelModel {
-        return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel()
+    fun studyLadderSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsStudyLadderPanelModel {
+        return MainActivitySettingsStudyLadder(this).studyLadderSettingsPanelModel(snapshot)
     }
 
-    fun ladderThresholdSettingsPanelModel(): SettingsLadderThresholdPanelModel {
-        return MainActivitySettingsLadderThresholdPanel(this).ladderThresholdSettingsPanelModel()
+    fun ladderThresholdSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsLadderThresholdPanelModel {
+        return MainActivitySettingsLadderThresholdPanel(this)
+            .ladderThresholdSettingsPanelModel(snapshot)
     }
 
-    internal fun themeSettingsPanelModel(): SettingsThemePanelModel {
-        return MainActivitySettingsThemePanel(this).themeSettingsPanelModel()
+    internal fun themeSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsThemePanelModel {
+        return MainActivitySettingsThemePanel(this).themeSettingsPanelModel(snapshot)
     }
 
-    fun retentionSettingsPanelModel(): SettingsRetentionPanelModel {
-        return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel()
+    fun retentionSettingsPanelModel(
+        snapshot: SettingsSnapshot = loadSettingsSnapshot(),
+    ): SettingsRetentionPanelModel {
+        return MainActivitySettingsRetentionPanel(this).retentionSettingsPanelModel(snapshot)
     }
 
     override fun thresholdInput(value: Int): EditText {
@@ -374,16 +405,23 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return input.text.toString().trim().toIntOrNull() ?: 0
     }
 
-    fun reminderSettingsPanelModel(): SettingsReminderPanelModel {
-        return MainActivitySettingsAutomationReminder(this).reminderSettingsPanelModel()
+    fun reminderSettingsPanelModel(
+        state: SettingsDeviceState = loadSettingsDeviceState(),
+    ): SettingsReminderPanelModel {
+        return MainActivitySettingsAutomationReminder(this).reminderSettingsPanelModel(state)
     }
 
-    fun autoSyncSettingsPanelModel(): SettingsAutoSyncPanelModel {
-        return MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel()
+    fun autoSyncSettingsPanelModel(
+        state: SettingsDeviceState = loadSettingsDeviceState(),
+    ): SettingsAutoSyncPanelModel {
+        return MainActivitySettingsAutomationAutoSync(this).autoSyncSettingsPanelModel(state.autoSync)
     }
 
-    fun debugLogSettingsPanelModel(): SettingsDebugLogPanelModel {
-        return MainActivitySettingsAutomationDebugLog(this).debugLogSettingsPanelModel()
+    fun debugLogSettingsPanelModel(
+        state: SettingsDeviceState = loadSettingsDeviceState(),
+    ): SettingsDebugLogPanelModel {
+        return MainActivitySettingsAutomationDebugLog(this)
+            .debugLogSettingsPanelModel(state.debugLogEnabled)
     }
 
     fun backupSettingsPanelModel(): SettingsBackupPanelModel {

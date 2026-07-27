@@ -145,7 +145,7 @@ internal class MainActivitySettingsAutomationBackup(
                         dbFile = activity.getDatabasePath(DatabaseBackupPolicy.DB_NAME),
                         nowMillis = System.currentTimeMillis(),
                         snapshotter = { _, destination ->
-                            activity.store.snapshotInto(destination)
+                            activity.snapshotBackupInto(destination)
                         },
                     ),
                 )

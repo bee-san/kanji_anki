@@ -4,6 +4,7 @@ import android.content.Context
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.KaniContainer
+import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
 import dev.bee.kanjianki.data.AndroidDeviceSettingsStore
 import dev.bee.kanjianki.data.LocalStore
@@ -41,6 +42,7 @@ internal class AndroidKaniContainer(
         settingsRepository,
         syncRepository,
     )
+    val settingsUseCases = SettingsUseCases(settingsRepository)
     val statsUseCases = StatsUseCases(statsRepository)
 
     override val userIoExecutor: ExecutorService =

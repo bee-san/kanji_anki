@@ -12,8 +12,11 @@ internal class MainActivitySettingsAnkiSource(activity: MainActivitySettings) {
         return noteType.noteTypeSettingsPanelModel(current)
     }
 
-    fun importFilterSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsImportFiltersPanelModel {
-        return importFilters.importFilterSettingsPanelModel(current)
+    fun importFilterSettingsPanelModel(
+        current: RecordsSyncModels.Settings,
+        tagRepairedCards: Boolean,
+    ): SettingsImportFiltersPanelModel {
+        return importFilters.importFilterSettingsPanelModel(current, tagRepairedCards)
     }
 
     fun frequencyRangeSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsFrequencyRangePanelModel {

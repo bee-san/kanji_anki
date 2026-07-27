@@ -12,9 +12,13 @@ import dev.bee.kanjianki.core.ReviewHeatmapPolicy
 import dev.bee.kanjianki.core.StatsValueFormatter
 import dev.bee.kanjianki.core.StatsDashboardCopy
 import dev.bee.kanjianki.core.TaskTypeAccuracyPolicy
-import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.data.StatsCacheStore
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.AdaptiveHealthSnapshot
+import dev.bee.kanjianki.data.CumulativeKanjiSnapshot
+import dev.bee.kanjianki.data.KaniOutcomeSnapshot
+import dev.bee.kanjianki.data.LadderHealthSnapshot
+import dev.bee.kanjianki.data.RecentMistakeSnapshot
+import dev.bee.kanjianki.data.ReviewDaySummarySnapshot
+import dev.bee.kanjianki.data.StatsSnapshot
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -22,8 +26,8 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 internal interface ProgressAnalyticsStatsSource {
-    fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot?
-    fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot
+    fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsSnapshot?
+    fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsSnapshot
     fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
 }
 
@@ -31,21 +35,18 @@ private const val CACHED_REVIEW_DAY_COUNT = 366
 private val FORECAST_TIME_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
 
 internal fun progressAnalyticsSnapshot(
-    store: LocalStore,
+    snapshot: StatsSnapshot,
     nowMillis: Long = System.currentTimeMillis(),
-    scheduleRefresh: (() -> Unit)? = null,
+    ladderSettings: RecordsBase.StudyLadderSettings,
 ): ProgressAnalyticsState = progressAnalyticsSnapshot(
     source = object : ProgressAnalyticsStatsSource {
-        override fun cachedStatsSnapshotOrNull(nowMillis: Long) =
-            StatsCacheStore(store).readFresh(nowMillis = nowMillis)
-
-        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long) = store.recomputeStatsSnapshotSynchronously(nowMillis)
-        override fun reviewDaySummaries(nowMillis: Long, days: Int) =
-            dev.bee.kanjianki.data.StudyStatsQueries(store).reviewDaySummaries(nowMillis, days).map { it.toReviewDaySummary() }
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsSnapshot = snapshot
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsSnapshot = snapshot
+        override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> =
+            emptyList()
     },
     nowMillis = nowMillis,
-    scheduleRefresh = scheduleRefresh,
-    ladderSettings = store.studyLadderSettings(),
+    ladderSettings = ladderSettings,
 )
 
 internal fun progressAnalyticsSnapshot(
@@ -325,7 +326,7 @@ internal data class ReviewDaySummary(
     fun accuracyPercent(): Int = percent(correct(), total.coerceAtLeast(0L))
 }
 
-private fun StatsCacheStore.ReviewDaySummarySnapshot.toReviewDaySummary(
+private fun ReviewDaySummarySnapshot.toReviewDaySummary(
     normalizedDayStart: Long = dayStartMillis,
 ): ReviewDaySummary {
     val safeTotal = total.coerceAtLeast(0)
@@ -343,7 +344,7 @@ private fun StatsCacheStore.ReviewDaySummarySnapshot.toReviewDaySummary(
 }
 
 private fun canonicalReviewDays(
-    snapshots: List<StatsCacheStore.ReviewDaySummarySnapshot>,
+    snapshots: List<ReviewDaySummarySnapshot>,
     nowMillis: Long,
     timeZone: TimeZone,
 ): List<ReviewDaySummary> {
@@ -469,7 +470,7 @@ private fun volumeChart(
 }
 
 private fun cumulativeChart(
-    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    points: List<CumulativeKanjiSnapshot>,
     nowMillis: Long,
     copy: StatsDashboardCopy,
     locale: Locale,
@@ -501,12 +502,12 @@ private fun cumulativeChart(
 }
 
 private fun sampleCumulativeLocalDays(
-    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    points: List<CumulativeKanjiSnapshot>,
     rangeStart: Long,
     dayCount: Int,
     maximumSize: Int,
     timeZone: TimeZone,
-): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+): List<CumulativeKanjiSnapshot> {
     if (maximumSize <= 0 || dayCount <= 0 || points.isEmpty()) return emptyList()
     val sampleCount = minOf(maximumSize, dayCount)
     val lastDayOffset = dayCount - 1L
@@ -523,7 +524,7 @@ private fun sampleCumulativeLocalDays(
             cumulativeCount = points[pointIndex].cumulativeCount
             pointIndex += 1
         }
-        StatsCacheStore.CumulativeKanjiSnapshot(sampleDay, cumulativeCount)
+        CumulativeKanjiSnapshot(sampleDay, cumulativeCount)
     }
 }
 
@@ -597,7 +598,7 @@ private fun distributionSummary(
 }
 
 private fun ladderRows(
-    metric: StudyStatsStore.LadderHealthMetric,
+    metric: LadderHealthSnapshot,
     ladderSettings: RecordsBase.StudyLadderSettings,
     copy: StatsDashboardCopy,
 ): List<ProgressLevelRowState> {
@@ -609,7 +610,7 @@ private fun ladderRows(
 }
 
 private fun adaptiveRows(
-    metric: StudyStatsStore.AdaptiveHealthMetric,
+    metric: AdaptiveHealthSnapshot,
     total: Int,
     legacyTransitionCount: Int,
     copy: StatsDashboardCopy,
@@ -644,10 +645,10 @@ private fun adaptiveRows(
 }
 
 private fun canonicalCumulative(
-    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    points: List<CumulativeKanjiSnapshot>,
     nowMillis: Long,
     timeZone: TimeZone,
-): List<StatsCacheStore.CumulativeKanjiSnapshot> {
+): List<CumulativeKanjiSnapshot> {
     val endExclusive = LocalDayPolicy.nextLocalDayStart(nowMillis, timeZone)
     val byDay = HashMap<Long, Int>()
     points.forEach { point ->
@@ -658,12 +659,12 @@ private fun canonicalCumulative(
     var runningMaximum = 0
     return byDay.entries.sortedBy { it.key }.map { (dayStart, count) ->
         runningMaximum = maxOf(runningMaximum, count)
-        StatsCacheStore.CumulativeKanjiSnapshot(dayStart, runningMaximum)
+        CumulativeKanjiSnapshot(dayStart, runningMaximum)
     }
 }
 
 private fun cumulativeSevenDayDelta(
-    points: List<StatsCacheStore.CumulativeKanjiSnapshot>,
+    points: List<CumulativeKanjiSnapshot>,
     nowMillis: Long,
     timeZone: TimeZone,
 ): Int {
@@ -679,7 +680,7 @@ private fun cumulativeSevenDayDelta(
 }
 
 private fun forecastState(
-    snapshot: StatsCacheStore.Snapshot,
+    snapshot: StatsSnapshot,
     dashboardCopy: StatsDashboardCopy,
     locale: Locale,
 ): ProgressForecastState? {
@@ -735,13 +736,13 @@ private fun weaknessRows(
     return emptyList()
 }
 
-private fun mostMissedKanji(mistakes: List<StudyStatsStore.RecentMistake>): List<ProgressMissedKanjiState> = mistakes
+private fun mostMissedKanji(mistakes: List<RecentMistakeSnapshot>): List<ProgressMissedKanjiState> = mistakes
     .filter { it.kanji.isNotBlank() }.groupingBy { it.kanji }.eachCount().entries
     .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }).take(5)
     .map { ProgressMissedKanjiState(it.key, it.value) }
 
 private fun supportNeeded(
-    outcome: StudyStatsStore.KaniOutcomeStats,
+    outcome: KaniOutcomeSnapshot,
     copy: StatsDashboardCopy,
 ): List<ProgressSupportNeedState> =
     outcome.matureSupportGained.examples.take(4).map {

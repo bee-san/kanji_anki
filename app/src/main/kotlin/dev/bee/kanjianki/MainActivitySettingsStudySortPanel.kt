@@ -5,11 +5,15 @@ import dev.bee.kanjianki.core.NewCardSortSettingsPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
+import dev.bee.kanjianki.data.SettingsSaveCommand
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivitySettingsStudySortPanel(private val activity: MainActivitySettings) {
     fun newCardSortSettingsPanelModel(current: RecordsSyncModels.Settings): SettingsNewCardSortPanelModel {
         val previewRowsData = activity.cachedNewCardSortPreviewRows
-        val previewVersion = activity.store.newCardSortPreviewCacheVersion()
+        val previewVersion = runBlocking {
+            activity.homeUseCases.loadNewCardSortPreviewVersion()
+        }
         if (previewRowsData == null || previewRowsData.sourceVersion != previewVersion) {
             schedulePreviewRefresh()
         }
@@ -34,13 +38,19 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
         activity.io.execute {
             var previewRowsData: SettingsNewCardSortPreviewRowsSnapshot? = null
             try {
-                val sourceVersion = activity.store.newCardSortPreviewCacheVersion()
-                val rows = activity.store.activeDashboardRows()
+                val data = runBlocking {
+                    activity.homeUseCases.loadNewCardSortPreviewData()
+                }
+                val pairKeys = data.similarPairs.mapTo(HashSet()) {
+                    similarPairKey(it.kanjiA, it.kanjiB)
+                }
                 previewRowsData = SettingsNewCardSortPreviewCache.resolve(
-                    rows = rows,
+                    rows = data.activeRows,
                     cached = cached,
-                    sourceVersion = sourceVersion,
-                    hasSimilarLocalPair = activity.store::hasSimilarLocalPair,
+                    sourceVersion = data.sourceVersion,
+                    hasSimilarLocalPair = { first, second ->
+                        pairKeys.contains(similarPairKey(first, second))
+                    },
                 )
             } finally {
                 activity.postToMainIfActive {
@@ -84,11 +94,17 @@ internal class MainActivitySettingsStudySortPanel(private val activity: MainActi
         activity.runSettingsWrite(
             traceSection = "kani.settings.new-card-sort.save",
             write = {
-                activity.store.saveNewCardSortMode(request.mode)
+                activity.saveSettings(SettingsSaveCommand.NewCardSort(request.mode))
             },
         ) {
             Toast.makeText(activity, request.message, Toast.LENGTH_SHORT).show()
             activity.renderSettingsStudyBehavior(true)
         }
+    }
+
+    private fun similarPairKey(first: String?, second: String?): String {
+        val left = first.orEmpty()
+        val right = second.orEmpty()
+        return if (left <= right) "$left\u0000$right" else "$right\u0000$left"
     }
 }
