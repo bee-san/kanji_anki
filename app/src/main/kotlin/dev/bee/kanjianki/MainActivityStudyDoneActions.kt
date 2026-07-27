@@ -10,6 +10,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.StudyQueueSnapshot
+import kotlinx.coroutines.runBlocking
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 
 internal class MainActivityStudyDoneActions(private val home: MainActivityStudy) {
@@ -236,20 +238,32 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
 
     fun availableStudyMoreNewCards(): Int {
         return withUiTrace("kani.study.more-new-cards.available") {
+            var loadedQueue: StudyQueueSnapshot? = null
+            fun queue(): StudyQueueSnapshot {
+                loadedQueue?.let { return it }
+                return runBlocking {
+                    home.studyUseCases.loadQueue(System.currentTimeMillis())
+                }.also { loadedQueue = it }
+            }
             val availability = resolveStudyMoreNewCardsAvailability(
                 retained.cachedStudyMoreSnapshot,
                 retained.cachedStudyMoreAvailability,
-                loadRows = { home.store.activeDashboardRows() },
-                loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
+                loadRows = { queue().availableRows },
+                loadExisting = { kanji ->
+                    runBlocking { home.studyUseCases.loadItems(kanji) }
+                },
                 countAvailable = { loadData ->
                     val now = System.currentTimeMillis()
-                    BridgeScheduler.withWeights(home.store.schedulerFsrsWeights()).countExtraNewCardsAvailable(
+                    val snapshot = queue()
+                    BridgeScheduler.withWeights(
+                        snapshot.schedulerFsrsWeights?.toDoubleArray(),
+                    ).countExtraNewCardsAvailable(
                         loadData.rows,
                         loadData.existing,
-                        home.settings(),
+                        snapshot.syncSettings,
                         now,
                         home.startOfDay(now),
-                        home.studyLadderSettings(),
+                        snapshot.studyLadder,
                     )
                 },
             )

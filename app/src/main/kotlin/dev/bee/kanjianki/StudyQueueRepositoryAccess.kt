@@ -4,15 +4,16 @@ import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.data.StudyQueueSnapshot
+import kotlinx.coroutines.runBlocking
 
-/**
- * Temporary host adapter for Study's pre-repository queue path. Goal 172
- * removes this after Study moves onto StudyRepository.
- */
-internal class StudyQueueCompatibilityAccess(
+/** Host adapter that supplies repository snapshots to the existing queue planner. */
+internal class StudyQueueRepositoryAccess(
     private val activity: MainActivityHome,
 ) {
-    fun studyAheadMillis(): Long = activity.store.studyAheadMinutes() * 60_000L
+    fun studyAheadMillis(): Long =
+        runBlocking { activity.studyUseCases.loadQueue(System.currentTimeMillis()) }
+            .studyAheadMinutes * 60_000L
 
     fun studyQueue(
         rows: List<RecordsImportModels.DashboardRow>,
@@ -20,31 +21,38 @@ internal class StudyQueueCompatibilityAccess(
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         currentItems: List<RecordsStudyModels.StudyItem>?,
+        queueSnapshot: StudyQueueSnapshot? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        val scheduler = BridgeScheduler.withWeights(activity.store.schedulerFsrsWeights())
+        val queue = queueSnapshot ?: runBlocking { activity.studyUseCases.loadQueue(now) }
+        val scheduler = BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray())
         return HomeStudyQueueActions.studyQueue(
             HomeStudyQueueActions.StudyQueueRequest(
                 rows,
                 now,
                 persist,
                 plan,
-                activity.store::studyItems,
-                activity::settings,
+                { runBlocking { activity.studyUseCases.loadAllItems() } },
+                { queue.syncSettings },
                 activity::startOfDay,
-                activity::studyLadderSettings,
-                activity::adaptivePlan,
+                { queue.studyLadder },
+                { planRows, planItems, planNow ->
+                    activity.adaptivePlan(planRows, planItems, planNow, queue)
+                },
                 scheduler::seedQueue,
                 object : HomeStudyQueueActions.StudyItemsWriter {
                     override fun annotateSimilarKanjiAvailability(
                         items: List<RecordsStudyModels.StudyItem>,
-                    ): List<RecordsStudyModels.StudyItem> =
-                        activity.store.annotateSimilarKanjiAvailability(items)
+                    ): List<RecordsStudyModels.StudyItem> = runBlocking {
+                        activity.studyUseCases.annotateCapabilities(items)
+                    }
 
                     override fun replaceStudyItems(
                         items: List<RecordsStudyModels.StudyItem>,
                         baseline: List<RecordsStudyModels.StudyItem>,
                     ) {
-                        activity.store.replaceStudyItems(items, null, 0L, null, baseline)
+                        runBlocking {
+                            activity.studyUseCases.replaceQueue(items, baseline)
+                        }
                     }
                 },
             ),

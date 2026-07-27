@@ -7,10 +7,13 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.RecordsSyncModels
 
 /** Persistence capabilities owned by the Study route and its coordinators. */
 interface StudyRepository {
     suspend fun loadQueue(nowMillis: Long): StoreResult<StudyQueueSnapshot>
+
+    suspend fun loadAllItems(): StoreResult<List<RecordsStudyModels.StudyItem>>
 
     suspend fun loadItems(kanji: Collection<String>): StoreResult<List<RecordsStudyModels.StudyItem>>
 
@@ -20,10 +23,16 @@ interface StudyRepository {
         items: List<RecordsStudyModels.StudyItem>,
     ): StoreResult<List<RecordsStudyModels.StudyItem>>
 
+    suspend fun saveItem(item: RecordsStudyModels.StudyItem): StoreResult<Unit>
+
+    suspend fun recordTaskTiming(timing: ReviewTaskTiming): StoreResult<Boolean>
+
     /** The complete token insert, revision CAS, evidence, timing, and stats commit. */
     suspend fun commitReview(command: ReviewCommitCommand): StoreResult<ReviewCommitResult>
 
     suspend fun undoLastReview(snapshot: AppliedReviewSnapshot): StoreResult<Boolean>
+
+    suspend fun loadQueueVersion(): StoreResult<Long?>
 
     suspend fun reviewTokenStatus(query: ReviewTokenQuery): StoreResult<ReviewTokenStatus>
 
@@ -52,14 +61,20 @@ interface StudyRepository {
     suspend fun skipLegacyWritingRepair(command: SkipLegacyRepairCommand): StoreResult<Boolean>
 
     suspend fun loadMnemonic(kanji: String): StoreResult<String>
+
+    suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit>
 }
 
 data class StudyQueueSnapshot(
+    /** Scheduler-facing rows, including supported suspended-only repair candidates. */
     val activeRows: List<RecordsImportModels.DashboardRow>,
+    /** Capped active-card rows used by manual targeting and extra-new admission. */
+    val availableRows: List<RecordsImportModels.DashboardRow>,
     val studyItems: List<RecordsStudyModels.StudyItem>,
     val locallySuspendedKanji: Set<String>,
     val latestSuccessfulSyncAtMillis: Long?,
     val studyLadder: RecordsBase.StudyLadderSettings,
+    val syncSettings: RecordsSyncModels.Settings,
     val schedulerParameters: RecordsSchedulerModels.SchedulerParameters,
     val schedulerFsrsWeights: List<Double>?,
     val learningSteps: RecordsSchedulerModels.LearningStepSettings,
@@ -69,6 +84,7 @@ data class StudyQueueSnapshot(
     val recentReviewStats: RecordsSchedulerModels.ReviewStats,
     val studiedKanjiToday: Set<String>,
     val dueLegacyWritingRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
+    val consecutiveFailedSyncs: Int,
 )
 
 data class StudyQueueWriteCommand(

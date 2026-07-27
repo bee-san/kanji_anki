@@ -26,6 +26,7 @@ import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.application.HomeRouteSnapshot
+import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.data.StudyStreakSnapshot
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.sync.ManualSyncEngine
@@ -696,8 +697,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         currentItems: List<RecordsStudyModels.StudyItem>? = null,
+        queueSnapshot: StudyQueueSnapshot? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        return focusQueue.studyQueue(rows, now, persist, plan, currentItems)
+        return focusQueue.studyQueue(rows, now, persist, plan, currentItems, queueSnapshot)
     }
 
     fun queuedEntries(

@@ -184,10 +184,12 @@ class NonStudyUseCasesStateTest {
 
         fun emptyStudyQueue() = StudyQueueSnapshot(
             activeRows = emptyList(),
+            availableRows = emptyList(),
             studyItems = emptyList(),
             locallySuspendedKanji = emptySet(),
             latestSuccessfulSyncAtMillis = null,
             studyLadder = RecordsBase.StudyLadderSettings.defaults(),
+            syncSettings = RecordsSyncModels.Settings.kikuDefaults(),
             schedulerParameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
             schedulerFsrsWeights = null,
             learningSteps = RecordsSchedulerModels.LearningStepSettings.defaults(),
@@ -197,6 +199,7 @@ class NonStudyUseCasesStateTest {
             recentReviewStats = REVIEW_STATS,
             studiedKanjiToday = emptySet(),
             dueLegacyWritingRepairs = emptyList(),
+            consecutiveFailedSyncs = 0,
         )
 
         fun settings(

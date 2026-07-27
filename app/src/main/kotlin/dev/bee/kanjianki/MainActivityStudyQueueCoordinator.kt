@@ -11,6 +11,10 @@ import dev.bee.kanjianki.core.StudySessionFocusPolicy
 import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
+import dev.bee.kanjianki.data.ReviewTokenQuery
+import dev.bee.kanjianki.data.StudyQueueSnapshot
+import dev.bee.kanjianki.data.StudyRecoveryQuery
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
     fun renderStudy(recoveryOnly: Boolean) {
@@ -38,7 +42,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return
         }
         // Load the Study route through the same async pattern as Home/Settings: all the
-        // LocalStore reads/writes and scheduler work run on the background executor, and
+        // repository operations and scheduler work run on the background executor, and
         // only the returned render thunk runs on the main thread.
         study.loadRouteAsync(
             showLoading = { study.renderStudyLoading(study.activeSession != null) },
@@ -53,7 +57,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     }
 
     /**
-     * Runs on the background executor: performs every LocalStore read/write and the
+     * Runs on the background executor: performs every repository operation and the
      * scheduler computation, mutates the study session state, and returns a thunk that
      * renders the resulting screen when invoked on the main thread.
      */
@@ -69,18 +73,17 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 return acceptedCandidateRender(candidate, render = it)
             }
         }
-        val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
-        val rows = withStudyLoadProbe("activeStudyDashboardRows") {
-            study.store.activeStudyDashboardRows()
-        }
         val now = System.currentTimeMillis()
-        val ladder = withStudyLoadProbe("studyLadderSettings") { study.studyLadderSettings() }
+        val queue = loadQueue(now)
+        val sourceSyncFinishedAt = queue.latestSuccessfulSyncAtMillis ?: 0L
+        val rows = queue.activeRows
+        val ladder = queue.studyLadder
         studyLoadDebug("renderStudy rows=${rows.size}")
-        val currentItems = currentStudyItems(rows)
+        val currentItems = queue.studyItems
         studyLoadDebug("renderStudy currentItems=${currentItems.size}")
-        val plan = initialStudyPlan(rows, currentItems, now)
+        val plan = initialStudyPlan(rows, currentItems, now, queue)
         study.activeStudyPlan = plan
-        val dueRepairs = dueWritingRepairs(now, ladder)
+        val dueRepairs = dueWritingRepairs(queue, ladder)
         if (rows.isEmpty()) {
             candidate.tracker.initializeSessionPlan(emptyList())
             refreshSessionBadgeCount(studyNowCount(0, dueRepairs))
@@ -92,13 +95,17 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 dueRepairs,
                 advancingRecovery,
                 candidate,
+                queue.studyAheadMinutes * 60_000L,
+                queue.schedulerFsrsWeights,
             )?.let { return it }
             refreshSessionBadgeCount(0)
             return terminalRender(advancingRecovery, candidate) { expectedRoute ->
                 study.doneActions.renderEmptyStudyQueue(expectedRoute)
             }
         }
-        val seeded = withStudyLoadProbe("studyQueue") { study.studyQueue(rows, now, true, plan, currentItems) }
+        val seeded = withStudyLoadProbe("studyQueue") {
+            study.studyQueue(rows, now, true, plan, currentItems, queue)
+        }
         val seededPlan = withStudyLoadProbe("studyPlanForMode#2") {
             // The plan is a pure function of (rows, items, now) plus mode state that
             // cannot change mid-compute, so when seeding left the queue unchanged the
@@ -106,14 +113,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (plan != null && StudyItemComparators.sameStudyQueue(currentItems, seeded)) {
                 plan
             } else {
-                study.studyPlanForMode(rows, seeded, now)
+                study.studyPlanForMode(rows, seeded, now, queue)
             }
         }
         study.activeStudyPlan = seededPlan
-        val settings = withStudyLoadProbe("settings") { study.settings() }
-        val studyAheadMillis = withStudyLoadProbe("studyAheadMillis") { study.studyAheadMillis() }
+        val settings = queue.syncSettings
+        val studyAheadMillis = queue.studyAheadMinutes * 60_000L
         val scheduler = withStudyLoadProbe("scheduler") {
-            BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+            BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray())
         }
         val studyItemCount = withStudyLoadProbe("studyNowCount") {
             StudyNowCountPolicy.countSeeded(
@@ -141,6 +148,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             dueRepairs,
             advancingRecovery,
             candidate,
+            studyAheadMillis,
+            queue.schedulerFsrsWeights,
         )?.let { return it }
         val allowedKanji = StudySessionFocusPolicy.allowedKanji(seededPlan, study.continueAllKanjiSession)
         val session = withStudyLoadProbe("plannedStudySession") {
@@ -171,7 +180,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         StudySessionActions.activateStudySession(
             session,
             now,
-            study.store::saveStudyItem,
+            { item -> runBlocking { study.studyUseCases.saveItem(item) } },
             candidate.tracker::registerTaskShown,
             { key, kanji, taskType, startedAt ->
                 candidate.tracker.startActiveTask(
@@ -186,7 +195,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         // Prepare the session render (choice cards, dictionary, stroke guides) here on
         // the background executor; only the returned render thunk touches the UI.
         val prepared = study.prepareSessionRender(session)
-        if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
+        if ((runBlocking { study.studyUseCases.loadQueueVersion() } ?: 0L) != sourceSyncFinishedAt) {
             return acceptedCandidateRender(candidate, publishTracker = false) { study.renderStudy() }
         }
         return acceptedCandidateRender(candidate) {
@@ -206,26 +215,21 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
     }
 
-    private fun currentStudyItems(
-        rows: List<RecordsImportModels.DashboardRow>,
-    ): List<RecordsStudyModels.StudyItem> = withStudyLoadProbe("studyItemsForKanji") {
-        if (rows.isEmpty()) emptyList() else study.store.studyItemsForKanji(rows.map { it.kanji })
-    }
-
     private fun initialStudyPlan(
         rows: List<RecordsImportModels.DashboardRow>,
         currentItems: List<RecordsStudyModels.StudyItem>,
         now: Long,
+        queue: StudyQueueSnapshot,
     ): RecordsSchedulerModels.AdaptiveLoadPlan? = withStudyLoadProbe("studyPlanForMode#1") {
-        if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now)
+        if (rows.isEmpty()) null else study.studyPlanForMode(rows, currentItems, now, queue)
     }
 
     private fun dueWritingRepairs(
-        now: Long,
+        queue: StudyQueueSnapshot,
         ladder: RecordsBase.StudyLadderSettings,
     ): List<RecordsImportModels.SimilarKanjiWritingRepair> = withStudyLoadProbe("dueSimilarWritingRepairs") {
         if (ladder.isEnabled(RecordsBase.LadderRung.WRITE_KANJI)) {
-            study.store.dueSimilarWritingRepairs(now)
+            queue.dueLegacyWritingRepairs
         } else {
             emptyList()
         }
@@ -247,12 +251,16 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             saved.taskType != MainActivityBase.TASK_REPAIR_WRITING &&
             signature != null &&
             saved.schedulerRevision != null &&
-            study.store.hasMatchingConsumedReview(
-                saved.feedback.sessionToken,
-                saved.kanji,
-                saved.taskType,
-                signature,
-            )
+            runBlocking {
+                study.studyUseCases.reviewTokenStatus(
+                    ReviewTokenQuery(
+                        saved.feedback.sessionToken,
+                        saved.kanji,
+                        saved.taskType,
+                        signature,
+                    ),
+                ).matchesReview
+            }
         if (valid) {
             return ContinuedRecoveryInspection(marker = stored)
         }
@@ -288,11 +296,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return null
         }
         val savedPhase = saved.feedback.phase
-        val rows = study.store.activeDashboardRows()
+        val now = System.currentTimeMillis()
+        val choiceData = runBlocking { study.studyUseCases.loadChoiceData(saved.kanji, now) }
+        val rows = choiceData.activeRows
         val row = rows.firstOrNull { it.kanji == saved.kanji }
-        val canonicalItems = study.store.studyItemsForKanji(listOf(saved.kanji))
+        val canonicalItems = runBlocking { study.studyUseCases.loadItems(listOf(saved.kanji)) }
         val repair = saved.taskType == MainActivityBase.TASK_REPAIR_WRITING
-        val consumed = !repair && study.store.hasConsumedToken(saved.feedback.sessionToken)
+        val recovery = recoveryStatus(saved)
+        val consumed = !repair && recovery.token.consumed
         val trustedLegacyApplied = isTrustedLegacyApplied(saved)
         if (needsPendingFallback(repair, consumed, trustedLegacyApplied)) {
             return computePendingFallbackRender(stored)
@@ -315,13 +326,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val repairId = saved.repairId ?: return null
         val attemptsBefore = saved.repairAttempts ?: return null
         val passed = saved.feedback.outcome == StudyAnswerOutcome.CORRECT
-        if (!study.store.hasFinishedSimilarWritingRepairAttempt(
-                repairId,
-                saved.feedback.sessionToken,
-                attemptsBefore,
-                passed,
-            )
-        ) {
+        if (!recoveryStatus(saved, repairId, attemptsBefore, passed).legacyRepairFinished) {
             return null
         }
         return saved.copy(
@@ -405,11 +410,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     }
 
     private fun pendingRepairItem(saved: StudyPendingAnswerSnapshot): RecordsStudyModels.StudyItem? {
-        return BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+        val queue = loadQueue(System.currentTimeMillis())
+        return BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray())
             .newTargetedStudyItem(
                 saved.kanji,
                 System.currentTimeMillis(),
-                study.studyLadderSettings(),
+                queue.studyLadder,
             )
     }
 
@@ -437,16 +443,31 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     }
 
     private fun restoredActiveSession(snapshot: StudyActiveSessionSnapshot): RecordsSchedulerModels.StudySession? {
-        val rows = study.store.activeDashboardRows()
+        val now = System.currentTimeMillis()
+        val queue = loadQueue(now)
+        val rows = runBlocking { study.studyUseCases.loadChoiceData(snapshot.kanji, now) }.activeRows
         val row = rows.firstOrNull { it.kanji == snapshot.kanji }
-        val items = study.store.studyItemsForKanji(listOf(snapshot.kanji))
+        val items = runBlocking { study.studyUseCases.loadItems(listOf(snapshot.kanji)) }
+        val signature = items.firstOrNull {
+            studyAnswerSignatureDigest(it.answerSignature) == snapshot.answerSignatureDigest
+        }?.answerSignature.orEmpty()
+        val tokenConsumed = runBlocking {
+            study.studyUseCases.reviewTokenStatus(
+                ReviewTokenQuery(
+                    snapshot.sessionToken,
+                    snapshot.kanji,
+                    snapshot.taskType,
+                    signature,
+                ),
+            ).consumed
+        }
         return StudySessionRestorationPolicy.restoreActive(
             snapshot = snapshot,
             items = items,
             row = row,
-            ladder = study.studyLadderSettings(),
-            latestSuccessfulSyncAtMillis = study.store.latestSuccessfulSyncFinishedAt() ?: 0L,
-            tokenConsumed = study.store.hasConsumedToken(snapshot.sessionToken),
+            ladder = queue.studyLadder,
+            latestSuccessfulSyncAtMillis = queue.latestSuccessfulSyncAtMillis ?: 0L,
+            tokenConsumed = tokenConsumed,
         )
     }
 
@@ -475,19 +496,26 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     ): () -> Unit {
         study.clearStudyModeOverrides()
         candidate.tracker.resetProgress()
-        val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
-        val rows = study.store.activeDashboardRows()
         val now = System.currentTimeMillis()
-        val ladder = study.studyLadderSettings()
-        val currentItems = currentStudyItems(rows)
-        study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
+        val queue = loadQueue(now)
+        val sourceSyncFinishedAt = queue.latestSuccessfulSyncAtMillis ?: 0L
+        val rows = queue.availableRows
+        val ladder = queue.studyLadder
+        val currentItems = runBlocking {
+            study.studyUseCases.loadItems(rows.map { it.kanji })
+        }
+        study.activeStudyPlan = if (rows.isEmpty()) {
+            null
+        } else {
+            study.adaptivePlan(rows, currentItems, now, queue)
+        }
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
             return terminalRender(null, candidate) { expectedRoute ->
                 study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
             }
         }
-        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
+        val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems, queue)
         val targetItem = BrowseManualReviewPolicy.selectSeededTarget(seeded, row.kanji)
         if (targetItem == null) {
             return terminalRender(null, candidate) { expectedRoute ->
@@ -498,10 +526,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeStudyPlan = if (preSeedPlan != null && StudyItemComparators.sameStudyQueue(currentItems, seeded)) {
             preSeedPlan
         } else {
-            study.adaptivePlan(rows, seeded, now)
+            study.adaptivePlan(rows, seeded, now, queue)
         }
-        val settings = study.settings()
-        val scheduler = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+        val settings = queue.syncSettings
+        val scheduler = BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray())
         val generalStudyItemCount = StudyNowCountPolicy.countSeeded(
             StudyNowCountPolicy.SeededCountRequest(
                 seededItems = seeded,
@@ -509,14 +537,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 settings = settings,
                 selection = StudyNowCountPolicy.SelectionContext(
                     nowMillis = now,
-                    studyAheadMillis = study.studyAheadMillis(),
+                    studyAheadMillis = queue.studyAheadMinutes * 60_000L,
                     plan = study.activeStudyPlan,
                     continueAllKanjiSession = study.continueAllKanjiSession,
                     ladder = ladder,
                 ),
             ),
         )
-        val dueRepairs = dueWritingRepairs(now, ladder)
+        val dueRepairs = dueWritingRepairs(queue, ladder)
         refreshSessionBadgeCount(studyNowCount(generalStudyItemCount, dueRepairs))
         val session = scheduler.targetedSession(
             listOf(targetItem),
@@ -532,7 +560,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         StudySessionActions.activateStudySession(
             session,
             now,
-            study.store::saveStudyItem,
+            { item -> runBlocking { study.studyUseCases.saveItem(item) } },
             candidate.tracker::registerTaskShown,
             { key, taskKanji, taskType, startedAt ->
                 candidate.tracker.startActiveTask(
@@ -545,7 +573,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             },
         )
         val prepared = study.prepareSessionRender(session)
-        if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
+        if ((runBlocking { study.studyUseCases.loadQueueVersion() } ?: 0L) != sourceSyncFinishedAt) {
             return acceptedCandidateRender(candidate, publishTracker = false) {
                 study.renderStudyForKanji(kanji)
             }
@@ -576,6 +604,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         dueRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
         advancingRecovery: StoredPendingStudyRecovery?,
         candidate: StudyLoadCandidate,
+        studyAheadMillis: Long,
+        schedulerFsrsWeights: List<Double>?,
     ): (() -> Unit)? {
         val repairIndex = firstTrackablePendingTaskIndex(
             dueRepairs.map(study::similarRepairProgressKey),
@@ -586,10 +616,14 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             val active = StudyRepairActions.activateSimilarWritingRepair(
                 repair,
                 now,
-                study.store::saveSimilarWritingRepair,
+                { value ->
+                    runBlocking {
+                        study.studyUseCases.saveLegacyWritingRepair(value)
+                    }
+                },
             )
             val activeRepair = active.repair
-            val item = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+            val item = BridgeScheduler.withWeights(schedulerFsrsWeights?.toDoubleArray())
                 .newTargetedStudyItem(activeRepair.repairKanji, now, ladder)
             val session = RecordsSchedulerModels.StudySession(
                 item.withToken(active.token),
@@ -622,7 +656,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             // through lets plannedStudySession re-serve the earliest such repeat, so
             // a "finished" session keeps practicing its own cards until they graduate
             // instead of abandoning them to resurface on the home screen minutes later.
-            val repeatHorizonMillis = maxOf(study.studyAheadMillis(), StudyLadderRules.LEARN_AHEAD_MILLIS)
+            val repeatHorizonMillis = maxOf(studyAheadMillis, StudyLadderRules.LEARN_AHEAD_MILLIS)
             val pendingRepeats = candidate.tracker.dueCompletedLearningRepeatTaskKeys(
                 items,
                 now + repeatHorizonMillis,
@@ -754,6 +788,31 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         } else {
             study.renderStudyRecoveryOnly()
         }
+    }
+
+    private fun loadQueue(now: Long): StudyQueueSnapshot = runBlocking {
+        study.studyUseCases.loadQueue(now)
+    }
+
+    private fun recoveryStatus(
+        saved: StudyPendingAnswerSnapshot,
+        repairId: Long? = saved.repairId,
+        repairAttemptsBefore: Int = saved.repairAttempts ?: 0,
+        repairPassed: Boolean = saved.feedback.outcome == StudyAnswerOutcome.CORRECT,
+    ) = runBlocking {
+        study.studyUseCases.recoveryStatus(
+            StudyRecoveryQuery(
+                review = ReviewTokenQuery(
+                    saved.feedback.sessionToken,
+                    saved.kanji,
+                    saved.taskType,
+                    saved.answerSignature.orEmpty(),
+                ),
+                repairId = repairId,
+                repairAttemptsBefore = repairAttemptsBefore,
+                repairPassed = repairPassed,
+            ),
+        )
     }
 }
 

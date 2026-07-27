@@ -19,6 +19,7 @@ import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
+import dev.bee.kanjianki.application.StudyUseCases
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.FocusQueuePolicy
@@ -39,6 +40,7 @@ import dev.bee.kanjianki.core.study.StrokeGuide
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
@@ -130,6 +132,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     lateinit var settingsUseCases: SettingsUseCases
         private set
 
+    lateinit var studyUseCases: StudyUseCases
+        private set
+
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
 
@@ -156,6 +161,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         }
         if (!::statsUseCases.isInitialized) statsUseCases = container.statsUseCases
         if (!::settingsUseCases.isInitialized) settingsUseCases = container.settingsUseCases
+        if (!::studyUseCases.isInitialized) studyUseCases = container.studyUseCases
     }
 
     @JvmField
@@ -756,6 +762,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         return studyPlanProvider.adaptivePlan(rows, items, now)
     }
 
+    fun adaptivePlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        queue: StudyQueueSnapshot,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        return studyPlanProvider.adaptivePlan(rows, items, now, queue)
+    }
+
     fun dailyStudyPlan(
         rows: List<RecordsImportModels.DashboardRow>,
         items: List<RecordsStudyModels.StudyItem>,
@@ -770,6 +785,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
         return studyPlanProvider.studyPlanForMode(rows, items, now)
+    }
+
+    fun studyPlanForMode(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        queue: StudyQueueSnapshot,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        return studyPlanProvider.studyPlanForMode(rows, items, now, queue)
     }
 
     fun studyMoreNewCardsPlan(

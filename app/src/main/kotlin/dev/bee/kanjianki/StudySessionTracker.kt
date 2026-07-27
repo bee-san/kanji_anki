@@ -8,7 +8,6 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
-import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.ReviewTaskTiming
 
 /**
@@ -394,23 +393,14 @@ internal class StudySessionTracker(
     }
 
     fun completeActiveTask(
-        store: LocalStore,
+        timingWriter: (ReviewTaskTiming) -> Unit,
         key: String?,
         outcome: String?,
         answeredAt: Long,
         countProgress: Boolean,
     ) {
         val prepared = prepareActiveTask(key, outcome, answeredAt, countProgress) ?: return
-        val timing = prepared.timing
-        store.recordStudyTaskAnswered(
-            timing.taskKey,
-            timing.kanji,
-            timing.taskType,
-            timing.startedAtMillis,
-            timing.answeredAtMillis,
-            timing.activeElapsedMillis,
-            timing.outcome,
-        )
+        timingWriter(prepared.timing)
         commitPreparedTask(prepared)
     }
 

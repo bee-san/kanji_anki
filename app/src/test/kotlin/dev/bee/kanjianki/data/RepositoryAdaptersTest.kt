@@ -159,7 +159,23 @@ class RepositoryAdaptersTest {
         )
 
         assertEquals(1, repository.loadItems(listOf("痛")).valueOrNull()?.size)
+        assertEquals(1, repository.loadAllItems().valueOrNull()?.size)
         assertEquals(1, repository.annotateCapabilities(listOf(before)).valueOrNull()?.size)
+        assertTrue(repository.saveItem(before).isOk())
+        assertTrue(
+            repository.recordTaskTiming(
+                ReviewTaskTiming(
+                    "repository-task",
+                    "痛",
+                    "kanji_meaning",
+                    100L,
+                    200L,
+                    50L,
+                    "good",
+                ),
+            ).valueOrNull() == true,
+        )
+        assertNull(repository.loadQueueVersion().valueOrNull())
 
         val committed = repository.commitReview(
             ReviewCommitCommand(
@@ -215,6 +231,12 @@ class RepositoryAdaptersTest {
             ).valueOrNull() ?: true,
         )
         assertEquals("", repository.loadMnemonic("痛").valueOrNull())
+        assertTrue(
+            repository.saveMnemonic(
+                SaveMnemonicCommand("痛", "pain mnemonic", FINISHED_AT),
+            ).isOk(),
+        )
+        assertEquals("pain mnemonic", repository.loadMnemonic("痛").valueOrNull())
     }
 
     @Test

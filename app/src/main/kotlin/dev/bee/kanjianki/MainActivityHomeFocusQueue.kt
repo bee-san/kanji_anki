@@ -10,6 +10,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyProjectionEligibilityPolicy
 import dev.bee.kanjianki.data.RecentMistakeSnapshot
 import dev.bee.kanjianki.data.StatsSnapshot
+import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.data.StudyStreakSnapshot
 import kotlinx.coroutines.runBlocking
 
@@ -43,8 +44,8 @@ internal fun recentMistakesRouteData(
 }
 
 internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
-    private val studyQueueCompatibility by lazy {
-        StudyQueueCompatibilityAccess(home)
+    private val studyQueueRepository by lazy {
+        StudyQueueRepositoryAccess(home)
     }
     fun renderFocusQueue() {
         home.renderAsyncHomeRoute(
@@ -166,7 +167,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
     }
 
     fun studyAheadMillis(): Long {
-        return studyQueueCompatibility.studyAheadMillis()
+        return studyQueueRepository.studyAheadMillis()
     }
 
     fun studyQueue(
@@ -175,8 +176,16 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         persist: Boolean,
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         currentItems: List<RecordsStudyModels.StudyItem>? = null,
+        queueSnapshot: StudyQueueSnapshot? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        return studyQueueCompatibility.studyQueue(rows, now, persist, plan, currentItems)
+        return studyQueueRepository.studyQueue(
+            rows,
+            now,
+            persist,
+            plan,
+            currentItems,
+            queueSnapshot,
+        )
     }
 
     fun queuedEntries(

@@ -21,14 +21,18 @@ import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.PresentationVariant
-import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.core.SimilarKanjiChoicePlanner
+import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.ReviewChoiceLog
 import dev.bee.kanjianki.data.ReviewCommitDisposition
 import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTokenQuery
 import dev.bee.kanjianki.data.SimilarChoiceCommit
+import dev.bee.kanjianki.data.SkipLegacyRepairCommand
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.runBlocking
 
 private const val REPAIR_OUTCOME_SKIP = "skip"
 private const val REVIEW_LOG_TAG = "KaniReview"
@@ -312,7 +316,18 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 repair,
                 rating,
                 now,
-                activity.store::finishSimilarWritingRepair,
+                { repairId, token, passed, finishedAt ->
+                    runBlocking {
+                        activity.studyUseCases.finishLegacyWritingRepair(
+                            FinishLegacyRepairCommand(
+                                repairId,
+                                token.orEmpty(),
+                                passed,
+                                finishedAt,
+                            ),
+                        )
+                    }
+                },
                 activity.studySessionTracker::recordRepairOutcome,
                 activity::markStudyTaskCompleted,
             )
@@ -341,7 +356,13 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             val completion = StudyRepairActions.skipSimilarWritingRepair(
                 repair,
                 now,
-                activity.store::skipSimilarWritingRepair,
+                { repairId, token, skippedAt ->
+                    runBlocking {
+                        activity.studyUseCases.skipLegacyWritingRepair(
+                            SkipLegacyRepairCommand(repairId, token.orEmpty(), skippedAt),
+                        )
+                    }
+                },
                 activity.studySessionTracker::recordRepairOutcome,
                 activity::markStudyTaskCompleted,
             )
@@ -451,8 +472,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             if (!activity.isActiveToken(session.token)) {
                 return@runTokenReviewWrite ReviewWriteDisposition.RETRYABLE_DROP
             }
-            val ladder = activity.studyLadderSettings()
-            val result = activity.store.evaluateSimilarChoice(card, selectedKanji)
+            val result = SimilarKanjiChoicePlanner().evaluateSelection(card, selectedKanji)
             val rating = if (result.correct) MainActivityBase.RATING_GOOD else MainActivityBase.RATING_AGAIN
             val mappedReview = StudyReviewRequestPolicy.from(
                 session,
@@ -475,7 +495,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             performNormalReview(
                 session,
                 request,
-                ladder,
+                null,
                 diagnostics,
                 similarChoice = SimilarChoiceCommit(card, selectedKanji, now),
             )
@@ -508,17 +528,28 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         // review_log, and a token only lands there after a review is successfully
         // saved (see ReviewTransitionEngine, which consumes the in-memory token only
         // on success). The item advance and the review_log row are written in one
-        // transaction (LocalStore.saveReviewOutcome), so a token is present in the
+        // transaction (StudyRepository.commitReview), so a token is present in the
         // log if and only if the item was actually advanced: a review that failed
         // mid-apply rolled both back, so its token is retryable, and the engine only
         // ever tests membership of request.token.
-        if (activity.store.hasConsumedToken(request.token)) {
+        if (runBlocking {
+                activity.studyUseCases.reviewTokenStatus(
+                    ReviewTokenQuery(
+                        request.token,
+                        request.kanji,
+                        request.taskType,
+                        request.answerSignature,
+                    ),
+                ).consumed
+            }
+        ) {
             return reconcilePersistedDuplicate(diagnostics, "persistence")
         }
         val consumed = HashSet<String>()
         val now = System.currentTimeMillis()
-        val parameters = activity.store.schedulerParameters()
-        val scheduler = BridgeScheduler.withWeights(activity.store.schedulerFsrsWeights())
+        val queue = runBlocking { activity.studyUseCases.loadQueue(now) }
+        val parameters = queue.schedulerParameters
+        val scheduler = BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray())
         val sessionRank = session.row?.jitenRank
         val effectiveParameters = parameters.withTargetRetention(
             parameters.targetRetentionForRank(sessionRank)
@@ -529,9 +560,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             consumed,
             now,
             effectiveParameters,
-            activity.settings(),
-            activity.store.learningStepSettings(),
-            ladder ?: activity.studyLadderSettings()
+            queue.syncSettings,
+            queue.learningSteps,
+            ladder ?: queue.studyLadder,
         )
         if (result.duplicate) {
             logReviewEvent(
@@ -575,7 +606,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         }
         refreshWidgetAfterPersistedReviewMutation()
         activity.studySessionTracker.commitPreparedTask(preparedTask)
-        val streak: StudyStatsStore.StudyStreak = activity.store.studyStreak(now)
+        val streak = runBlocking { activity.studyUseCases.loadQueue(now) }.studyStreak
         showToast(HomeTextCopy.reviewToast(false, result.appliedRating, streak.currentDays))
         activity.markStudyAnswerApplied(session.token)
         logReviewEvent(
@@ -598,7 +629,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         phase: String,
     ): ReviewWriteDisposition {
         activity.studySessionTracker.abandonActiveTask()
-        activity.store.clearStudyItemsCache()
         logReviewEvent(
             "review event=duplicate-reconciled source=${diagnostics.source} " +
                 "token_id=${diagnostics.tokenId} phase=$phase",
@@ -615,7 +645,12 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             if (activity.studyUndoState.pending !== pending) {
                 return@runReviewWrite
             }
-            val currentItem = activity.findStudyItem(activity.store.studyItems(), pending.snapshot.afterReview.kanji)
+            val currentItem = activity.findStudyItem(
+                runBlocking {
+                    activity.studyUseCases.loadItems(listOf(pending.snapshot.afterReview.kanji))
+                },
+                pending.snapshot.afterReview.kanji,
+            )
             if (!StudyReviewActions.matchesUndoBoundary(currentItem, pending.snapshot.afterReview)) {
                 activity.studyUndoState.clear()
                 activity.postToMainIfActive(activity::renderStudy)
@@ -623,7 +658,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             }
             val restoredKanji = pending.snapshot.beforeReview.kanji
             activity.studyUndoState.clear()
-            val restored = runCatching { activity.store.undoLastAppliedReview(pending.snapshot) }.getOrDefault(false)
+            val restored = runCatching {
+                runBlocking { activity.studyUseCases.undoLastReview(pending.snapshot) }
+            }.getOrDefault(false)
             if (!restored) {
                 activity.postToMainIfActive(activity::renderStudy)
                 return@runReviewWrite
@@ -665,7 +702,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             StudyReviewActions.ReviewWriter { command ->
                 val startedAtNanos = reviewNowNanos()
                 try {
-                    activity.store.commitReview(command)
+                    runBlocking { activity.studyUseCases.commitReview(command) }
                 } finally {
                     logReviewEvent(
                         "review event=persist-finished source=${diagnostics.source} token_id=${diagnostics.tokenId} " +

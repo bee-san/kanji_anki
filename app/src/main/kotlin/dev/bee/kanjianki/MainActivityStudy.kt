@@ -21,8 +21,10 @@ import dev.bee.kanjianki.core.study.WritingActionPresentation
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.core.study.WritingSample
 import dev.bee.kanjianki.core.StudySessionRoute
+import dev.bee.kanjianki.data.SaveMnemonicCommand
 import dev.bee.kanjianki.study.CapturedWriting
 import dev.bee.kanjianki.study.WritingRecognizer
+import kotlinx.coroutines.runBlocking
 
 internal data class PreparedStudySessionRender(
     val render: () -> Unit,
@@ -243,7 +245,8 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     internal fun prepareStudyAnswerMnemonic(
         session: RecordsSchedulerModels.StudySession,
     ): StudyAnswerMnemonicModel? {
-        return studyAnswerMnemonicModel(store.kanjiMnemonicNote(session.item?.kanji))
+        val kanji = session.item?.kanji.orEmpty()
+        return studyAnswerMnemonicModel(runBlocking { studyUseCases.loadMnemonic(kanji) })
     }
 
     /**
@@ -576,7 +579,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         // This is an explicit user-authored save, so commit the tiny local SQLite write
         // before returning. Activity-owned executors are interrupted in onDestroy and
         // could otherwise acknowledge a queued mnemonic that rotation silently drops.
-        store.saveKanjiMnemonicNote(normalizedKanji, normalizedNote, System.currentTimeMillis())
+        runBlocking {
+            studyUseCases.saveMnemonic(
+                SaveMnemonicCommand(normalizedKanji, normalizedNote, System.currentTimeMillis()),
+            )
+        }
         return true
     }
 

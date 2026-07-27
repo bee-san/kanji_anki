@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.StudyMoreNewCardsPolicy
 import dev.bee.kanjianki.core.RecordsStudyModels
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityStudyMoreNewCards(private val study: MainActivityStudy) {
     fun availableStudyMoreNewCards(): Int {
@@ -34,10 +35,14 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
     }
 
     fun startStudyMoreNewCards(requestedCount: Int): Boolean {
+        val now = System.currentTimeMillis()
+        val queue = runBlocking { study.studyUseCases.loadQueue(now) }
         val loadData = resolveStudyMoreNewCardsLoadData(
             study.doneActions.studyMoreNewCardsSnapshot(),
-            loadRows = { study.store.activeDashboardRows() },
-            loadExisting = { kanji -> study.store.studyItemsForKanji(kanji) },
+            loadRows = { queue.availableRows },
+            loadExisting = { kanji ->
+                runBlocking { study.studyUseCases.loadItems(kanji) }
+            },
         )
         if (loadData == null) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
@@ -45,15 +50,14 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
         }
         val rows = loadData.rows
         val existing = loadData.existing
-        val now = System.currentTimeMillis()
-        val result = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights()).seedExtraNewCards(
+        val result = BridgeScheduler.withWeights(queue.schedulerFsrsWeights?.toDoubleArray()).seedExtraNewCards(
             rows,
             existing,
-            study.settings(),
+            queue.syncSettings,
             now,
             study.startOfDay(now),
             requestedCount,
-            study.studyLadderSettings()
+            queue.studyLadder,
         )
         if (!result.admittedAny()) {
             Toast.makeText(study, StudyMoreNewCardsPolicy.noNewCardsAvailableMessage(), Toast.LENGTH_SHORT).show()
@@ -65,11 +69,11 @@ internal class MainActivityStudyMoreNewCards(private val study: MainActivityStud
                 override fun annotateSimilarKanjiAvailability(
                     items: List<RecordsStudyModels.StudyItem>,
                 ): List<RecordsStudyModels.StudyItem> {
-                    return study.store.annotateSimilarKanjiAvailability(items)
+                    return runBlocking { study.studyUseCases.annotateCapabilities(items) }
                 }
 
                 override fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
-                    study.store.replaceStudyItems(items)
+                    runBlocking { study.studyUseCases.replaceQueue(items) }
                 }
             },
             study.studyMoreNewCardKanji,

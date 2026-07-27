@@ -52,10 +52,12 @@ class RepositoryPayloadsTest {
 
         val queue = StudyQueueSnapshot(
             activeRows = emptyList(),
+            availableRows = emptyList(),
             studyItems = listOf(item),
             locallySuspendedKanji = emptySet(),
             latestSuccessfulSyncAtMillis = 1_000L,
             studyLadder = ladder,
+            syncSettings = RecordsSyncModels.Settings.kikuDefaults(),
             schedulerParameters = parameters,
             schedulerFsrsWeights = null,
             learningSteps = learningSteps,
@@ -65,6 +67,7 @@ class RepositoryPayloadsTest {
             recentReviewStats = reviewStats,
             studiedKanjiToday = setOf("休"),
             dueLegacyWritingRepairs = emptyList(),
+            consecutiveFailedSyncs = 2,
         )
         val queueWrite = StudyQueueWriteCommand(listOf(item), baseline = emptyList())
         val tokenQuery = ReviewTokenQuery("token", "休", "kanji_meaning", "signature")

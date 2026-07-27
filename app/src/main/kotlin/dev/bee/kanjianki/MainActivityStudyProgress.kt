@@ -2,6 +2,7 @@ package dev.bee.kanjianki
 
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityStudyProgress(private val study: MainActivityStudy) {
     fun resetStudyRunProgress() {
@@ -54,7 +55,13 @@ internal class MainActivityStudyProgress(private val study: MainActivityStudy) {
     }
 
     fun completeActiveStudyTask(key: String?, outcome: String?, answeredAt: Long) {
-        study.studySessionTracker.completeActiveTask(study.store, key, outcome, answeredAt, true)
+        study.studySessionTracker.completeActiveTask(
+            { timing -> runBlocking { study.studyUseCases.recordTaskTiming(timing) } },
+            key,
+            outcome,
+            answeredAt,
+            true,
+        )
     }
 
     fun pauseActiveStudyTask() {

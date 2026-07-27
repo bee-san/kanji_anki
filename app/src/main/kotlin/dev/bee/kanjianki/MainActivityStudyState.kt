@@ -3,10 +3,17 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.study.HintState
 import dev.bee.kanjianki.core.study.WritingHintPolicy
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityStudyState(private val study: MainActivityStudy) {
     fun completeActiveRepairStudyTask(key: String?, outcome: String?, answeredAt: Long) {
-        study.studySessionTracker.completeActiveTask(study.store, key, outcome, answeredAt, false)
+        study.studySessionTracker.completeActiveTask(
+            { timing -> runBlocking { study.studyUseCases.recordTaskTiming(timing) } },
+            key,
+            outcome,
+            answeredAt,
+            false,
+        )
     }
 
     fun initialHintState(session: RecordsSchedulerModels.StudySession): HintState {

@@ -16,6 +16,7 @@ import dev.bee.kanjianki.data.RecordRepairedWriteBackCommand
 import dev.bee.kanjianki.data.RecordSyncFailureCommand
 import dev.bee.kanjianki.data.ReviewCommitCommand
 import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTaskTiming
 import dev.bee.kanjianki.data.ReviewTokenQuery
 import dev.bee.kanjianki.data.ReviewTokenStatus
 import dev.bee.kanjianki.data.SaveMnemonicCommand
@@ -108,6 +109,8 @@ class FakeHomeRepository : HomeRepository {
 
 class FakeStudyRepository : StudyRepository {
     var loadQueueHandler: suspend (Long) -> StoreResult<StudyQueueSnapshot> = unconfigured1("loadQueue")
+    var loadAllItemsHandler: suspend () -> StoreResult<List<RecordsStudyModels.StudyItem>> =
+        unconfigured0("loadAllItems")
     var loadItemsHandler:
         suspend (Collection<String>) -> StoreResult<List<RecordsStudyModels.StudyItem>> =
         unconfigured1("loadItems")
@@ -116,10 +119,15 @@ class FakeStudyRepository : StudyRepository {
     var annotateHandler:
         suspend (List<RecordsStudyModels.StudyItem>) -> StoreResult<List<RecordsStudyModels.StudyItem>> =
         { StoreResult.ok(it) }
+    var saveItemHandler: suspend (RecordsStudyModels.StudyItem) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var taskTimingHandler: suspend (ReviewTaskTiming) -> StoreResult<Boolean> =
+        { StoreResult.ok(true) }
     var commitReviewHandler: suspend (ReviewCommitCommand) -> StoreResult<ReviewCommitResult> =
         unconfigured1("commitReview")
     var undoHandler: suspend (AppliedReviewSnapshot) -> StoreResult<Boolean> =
         unconfigured1("undoLastReview")
+    var queueVersionHandler: suspend () -> StoreResult<Long?> = { StoreResult.ok(null) }
     var tokenHandler: suspend (ReviewTokenQuery) -> StoreResult<ReviewTokenStatus> =
         unconfigured1("reviewTokenStatus")
     var recoveryHandler: suspend (StudyRecoveryQuery) -> StoreResult<StudyRecoveryStatus> =
@@ -140,12 +148,20 @@ class FakeStudyRepository : StudyRepository {
     var skipRepairHandler: suspend (SkipLegacyRepairCommand) -> StoreResult<Boolean> =
         { StoreResult.ok(true) }
     var mnemonicHandler: suspend (String) -> StoreResult<String> = { StoreResult.ok("") }
+    var saveMnemonicHandler: suspend (SaveMnemonicCommand) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
 
     val queueWrites = mutableListOf<StudyQueueWriteCommand>()
     val reviewCommits = mutableListOf<ReviewCommitCommand>()
+    val savedItems = mutableListOf<RecordsStudyModels.StudyItem>()
+    val taskTimings = mutableListOf<ReviewTaskTiming>()
+    val mnemonicCommands = mutableListOf<SaveMnemonicCommand>()
 
     override suspend fun loadQueue(nowMillis: Long): StoreResult<StudyQueueSnapshot> =
         loadQueueHandler(nowMillis)
+
+    override suspend fun loadAllItems(): StoreResult<List<RecordsStudyModels.StudyItem>> =
+        loadAllItemsHandler()
 
     override suspend fun loadItems(
         kanji: Collection<String>,
@@ -160,6 +176,16 @@ class FakeStudyRepository : StudyRepository {
         items: List<RecordsStudyModels.StudyItem>,
     ): StoreResult<List<RecordsStudyModels.StudyItem>> = annotateHandler(items)
 
+    override suspend fun saveItem(item: RecordsStudyModels.StudyItem): StoreResult<Unit> {
+        savedItems += item
+        return saveItemHandler(item)
+    }
+
+    override suspend fun recordTaskTiming(timing: ReviewTaskTiming): StoreResult<Boolean> {
+        taskTimings += timing
+        return taskTimingHandler(timing)
+    }
+
     override suspend fun commitReview(command: ReviewCommitCommand): StoreResult<ReviewCommitResult> {
         reviewCommits += command
         return commitReviewHandler(command)
@@ -167,6 +193,8 @@ class FakeStudyRepository : StudyRepository {
 
     override suspend fun undoLastReview(snapshot: AppliedReviewSnapshot): StoreResult<Boolean> =
         undoHandler(snapshot)
+
+    override suspend fun loadQueueVersion(): StoreResult<Long?> = queueVersionHandler()
 
     override suspend fun reviewTokenStatus(query: ReviewTokenQuery): StoreResult<ReviewTokenStatus> =
         tokenHandler(query)
@@ -203,6 +231,11 @@ class FakeStudyRepository : StudyRepository {
     ): StoreResult<Boolean> = skipRepairHandler(command)
 
     override suspend fun loadMnemonic(kanji: String): StoreResult<String> = mnemonicHandler(kanji)
+
+    override suspend fun saveMnemonic(command: SaveMnemonicCommand): StoreResult<Unit> {
+        mnemonicCommands += command
+        return saveMnemonicHandler(command)
+    }
 }
 
 class FakeStatsRepository : StatsRepository {

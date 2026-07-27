@@ -14,11 +14,13 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyPlanSelectionPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
-import dev.bee.kanjianki.data.StudyStatsStore
 import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
+import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.data.StudyStreakSnapshot
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import java.util.Collections
 import java.util.Locale
+import kotlinx.coroutines.runBlocking
 
 internal class MainActivityStudyPlanProvider(private val activity: MainActivityBase) {
     fun adaptivePlan(
@@ -26,12 +28,24 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        return adaptivePlan(rows, items, now, loadQueue(now))
+    }
+
+    fun adaptivePlan(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        queue: StudyQueueSnapshot,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
         return adaptivePlan(
-            rows,
-            items,
-            now,
-            activity.store.studyStreak(now).currentDays,
-            activity.settings(),
+            rows = rows,
+            items = items,
+            now = now,
+            streakDays = queue.studyStreak.currentDays,
+            settings = queue.syncSettings,
+            reviewStats = queue.recentReviewStats,
+            studiedKanji = queue.studiedKanjiToday,
+            workload = queue.adaptiveWorkload,
         )
     }
 
@@ -43,35 +57,16 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         streakDays: Int,
         settings: RecordsSyncModels.Settings,
     ): RecordsSchedulerModels.AdaptiveLoadPlan = withStudyLoadProbe("adaptivePlan") {
-        val reviewStats = studyPlanPhase("review-stats") {
-            withStudyLoadProbe("adaptivePlan.reviewStatsSince") {
-                activity.store.reviewStatsSince(now - MainActivityBase.DAY_MILLIS * 7)
-            }
-        }
-        val studiedKanji = studyPlanPhase(
-            phase = "studied-kanji",
-            details = { values -> "rows=${values.size}" },
-        ) {
-            withStudyLoadProbe("adaptivePlan.studiedKanjiSince") {
-                activity.store.studiedKanjiSince(activity.startOfDay(now))
-            }
-        }
-        val workload = studyPlanPhase("workload-settings") {
-            AdaptiveWorkloadSnapshot(
-                activity.store.adaptiveLoadWorkPercent(),
-                activity.store.adaptiveLoadMaxItems(),
-                activity.store.adaptiveLoadMode(),
-            )
-        }
+        val queue = loadQueue(now)
         adaptivePlan(
             rows = rows,
             items = items,
             now = now,
             streakDays = streakDays,
             settings = settings,
-            reviewStats = reviewStats,
-            studiedKanji = studiedKanji,
-            workload = workload,
+            reviewStats = queue.recentReviewStats,
+            studiedKanji = queue.studiedKanjiToday,
+            workload = queue.adaptiveWorkload,
         )
     }
 
@@ -122,41 +117,16 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): DailyStudyPlan {
-        val streak = activity.store.studyStreak(now)
-        return dailyStudyPlan(rows, items, now, streak, activity.store.latestSuccessfulSyncFinishedAt())
-    }
-
-    /** Home already owns streak/sync status; accepting them avoids repeating the same queries. */
-    fun dailyStudyPlan(
-        rows: List<RecordsImportModels.DashboardRow>,
-        items: List<RecordsStudyModels.StudyItem>,
-        now: Long,
-        streak: StudyStatsStore.StudyStreak,
-        lastSuccessfulSyncAtMillis: Long?,
-    ): DailyStudyPlan {
-        val eligibleItems = StudyProjectionEligibilityPolicy.eligibleStudyItems(
-            items,
-            rows,
-            activity.studyLadderSettings(),
-        )
-        val autoSync = activity.store.autoSyncSettings()
-        return DailyStudyPlanPolicy.plan(
-            DailyStudyPlanRequest(
-                nowMillis = now,
-                dueAtMillis = eligibleItems.map { it.dueAtMillis },
-                studiedToday = streak.studiedToday,
-                streak = StudyStreakPolicy.Streak(
-                    currentDays = streak.currentDays,
-                    bestDays = streak.bestDays,
-                    studiedToday = streak.studiedToday,
-                    reviewsToday = streak.reviewsToday,
-                    lastStudyAtMillis = streak.lastStudyAtMillis,
-                ),
-                newProblemKanjiAvailable = if (rows.isEmpty()) 0 else eligibleItems.count { it.totalReviews == 0 },
-                lastSuccessfulSyncAtMillis = lastSuccessfulSyncAtMillis,
-                autoSyncEnabled = autoSync.enabled,
-                consecutiveFailedSyncs = activity.store.consecutiveFailedSyncCount(),
-            ),
+        val queue = loadQueue(now)
+        return dailyStudyPlan(
+            rows = rows,
+            items = items,
+            now = now,
+            streak = queue.studyStreak,
+            lastSuccessfulSyncAtMillis = queue.latestSuccessfulSyncAtMillis,
+            ladder = queue.studyLadder,
+            autoSyncEnabled = activity.deviceSettingsStore.read(DeviceSettingKeys.autoSyncEnabled) ?: false,
+            consecutiveFailedSyncs = queue.consecutiveFailedSyncs,
         )
     }
 
@@ -202,13 +172,22 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        return studyPlanForMode(rows, items, now, loadQueue(now))
+    }
+
+    fun studyPlanForMode(
+        rows: List<RecordsImportModels.DashboardRow>,
+        items: List<RecordsStudyModels.StudyItem>,
+        now: Long,
+        queue: StudyQueueSnapshot,
+    ): RecordsSchedulerModels.AdaptiveLoadPlan {
         var studiedToday: Set<String> = Collections.emptySet()
         var adaptive: RecordsSchedulerModels.AdaptiveLoadPlan? = null
         if (activity.studyMoreNewCardKanji.isEmpty()) {
             if (activity.continueAllKanjiSession) {
-                studiedToday = activity.store.studiedKanjiSince(activity.startOfDay(now))
+                studiedToday = queue.studiedKanjiToday
             } else {
-                adaptive = adaptivePlan(rows, items, now)
+                adaptive = adaptivePlan(rows, items, now, queue)
             }
         }
         return StudyPlanSelectionPolicy.select(
@@ -235,12 +214,17 @@ internal class MainActivityStudyPlanProvider(private val activity: MainActivityB
         items: List<RecordsStudyModels.StudyItem>,
         now: Long,
     ): RecordsSchedulerModels.AdaptiveLoadPlan {
+        val queue = loadQueue(now)
         return FocusedStudyPlanPolicy.allCurrentProblemKanjiPlan(
             rows,
             items,
-            activity.store.studiedKanjiSince(activity.startOfDay(now)),
+            queue.studiedKanjiToday,
             now,
         )
+    }
+
+    private fun loadQueue(now: Long): StudyQueueSnapshot = runBlocking {
+        activity.studyUseCases.loadQueue(now)
     }
 }
 

@@ -7,6 +7,7 @@ import android.database.DatabaseUtils
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.application.StudyUseCases
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -14,6 +15,8 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.data.SqliteStudyRepository
+import dev.bee.kanjianki.data.StudyRepository
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -28,6 +31,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
 import java.io.File
+import java.lang.reflect.Proxy
 import java.util.ArrayDeque
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.TimeUnit
@@ -134,7 +138,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(0, activity.renderCount())
 
             // A retried submit still waits for explicit Continue after it applies.
-            activity.store = store
+            restoreStudyPersistence(activity, store)
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             reviewIo.runNext()
             shadowOf(Looper.getMainLooper()).idle()
@@ -261,7 +265,7 @@ class MainActivityStudyReviewFlowSubmitTest {
             assertEquals(StudySwipeReleaseKind.SETTLE_BACK, swipeFeedback.releaseRequest.kind)
             assertEquals(0, widgetRefreshes)
 
-            activity.store = store
+            restoreStudyPersistence(activity, store)
             assertTrue(activity.submitReview(MainActivityBase.RATING_GOOD, false))
             assertEquals(1, reviewIo.pendingCount())
 
@@ -1110,9 +1114,17 @@ class MainActivityStudyReviewFlowSubmitTest {
     }
 
     private fun clearStore(activity: MainActivity) {
-        val field = MainActivityBase::class.java.getDeclaredField("store")
-        field.isAccessible = true
-        field.set(activity, null)
+        val failingRepository = Proxy.newProxyInstance(
+            StudyRepository::class.java.classLoader,
+            arrayOf(StudyRepository::class.java),
+        ) { _, method, _ ->
+            throw IllegalStateException("Study persistence unavailable: ${method.name}")
+        } as StudyRepository
+        replaceField(activity, "studyUseCases", StudyUseCases(failingRepository))
+    }
+
+    private fun restoreStudyPersistence(activity: MainActivity, store: LocalStore) {
+        replaceField(activity, "studyUseCases", StudyUseCases(SqliteStudyRepository(store)))
     }
 
     private fun clearPendingAnswerPreferences() {
