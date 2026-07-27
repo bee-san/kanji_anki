@@ -8,7 +8,6 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.core.StudySessionFocusPolicy
-import dev.bee.kanjianki.core.StudySessionProgressTracker
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.ReviewTokenQuery
@@ -607,9 +606,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         studyAheadMillis: Long,
         schedulerFsrsWeights: List<Double>?,
     ): (() -> Unit)? {
-        val repairIndex = firstTrackablePendingTaskIndex(
+        val repairIndex = candidate.tracker.firstTrackablePendingTaskIndex(
             dueRepairs.map(study::similarRepairProgressKey),
-            candidate.tracker::admitPendingTask,
         )
         val repair = dueRepairs.getOrNull(repairIndex)
         if (repair != null) {
@@ -830,16 +828,3 @@ private data class ContinuedRecoveryInspection(
 
 internal fun recoveredStudyRunTarget(currentTarget: Int, completed: Int, selectableRemaining: Int): Int =
     maxOf(currentTarget, completed + selectableRemaining)
-
-internal fun firstTrackablePendingTaskIndex(
-    taskKeys: List<String>,
-    admit: (String) -> StudySessionProgressTracker.PendingTaskAdmission,
-): Int {
-    var firstTrackable = -1
-    for ((index, key) in taskKeys.withIndex()) {
-        if (admit(key).isTracked && firstTrackable < 0) {
-            firstTrackable = index
-        }
-    }
-    return firstTrackable
-}

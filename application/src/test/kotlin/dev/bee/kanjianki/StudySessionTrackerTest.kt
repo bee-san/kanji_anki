@@ -19,6 +19,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class StudySessionTrackerTest {
     @Test
+    fun companionKeyFactoriesPreserveEmptyInputContracts() {
+        assertEquals("", StudySessionTracker.sessionTaskKey(null))
+        assertEquals("", StudySessionTracker.similarRepairProgressKey(null))
+        assertEquals("", StudySessionTracker.similarRepairStudyTaskKey(null))
+    }
+
+    @Test
     fun stagedCopyIsIsolatedUntilCommitted() {
         val tracker = StudySessionTracker()
         tracker.initializeSessionPlan(listOf("kanji_meaning:裂"))
@@ -281,19 +288,16 @@ class StudySessionTrackerTest {
         tracker.setTargetCount(Int.MAX_VALUE)
         val visited = ArrayList<String>()
 
-        val selected = firstTrackablePendingTaskIndex(
-            listOf("overflow", "existing", "later-overflow"),
-        ) { key ->
-            visited.add(key)
-            tracker.admitPendingTask(key)
-        }
+        val selected = tracker.firstTrackablePendingTaskIndex(
+            listOf("overflow", "existing", "later-overflow").onEach(visited::add),
+        )
 
         assertEquals(1, selected)
         assertEquals(listOf("overflow", "existing", "later-overflow"), visited)
         assertEquals(Int.MAX_VALUE, tracker.targetCount())
         assertEquals(
             -1,
-            firstTrackablePendingTaskIndex(listOf("overflow"), tracker::admitPendingTask),
+            tracker.firstTrackablePendingTaskIndex(listOf("overflow")),
         )
     }
 

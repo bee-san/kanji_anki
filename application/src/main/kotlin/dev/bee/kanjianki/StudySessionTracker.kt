@@ -340,6 +340,16 @@ class StudySessionTracker(
         return admission
     }
 
+    fun firstTrackablePendingTaskIndex(taskKeys: List<String>): Int {
+        var firstTrackable = -1
+        for ((index, key) in taskKeys.withIndex()) {
+            if (admitPendingTask(key).isTracked && firstTrackable < 0) {
+                firstTrackable = index
+            }
+        }
+        return firstTrackable
+    }
+
     fun atHardCap(continueAllKanjiSession: Boolean): Boolean {
         return progressTracker.atHardCap(continueAllKanjiSession)
     }

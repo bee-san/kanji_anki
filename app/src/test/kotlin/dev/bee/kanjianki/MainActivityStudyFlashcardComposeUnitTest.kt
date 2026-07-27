@@ -542,6 +542,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
         val feedback = StudyAnswerFeedbackState("token-獄").apply {
             begin(StudyAnswerOutcome.CORRECT)
         }
+        val renderedFeedback = mutableStateOf(feedback.snapshot())
 
         composeRule.setContent {
             StudyFlashcardActionBar(
@@ -549,7 +550,7 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 onReveal = {},
                 onFail = {},
                 onPass = {},
-                feedbackState = feedback,
+                feedbackState = StudyAnswerFeedbackState.restore(renderedFeedback.value),
                 mnemonicNote = BrowseMnemonicNoteModel(
                     title = "My mnemonic",
                     fieldLabel = "Mnemonic note",
@@ -590,7 +591,8 @@ class MainActivityStudyFlashcardComposeUnitTest {
         composeRule.mainClock.advanceTimeBy(5_000L)
         assertEquals(0, continued)
 
-        feedback.markApplied("token-獄")
+        assertTrue(feedback.markApplied("token-獄"))
+        renderedFeedback.value = feedback.snapshot()
         composeRule.onNodeWithTag(studyActionButtonTestTag(StudyTextCopy.continueLabel()))
             .assertIsEnabled()
             .performClick()

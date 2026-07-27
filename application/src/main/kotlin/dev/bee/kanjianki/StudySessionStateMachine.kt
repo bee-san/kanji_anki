@@ -571,6 +571,9 @@ class StudySessionStateMachine(
         label: String,
         createdAtMillis: Long,
     ): Boolean = synchronized(routeStateLock) {
+        if (undoState.pending?.snapshot?.token == snapshot.token) {
+            return@synchronized false
+        }
         val current = currentState.currentSession
         val currentItem = current?.item
         val before = snapshot.beforeReview

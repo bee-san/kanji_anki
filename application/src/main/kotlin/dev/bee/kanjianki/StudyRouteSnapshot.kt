@@ -28,7 +28,7 @@ data class PreparedStudyRoute<out Model>(
     val routeSnapshot: StudyRouteSnapshot,
 )
 
-inline fun <Model> prepareAcceptedStudyRoute(
+fun <Model> prepareAcceptedStudyRoute(
     routeProvider: () -> Model,
     routeSnapshotProvider: () -> StudyRouteSnapshot,
 ): PreparedStudyRoute<Model> {
