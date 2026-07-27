@@ -21,58 +21,6 @@ internal fun StudyStatsStore.StudyStreak.toRepositorySnapshot(): StudyStreakSnap
         lastStudyAtMillis = lastStudyAtMillis,
     )
 
-internal fun LocalStoreBase.ReminderSettings.toRepositorySnapshot(): ReminderSettingsSnapshot =
-    ReminderSettingsSnapshot(enabled, hour, minute)
-
-internal fun ReminderSettingsSnapshot.toStoreModel(): LocalStoreBase.ReminderSettings =
-    LocalStoreBase.ReminderSettings(enabled, hour, minute)
-
-internal fun LocalStoreBase.ReminderAntiSpamSettings.toRepositorySnapshot(): ReminderAntiSpamSettingsSnapshot =
-    ReminderAntiSpamSettingsSnapshot(
-        quietStartMinuteOfDay,
-        quietEndMinuteOfDay,
-        maxRemindersPerDay,
-    )
-
-internal fun ReminderAntiSpamSettingsSnapshot.toStoreModel(): LocalStoreBase.ReminderAntiSpamSettings =
-    LocalStoreBase.ReminderAntiSpamSettings(
-        quietStartMinuteOfDay,
-        quietEndMinuteOfDay,
-        maxRemindersPerDay,
-    )
-
-internal fun LocalStoreBase.AutoSyncSettings.toRepositorySnapshot(): AutoSyncSettingsSnapshot =
-    AutoSyncSettingsSnapshot(
-        configured,
-        enabled,
-        hour,
-        minute,
-        lastAttemptAt,
-        lastSuccessAt,
-        nextRunAt,
-    )
-
-internal fun AutoSyncSettingsSnapshot.toStoreModel(): LocalStoreBase.AutoSyncSettings =
-    LocalStoreBase.AutoSyncSettings(
-        configured,
-        enabled,
-        hour,
-        minute,
-        lastAttemptAtMillis,
-        lastSuccessAtMillis,
-        nextRunAtMillis,
-    )
-
-internal fun LocalStoreBase.AutoUpdateStatus.toRepositorySnapshot(): AutoUpdateStatusSnapshot =
-    AutoUpdateStatusSnapshot(
-        enabled,
-        lastCheckAtMillis,
-        lastResult,
-        lastVersion,
-        pendingApkName,
-        pendingMessage,
-    )
-
 internal fun StatsCacheStore.Snapshot.toRepositorySnapshot(): StatsSnapshot =
     StatsSnapshot(
         outcomeStats = outcomeStats.toRepositorySnapshot(),

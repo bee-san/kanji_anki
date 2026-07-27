@@ -5,15 +5,22 @@ package dev.bee.kanjianki.platform
  * backups. Implementations must commit one [edit] block atomically before
  * returning.
  */
-interface DeviceSettingsStore {
+interface DeviceSettingsReader {
     fun contains(key: DeviceSettingKey<*>): Boolean
 
     fun <T : Any> read(key: DeviceSettingKey<T>): T?
+}
+
+interface DeviceSettingsStore : DeviceSettingsReader {
+    /**
+     * Returns one immutable point-in-time view for grouped decisions.
+     */
+    fun snapshot(): DeviceSettingsReader
 
     fun edit(block: DeviceSettingsEditor.() -> Unit)
 }
 
-interface DeviceSettingsEditor {
+interface DeviceSettingsEditor : DeviceSettingsReader {
     fun <T : Any> put(key: DeviceSettingKey<T>, value: T)
 
     fun remove(key: DeviceSettingKey<*>)

@@ -23,16 +23,8 @@ internal class SqliteSettingsRepository(
                 schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
                 learningSteps = store.learningStepSettings(),
                 themeChoice = store.appThemeChoice(),
-                reminder = store.reminderSettings().toRepositorySnapshot(),
-                reminderAntiSpam = store.reminderAntiSpamSettings().toRepositorySnapshot(),
-                autoSync = store.autoSyncSettings().toRepositorySnapshot(),
-                autoUpdate = store.autoUpdateStatus().toRepositorySnapshot(),
-                debugLogEnabled = store.debugLogEnabled(),
                 fsrsPersonalizationEnabled = store.fsrsPersonalizationEnabled(),
                 fsrsFitSummaryJson = store.fsrsFitSummaryJson(),
-                updateCheckFailedAtMillis = store.updateCheckFailedAt(),
-                installPermissionPromptShown = store.installPermissionPromptShown(),
-                installPermissionPromptLastVersion = store.installPermissionPromptLastVersion(),
             )
         }
     }
@@ -55,36 +47,6 @@ internal class SqliteSettingsRepository(
                 store.saveAppThemeChoice(command.choice)
                 Unit
             }
-            is SettingsSaveCommand.Reminder -> store.saveReminderSettings(command.value.toStoreModel())
-            is SettingsSaveCommand.ReminderAntiSpam ->
-                store.saveReminderAntiSpamSettings(command.value.toStoreModel())
-            is SettingsSaveCommand.ReminderPosted -> store.recordReminderPosted(
-                command.postedAtMillis,
-                command.family,
-                command.signature,
-                command.dailyTimeOverride,
-            )
-            is SettingsSaveCommand.ReminderDismissed ->
-                store.recordReminderDismissed(command.dismissedAtMillis, command.family)
-            is SettingsSaveCommand.AutoSync -> store.saveAutoSyncSettings(command.value.toStoreModel())
-            is SettingsSaveCommand.AutoSyncEnabled -> store.setAutoSyncEnabled(command.enabled)
-            is SettingsSaveCommand.AutoSyncScheduled -> store.markAutoSyncScheduled(command.nextRunAtMillis)
-            is SettingsSaveCommand.AutoSyncAttempt ->
-                store.recordAutoSyncAttempt(command.attemptedAtMillis, command.success)
-            is SettingsSaveCommand.AutoUpdateEnabled -> store.saveAutoUpdateEnabled(command.enabled)
-            is SettingsSaveCommand.AutoUpdateResult -> store.recordAutoUpdateResult(
-                command.checkedAtMillis,
-                command.result,
-                command.version,
-                command.pendingApkName,
-                command.pendingMessage,
-            )
-            is SettingsSaveCommand.ClearPendingAutoUpdate -> store.clearPendingAutoUpdate(command.result)
-            is SettingsSaveCommand.UpdateCheckFailed -> store.recordUpdateCheckFailed(command.failedAtMillis)
-            SettingsSaveCommand.ClearUpdateCheckFailed -> store.clearUpdateCheckFailed()
-            is SettingsSaveCommand.InstallPermissionPrompted ->
-                store.recordInstallPermissionPrompted(command.version)
-            is SettingsSaveCommand.DebugLogEnabled -> store.saveDebugLogEnabled(command.enabled)
             is SettingsSaveCommand.SchedulerParameters -> store.saveSchedulerParameters(command.value)
             is SettingsSaveCommand.SchedulerFsrsWeights ->
                 store.saveSchedulerFsrsWeights(command.weights?.toDoubleArray())

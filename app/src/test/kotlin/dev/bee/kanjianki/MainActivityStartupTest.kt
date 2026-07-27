@@ -71,12 +71,16 @@ class MainActivityStartupTest {
         ).putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学")
         val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java, intent)
         val activity = controller.get()
+        try {
+            controller.create()
 
-        controller.create()
-
-        assertEquals("学", activity.openedFocusKanji)
-        assertEquals(0, activity.renderHomeCalls)
-        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+            assertEquals("学", activity.openedFocusKanji)
+            assertEquals(0, activity.renderHomeCalls)
+            assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+        } finally {
+            controller.destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
@@ -87,70 +91,93 @@ class MainActivityStartupTest {
         ).putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学習")
         val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java, intent)
         val activity = controller.get()
+        try {
+            controller.create()
 
-        controller.create()
-
-        assertNull(activity.openedFocusKanji)
-        assertEquals(1, activity.renderHomeCalls)
+            assertNull(activity.openedFocusKanji)
+            assertEquals(1, activity.renderHomeCalls)
+        } finally {
+            controller.destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
     fun warmFocusIntentRoutesToTheExactExistingDetailTarget() {
         val controller = Robolectric.buildActivity(FocusTrackingStartupActivity::class.java)
         val activity = controller.create().start().resume().get()
-        activity.openedFocusKanji = null
-        activity.renderHomeCalls = 0
+        try {
+            activity.openedFocusKanji = null
+            activity.renderHomeCalls = 0
 
-        controller.newIntent(
-            Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学"),
-        )
+            controller.newIntent(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学"),
+            )
 
-        assertEquals("学", activity.openedFocusKanji)
-        assertEquals(0, activity.renderHomeCalls)
-        assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+            assertEquals("学", activity.openedFocusKanji)
+            assertEquals(0, activity.renderHomeCalls)
+            assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+        } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
     fun deniedNotificationPermissionKeepsTheSelectedReminderEnabled() {
         val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
         val activity = controller.create().get()
-        val selected = LocalStoreBase.ReminderSettings(true, 19, 40)
-        activity.store.saveReminderSettings(selected)
-        activity.pendingReminderSettings = selected
+        try {
+            val selected = LocalStoreBase.ReminderSettings(true, 19, 40)
+            activity.store.saveReminderSettings(selected)
+            activity.pendingReminderSettings = selected
 
-        activity.handlePostNotificationPermission(false)
+            activity.handlePostNotificationPermission(false)
 
-        val saved = activity.store.reminderSettings()
-        assertTrue(saved.enabled)
-        assertEquals(19, saved.hour)
-        assertEquals(40, saved.minute)
+            val saved = activity.store.reminderSettings()
+            assertTrue(saved.enabled)
+            assertEquals(19, saved.hour)
+            assertEquals(40, saved.minute)
+        } finally {
+            controller.destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
     fun permissionCallbacksDoNotReplaceAnUnrelatedRoute() {
         val controller = Robolectric.buildActivity(PermissionRouteTrackingStartupActivity::class.java)
         val activity = controller.create().get()
-        activity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
+        try {
+            activity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
 
-        activity.handleAnkiPermissionResult()
+            activity.handleAnkiPermissionResult()
 
-        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
-        activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30)
-        activity.handlePostNotificationPermission(false)
-        assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+            assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+            activity.pendingReminderSettings = LocalStoreBase.ReminderSettings(true, 8, 30)
+            activity.handlePostNotificationPermission(false)
+            assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
+        } finally {
+            controller.destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
     fun focusDetailRouteDoesNotLeakTheGlyphIntoBrowseState() {
         val controller = Robolectric.buildActivity(NoopStartupActivity::class.java)
         val activity = controller.create().get()
+        try {
+            assertTrue(activity.openFocusKanjiDetail("学"))
 
-        assertTrue(activity.openFocusKanjiDetail("学"))
-
-        assertEquals("", activity.activeBrowseQuery)
-        assertFalse(activity.activeBrowseSimilarOnly)
-        assertTrue(activity.activeBrowseAllKanji)
-        assertFalse(activity.activeBrowseShowSuspended)
+            assertEquals("", activity.activeBrowseQuery)
+            assertFalse(activity.activeBrowseSimilarOnly)
+            assertTrue(activity.activeBrowseAllKanji)
+            assertFalse(activity.activeBrowseShowSuspended)
+        } finally {
+            controller.destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
@@ -177,8 +204,11 @@ class MainActivityStartupTest {
     fun startQueuesBackgroundStartupTasksInsteadOfRunningThemInline() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val controller = Robolectric.buildActivity(
+            NoopStartupActivity::class.java,
+            Intent(context, NoopStartupActivity::class.java),
+        )
         try {
-            val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, Intent(context, NoopStartupActivity::class.java))
             val activity = controller.get()
             val ioTasks = QueueingExecutorService()
             val maintenanceTasks = QueueingExecutorService()
@@ -199,6 +229,8 @@ class MainActivityStartupTest {
             // route. Heavy asset warmup runs on its own dedicated thread.
             assertEquals(2, maintenanceTasks.pendingCount())
         } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(controller.get())
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
     }
@@ -214,11 +246,15 @@ class MainActivityStartupTest {
             Intent(context, PermissionTrackingStartupActivity::class.java),
         )
         val activity = controller.get()
+        try {
+            controller.create().start().resume()
 
-        controller.create().start().resume()
-
-        assertEquals(1, activity.renderHomeCalls)
-        assertNull(shadowOf(activity).lastRequestedPermission)
+            assertEquals(1, activity.renderHomeCalls)
+            assertNull(shadowOf(activity).lastRequestedPermission)
+        } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
     @Test
@@ -240,11 +276,11 @@ class MainActivityStartupTest {
                 prompt = "",
             ),
         )
+        val controller = Robolectric.buildActivity(
+            PendingAnswerStartupActivity::class.java,
+            Intent(context, PendingAnswerStartupActivity::class.java),
+        )
         try {
-            val controller = Robolectric.buildActivity(
-                PendingAnswerStartupActivity::class.java,
-                Intent(context, PendingAnswerStartupActivity::class.java),
-            )
             val activity = controller.get()
 
             controller.create().start().resume()
@@ -253,6 +289,8 @@ class MainActivityStartupTest {
             assertEquals(0, activity.renderHomeCalls)
         } finally {
             preferences.edit().clear().commit()
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(controller.get())
         }
     }
 
@@ -279,6 +317,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
+            awaitExecutorShutdown(activity)
         }
     }
 
@@ -305,6 +344,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
+            awaitExecutorShutdown(activity)
         }
     }
 
@@ -336,6 +376,7 @@ class MainActivityStartupTest {
                 latestSuccessfulSyncAtMillis = 0L,
             )
             first.pause().saveInstanceState(state).stop().destroy()
+            awaitExecutorShutdown(firstActivity)
 
             second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -345,7 +386,11 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
-            second?.pause()?.stop()?.destroy()
+            second?.let { controller ->
+                val activity = controller.get()
+                controller.pause().stop().destroy()
+                awaitExecutorShutdown(activity)
+            }
         }
     }
 
@@ -377,6 +422,7 @@ class MainActivityStartupTest {
             first.pause().saveInstanceState(state)
             firstActivity.disableStudyOrdinaryResume()
             first.stop().destroy()
+            awaitExecutorShutdown(firstActivity)
 
             second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -387,7 +433,11 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
-            second?.pause()?.stop()?.destroy()
+            second?.let { controller ->
+                val activity = controller.get()
+                controller.pause().stop().destroy()
+                awaitExecutorShutdown(activity)
+            }
         }
     }
 
@@ -403,6 +453,7 @@ class MainActivityStartupTest {
             val firstActivity = first.create().start().resume().get()
             firstActivity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
             first.pause().saveInstanceState(state).stop().destroy()
+            awaitExecutorShutdown(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -411,7 +462,11 @@ class MainActivityStartupTest {
             assertEquals(0, recreated.renderHomeCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
-            second?.pause()?.stop()?.destroy()
+            second?.let { controller ->
+                val activity = controller.get()
+                controller.pause().stop().destroy()
+                awaitExecutorShutdown(activity)
+            }
         }
     }
 
@@ -429,6 +484,7 @@ class MainActivityStartupTest {
             firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
             firstActivity.currentHomeRouteRestoration = route
             first.pause().saveInstanceState(state).stop().destroy()
+            awaitExecutorShutdown(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -437,7 +493,11 @@ class MainActivityStartupTest {
             assertEquals(0, recreated.renderHomeCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
-            second?.pause()?.stop()?.destroy()
+            second?.let { controller ->
+                val activity = controller.get()
+                controller.pause().stop().destroy()
+                awaitExecutorShutdown(activity)
+            }
         }
     }
 
@@ -462,6 +522,7 @@ class MainActivityStartupTest {
             firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
             firstActivity.currentHomeRouteRestoration = route
             first.pause().saveInstanceState(state).stop().destroy()
+            awaitExecutorShutdown(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -471,7 +532,11 @@ class MainActivityStartupTest {
             assertEquals(0, recreated.renderHomeCalls)
         } finally {
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
-            second?.pause()?.stop()?.destroy()
+            second?.let { controller ->
+                val activity = controller.get()
+                controller.pause().stop().destroy()
+                awaitExecutorShutdown(activity)
+            }
         }
     }
 
@@ -516,6 +581,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
+            awaitExecutorShutdown(controller.get())
         }
     }
 
@@ -565,12 +631,12 @@ class MainActivityStartupTest {
     fun screenshotLaunchAppliesRequestedThemeChoiceBeforeRendering() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
+        val intent = Intent(context, NoopStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME, "dark")
+        }
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
         try {
-            val intent = Intent(context, NoopStartupActivity::class.java).apply {
-                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
-                putExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME, "dark")
-            }
-            val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
             val activity = controller.get()
 
             controller.create().start().resume()
@@ -578,6 +644,8 @@ class MainActivityStartupTest {
             assertEquals(KaniThemeChoice.DARK, activity.screenshotThemeChoiceOverride)
             assertEquals(KaniThemeChoice.DARK, activity.store.appThemeChoice())
         } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(controller.get())
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
     }
@@ -587,17 +655,18 @@ class MainActivityStartupTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(fakeAnkiDroidGateway())
         val previousLocale = Locale.getDefault()
+        val intent = Intent(context, NoopStartupActivity::class.java).apply {
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
+            putExtra(MainActivityBase.EXTRA_SCREENSHOT_LOCALE, "ja")
+        }
+        val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
         try {
-            val intent = Intent(context, NoopStartupActivity::class.java).apply {
-                putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_HOME_ROUTE)
-                putExtra(MainActivityBase.EXTRA_SCREENSHOT_LOCALE, "ja")
-            }
-            val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
-
             controller.create().start().resume()
 
             assertEquals("ja", Locale.getDefault().language)
         } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(controller.get())
             Locale.setDefault(previousLocale)
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
@@ -613,14 +682,26 @@ class MainActivityStartupTest {
         }
         val controller = Robolectric.buildActivity(NoopStartupActivity::class.java, intent)
         val activity = controller.get()
+        try {
+            controller.create().start().resume()
 
-        controller.create().start().resume()
-
-        assertEquals("middle", activity.screenshotScrollPositionLabel())
-        assertEquals(1080, activity.screenshotScrollY())
+            assertEquals("middle", activity.screenshotScrollPositionLabel())
+            assertEquals(1080, activity.screenshotScrollY())
+        } finally {
+            controller.pause().stop().destroy()
+            awaitExecutorShutdown(activity)
+        }
     }
 
-    private class FocusTrackingStartupActivity : MainActivity() {
+    private open class StartupTestActivity : MainActivity() {
+        init {
+            val field = MainActivityBase::class.java.getDeclaredField("maintenance")
+            field.isAccessible = true
+            field.set(this, QueueingExecutorService())
+        }
+    }
+
+    private class FocusTrackingStartupActivity : StartupTestActivity() {
         var openedFocusKanji: String? = null
         var renderHomeCalls = 0
 
@@ -634,13 +715,13 @@ class MainActivityStartupTest {
         }
     }
 
-    private class NoopStartupActivity : MainActivity() {
+    private class NoopStartupActivity : StartupTestActivity() {
         override fun renderHome() {
             // Keep the test focused on startup scheduling, not home rendering.
         }
     }
 
-    private class PermissionTrackingStartupActivity : MainActivity() {
+    private class PermissionTrackingStartupActivity : StartupTestActivity() {
         var renderHomeCalls = 0
 
         override fun renderHome() {
@@ -648,13 +729,13 @@ class MainActivityStartupTest {
         }
     }
 
-    private class PermissionRouteTrackingStartupActivity : MainActivity() {
+    private class PermissionRouteTrackingStartupActivity : StartupTestActivity() {
         override fun renderHome() {
             currentRoute = MainActivityBase.NAV_HOME_ROUTE
         }
     }
 
-    private class PendingAnswerStartupActivity : MainActivity() {
+    private class PendingAnswerStartupActivity : StartupTestActivity() {
         var renderHomeCalls = 0
         var renderStudyCalls = 0
 
@@ -671,7 +752,7 @@ class MainActivityStartupTest {
         }
     }
 
-    private class RouteRestorationStartupActivity : MainActivity() {
+    private class RouteRestorationStartupActivity : StartupTestActivity() {
         var renderHomeCalls = 0
         var renderStatsCalls = 0
         var restoredHomeRoute: HomeRouteRestoration? = null
@@ -689,7 +770,7 @@ class MainActivityStartupTest {
         }
     }
 
-    private class RecoveryAwareStartupActivity : MainActivity() {
+    private class RecoveryAwareStartupActivity : StartupTestActivity() {
         override fun renderHome() {
             disableStudyOrdinaryResume()
         }
@@ -709,6 +790,11 @@ class MainActivityStartupTest {
         val field = MainActivityBase::class.java.getDeclaredField(propertyName)
         field.isAccessible = true
         field.set(activity, value)
+    }
+
+    private fun awaitExecutorShutdown(activity: MainActivityBase) {
+        assertTrue(activity.io.awaitTermination(5, TimeUnit.SECONDS))
+        assertTrue(activity.maintenance.awaitTermination(5, TimeUnit.SECONDS))
     }
 
     private fun assertLazyDelegates(owner: Class<*>, vararg propertyNames: String) {

@@ -12,6 +12,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
+import dev.bee.kanjianki.platform.DeviceSettingsStore
 import java.io.Closeable
 import java.util.LinkedHashSet
 
@@ -37,9 +38,54 @@ abstract class LocalStoreBase internal constructor(
     }
 
     private val settingsStore = SqliteSettingsStore(SqliteSettingsStorage(this), diagnosticLogger)
+    private val androidDeviceSettingsStore =
+        AndroidDeviceSettingsStore(requireNotNull(context).applicationContext)
+    @Volatile
+    private var deviceSettingsMigrationChecked = false
     private var settingsInvalidationPending = false
 
     internal fun settingsStore(): SqliteSettingsStore = settingsStore
+
+    internal fun deviceSettingsStore(): DeviceSettingsStore {
+        if (!deviceSettingsMigrationChecked) {
+            writableDatabase
+        }
+        return androidDeviceSettingsStore
+    }
+
+    private fun readLegacyDeviceSettings(
+        db: SQLiteDatabase,
+        keys: List<String>,
+    ): Map<String, String> {
+        val values = LinkedHashMap<String, String>()
+        val placeholders = keys.joinToString(",") { "?" }
+        db.query(
+            TABLE_SETTINGS,
+            arrayOf("key", COLUMN_VALUE),
+            "key IN ($placeholders)",
+            keys.toTypedArray(),
+            null,
+            null,
+            null,
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                values[cursor.getString(0)] = cursor.getString(1)
+            }
+        }
+        return values
+    }
+
+    private fun deleteLegacyDeviceSettings(db: SQLiteDatabase, keys: List<String>) {
+        val placeholders = keys.joinToString(",") { "?" }
+        val deleted = db.delete(
+            TABLE_SETTINGS,
+            "key IN ($placeholders)",
+            keys.toTypedArray(),
+        )
+        if (deleted > 0) {
+            settingsStore.invalidate()
+        }
+    }
 
     internal fun migrationHooks(): LocalStoreMigrationHooks = LocalStoreMigrationHooks(this)
 
@@ -77,6 +123,12 @@ abstract class LocalStoreBase internal constructor(
 
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
+        LegacyDeviceSettingsMigration(
+            deviceStore = androidDeviceSettingsStore,
+            readLegacyValues = { keys -> readLegacyDeviceSettings(db, keys) },
+            deleteLegacyValues = { keys -> deleteLegacyDeviceSettings(db, keys) },
+        ).migrate()
+        deviceSettingsMigrationChecked = true
         if (settingsInvalidationPending) {
             settingsInvalidationPending = false
             settingsStore.invalidate()
@@ -718,21 +770,8 @@ abstract class LocalStoreBase internal constructor(
         const val TIMELINE_FIRST_SEEN_KEY_PREFIX: String = "first_seen:"
         const val COLUMN_MATURE: String = "mature"
         const val COLUMN_FIRST_IMPORTED_AT: String = "first_imported_at"
-        const val KEY_AUTO_SYNC_LAST_ATTEMPT_AT: String = "auto_sync_last_attempt_at"
-        const val KEY_AUTO_SYNC_LAST_SUCCESS_AT: String = "auto_sync_last_success_at"
-        const val KEY_AUTO_SYNC_NEXT_RUN_AT: String = "auto_sync_next_run_at"
         const val SIMILAR_KEY_DELIMITER: String = "\u0000"
         const val SETTING_STUDY_AHEAD_MINUTES: String = "study_ahead_minutes"
-        const val KEY_AUTO_UPDATE_ENABLED: String = "auto_update_enabled"
-        const val KEY_AUTO_UPDATE_LAST_CHECK_AT: String = "auto_update_last_check_at"
-        const val KEY_AUTO_UPDATE_LAST_RESULT: String = "auto_update_last_result"
-        const val KEY_AUTO_UPDATE_LAST_VERSION: String = "auto_update_last_version"
-        const val KEY_AUTO_UPDATE_PENDING_APK: String = "auto_update_pending_apk"
-        const val KEY_AUTO_UPDATE_PENDING_MESSAGE: String = "auto_update_pending_message"
-        const val KEY_UPDATE_PERMISSION_PROMPT_SHOWN: String = "update_permission_prompt_shown"
-        const val KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION: String = "update_permission_prompt_last_version"
-        const val KEY_DEBUG_LOG_ENABLED: String = "debug_log_enabled"
-        const val KEY_UPDATE_CHECK_FAILED_AT: String = "update_check_failed_at"
         const val SETTING_DOWNGRADED_FROM_VERSION: String = "downgraded_from_version"
 
         @JvmStatic

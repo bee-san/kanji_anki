@@ -23,9 +23,9 @@ class FakeRepositoriesTest {
         }
 
         assertTrue(home.searchInventory("痛", true).isOk())
-        settings.save(SettingsSaveCommand.DebugLogEnabled(true))
+        settings.save(SettingsSaveCommand.StudyAhead(15))
         assertEquals(
-            listOf(SettingsSaveCommand.DebugLogEnabled(true)),
+            listOf(SettingsSaveCommand.StudyAhead(15)),
             settings.saveCommands,
         )
         assertFalse(sync.loadStoredState().valueOrNull()?.hasCollectionMirror ?: true)

@@ -240,27 +240,6 @@ class RepositoryAdaptersTest {
             SettingsSaveCommand.StudyLadder(initial.studyLadder),
             SettingsSaveCommand.NewCardSort(initial.sync.newCardSortMode),
             SettingsSaveCommand.Theme(initial.themeChoice),
-            SettingsSaveCommand.Reminder(ReminderSettingsSnapshot(true, 8, 30)),
-            SettingsSaveCommand.ReminderAntiSpam(initial.reminderAntiSpam),
-            SettingsSaveCommand.ReminderPosted(FINISHED_AT, "due", "signature", true),
-            SettingsSaveCommand.ReminderDismissed(FINISHED_AT, "due"),
-            SettingsSaveCommand.AutoSync(initial.autoSync),
-            SettingsSaveCommand.AutoSyncEnabled(true),
-            SettingsSaveCommand.AutoSyncScheduled(FINISHED_AT),
-            SettingsSaveCommand.AutoSyncAttempt(FINISHED_AT, true),
-            SettingsSaveCommand.AutoUpdateEnabled(true),
-            SettingsSaveCommand.AutoUpdateResult(
-                FINISHED_AT,
-                "downloaded",
-                "v9.9.9",
-                "update.apk",
-                "ready",
-            ),
-            SettingsSaveCommand.ClearPendingAutoUpdate("installed"),
-            SettingsSaveCommand.UpdateCheckFailed(FINISHED_AT),
-            SettingsSaveCommand.ClearUpdateCheckFailed,
-            SettingsSaveCommand.InstallPermissionPrompted("v9.9.9"),
-            SettingsSaveCommand.DebugLogEnabled(true),
             SettingsSaveCommand.SchedulerParameters(initial.schedulerParameters),
             SettingsSaveCommand.SchedulerFsrsWeights(null),
             SettingsSaveCommand.FsrsPersonalizationEnabled(true),
@@ -284,9 +263,8 @@ class RepositoryAdaptersTest {
         )
 
         val actual = repository.load().valueOrNull()
-        assertTrue(actual?.debugLogEnabled == true)
         assertEquals(15, actual?.studyAheadMinutes)
-        assertEquals("v9.9.9", actual?.installPermissionPromptLastVersion)
+        assertEquals(initial.themeChoice, actual?.themeChoice)
     }
 
     @Test

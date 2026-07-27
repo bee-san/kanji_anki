@@ -32,7 +32,6 @@ data class HomeSnapshot(
     val studyStreak: StudyStreakSnapshot,
     val dueLegacyWritingRepairs: List<RecordsImportModels.SimilarKanjiWritingRepair>,
     val repairedHandoffKanji: List<String>,
-    val updateCheckFailedAtMillis: Long,
 )
 
 data class HomeKanjiDetailSnapshot(

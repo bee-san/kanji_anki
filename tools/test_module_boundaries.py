@@ -341,6 +341,16 @@ PERSISTENCE_ALLOWED_REFERENCE_PREFIXES = (
     "dev.bee.kanjianki.syncdomain",
     "dev.bee.kanjianki.updatecore",
 )
+PERSISTENCE_ALLOWED_PLATFORM_CONTRACTS = frozenset(
+    {
+        "dev.bee.kanjianki.platform.DeviceSettingKey",
+        "dev.bee.kanjianki.platform.DeviceSettingKeys",
+        "dev.bee.kanjianki.platform.DeviceSettingValueType",
+        "dev.bee.kanjianki.platform.DeviceSettingsEditor",
+        "dev.bee.kanjianki.platform.DeviceSettingsReader",
+        "dev.bee.kanjianki.platform.DeviceSettingsStore",
+    },
+)
 AMBIGUOUS_RECORD_CONSTRUCTION = re.compile(
     r"\b(?:(?:RecordsSchedulerModels\.)?ReviewRequest|"
     r"(?:RecordsStudyModels\.)?TaskMemory)\s*\(|"
@@ -410,7 +420,7 @@ def project_dependencies(module: str) -> set[str]:
 
 
 def persistence_reference_allowed(reference: str) -> bool:
-    return any(
+    return reference in PERSISTENCE_ALLOWED_PLATFORM_CONTRACTS or any(
         reference == prefix or reference.startswith(f"{prefix}.")
         for prefix in PERSISTENCE_ALLOWED_REFERENCE_PREFIXES
     )

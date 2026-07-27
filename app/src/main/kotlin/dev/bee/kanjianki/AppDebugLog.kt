@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.SystemClock
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
+import dev.bee.kanjianki.data.AndroidDeviceSettingsStore
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -153,12 +155,14 @@ internal object AppDebugLog {
     }
 
     /**
-     * Reads the persisted toggle without creating the database: fresh installs (no database yet)
-     * resolve to off with a single file stat instead of forcing schema creation at process start.
+     * Reads the persisted toggle without creating the database. Existing databases
+     * use LocalStore so a pre-split SQLite value is migrated first; installations
+     * without a database read the already-device-local value directly.
      */
     private fun readEnabledSetting(context: Context): Boolean {
         if (!context.getDatabasePath(LocalStoreSchema.DB_NAME).exists()) {
-            return false
+            return AndroidDeviceSettingsStore(context)
+                .read(DeviceSettingKeys.debugLogEnabled) ?: false
         }
         return AppLocalStoreFactory.create(context).use { it.debugLogEnabled() }
     }

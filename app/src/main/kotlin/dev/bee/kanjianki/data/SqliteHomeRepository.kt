@@ -19,7 +19,6 @@ internal class SqliteHomeRepository(
                 studyStreak = store.studyStreak(nowMillis).toRepositorySnapshot(),
                 dueLegacyWritingRepairs = store.dueSimilarWritingRepairs(nowMillis).toList(),
                 repairedHandoffKanji = store.pendingRepairedHandoffKanji().toList(),
-                updateCheckFailedAtMillis = store.updateCheckFailedAt(),
             )
         }
     }

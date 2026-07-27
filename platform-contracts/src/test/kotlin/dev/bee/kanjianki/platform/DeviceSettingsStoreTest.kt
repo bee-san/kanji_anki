@@ -36,11 +36,13 @@ class DeviceSettingsStoreTest {
             "http://127.0.0.1:8765",
             store.read(DeviceSettingKeys.providerEndpoint),
         )
+        val snapshot = store.snapshot()
 
         store.edit { remove(DeviceSettingKeys.reminderEnabled) }
 
         assertFalse(store.contains(DeviceSettingKeys.reminderEnabled))
         assertNull(store.read(DeviceSettingKeys.reminderEnabled))
+        assertEquals(true, snapshot.read(DeviceSettingKeys.reminderEnabled))
     }
 
     private class InMemoryDeviceSettingsStore : DeviceSettingsStore {
@@ -53,9 +55,28 @@ class DeviceSettingsStoreTest {
         override fun <T : Any> read(key: DeviceSettingKey<T>): T? =
             values[key.storageName] as T?
 
+        override fun snapshot(): DeviceSettingsReader {
+            val captured = LinkedHashMap(values)
+            return object : DeviceSettingsReader {
+                override fun contains(key: DeviceSettingKey<*>): Boolean =
+                    captured.containsKey(key.storageName)
+
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : Any> read(key: DeviceSettingKey<T>): T? =
+                    captured[key.storageName] as T?
+            }
+        }
+
         override fun edit(block: DeviceSettingsEditor.() -> Unit) {
             val staged = LinkedHashMap(values)
             object : DeviceSettingsEditor {
+                override fun contains(key: DeviceSettingKey<*>): Boolean =
+                    staged.containsKey(key.storageName)
+
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : Any> read(key: DeviceSettingKey<T>): T? =
+                    staged[key.storageName] as T?
+
                 override fun <T : Any> put(key: DeviceSettingKey<T>, value: T) {
                     staged[key.storageName] = value
                 }

@@ -12,6 +12,10 @@ import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
+import dev.bee.kanjianki.platform.DeviceSettingKey
+import dev.bee.kanjianki.platform.DeviceSettingKeys
+import dev.bee.kanjianki.platform.DeviceSettingsEditor
+import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
 
 internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
@@ -131,62 +135,75 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     fun saveAppThemeChoice(choice: KaniThemeChoice?): KaniThemeChoice = themeChoiceSettings.saveChoice(choice)
 
     fun reminderSettings(): LocalStoreBase.ReminderSettings {
+        val settings = store.deviceSettingsStore().snapshot()
         return LocalStoreBase.ReminderSettings(
-            getIntSetting("reminder_enabled", 0) == 1,
-            getIntSetting("reminder_hour", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR),
-            getIntSetting("reminder_minute", TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE)
+            settings.value(DeviceSettingKeys.reminderEnabled, false),
+            settings.value(DeviceSettingKeys.reminderHour, TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR),
+            settings.value(DeviceSettingKeys.reminderMinute, TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE),
         ).normalized()
     }
 
     fun saveReminderSettings(settings: LocalStoreBase.ReminderSettings) {
         val normalized = settings.normalized()
-        inTransaction {
-            putIntSetting("reminder_enabled", if (normalized.enabled) 1 else 0)
-            putIntSetting("reminder_hour", normalized.hour)
-            putIntSetting("reminder_minute", normalized.minute)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.reminderEnabled, normalized.enabled)
+            put(DeviceSettingKeys.reminderHour, normalized.hour)
+            put(DeviceSettingKeys.reminderMinute, normalized.minute)
         }
     }
 
     fun reminderAntiSpamSettings(): LocalStoreBase.ReminderAntiSpamSettings {
+        val settings = store.deviceSettingsStore().snapshot()
         return LocalStoreBase.ReminderAntiSpamSettings(
-            getIntSetting(KEY_REMINDER_QUIET_START_MINUTE, ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE),
-            getIntSetting(KEY_REMINDER_QUIET_END_MINUTE, ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE),
-            getIntSetting(KEY_REMINDER_MAX_PER_DAY, ReminderAntiSpamPolicy.DEFAULT_MAX_PER_DAY),
+            settings.value(
+                DeviceSettingKeys.reminderQuietStartMinute,
+                ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE,
+            ),
+            settings.value(
+                DeviceSettingKeys.reminderQuietEndMinute,
+                ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE,
+            ),
+            settings.value(DeviceSettingKeys.reminderMaxPerDay, ReminderAntiSpamPolicy.DEFAULT_MAX_PER_DAY),
         ).normalized()
     }
 
     fun saveReminderAntiSpamSettings(settings: LocalStoreBase.ReminderAntiSpamSettings) {
         val normalized = settings.normalized()
-        inTransaction {
-            putIntSetting(KEY_REMINDER_QUIET_START_MINUTE, normalized.quietStartMinuteOfDay)
-            putIntSetting(KEY_REMINDER_QUIET_END_MINUTE, normalized.quietEndMinuteOfDay)
-            putIntSetting(KEY_REMINDER_MAX_PER_DAY, normalized.maxRemindersPerDay)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.reminderQuietStartMinute, normalized.quietStartMinuteOfDay)
+            put(DeviceSettingKeys.reminderQuietEndMinute, normalized.quietEndMinuteOfDay)
+            put(DeviceSettingKeys.reminderMaxPerDay, normalized.maxRemindersPerDay)
         }
     }
 
     fun reviewReminderNotificationsToday(nowMillis: Long): Int {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        val storedDayStart = getLongSetting(KEY_REVIEW_REMINDER_DAY_START, 0L)
+        val settings = store.deviceSettingsStore().snapshot()
+        val storedDayStart = settings.value(DeviceSettingKeys.reviewReminderDayStart, 0L)
         if (storedDayStart != todayStart) {
             return 0
         }
-        return getIntSetting(KEY_REVIEW_REMINDER_COUNT, 0).coerceAtLeast(0)
+        return settings.value(DeviceSettingKeys.reviewReminderCount, 0).coerceAtLeast(0)
     }
 
     fun recordReviewReminderNotificationShown(nowMillis: Long) {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        val count = saturatingIncrement(reviewReminderNotificationsToday(nowMillis))
-        inTransaction {
-            putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
-            putIntSetting(KEY_REVIEW_REMINDER_COUNT, count)
+        store.deviceSettingsStore().edit {
+            val previousCount = if (value(DeviceSettingKeys.reviewReminderDayStart, 0L) == todayStart) {
+                value(DeviceSettingKeys.reviewReminderCount, 0)
+            } else {
+                0
+            }
+            put(DeviceSettingKeys.reviewReminderDayStart, todayStart)
+            put(DeviceSettingKeys.reviewReminderCount, saturatingIncrement(previousCount))
         }
     }
 
     fun clearReviewReminderNotifications(nowMillis: Long) {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        inTransaction {
-            putLongSetting(KEY_REVIEW_REMINDER_DAY_START, todayStart)
-            putIntSetting(KEY_REVIEW_REMINDER_COUNT, 0)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.reviewReminderDayStart, todayStart)
+            put(DeviceSettingKeys.reviewReminderCount, 0)
         }
     }
 
@@ -198,16 +215,33 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
      */
     fun reminderThrottleState(nowMillis: Long): LocalStoreBase.ReminderThrottleState {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        val storedDayStart = getLongSetting(KEY_REMINDER_STATE_DAY_START, 0L)
+        val settings = store.deviceSettingsStore().snapshot()
+        val storedDayStart = settings.value(DeviceSettingKeys.reminderStateDayStart, 0L)
         val sameDay = storedDayStart == todayStart
         return LocalStoreBase.ReminderThrottleState(
-            getLongSetting(KEY_REMINDER_LAST_POSTED_AT, 0L),
-            getStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, ""),
-            if (sameDay) getIntSetting(KEY_REMINDER_DUE_SHOWN, 0).coerceAtLeast(0) else 0,
-            if (sameDay) getIntSetting(KEY_REMINDER_STREAK_SHOWN, 0).coerceAtLeast(0) else 0,
-            if (sameDay) getIntSetting(KEY_REMINDER_SYNC_SHOWN, 0).coerceAtLeast(0) else 0,
-            if (sameDay) getStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "") else "",
-            if (sameDay) getIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 0) == 1 else false,
+            settings.value(DeviceSettingKeys.reminderLastPostedAt, 0L),
+            settings.value(DeviceSettingKeys.reminderLastPostedSignature, ""),
+            if (sameDay) {
+                settings.value(DeviceSettingKeys.reminderDueShownToday, 0).coerceAtLeast(0)
+            } else {
+                0
+            },
+            if (sameDay) {
+                settings.value(DeviceSettingKeys.reminderStreakShownToday, 0).coerceAtLeast(0)
+            } else {
+                0
+            },
+            if (sameDay) {
+                settings.value(DeviceSettingKeys.reminderSyncShownToday, 0).coerceAtLeast(0)
+            } else {
+                0
+            },
+            if (sameDay) {
+                settings.value(DeviceSettingKeys.reminderDismissedFamiliesToday, "")
+            } else {
+                ""
+            },
+            sameDay && settings.value(DeviceSettingKeys.reminderDailyOverrideUsedToday, false),
         )
     }
 
@@ -219,13 +253,18 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
      */
     fun recordReminderPosted(nowMillis: Long, family: String?, signature: String?, dailyTimeOverride: Boolean) {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        inTransaction {
-            resetReminderStateIfNewDay(todayStart)
-            putLongSetting(KEY_REMINDER_LAST_POSTED_AT, nowMillis)
-            putStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, signature ?: "")
-            incrementFamilyCounter(family)
+        val counterKey = reminderCounterKey(family)
+        store.deviceSettingsStore().edit {
+            val sameDay = value(DeviceSettingKeys.reminderStateDayStart, 0L) == todayStart
+            val previousCount = if (sameDay) value(counterKey, 0) else 0
+            if (!sameDay) {
+                resetReminderState(todayStart)
+            }
+            put(DeviceSettingKeys.reminderLastPostedAt, nowMillis)
+            put(DeviceSettingKeys.reminderLastPostedSignature, signature ?: "")
+            put(counterKey, saturatingIncrement(previousCount))
             if (dailyTimeOverride) {
-                putIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 1)
+                put(DeviceSettingKeys.reminderDailyOverrideUsedToday, true)
             }
         }
     }
@@ -236,10 +275,13 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
      */
     fun recordReminderReposted(nowMillis: Long, signature: String?) {
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        inTransaction {
-            resetReminderStateIfNewDay(todayStart)
-            putLongSetting(KEY_REMINDER_LAST_POSTED_AT, nowMillis)
-            putStringSetting(KEY_REMINDER_LAST_POSTED_SIGNATURE, signature ?: "")
+        store.deviceSettingsStore().edit {
+            val sameDay = value(DeviceSettingKeys.reminderStateDayStart, 0L) == todayStart
+            if (!sameDay) {
+                resetReminderState(todayStart)
+            }
+            put(DeviceSettingKeys.reminderLastPostedAt, nowMillis)
+            put(DeviceSettingKeys.reminderLastPostedSignature, signature ?: "")
         }
     }
 
@@ -250,132 +292,160 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
             return
         }
         val todayStart = LocalDayPolicy.localDayStart(nowMillis)
-        inTransaction {
-            resetReminderStateIfNewDay(todayStart)
-            val current = getStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "")
-            val families = current.split(',').filter { it.isNotBlank() }.toMutableSet()
-            if (families.add(normalized)) {
-                putStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, families.joinToString(","))
+        store.deviceSettingsStore().edit {
+            val sameDay = value(DeviceSettingKeys.reminderStateDayStart, 0L) == todayStart
+            val current = if (sameDay) {
+                value(DeviceSettingKeys.reminderDismissedFamiliesToday, "")
+            } else {
+                ""
             }
+            val families = current.split(',').filter { it.isNotBlank() }.toMutableSet()
+            if (!families.add(normalized)) {
+                return@edit
+            }
+            if (!sameDay) {
+                resetReminderState(todayStart)
+            }
+            put(DeviceSettingKeys.reminderDismissedFamiliesToday, families.joinToString(","))
         }
     }
 
-    private fun resetReminderStateIfNewDay(todayStart: Long) {
-        if (getLongSetting(KEY_REMINDER_STATE_DAY_START, 0L) == todayStart) {
-            return
-        }
-        putLongSetting(KEY_REMINDER_STATE_DAY_START, todayStart)
-        putIntSetting(KEY_REMINDER_DUE_SHOWN, 0)
-        putIntSetting(KEY_REMINDER_STREAK_SHOWN, 0)
-        putIntSetting(KEY_REMINDER_SYNC_SHOWN, 0)
-        putStringSetting(KEY_REMINDER_DISMISSED_FAMILIES, "")
-        putIntSetting(KEY_REMINDER_DAILY_OVERRIDE_USED, 0)
+    private fun DeviceSettingsEditor.resetReminderState(todayStart: Long) {
+        put(DeviceSettingKeys.reminderStateDayStart, todayStart)
+        put(DeviceSettingKeys.reminderDueShownToday, 0)
+        put(DeviceSettingKeys.reminderStreakShownToday, 0)
+        put(DeviceSettingKeys.reminderSyncShownToday, 0)
+        put(DeviceSettingKeys.reminderDismissedFamiliesToday, "")
+        put(DeviceSettingKeys.reminderDailyOverrideUsedToday, false)
     }
 
-    private fun incrementFamilyCounter(family: String?) {
-        val key = when (family?.trim()?.uppercase()) {
-            "STREAK" -> KEY_REMINDER_STREAK_SHOWN
-            "SYNC" -> KEY_REMINDER_SYNC_SHOWN
-            else -> KEY_REMINDER_DUE_SHOWN
+    private fun reminderCounterKey(family: String?): DeviceSettingKey<Int> =
+        when (family?.trim()?.uppercase()) {
+            "STREAK" -> DeviceSettingKeys.reminderStreakShownToday
+            "SYNC" -> DeviceSettingKeys.reminderSyncShownToday
+            else -> DeviceSettingKeys.reminderDueShownToday
         }
-        putIntSetting(key, saturatingIncrement(getIntSetting(key, 0)))
-    }
 
     private fun saturatingIncrement(value: Int): Int = value.coerceIn(0, Int.MAX_VALUE - 1) + 1
 
     fun autoSyncSettings(): LocalStoreBase.AutoSyncSettings {
+        return autoSyncSettings(store.deviceSettingsStore().snapshot())
+    }
+
+    private fun autoSyncSettings(settings: DeviceSettingsReader): LocalStoreBase.AutoSyncSettings {
         return LocalStoreBase.AutoSyncSettings(
-            getIntSetting("auto_sync_configured", 0) == 1,
-            getIntSetting("auto_sync_enabled", 0) == 1,
-            getIntSetting("auto_sync_hour", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_HOUR),
-            getIntSetting("auto_sync_minute", TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_MINUTE),
-            getLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_ATTEMPT_AT, 0L),
-            getLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_SUCCESS_AT, 0L),
-            getLongSetting(LocalStoreBase.KEY_AUTO_SYNC_NEXT_RUN_AT, 0L)
+            settings.value(DeviceSettingKeys.autoSyncConfigured, false),
+            settings.value(DeviceSettingKeys.autoSyncEnabled, false),
+            settings.value(DeviceSettingKeys.autoSyncHour, TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_HOUR),
+            settings.value(DeviceSettingKeys.autoSyncMinute, TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_MINUTE),
+            settings.value(DeviceSettingKeys.autoSyncLastAttemptAt, 0L),
+            settings.value(DeviceSettingKeys.autoSyncLastSuccessAt, 0L),
+            settings.value(DeviceSettingKeys.autoSyncNextRunAt, 0L),
         ).normalized()
     }
 
     fun activateAutoSyncAfterFirstSuccess(): Boolean {
-        val current = autoSyncSettings()
-        if (current.configured) {
-            return false
+        var activated = false
+        store.deviceSettingsStore().edit {
+            val current = autoSyncSettings(this)
+            if (!current.configured) {
+                putAutoSyncSettings(
+                    LocalStoreBase.AutoSyncSettings(
+                        true,
+                        true,
+                        current.hour,
+                        current.minute,
+                        current.lastAttemptAt,
+                        current.lastSuccessAt,
+                        current.nextRunAt,
+                    ),
+                )
+                activated = true
+            }
         }
-        saveAutoSyncSettings(
-            LocalStoreBase.AutoSyncSettings(
-                true,
-                true,
-                current.hour,
-                current.minute,
-                current.lastAttemptAt,
-                current.lastSuccessAt,
-                current.nextRunAt
-            )
-        )
-        return true
+        return activated
     }
 
     fun setAutoSyncEnabled(enabled: Boolean) {
-        val current = autoSyncSettings()
-        saveAutoSyncSettings(
-            LocalStoreBase.AutoSyncSettings(
-                true,
-                enabled,
-                current.hour,
-                current.minute,
-                current.lastAttemptAt,
-                current.lastSuccessAt,
-                current.nextRunAt
+        store.deviceSettingsStore().edit {
+            val current = autoSyncSettings(this)
+            putAutoSyncSettings(
+                LocalStoreBase.AutoSyncSettings(
+                    true,
+                    enabled,
+                    current.hour,
+                    current.minute,
+                    current.lastAttemptAt,
+                    current.lastSuccessAt,
+                    current.nextRunAt,
+                ),
             )
-        )
+        }
     }
 
     fun markAutoSyncScheduled(nextRunAt: Long) {
-        putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_NEXT_RUN_AT, nextRunAt)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.autoSyncNextRunAt, nextRunAt)
+        }
     }
 
     fun recordAutoSyncAttempt(attemptedAt: Long, success: Boolean) {
-        inTransaction {
-            putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_ATTEMPT_AT, attemptedAt)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.autoSyncLastAttemptAt, attemptedAt)
             if (success) {
-                putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_SUCCESS_AT, attemptedAt)
+                put(DeviceSettingKeys.autoSyncLastSuccessAt, attemptedAt)
             }
         }
     }
 
     fun saveAutoSyncSettings(settings: LocalStoreBase.AutoSyncSettings) {
-        val normalized = settings.normalized()
-        inTransaction {
-            putIntSetting("auto_sync_configured", if (normalized.configured) 1 else 0)
-            putIntSetting("auto_sync_enabled", if (normalized.enabled) 1 else 0)
-            putIntSetting("auto_sync_hour", normalized.hour)
-            putIntSetting("auto_sync_minute", normalized.minute)
-            putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_ATTEMPT_AT, normalized.lastAttemptAt)
-            putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_LAST_SUCCESS_AT, normalized.lastSuccessAt)
-            putLongSetting(LocalStoreBase.KEY_AUTO_SYNC_NEXT_RUN_AT, normalized.nextRunAt)
+        store.deviceSettingsStore().edit {
+            putAutoSyncSettings(settings)
         }
     }
 
+    private fun DeviceSettingsEditor.putAutoSyncSettings(
+        settings: LocalStoreBase.AutoSyncSettings,
+    ) {
+        val normalized = settings.normalized()
+        put(DeviceSettingKeys.autoSyncConfigured, normalized.configured)
+        put(DeviceSettingKeys.autoSyncEnabled, normalized.enabled)
+        put(DeviceSettingKeys.autoSyncHour, normalized.hour)
+        put(DeviceSettingKeys.autoSyncMinute, normalized.minute)
+        put(DeviceSettingKeys.autoSyncLastAttemptAt, normalized.lastAttemptAt)
+        put(DeviceSettingKeys.autoSyncLastSuccessAt, normalized.lastSuccessAt)
+        put(DeviceSettingKeys.autoSyncNextRunAt, normalized.nextRunAt)
+    }
+
     fun autoUpdateStatus(): LocalStoreBase.AutoUpdateStatus {
+        val settings = store.deviceSettingsStore().snapshot()
         return LocalStoreBase.AutoUpdateStatus(
-            getIntSetting(LocalStoreBase.KEY_AUTO_UPDATE_ENABLED, 1) == 1,
-            getLongSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_CHECK_AT, 0L),
-            getStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.DEFAULT_LAST_RESULT),
-            getStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_VERSION, ""),
-            getStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_PENDING_APK, ""),
-            getStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_PENDING_MESSAGE, "")
+            settings.value(DeviceSettingKeys.autoUpdateEnabled, true),
+            settings.value(DeviceSettingKeys.autoUpdateLastCheckAt, 0L),
+            settings.value(
+                DeviceSettingKeys.autoUpdateLastResult,
+                AutoUpdateStatusPolicy.DEFAULT_LAST_RESULT,
+            ),
+            settings.value(DeviceSettingKeys.autoUpdateLastVersion, ""),
+            settings.value(DeviceSettingKeys.autoUpdatePendingPackage, ""),
+            settings.value(DeviceSettingKeys.autoUpdatePendingMessage, ""),
         )
     }
 
     fun saveAutoUpdateEnabled(enabled: Boolean) {
-        putIntSetting(LocalStoreBase.KEY_AUTO_UPDATE_ENABLED, if (enabled) 1 else 0)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.autoUpdateEnabled, enabled)
+        }
     }
 
     fun debugLogEnabled(): Boolean {
-        return getIntSetting(LocalStoreBase.KEY_DEBUG_LOG_ENABLED, 0) == 1
+        return store.deviceSettingsStore().read(DeviceSettingKeys.debugLogEnabled) ?: false
     }
 
     fun saveDebugLogEnabled(enabled: Boolean) {
-        putIntSetting(LocalStoreBase.KEY_DEBUG_LOG_ENABLED, if (enabled) 1 else 0)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.debugLogEnabled, enabled)
+        }
     }
 
     fun recordAutoUpdateResult(
@@ -385,53 +455,54 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         pendingApkName: String?,
         pendingMessage: String?,
     ) {
-        inTransaction {
-            putLongSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_CHECK_AT, checkedAt)
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result))
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_VERSION, AutoUpdateStatusPolicy.text(version))
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_PENDING_APK, AutoUpdateStatusPolicy.text(pendingApkName))
-            putStringSetting(
-                LocalStoreBase.KEY_AUTO_UPDATE_PENDING_MESSAGE,
-                AutoUpdateStatusPolicy.text(pendingMessage)
-            )
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.autoUpdateLastCheckAt, checkedAt)
+            put(DeviceSettingKeys.autoUpdateLastResult, AutoUpdateStatusPolicy.text(result))
+            put(DeviceSettingKeys.autoUpdateLastVersion, AutoUpdateStatusPolicy.text(version))
+            put(DeviceSettingKeys.autoUpdatePendingPackage, AutoUpdateStatusPolicy.text(pendingApkName))
+            put(DeviceSettingKeys.autoUpdatePendingMessage, AutoUpdateStatusPolicy.text(pendingMessage))
         }
     }
 
     fun recordUpdateCheckFailed(atMillis: Long) {
-        putLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, atMillis)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.updateCheckFailedAt, atMillis)
+        }
     }
 
     fun clearUpdateCheckFailed() {
-        putLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, 0L)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.updateCheckFailedAt, 0L)
+        }
     }
 
     fun updateCheckFailedAt(): Long {
-        return getLongSetting(LocalStoreBase.KEY_UPDATE_CHECK_FAILED_AT, 0L)
+        return store.deviceSettingsStore().read(DeviceSettingKeys.updateCheckFailedAt) ?: 0L
     }
 
     fun installPermissionPromptShown(): Boolean {
-        return getIntSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_SHOWN, 0) == 1
+        return store.deviceSettingsStore().read(DeviceSettingKeys.updatePermissionPromptShown) ?: false
     }
 
     fun installPermissionPromptLastVersion(): String {
-        return getStringSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION, "")
+        return store.deviceSettingsStore().read(DeviceSettingKeys.updatePermissionPromptLastVersion) ?: ""
     }
 
     fun recordInstallPermissionPrompted(version: String?) {
-        inTransaction {
-            putIntSetting(LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_SHOWN, 1)
-            putStringSetting(
-                LocalStoreBase.KEY_UPDATE_PERMISSION_PROMPT_LAST_VERSION,
-                AutoUpdateStatusPolicy.text(version)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.updatePermissionPromptShown, true)
+            put(
+                DeviceSettingKeys.updatePermissionPromptLastVersion,
+                AutoUpdateStatusPolicy.text(version),
             )
         }
     }
 
     fun clearPendingAutoUpdate(result: String?) {
-        inTransaction {
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_LAST_RESULT, AutoUpdateStatusPolicy.text(result))
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_PENDING_APK, "")
-            putStringSetting(LocalStoreBase.KEY_AUTO_UPDATE_PENDING_MESSAGE, "")
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.autoUpdateLastResult, AutoUpdateStatusPolicy.text(result))
+            put(DeviceSettingKeys.autoUpdatePendingPackage, "")
+            put(DeviceSettingKeys.autoUpdatePendingMessage, "")
         }
     }
 
@@ -579,25 +650,17 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         }
     }
 
+    private fun <T : Any> DeviceSettingsReader.value(
+        key: DeviceSettingKey<T>,
+        fallback: T,
+    ): T = read(key) ?: fallback
+
     private companion object {
         const val TAG = "LocalStoreStudySettings"
         const val KEY_STUDY_LADDER_ORDER = "study_ladder_order"
         const val KEY_STUDY_LADDER_ENABLED = "study_ladder_enabled"
         const val KEY_ADAPTIVE_REPAIR_ORDER = "adaptive_repair_order"
         const val KEY_ADAPTIVE_REPAIR_ENABLED = "adaptive_repair_enabled"
-        const val KEY_REVIEW_REMINDER_DAY_START = "review_reminder_day_start"
-        const val KEY_REVIEW_REMINDER_COUNT = "review_reminder_count"
-        const val KEY_REMINDER_LAST_POSTED_AT = "reminder_last_posted_at"
-        const val KEY_REMINDER_LAST_POSTED_SIGNATURE = "reminder_last_posted_signature"
-        const val KEY_REMINDER_STATE_DAY_START = "reminder_state_day_start"
-        const val KEY_REMINDER_DUE_SHOWN = "reminder_due_shown_today"
-        const val KEY_REMINDER_STREAK_SHOWN = "reminder_streak_shown_today"
-        const val KEY_REMINDER_SYNC_SHOWN = "reminder_sync_shown_today"
-        const val KEY_REMINDER_DISMISSED_FAMILIES = "reminder_dismissed_families_today"
-        const val KEY_REMINDER_DAILY_OVERRIDE_USED = "reminder_daily_override_used_today"
-        const val KEY_REMINDER_QUIET_START_MINUTE = "reminder_quiet_start_minute"
-        const val KEY_REMINDER_QUIET_END_MINUTE = "reminder_quiet_end_minute"
-        const val KEY_REMINDER_MAX_PER_DAY = "reminder_max_per_day"
         val STATS_SETTING_KEYS = setOf(
             SyncSettings.MATURE_SUPPORT_THRESHOLD_SETTING_KEY,
             SyncSettings.LADDER_PROMOTION_INTERVAL_DAYS_SETTING_KEY,
