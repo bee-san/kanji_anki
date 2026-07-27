@@ -148,6 +148,33 @@ class StudyFlowComposeTest {
     }
 
     @Test
+    fun caughtUpScreenOffersMoreNewCardsWithoutContinueAll() {
+        var studyMore = false
+        composeRule.setContent {
+            StudyDoneScreen(
+                model = StudyDoneScreenModel(
+                    modeLabel = "Practice",
+                    title = StudyTextCopy.nothingDueTitle(),
+                    headline = StudyTextCopy.allCaughtUpHeadline(),
+                    body = StudyTextCopy.allCaughtUpBody(),
+                    summaryLines = emptyList(),
+                    showDoneActions = false,
+                    availableStudyMoreNewCards = 5,
+                    showBackHome = true,
+                    backHomePrimary = false,
+                    onStudyMore = Runnable { studyMore = true },
+                    onContinueAll = Runnable {},
+                    onBackHome = Runnable {},
+                ),
+            )
+        }
+
+        composeRule.onNodeWithText(StudyTextCopy.studyMoreNewCardsLabel()).performClick()
+        composeRule.onNodeWithText(StudyTextCopy.continueAllKanjiLabel()).assertDoesNotExist()
+        assertTrue(studyMore)
+    }
+
+    @Test
     fun doneScreenBackHomeCallbackWorks() {
         var backHome = false
         composeRule.setContent {

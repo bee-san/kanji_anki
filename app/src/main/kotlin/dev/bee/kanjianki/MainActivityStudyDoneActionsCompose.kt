@@ -167,8 +167,15 @@ private fun StudyDoneNavigation(model: StudyDoneScreenModel) {
         )
         return
     }
+    if (model.availableStudyMoreNewCards > 0) {
+        StudyPrimaryButton(
+            label = StudyTextCopy.studyMoreNewCardsLabel(),
+            traceLabel = "Study more new cards",
+            onClick = { model.onStudyMore.run() },
+        )
+    }
     if (!model.showBackHome) return
-    if (model.backHomePrimary) {
+    if (model.backHomePrimary && model.availableStudyMoreNewCards == 0) {
         StudyPrimaryButton(
             label = StudyTextCopy.backHomeLabel(),
             traceLabel = "Back home",
