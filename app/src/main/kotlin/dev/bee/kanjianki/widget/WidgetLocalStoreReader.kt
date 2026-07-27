@@ -1,9 +1,8 @@
 package dev.bee.kanjianki.widget
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.core.KaniThemeChoice
@@ -26,7 +25,9 @@ internal object WidgetLocalStoreReader {
             return WidgetStoreRead.Corrupt
         }
         return try {
-            AppLocalStoreFactory.create(appContext).use { store -> WidgetStoreRead.Ready(block(store)) }
+            appContext.requireKaniContainer().openLocalStore().use { store ->
+                WidgetStoreRead.Ready(block(store))
+            }
         } catch (_: Exception) {
             WidgetStoreRead.Corrupt
         }

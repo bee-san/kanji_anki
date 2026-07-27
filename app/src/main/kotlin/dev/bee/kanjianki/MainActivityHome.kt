@@ -72,18 +72,11 @@ internal abstract class MainActivityHome : MainActivityBase() {
     private val statsPrecomputeScheduler by lazy {
         StatsPrecomputeScheduler(
             background = maintenance,
-            // The maintenance executor can still be unwinding when Activity teardown closes
-            // the route store. Give stats work its own helper so an interrupted refresh never
-            // races that close and crashes the process with an already-closed database.
-            isFresh = {
-                AppLocalStoreFactory.create(applicationContext).use { statsStore ->
-                    StatsCacheStore(statsStore).hasFreshSnapshot()
-                }
-            },
+            // The process store outlives every Activity, so maintenance can safely
+            // share its caches across recreation.
+            isFresh = { StatsCacheStore(store).hasFreshSnapshot() },
             refresh = { generatedAt ->
-                AppLocalStoreFactory.create(applicationContext).use { statsStore ->
-                    StatsPrecomputeStore(statsStore).refresh(generatedAtMillis = generatedAt)
-                }
+                StatsPrecomputeStore(store).refresh(generatedAtMillis = generatedAt)
             },
             onError = ::reportStatsPrecomputeError,
         )

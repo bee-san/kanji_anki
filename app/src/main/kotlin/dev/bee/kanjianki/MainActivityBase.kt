@@ -41,7 +41,6 @@ import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.KaniThemeChoice
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
@@ -73,8 +72,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         main.post(action)
     }
 
-    @JvmField
-    val io: ExecutorService = Executors.newSingleThreadExecutor()
+    lateinit var io: ExecutorService
 
     /**
      * Second single-threaded executor for background maintenance that must NOT block user-facing
@@ -84,17 +82,15 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
      * queued behind seconds of startup maintenance on the shared executor. SQLite stays consistent
      * across both threads via WAL plus the per-helper write lock.
      */
-    @JvmField
-    val maintenance: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "kani-maintenance").apply { isDaemon = true }
-    }
+    lateinit var maintenance: ExecutorService
 
     /**
      * Coroutine view over [io]/[maintenance]. New async code should prefer
      * `lifecycleScope.launch { withContext(dispatchers.io) { ... } }` over
      * `io.execute { main.post { } }`; both run on the same threads.
      */
-    val dispatchers: KaniDispatchers by lazy { KaniDispatchers(io, maintenance) }
+    lateinit var dispatchers: KaniDispatchers
+        private set
 
     val studyPrefetchCache = StudyPrefetchCache()
 
@@ -117,6 +113,25 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
+
+    internal fun attachProcessDependencies(container: AndroidKaniContainer) {
+        if (!::io.isInitialized) io = container.userIoExecutor
+        if (!::maintenance.isInitialized) maintenance = container.maintenanceExecutor
+        if (!::dispatchers.isInitialized) {
+            dispatchers = if (
+                io === container.userIoExecutor &&
+                maintenance === container.maintenanceExecutor
+            ) {
+                container.dispatchers
+            } else {
+                KaniDispatchers(io, maintenance)
+            }
+        }
+        if (!::store.isInitialized) store = container.localStore
+        if (!::gateway.isInitialized) {
+            gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: container.ankiDroidGateway
+        }
+    }
 
     @JvmField
     var contentScrollY = 0

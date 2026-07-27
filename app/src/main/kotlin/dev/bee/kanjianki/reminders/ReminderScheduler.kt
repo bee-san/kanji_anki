@@ -1,7 +1,5 @@
 package dev.bee.kanjianki.reminders
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.Notification
@@ -14,6 +12,7 @@ import android.os.Build
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
@@ -58,15 +57,14 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             schedule(context, store.reminderSettings())
         }
     }
 
     /**
-     * Activity-owned-store variant used by foreground re-arms. Reusing the same [LocalStore]
-     * preserves its dashboard/study caches after a route load and avoids opening a second helper
-     * that repeats the full dashboard read.
+     * Process-store variant used by foreground re-arms. Reusing the same [LocalStore]
+     * preserves its dashboard/study caches after a route load and across recreation.
      */
     @JvmStatic
     internal fun schedule(context: Context, store: LocalStore) {
@@ -106,7 +104,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             schedule(settings, store, services, nowMillis)
         }
     }
@@ -130,7 +128,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             scheduleSnooze(
                 store.reminderSettings(),
                 store.reminderAntiSpamSettings(),
@@ -332,7 +330,7 @@ object ReminderScheduler {
             return
         }
         val reservation = snoozeReservation(snoozeRepost, snoozedFamily) ?: return
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
             val plan = evaluate(store, now, reservation.family) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.

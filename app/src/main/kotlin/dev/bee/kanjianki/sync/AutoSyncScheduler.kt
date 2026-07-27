@@ -1,12 +1,11 @@
 package dev.bee.kanjianki.sync
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
 import android.content.Context
 import android.util.Log
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.AutoSyncSchedulePolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -19,7 +18,7 @@ internal object AutoSyncScheduler {
 
     @JvmStatic
     fun schedule(context: Context) {
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             schedule(context, store, store.autoSyncSettings())
         }
     }
@@ -143,7 +142,7 @@ internal object AutoSyncScheduler {
             warn("Failed to cancel automatic sync jobs.", error)
         }
         cancelRetry(context)
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             store.markAutoSyncScheduled(0L)
         }
     }

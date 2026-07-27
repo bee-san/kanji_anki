@@ -4,13 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import dev.bee.kanjianki.requireKaniContainer
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class KaniWidgetRefreshReceiver : BroadcastReceiver() {
-    internal var coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    internal var coroutineScope: CoroutineScope? = null
     internal var refreshInstalled: suspend (Context) -> Unit = { context ->
         KaniWidgetRegistry.DEFAULT.refreshInstalled(context)
     }
@@ -40,7 +40,10 @@ class KaniWidgetRefreshReceiver : BroadcastReceiver() {
     }
 
     internal fun launchRefresh(context: Context, onFinished: () -> Unit) {
-        val refresh = coroutineScope.launch {
+        val scope = coroutineScope ?: CoroutineScope(
+            SupervisorJob() + context.requireKaniContainer().dispatchers.maintenance,
+        )
+        val refresh = scope.launch {
             try {
                 refreshInstalled(context)
             } catch (error: Exception) {

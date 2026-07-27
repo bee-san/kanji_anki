@@ -86,8 +86,8 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
 
     /**
      * Request a fresh reminder decision without competing with the route the user is waiting for.
-     * Calls are coalesced on [MainActivityBase.maintenance] and use the activity-owned store so a
-     * Home load's warm dashboard cache can be reused.
+     * Calls are coalesced on [MainActivityBase.maintenance] and use the process store so a Home
+     * load's warm dashboard cache can be reused across Activity recreation.
      */
     internal fun requestReminderRearm(reason: String) {
         if (storeOrNull() == null || !MainActivityStartup.backgroundStartupTasksAllowed(activity.intent)) {
@@ -177,14 +177,9 @@ internal class MainActivityLifecycle(private val activity: MainActivityBase) {
     }
 
     fun onDestroy() {
-        activity.io.shutdownNow()
-        activity.maintenance.shutdownNow()
         val recognizer = activity.writingRecognizer
         if (recognizer != null && recognizer !== MainActivityRuntimeOverrides.writingRecognizer) {
             recognizer.close()
-        }
-        if (storeOrNull() != null) {
-            activity.store.close()
         }
     }
 

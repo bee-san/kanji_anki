@@ -118,7 +118,7 @@ private fun persistBrowseSelection(
     context: Context,
     mutation: BrowseSelectionMutation,
 ) {
-    AppLocalStoreFactory.create(context).use { store ->
+    context.requireKaniContainer().openLocalStore().use { store ->
         when (mutation) {
             is BrowseSelectionMutation.Single -> store.setKanjiLocallySuspended(
                 mutation.kanji,

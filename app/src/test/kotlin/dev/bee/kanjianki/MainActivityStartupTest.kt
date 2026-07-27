@@ -79,7 +79,7 @@ class MainActivityStartupTest {
             assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
         } finally {
             controller.destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -98,7 +98,7 @@ class MainActivityStartupTest {
             assertEquals(1, activity.renderHomeCalls)
         } finally {
             controller.destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -119,7 +119,7 @@ class MainActivityStartupTest {
             assertFalse(activity.intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -140,7 +140,7 @@ class MainActivityStartupTest {
             assertEquals(40, saved.minute)
         } finally {
             controller.destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -159,7 +159,7 @@ class MainActivityStartupTest {
             assertEquals(MainActivityBase.NAV_STATS_ROUTE, activity.currentRoute)
         } finally {
             controller.destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -176,7 +176,7 @@ class MainActivityStartupTest {
             assertFalse(activity.activeBrowseShowSuspended)
         } finally {
             controller.destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -230,7 +230,7 @@ class MainActivityStartupTest {
             assertEquals(2, maintenanceTasks.pendingCount())
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(controller.get())
+            assertProcessExecutorsRemainAvailable(controller.get())
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
     }
@@ -253,7 +253,7 @@ class MainActivityStartupTest {
             assertNull(shadowOf(activity).lastRequestedPermission)
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -290,7 +290,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(controller.get())
+            assertProcessExecutorsRemainAvailable(controller.get())
         }
     }
 
@@ -317,7 +317,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -344,7 +344,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -376,7 +376,7 @@ class MainActivityStartupTest {
                 latestSuccessfulSyncAtMillis = 0L,
             )
             first.pause().saveInstanceState(state).stop().destroy()
-            awaitExecutorShutdown(firstActivity)
+            assertProcessExecutorsRemainAvailable(firstActivity)
 
             second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -389,7 +389,7 @@ class MainActivityStartupTest {
             second?.let { controller ->
                 val activity = controller.get()
                 controller.pause().stop().destroy()
-                awaitExecutorShutdown(activity)
+                assertProcessExecutorsRemainAvailable(activity)
             }
         }
     }
@@ -422,7 +422,7 @@ class MainActivityStartupTest {
             first.pause().saveInstanceState(state)
             firstActivity.disableStudyOrdinaryResume()
             first.stop().destroy()
-            awaitExecutorShutdown(firstActivity)
+            assertProcessExecutorsRemainAvailable(firstActivity)
 
             second = Robolectric.buildActivity(PendingAnswerStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -436,7 +436,7 @@ class MainActivityStartupTest {
             second?.let { controller ->
                 val activity = controller.get()
                 controller.pause().stop().destroy()
-                awaitExecutorShutdown(activity)
+                assertProcessExecutorsRemainAvailable(activity)
             }
         }
     }
@@ -453,7 +453,7 @@ class MainActivityStartupTest {
             val firstActivity = first.create().start().resume().get()
             firstActivity.currentRoute = MainActivityBase.NAV_STATS_ROUTE
             first.pause().saveInstanceState(state).stop().destroy()
-            awaitExecutorShutdown(firstActivity)
+            assertProcessExecutorsRemainAvailable(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -465,7 +465,7 @@ class MainActivityStartupTest {
             second?.let { controller ->
                 val activity = controller.get()
                 controller.pause().stop().destroy()
-                awaitExecutorShutdown(activity)
+                assertProcessExecutorsRemainAvailable(activity)
             }
         }
     }
@@ -484,7 +484,7 @@ class MainActivityStartupTest {
             firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
             firstActivity.currentHomeRouteRestoration = route
             first.pause().saveInstanceState(state).stop().destroy()
-            awaitExecutorShutdown(firstActivity)
+            assertProcessExecutorsRemainAvailable(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -496,7 +496,7 @@ class MainActivityStartupTest {
             second?.let { controller ->
                 val activity = controller.get()
                 controller.pause().stop().destroy()
-                awaitExecutorShutdown(activity)
+                assertProcessExecutorsRemainAvailable(activity)
             }
         }
     }
@@ -522,7 +522,7 @@ class MainActivityStartupTest {
             firstActivity.currentRoute = MainActivityBase.NAV_HOME_ROUTE
             firstActivity.currentHomeRouteRestoration = route
             first.pause().saveInstanceState(state).stop().destroy()
-            awaitExecutorShutdown(firstActivity)
+            assertProcessExecutorsRemainAvailable(firstActivity)
 
             second = Robolectric.buildActivity(RouteRestorationStartupActivity::class.java, intent)
             val recreated = second.create(state).start().resume().get()
@@ -535,7 +535,7 @@ class MainActivityStartupTest {
             second?.let { controller ->
                 val activity = controller.get()
                 controller.pause().stop().destroy()
-                awaitExecutorShutdown(activity)
+                assertProcessExecutorsRemainAvailable(activity)
             }
         }
     }
@@ -581,7 +581,7 @@ class MainActivityStartupTest {
         } finally {
             preferences.edit().clear().commit()
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(controller.get())
+            assertProcessExecutorsRemainAvailable(controller.get())
         }
     }
 
@@ -645,7 +645,7 @@ class MainActivityStartupTest {
             assertEquals(KaniThemeChoice.DARK, activity.store.appThemeChoice())
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(controller.get())
+            assertProcessExecutorsRemainAvailable(controller.get())
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
     }
@@ -666,7 +666,7 @@ class MainActivityStartupTest {
             assertEquals("ja", Locale.getDefault().language)
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(controller.get())
+            assertProcessExecutorsRemainAvailable(controller.get())
             Locale.setDefault(previousLocale)
             MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         }
@@ -689,7 +689,7 @@ class MainActivityStartupTest {
             assertEquals(1080, activity.screenshotScrollY())
         } finally {
             controller.pause().stop().destroy()
-            awaitExecutorShutdown(activity)
+            assertProcessExecutorsRemainAvailable(activity)
         }
     }
 
@@ -792,9 +792,9 @@ class MainActivityStartupTest {
         field.set(activity, value)
     }
 
-    private fun awaitExecutorShutdown(activity: MainActivityBase) {
-        assertTrue(activity.io.awaitTermination(5, TimeUnit.SECONDS))
-        assertTrue(activity.maintenance.awaitTermination(5, TimeUnit.SECONDS))
+    private fun assertProcessExecutorsRemainAvailable(activity: MainActivityBase) {
+        assertFalse(activity.io.isShutdown)
+        assertFalse(activity.maintenance.isShutdown)
     }
 
     private fun assertLazyDelegates(owner: Class<*>, vararg propertyNames: String) {

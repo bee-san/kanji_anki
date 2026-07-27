@@ -1,7 +1,5 @@
 package dev.bee.kanjianki.update
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import android.util.Log
 import androidx.work.Constraints
@@ -9,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy
 import java.util.concurrent.TimeUnit
@@ -19,9 +18,16 @@ object AutoUpdateScheduler {
     @JvmStatic
     fun schedule(context: Context) {
         val appContext = context.applicationContext
-        AppLocalStoreFactory.create(appContext).use { store ->
-            schedule(store.autoUpdateStatus().enabled, WorkManagerSchedulerBackend(appContext))
+        appContext.requireKaniContainer().openLocalStore().use { store ->
+            schedule(appContext, store)
         }
+    }
+
+    internal fun schedule(context: Context, store: LocalStore) {
+        schedule(
+            store.autoUpdateStatus().enabled,
+            WorkManagerSchedulerBackend(context.applicationContext),
+        )
     }
 
     internal fun schedule(enabled: Boolean, backend: SchedulerBackend) {

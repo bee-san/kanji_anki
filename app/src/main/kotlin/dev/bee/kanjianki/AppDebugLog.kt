@@ -164,7 +164,7 @@ internal object AppDebugLog {
             return AndroidDeviceSettingsStore(context)
                 .read(DeviceSettingKeys.debugLogEnabled) ?: false
         }
-        return AppLocalStoreFactory.create(context).use { it.debugLogEnabled() }
+        return context.requireKaniContainer().openLocalStore().use { it.debugLogEnabled() }
     }
 
     /** Captures wall + uptime clocks on the caller thread; formatting happens on the writer. */

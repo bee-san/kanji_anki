@@ -23,6 +23,14 @@ object ReceiverAsyncWork {
     @JvmStatic
     @JvmOverloads
     fun run(receiver: BroadcastReceiver, executor: Executor = this.executor, work: () -> Unit) {
+        run(receiver, { executor }, work)
+    }
+
+    fun run(
+        receiver: BroadcastReceiver,
+        executorProvider: () -> Executor,
+        work: () -> Unit,
+    ) {
         // goAsync() only returns a PendingResult while a real broadcast is being
         // dispatched. When it is null (e.g. onReceive invoked directly in a test), run
         // synchronously so behavior and assertions stay deterministic.
@@ -33,6 +41,13 @@ object ReceiverAsyncWork {
         }
         if (pending == null) {
             work()
+            return
+        }
+        val executor = try {
+            executorProvider()
+        } catch (error: RuntimeException) {
+            logError("Could not resolve async receiver work.", error)
+            pending.finish()
             return
         }
         dispatch(executor, work) { pending.finish() }

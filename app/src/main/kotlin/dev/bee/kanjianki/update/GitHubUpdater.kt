@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.update
 
-import dev.bee.kanjianki.AppLocalStoreFactory
+import dev.bee.kanjianki.requireKaniContainer
 
 import android.app.PendingIntent
 import android.content.Context
@@ -14,7 +14,6 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.net.toUri
 import dev.bee.kanjianki.BuildConfig
-import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.ReleaseVersion
@@ -162,7 +161,9 @@ class GitHubUpdater @JvmOverloads constructor(
 
     fun installCachedPendingUpdate(source: UpdateSource): UpdateResult {
         val checkedAt = System.currentTimeMillis()
-        val status = AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus() }
+        val status = context.requireKaniContainer().openLocalStore().use { store ->
+            store.autoUpdateStatus()
+        }
         return try {
             if (!status.hasPendingUpdate()) {
                 return recordResult(
@@ -271,7 +272,7 @@ class GitHubUpdater @JvmOverloads constructor(
         pendingMessage: String,
         source: UpdateSource = UpdateSource.MANUAL,
     ): UpdateResult {
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage)
             // Automatic checks are background maintenance. They may still return
             // retryable=true so WorkManager can retry, but must not turn a
@@ -291,7 +292,9 @@ class GitHubUpdater @JvmOverloads constructor(
     }
 
     private fun currentPendingApkName(): String {
-        return AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus().pendingApkName }
+        return context.requireKaniContainer().openLocalStore().use { store ->
+            store.autoUpdateStatus().pendingApkName
+        }
     }
 
     private fun cleanupStaleCachedApks(pendingApkName: String): Int {

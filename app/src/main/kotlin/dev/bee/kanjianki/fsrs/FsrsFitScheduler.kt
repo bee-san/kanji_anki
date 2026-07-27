@@ -1,7 +1,5 @@
 package dev.bee.kanjianki.fsrs
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -10,6 +8,7 @@ import androidx.work.OneTimeWorkRequest
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import java.util.concurrent.TimeUnit
 
@@ -21,9 +20,16 @@ object FsrsFitScheduler {
     @JvmStatic
     fun schedule(context: Context) {
         val appContext = context.applicationContext
-        AppLocalStoreFactory.create(appContext).use { store ->
-            schedule(store.fsrsPersonalizationEnabled(), WorkManagerBackend(appContext))
+        appContext.requireKaniContainer().openLocalStore().use { store ->
+            schedule(appContext, store)
         }
+    }
+
+    internal fun schedule(context: Context, store: LocalStore) {
+        schedule(
+            store.fsrsPersonalizationEnabled(),
+            WorkManagerBackend(context.applicationContext),
+        )
     }
 
     internal fun schedule(enabled: Boolean, backend: SchedulerBackend) {

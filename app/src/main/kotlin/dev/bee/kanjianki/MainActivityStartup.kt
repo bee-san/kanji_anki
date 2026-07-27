@@ -5,7 +5,6 @@ import android.content.Intent
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.data.LocalStore
@@ -21,8 +20,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     fun start() {
         val launchIntent = activity.intent
 
-        activity.store = AppLocalStoreFactory.create(activity)
-        activity.gateway = MainActivityRuntimeOverrides.ankiDroidGateway ?: AnkiDroidGateway(activity)
+        activity.attachProcessDependencies(activity.requireKaniContainer())
 
         val runBackgroundTasks = shouldRunBackgroundStartupTasks(launchIntent)
         // Counted down once the first DB open + any one-time migration has run on io. The
@@ -61,16 +59,22 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             // init and scheduler setup that used to sit in the io queue directly behind the first
             // route load, stalling every screen the user tapped during cold boot. Reminder
             // evaluation is intentionally absent: the lifecycle coordinator runs it only after
-            // the accepted launch route settles, reusing the activity store's warmed caches.
+            // the accepted launch route settles, reusing the process store's warmed caches.
             // Each remaining scheduler is traced separately so the debug log shows which is slow.
             activity.maintenance.execute {
-                // Ensure the io theme-warm has opened/migrated the DB before these scheduler-owned
-                // LocalStore instances open theirs, avoiding a concurrent-migration write-lock race.
+                // Ensure the io theme-warm has opened/migrated the process store before scheduler
+                // setup reads it or WorkManager can start operation-scoped helpers.
                 runCatching { migrationReady.await(MIGRATION_WAIT_SECONDS, TimeUnit.SECONDS) }
-                withUiTrace("kani.startup.auto-sync-scheduler") { AutoSyncScheduler.schedule(activity) }
-                withUiTrace("kani.startup.auto-update-scheduler") { AutoUpdateScheduler.schedule(activity) }
+                withUiTrace("kani.startup.auto-sync-scheduler") {
+                    AutoSyncScheduler.schedule(activity, activity.store, activity.store.autoSyncSettings())
+                }
+                withUiTrace("kani.startup.auto-update-scheduler") {
+                    AutoUpdateScheduler.schedule(activity, activity.store)
+                }
                 withUiTrace("kani.startup.backup-scheduler") { DatabaseBackupScheduler.schedule(activity) }
-                withUiTrace("kani.startup.fsrs-fit-scheduler") { FsrsFitScheduler.schedule(activity) }
+                withUiTrace("kani.startup.fsrs-fit-scheduler") {
+                    FsrsFitScheduler.schedule(activity, activity.store)
+                }
             }
         }
     }

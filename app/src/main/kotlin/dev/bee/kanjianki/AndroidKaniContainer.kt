@@ -10,9 +10,14 @@ import dev.bee.kanjianki.data.SqliteSettingsRepository
 import dev.bee.kanjianki.data.SqliteStatsRepository
 import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
+import dev.bee.kanjianki.sync.SyncCancellation
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+
+internal fun interface AndroidContainerProvider {
+    fun get(): AndroidKaniContainer
+}
 
 /** Android process graph. Activities and background components borrow these resources. */
 internal class AndroidKaniContainer(
@@ -39,10 +44,21 @@ internal class AndroidKaniContainer(
         }
     val dispatchers = KaniDispatchers(userIoExecutor, maintenanceExecutor)
 
+    fun openLocalStore(): LocalStore = AppLocalStoreFactory.create(appContext)
+
+    fun newAnkiDroidGateway(cancellation: SyncCancellation): AnkiDroidGateway =
+        AnkiDroidGateway(appContext, cancellation)
+
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         userIoExecutor.shutdownNow()
         maintenanceExecutor.shutdownNow()
         localStore.close()
     }
+}
+
+internal fun Context.requireKaniContainer(): AndroidKaniContainer {
+    val application = applicationContext as? KaniApplication
+        ?: error("Kani process dependencies require KaniApplication")
+    return application.container
 }

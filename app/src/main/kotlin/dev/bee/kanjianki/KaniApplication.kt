@@ -7,6 +7,7 @@ import dev.bee.kanjianki.widget.KaniWidgetEventHooks
 
 class KaniApplication : Application(), Configuration.Provider {
     private var ownedContainer: AndroidKaniContainer? = null
+    private val workerFactory = KaniWorkerFactory(AndroidContainerProvider { container })
 
     internal val container: AndroidKaniContainer
         get() = checkNotNull(ownedContainer) {
@@ -16,6 +17,7 @@ class KaniApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setJobSchedulerJobIdRange(10_000, 11_000)
+            .setWorkerFactory(workerFactory)
             .build()
 
     override fun onCreate() {

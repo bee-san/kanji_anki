@@ -104,9 +104,8 @@ internal class AsyncHomeRouteLoader(
             if (taskStarted.get()) {
                 throw error
             }
-            // Activity teardown shuts down the route executor. Treat a rejected request like any
-            // other recoverable load failure so its loading guard is canceled and route observers
-            // do not remain permanently armed.
+            // Process shutdown can reject a request. Treat it like any other recoverable load
+            // failure so its loading guard is canceled and route observers do not remain armed.
             finished.set(true)
             loadingHandle?.cancel()
             postResult(token, traceLabel, Result.failure(error), render, renderError)
