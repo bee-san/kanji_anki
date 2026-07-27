@@ -76,9 +76,15 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val studyRecoveryStore by lazy {
         StudySessionRecoveryStore(getSharedPreferences(STUDY_RECOVERY_PREFERENCES, Context.MODE_PRIVATE))
     }
-    private var activeStudyRecovery: StoredActiveStudyRecovery? = null
-    private var studyRecoveryRouteActive = false
-    internal var recoveredStudyRunNeedsTargetReconciliation = false
+    private var activeStudyRecovery: StoredActiveStudyRecovery?
+        get() = studySessionViewModel.activeRecovery()
+        set(value) = studySessionViewModel.setActiveRecovery(value)
+    private var studyRecoveryRouteActive: Boolean
+        get() = studySessionViewModel.recoveryRouteActive()
+        set(value) = studySessionViewModel.setRecoveryRouteActive(value)
+    internal var recoveredStudyRunNeedsTargetReconciliation: Boolean
+        get() = studySessionViewModel.targetReconciliationPending()
+        set(value) = studySessionViewModel.setTargetReconciliationPending(value)
 
     fun learningPanelModel(
         session: RecordsSchedulerModels.StudySession,

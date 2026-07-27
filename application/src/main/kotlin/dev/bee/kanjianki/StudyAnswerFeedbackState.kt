@@ -1,9 +1,5 @@
 package dev.bee.kanjianki
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-
 enum class StudyAnswerOutcome {
     CORRECT,
     INCORRECT,
@@ -44,12 +40,12 @@ class StudyAnswerFeedbackState private constructor(
         "",
     )
 
-    private var phase by mutableStateOf(initialPhase)
+    private var phase = initialPhase
 
-    var outcome by mutableStateOf(initialOutcome)
+    var outcome = initialOutcome
         private set
 
-    var selectedAnswer by mutableStateOf(initialSelectedAnswer)
+    var selectedAnswer = initialSelectedAnswer
         private set
 
     val feedbackVisible: Boolean

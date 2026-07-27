@@ -31,30 +31,10 @@ import dev.bee.kanjianki.data.SimilarChoiceCommit
 import dev.bee.kanjianki.data.SkipLegacyRepairCommand
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.runBlocking
 
 private const val REPAIR_OUTCOME_SKIP = "skip"
 private const val REVIEW_LOG_TAG = "KaniReview"
-
-/**
- * Activity-lifetime guard for review session tokens. Persistence remains the source of truth, but
- * guarding before [MainActivityBase.io] is touched prevents rapid buttons/swipes from queuing the
- * duplicate database work, toast, and route load in the first place.
- *
- * A successfully handled token deliberately remains claimed for the rest of the activity. A task
- * that is dropped before it writes, fails while processing, or cannot be enqueued releases the
- * claim so the still-visible card can be submitted again.
- */
-internal class ReviewSubmissionGate {
-    private val claimedTokens = ConcurrentHashMap.newKeySet<String>()
-
-    fun tryClaim(token: String): Boolean = claimedTokens.add(token)
-
-    fun release(token: String) {
-        claimedTokens.remove(token)
-    }
-}
 
 internal class MainActivityStudyReviewFlow(private val activity: MainActivityStudy) {
     private enum class ReviewWriteDisposition {
@@ -67,8 +47,6 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         val tokenId: String,
         val submittedAtNanos: Long,
     )
-
-    private val submissionGate = ReviewSubmissionGate()
 
     /** Refreshes installed widgets only after a review-side mutation is durably persisted. */
     @JvmField
@@ -85,7 +63,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
      * a replacement route load.
      *
      * Ordering: the io executor is single-threaded, so queued writes run in tap order.
-     * Session-token idempotency is enforced before this helper by [submissionGate].
+     * Session-token idempotency is enforced before this helper by the retained state machine.
      */
     private fun runReviewWrite(work: () -> Unit) {
         activity.io.execute {
@@ -106,7 +84,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
     ): Boolean {
         val token = session.token
         val tokenId = reviewTokenId(token)
-        if (!submissionGate.tryClaim(token)) {
+        if (!activity.studySessionViewModel.tryClaimReviewToken(token)) {
             logReviewEvent("review event=duplicate-suppressed source=$source token_id=$tokenId phase=enqueue")
             return false
         }
@@ -159,7 +137,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             logReviewEvent("review event=queued source=$source token_id=$tokenId")
             true
         } catch (error: RuntimeException) {
-            submissionGate.release(token)
+            activity.studySessionViewModel.releaseReviewToken(token)
             logReviewError(source, tokenId, "enqueue", error)
             false
         }
@@ -171,7 +149,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         tokenId: String,
         reason: String,
     ) {
-        submissionGate.release(token)
+        activity.studySessionViewModel.releaseReviewToken(token)
         StudyCardFrameDiagnostics.onReviewFailed(token, reason)
         logReviewEvent(
             "review event=ui-reset-requested source=$source token_id=$tokenId reason=$reason",
@@ -670,7 +648,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             // item, including that token. Make the restored card genuinely
             // answerable again instead of letting the activity-lifetime gate treat
             // its next rating as a late duplicate.
-            submissionGate.release(pending.snapshot.token)
+            activity.studySessionViewModel.releaseReviewToken(pending.snapshot.token)
             logReviewEvent(
                 "review event=token-released token_id=${reviewTokenId(pending.snapshot.token)} reason=undo",
             )
@@ -694,6 +672,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         similarChoice: SimilarChoiceCommit?,
     ): ReviewCommitResult {
         val item = session.item ?: return ReviewCommitResult.stale()
+        var acceptedByStateMachine = false
         val commit = StudyReviewActions.saveAppliedReview(
             request,
             result,
@@ -710,19 +689,33 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                     )
                 }
             },
-            activity.studySessionTracker::recordReviewOutcome,
-            activity::markStudyRunPassed,
+            { kanji, appliedRating, before, after ->
+                val snapshot = AppliedReviewSnapshot(request.token, before, after)
+                acceptedByStateMachine = activity.studySessionViewModel.acceptAppliedReview(
+                    snapshot,
+                    result.appliedRating,
+                    now,
+                )
+                if (acceptedByStateMachine) {
+                    activity.studySessionTracker.recordReviewOutcome(
+                        kanji,
+                        appliedRating,
+                        before,
+                        after,
+                    )
+                }
+            },
+            { kanji ->
+                if (acceptedByStateMachine) {
+                    activity.markStudyRunPassed(kanji)
+                }
+            },
             taskTiming,
             choiceLog,
             similarChoice,
         )
-        val committedItem = commit.item
-        if (commit.disposition == ReviewCommitDisposition.APPLIED && committedItem != null) {
-            activity.studyUndoState.capture(
-                AppliedReviewSnapshot(request.token, item, committedItem),
-                result.appliedRating,
-                now,
-            )
+        if (commit.disposition == ReviewCommitDisposition.APPLIED && !acceptedByStateMachine) {
+            return ReviewCommitResult.stale()
         }
         return commit
     }

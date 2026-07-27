@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.os.SystemClock
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -19,9 +18,9 @@ import dev.bee.kanjianki.data.ReviewTaskTiming
  * delegated [progressTracker] is independently synchronized; the extra lock
  * here guards this class's own fields (activeTask, planned-key sets).
  */
-internal class StudySessionTracker(
+class StudySessionTracker(
     private val onChanged: () -> Unit = {},
-    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() },
+    private val elapsedRealtime: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
     private val lock = Any()
     private var activeTask: ActiveStudyTask? = null

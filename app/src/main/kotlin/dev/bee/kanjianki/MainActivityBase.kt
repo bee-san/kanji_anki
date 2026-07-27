@@ -198,11 +198,13 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             studySessionViewModel.installFeedback(value)
         }
 
-    @JvmField
-    var activeSimilarWritingRepair: RecordsImportModels.SimilarKanjiWritingRepair? = null
+    var activeSimilarWritingRepair: RecordsImportModels.SimilarKanjiWritingRepair?
+        get() = studySessionViewModel.activeRepair()
+        set(value) = studySessionViewModel.setActiveRepair(value)
 
-    @JvmField
-    var activeStudyPlan: RecordsSchedulerModels.AdaptiveLoadPlan? = null
+    var activeStudyPlan: RecordsSchedulerModels.AdaptiveLoadPlan?
+        get() = studySessionViewModel.activePlan()
+        set(value) = studySessionViewModel.setActivePlan(value)
 
     @JvmField
     var drawingPad: DrawingPadView? = null
@@ -256,8 +258,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @Volatile
     var studySessionBadgeCount: Int = -1
 
-    @JvmField
-    val studyUndoState = StudyUndoState()
+    val studyUndoState: StudyUndoState
+        get() = studySessionViewModel.undoState
 
     @JvmField
     var typingAnswerState: TypingAnswerState? = null
@@ -266,11 +268,13 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var activeAnalysis: WritingAnalysis? = null
 
-    @JvmField
-    var checkingWriting = false
+    var checkingWriting: Boolean
+        get() = studySessionViewModel.checkingWriting()
+        set(value) = studySessionViewModel.setCheckingWriting(value)
 
-    @JvmField
-    var flashcardAnswerRevealed = false
+    var flashcardAnswerRevealed: Boolean
+        get() = studySessionViewModel.answerRevealed()
+        set(value) = studySessionViewModel.setAnswerRevealed(value)
 
     @JvmField
     var flashcardTouchTracking = false
@@ -281,17 +285,20 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
     var writingModelStatusKnown = false
 
-    @JvmField
-    var continueAllKanjiSession = false
+    var continueAllKanjiSession: Boolean
+        get() = studySessionViewModel.continueAllKanji()
+        set(value) = studySessionViewModel.setContinueAllKanji(value)
 
-    @JvmField
-    val studyMoreNewCardKanji: MutableList<String> = ArrayList()
+    val studyMoreNewCardKanji: MutableList<String>
+        get() = studySessionViewModel.moreNewCardKanji()
 
-    @JvmField
-    var hintsUsed = 0
+    var hintsUsed: Int
+        get() = studySessionViewModel.hintsUsed()
+        set(value) = studySessionViewModel.setHintsUsed(value)
 
-    @JvmField
-    var currentPracticeLevel = 0
+    var currentPracticeLevel: Int
+        get() = studySessionViewModel.currentPracticeLevel()
+        set(value) = studySessionViewModel.setCurrentPracticeLevel(value)
 
     @JvmField
     var flashcardTouchStartX = 0f

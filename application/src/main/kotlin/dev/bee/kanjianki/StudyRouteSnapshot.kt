@@ -1,16 +1,16 @@
 package dev.bee.kanjianki
 
 @JvmInline
-internal value class StudyRouteVersion(val value: Long) {
+value class StudyRouteVersion(val value: Long) {
     fun next(): StudyRouteVersion = StudyRouteVersion(Math.addExact(value, 1L))
 }
 
 @JvmInline
-internal value class StudySessionGeneration(val value: Long) {
+value class StudySessionGeneration(val value: Long) {
     fun next(): StudySessionGeneration = StudySessionGeneration(Math.addExact(value, 1L))
 }
 
-internal enum class StudyRouteCompletionReason {
+enum class StudyRouteCompletionReason {
     HARD_CAP,
     FOCUS_COMPLETE,
     LEARN_AHEAD_REPEAT,
@@ -23,12 +23,12 @@ internal enum class StudyRouteCompletionReason {
     STALE_CALLBACK_DROPPED,
 }
 
-internal data class PreparedStudyRoute<out Model>(
+data class PreparedStudyRoute<out Model>(
     val model: Model,
     val routeSnapshot: StudyRouteSnapshot,
 )
 
-internal inline fun <Model> prepareAcceptedStudyRoute(
+inline fun <Model> prepareAcceptedStudyRoute(
     routeProvider: () -> Model,
     routeSnapshotProvider: () -> StudyRouteSnapshot,
 ): PreparedStudyRoute<Model> {
@@ -36,13 +36,13 @@ internal inline fun <Model> prepareAcceptedStudyRoute(
     return PreparedStudyRoute(model, routeSnapshotProvider())
 }
 
-internal data class StudyRouteActionClaim(
+data class StudyRouteActionClaim(
     val sessionToken: String,
     val sessionGeneration: StudySessionGeneration,
     val routeVersion: StudyRouteVersion,
 )
 
-internal data class StudyRouteSnapshot(
+data class StudyRouteSnapshot(
     val version: StudyRouteVersion = StudyRouteVersion(0L),
     val sessionGeneration: StudySessionGeneration = StudySessionGeneration(0L),
     val sessionToken: String? = null,

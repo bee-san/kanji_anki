@@ -1,23 +1,23 @@
 package dev.bee.kanjianki
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.StudyTextCopy
 
-internal data class StudyUndoEntry(
+data class StudyUndoEntry(
     val snapshot: AppliedReviewSnapshot,
     val label: String,
     val createdAtMillis: Long,
 )
 
-internal class StudyUndoState {
-    var pending by mutableStateOf<StudyUndoEntry?>(null)
+class StudyUndoState(
+    private val onChanged: () -> Unit = {},
+) {
+    var pending: StudyUndoEntry? = null
         private set
 
     fun capture(snapshot: AppliedReviewSnapshot, label: String, createdAtMillis: Long) {
         pending = StudyUndoEntry(snapshot, label, createdAtMillis)
+        onChanged()
     }
 
     fun undoMessageOrNull(): String? {
@@ -25,6 +25,8 @@ internal class StudyUndoState {
     }
 
     fun clear() {
+        if (pending == null) return
         pending = null
+        onChanged()
     }
 }
