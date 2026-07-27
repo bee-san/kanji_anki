@@ -19,6 +19,11 @@ def _sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
+def _write_text_lf(path: Path, content: str) -> None:
+    with path.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(content)
+
+
 def _canonical_diff(baseline: bytes, metadata: bytes, host_id: str) -> str:
     """Return a host-independent LF-only review diff."""
 
@@ -87,7 +92,7 @@ def capture(
         metadata_content,
         host_id,
     )
-    diff_output.write_text(diff_text, encoding="utf-8", newline="\n")
+    _write_text_lf(diff_output, diff_text)
 
     manifest = {
         "baseline_sha256": _sha256(baseline_content),
@@ -105,10 +110,9 @@ def capture(
         "runner_os": runner_os,
         "schema_version": 1,
     }
-    manifest_output.write_text(
+    _write_text_lf(
+        manifest_output,
         json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-        newline="\n",
     )
     return metadata_output, diff_output, manifest_output
 
