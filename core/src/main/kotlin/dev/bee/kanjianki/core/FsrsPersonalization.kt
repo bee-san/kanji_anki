@@ -7,6 +7,7 @@ object FsrsPersonalization {
     const val WEIGHTS_SETTING_KEY: String = "scheduler_fsrs_weights"
     const val FIT_SUMMARY_SETTING_KEY: String = "scheduler_fsrs_fit_summary"
     const val ENABLED_SETTING_KEY: String = "scheduler_fsrs_personalization_enabled"
+    const val ENABLED_SETTING_DEFAULT: Int = 1
 
     const val MINIMUM_TRAINING_SAMPLES: Int = 400
     const val MINIMUM_RELATIVE_IMPROVEMENT: Double = 0.01
