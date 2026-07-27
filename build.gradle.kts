@@ -31,6 +31,7 @@ val sonarMainBinaries = listOf(
     rootPath("writing-core/build/classes/kotlin/main"),
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
+    rootPath("platform-contracts/build/classes/kotlin/main"),
     rootPath("desktop-app/build/classes/kotlin/main"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     sonarAppMainBinaries,
@@ -44,6 +45,7 @@ val sonarTestBinaries = listOf(
     rootPath("writing-core/build/classes/kotlin/test"),
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
+    rootPath("platform-contracts/build/classes/kotlin/test"),
     rootPath("desktop-app/build/classes/kotlin/test"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
@@ -57,6 +59,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("platform-contracts/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
@@ -247,6 +250,7 @@ val desktopCiTasks = listOf(
     ":writing-core:check",
     ":dictionary-core:check",
     ":update-core:check",
+    ":platform-contracts:check",
     ":desktop-app:check",
     "testDesktopCiScripts",
     "testDesktopTooling",
@@ -313,6 +317,9 @@ val fastCiTasks = listOf(
     ":update-core:test",
     ":update-core:jacocoTestReport",
     ":update-core:jacocoTestCoverageVerification",
+    ":platform-contracts:test",
+    ":platform-contracts:jacocoTestReport",
+    ":platform-contracts:jacocoTestCoverageVerification",
     ":app:compileDebugKotlin",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
@@ -342,6 +349,7 @@ tasks.register("ciQuality") {
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
+        ":platform-contracts:jar",
         ":desktop-app:jacocoTestReport",
         ":desktop-app:jar",
         ":app:compileDebugKotlin",

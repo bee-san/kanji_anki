@@ -78,6 +78,7 @@ FINAL_MODULES = frozenset(
 EXPECTED_CURRENT_MODULES = frozenset(
     {
         *CURRENT_SHARED_JVM_MODULES,
+        "platform-contracts",
         "app",
         "desktop-app",
     },
@@ -107,10 +108,19 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "sync-domain": frozenset({"domain"}),
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
+    "platform-contracts": frozenset(),
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),
-    "app": frozenset({"core", "dictionary-core", "update-core", "writing-core"}),
+    "app": frozenset(
+        {
+            "core",
+            "dictionary-core",
+            "platform-contracts",
+            "update-core",
+            "writing-core",
+        },
+    ),
     "desktop-app": frozenset(),
 }
 FINAL_PROJECT_DEPENDENCIES = {
