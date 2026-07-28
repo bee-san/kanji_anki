@@ -14,6 +14,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.syncapi.testing.CollectionGatewayContractKit
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.testing.DeviceSmoke
 import org.junit.After
@@ -81,6 +82,22 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         assertEquals(1, providerInt("topLevelCardsQueries"))
         assertEquals(0, providerInt("perNoteCardsQueries"))
         assertEquals(0, providerInt("explicitIdProjectionQueries"))
+    }
+
+    @Test
+    fun satisfiesProviderNeutralCollectionGatewayContract() {
+        val observation = CollectionGatewayContractKit.verifyReadContract(
+            gateway = AnkiDroidGateway.testProvider(
+                context,
+                FakeAnkiDroidProvider.AUTHORITY,
+            ),
+            settings = RecordsSyncModels.Settings.kikuDefaults(),
+            expectedNoteCount = 2,
+            expectedCardCount = 2,
+        )
+
+        assertEquals(2, observation.noteCount)
+        assertEquals(2, observation.cardCount)
     }
 
     @Test
