@@ -12,6 +12,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
+import dev.bee.kanjianki.syncapi.SourceBindingReason
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -175,6 +176,62 @@ class ManualSyncEngineRepairedWriteBackTest {
     }
 
     @Test
+    fun bindingIsCheckedImmediatelyBeforeArchiveAndRepairedTagWrites() {
+        store.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, 1)
+        val events = mutableListOf<String>()
+        val gateway = RecordingGateway(events = events)
+        var checks = 0
+        val engine = engine(
+            gateway,
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                checks += 1
+                events += "binding-$checks"
+            },
+        )
+        engine.repairedProposalProvider = { _, _ -> proposal() }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(
+            listOf(
+                "binding-1",
+                "binding-2",
+                "archive",
+                "binding-3",
+                "tag",
+            ),
+            events,
+        )
+    }
+
+    @Test
+    fun repairedTagWriteIsBlockedWhenBindingChangesAfterPublication() {
+        store.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, 1)
+        val gateway = RecordingGateway()
+        var checks = 0
+        val engine = engine(
+            gateway,
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                checks += 1
+                if (checks == 3) {
+                    throw SourceBindingFailure(
+                        SourceBindingReason.SOURCE_KEY_CHANGED,
+                        "Source changed before repaired-note tagging.",
+                    )
+                }
+            },
+        )
+        engine.repairedProposalProvider = { _, _ -> proposal() }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(0, gateway.tagCalls)
+        assertTrue(result.message!!.contains("retry on the next sync"))
+    }
+
+    @Test
     fun localConfirmationFailureKeepsSyncSuccessfulAndReportsRetry() {
         store.putIntSetting(SyncSettings.TAG_REPAIRED_CARDS_SETTING_KEY, 1)
         val engine = engine(RecordingGateway())
@@ -195,6 +252,7 @@ class ManualSyncEngineRepairedWriteBackTest {
         progress: SyncProgress.Listener = SyncProgress.NONE,
         repairedWriteBackAuthorized: Boolean = true,
         confirmedRepairedNoteIds: Set<Long>? = null,
+        sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
     ): ManualSyncEngine = createManualSyncEngine(
         context,
         store,
@@ -204,6 +262,7 @@ class ManualSyncEngineRepairedWriteBackTest {
         dev.bee.kanjianki.time.AppClock.systemClock(),
         repairedWriteBackAuthorized,
         confirmedRepairedNoteIds,
+        sourceBindingGate,
     ).also {
         it.reminderRescheduler = Runnable { }
         it.widgetRefresher = Runnable { }
@@ -220,6 +279,7 @@ class ManualSyncEngineRepairedWriteBackTest {
 
     private class RecordingGateway(
         private val tagFailure: RuntimeException? = null,
+        private val events: MutableList<String>? = null,
     ) : CollectionGateway {
         var tagCalls = 0
 
@@ -231,6 +291,7 @@ class ManualSyncEngineRepairedWriteBackTest {
             selectedSuspendedImports: List<dev.bee.kanjianki.core.RecordsImportModels.SuspendedImport>?,
             progress: CollectionProgressListener,
         ): AnkiDroidGateway.RemovalSummary {
+            events?.add("archive")
             progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
             return AnkiDroidGateway.RemovalSummary(0, 0, 0, "archive done")
         }
@@ -243,6 +304,7 @@ class ManualSyncEngineRepairedWriteBackTest {
             progress: CollectionProgressListener,
         ): RepairedTagSummary {
             tagCalls++
+            events?.add("tag")
             progress.onProgress(CollectionProgress(CollectionProgress.Stage.TAGGING_REPAIRED))
             tagFailure?.let { throw it }
             return RepairedTagSummary(noteIds, noteIds, emptySet(), "Tagged 1 repaired note in AnkiDroid.")

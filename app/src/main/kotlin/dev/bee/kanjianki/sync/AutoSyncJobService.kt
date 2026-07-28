@@ -274,7 +274,14 @@ class AutoSyncJobService : JobService {
             val store = storeFactory()
             var result: AutoSyncRunner.Result? = null
             try {
-                result = createAutoSyncRunner(context, store, gatewayFactory(cancellation)).run()
+                result = createAutoSyncRunner(
+                    context,
+                    store,
+                    gatewayFactory(cancellation),
+                    sourceBindingGate = AndroidSourceBindingGate(
+                        dev.bee.kanjianki.data.SqliteSourceBindingStore(store),
+                    ),
+                ).run()
             } finally {
                 finishJob(
                     context,

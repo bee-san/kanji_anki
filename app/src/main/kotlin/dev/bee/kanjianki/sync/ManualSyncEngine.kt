@@ -31,6 +31,7 @@ import dev.bee.kanjianki.syncapi.CollectionFailure
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.syncapi.RepairedTagSummary
+import dev.bee.kanjianki.syncapi.SourceBindingReason
 import dev.bee.kanjianki.time.AppClock
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
@@ -47,6 +48,7 @@ internal class ManualSyncEngine(
     postCommitEffects: SyncPostCommitEffects,
     private val repairedWriteBackAuthorized: Boolean,
     confirmedRepairedNoteIds: Set<Long>?,
+    private val sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
 ) {
     private val settings: RecordsSyncModels.Settings = settingsSnapshot.sync
     private val confirmedRepairedNoteIds: Set<Long>? = confirmedRepairedNoteIds?.toSet()
@@ -115,9 +117,11 @@ internal class ManualSyncEngine(
         var committedMessage: String? = null
         AppDebugLog.log("sync start model=${settings.modelName}")
         try {
-            val snapshot = gateway.readProviderCollection(settings, providerProgress).snapshot
+            val provider = gateway.readProviderCollection(settings, providerProgress)
+            val snapshot = provider.snapshot
             val storedState = runBlocking { syncUseCases.loadStoredState() }
             rejectTransientEmptySnapshot(snapshot, storedState)
+            sourceBindingGate.requireAccess(provider, storedState, clock.nowMillis())
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS))
             val ranks = assetReaders.loadRanks()
             val selectedImports = KanjiImportSelector(
@@ -178,6 +182,7 @@ internal class ManualSyncEngine(
             // study items. Tagging is re-attempted on the next sync, so a
             // failure here degrades to a warning instead of a failed sync.
             val removal = try {
+                sourceBindingGate.requireAccess(provider, storedState, clock.nowMillis())
                 gateway.removeArchivedSuspendedCards(
                     snapshot,
                     currentSuspendedImports,
@@ -209,6 +214,7 @@ internal class ManualSyncEngine(
                     val confirmedProposal = proposal?.let(::confirmedProposal)
                     if (confirmedProposal != null && !confirmedProposal.isEmpty()) {
                         val tagging = try {
+                            sourceBindingGate.requireAccess(provider, storedState, clock.nowMillis())
                             gateway.tagRepairedNotes(
                                 confirmedProposal.noteIdsToTag,
                                 providerProgress,
@@ -283,11 +289,17 @@ internal class ManualSyncEngine(
                 error,
             )
             val finished = clock.nowMillis()
+            val sourceBindingReason = (error as? SourceBindingFailure)?.reason
             persistFailedSync(
                 started,
                 finished,
                 if (error.retryable) "retryable_error" else "config_error",
-                if (error.retryable) "retryable" else "permanent",
+                when {
+                    sourceBindingReason != null ->
+                        "source_binding_${sourceBindingReason.name.lowercase()}"
+                    error.retryable -> "retryable"
+                    else -> "permanent"
+                },
                 error,
             )
             return SyncResult.create(
@@ -298,6 +310,7 @@ internal class ManualSyncEngine(
                 error.message,
                 "",
                 retryable = error.retryable,
+                sourceBindingReason = sourceBindingReason,
             )
         } catch (error: Exception) {
             committedState?.let { committed ->
@@ -530,6 +543,9 @@ internal class ManualSyncEngine(
         @JvmField
         var retryable: Boolean = false
 
+        @JvmField
+        var sourceBindingReason: SourceBindingReason? = null
+
         companion object {
             @JvmStatic
             internal fun create(
@@ -542,6 +558,7 @@ internal class ManualSyncEngine(
                 studyReadyCount: Int = 0,
                 adaptiveFocusText: String = "",
                 retryable: Boolean = false,
+                sourceBindingReason: SourceBindingReason? = null,
             ): SyncResult {
                 return SyncResult(
                     success,
@@ -554,6 +571,7 @@ internal class ManualSyncEngine(
                     this.studyReadyCount = studyReadyCount
                     this.adaptiveFocusText = adaptiveFocusText
                     this.retryable = retryable
+                    this.sourceBindingReason = sourceBindingReason
                 }
             }
 

@@ -45,6 +45,7 @@ import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.SyncSourceBindingGate
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.sync.createManualSyncEngine
@@ -141,6 +142,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     lateinit var syncUseCases: SyncUseCases
         private set
 
+    lateinit var sourceBindingGate: SyncSourceBindingGate
+        private set
+
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
     fun isStoreInitialized(): Boolean = ::store.isInitialized
 
@@ -169,6 +173,9 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         if (!::settingsUseCases.isInitialized) settingsUseCases = container.settingsUseCases
         if (!::studyUseCases.isInitialized) studyUseCases = container.studyUseCases
         if (!::syncUseCases.isInitialized) syncUseCases = container.syncUseCases
+        if (!::sourceBindingGate.isInitialized) {
+            sourceBindingGate = container.sourceBindingGate
+        }
     }
 
     @JvmField
@@ -744,6 +751,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             dev.bee.kanjianki.time.AppClock.systemClock(),
             repairedWriteBackAuthorized = true,
             confirmedRepairedNoteIds = confirmedRepairedNoteIds,
+            sourceBindingGate = sourceBindingGate,
         )
     }
 

@@ -7,9 +7,21 @@ import dev.bee.kanjianki.syncapi.PersistedSourceBinding
 import dev.bee.kanjianki.syncapi.SourceBindingRecordCodec
 import dev.bee.kanjianki.syncapi.SourceBindingStore
 
+internal interface AndroidSourceBindingStateStore : SourceBindingStore {
+    fun legacyAndroidMigrationEligible(): Boolean
+
+    fun saveLegacyMigrationResult(binding: PersistedSourceBinding)
+}
+
+internal object SourceBindingMigrationRecord {
+    const val KEY_ANDROID_LEGACY_MIGRATION =
+        "collection_source_binding.android_legacy_migration"
+    const val ELIGIBLE = "eligible"
+}
+
 internal class SqliteSourceBindingStore(
     private val store: LocalStoreBase,
-) : SourceBindingStore {
+) : AndroidSourceBindingStateStore {
     override fun load(): PersistedSourceBinding? {
         val keys = SourceBindingRecordCodec.keys.toList()
         val placeholders = keys.joinToString(",") { "?" }
@@ -34,19 +46,38 @@ internal class SqliteSourceBindingStore(
         val database = store.writableDatabase
         try {
             database.transaction {
-                for ((key, value) in SourceBindingRecordCodec.encode(binding)) {
-                    val row = ContentValues().apply {
-                        put("key", key)
-                        put(LocalStoreBase.COLUMN_VALUE, value)
-                        put(LocalStoreBase.COLUMN_UPDATED_AT, binding.lastValidatedAtMillis)
-                    }
-                    insertWithOnConflict(
-                        LocalStoreBase.TABLE_SETTINGS,
-                        null,
-                        row,
-                        SQLiteDatabase.CONFLICT_REPLACE,
-                    )
-                }
+                saveBinding(this, binding)
+            }
+        } finally {
+            store.settingsStore().invalidate()
+        }
+    }
+
+    override fun legacyAndroidMigrationEligible(): Boolean =
+        store.readableDatabase.query(
+            LocalStoreBase.TABLE_SETTINGS,
+            arrayOf(LocalStoreBase.COLUMN_VALUE),
+            "key = ?",
+            arrayOf(SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            cursor.moveToFirst() &&
+                cursor.getString(0) == SourceBindingMigrationRecord.ELIGIBLE
+        }
+
+    override fun saveLegacyMigrationResult(binding: PersistedSourceBinding) {
+        val database = store.writableDatabase
+        try {
+            database.transaction {
+                saveBinding(this, binding)
+                delete(
+                    LocalStoreBase.TABLE_SETTINGS,
+                    "key = ?",
+                    arrayOf(SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION),
+                )
             }
         } finally {
             store.settingsStore().invalidate()
@@ -67,6 +98,25 @@ internal class SqliteSourceBindingStore(
             }
         } finally {
             store.settingsStore().invalidate()
+        }
+    }
+
+    private fun saveBinding(
+        database: SQLiteDatabase,
+        binding: PersistedSourceBinding,
+    ) {
+        for ((key, value) in SourceBindingRecordCodec.encode(binding)) {
+            val row = ContentValues().apply {
+                put("key", key)
+                put(LocalStoreBase.COLUMN_VALUE, value)
+                put(LocalStoreBase.COLUMN_UPDATED_AT, binding.lastValidatedAtMillis)
+            }
+            database.insertWithOnConflict(
+                LocalStoreBase.TABLE_SETTINGS,
+                null,
+                row,
+                SQLiteDatabase.CONFLICT_REPLACE,
+            )
         }
     }
 }

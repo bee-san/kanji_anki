@@ -49,7 +49,19 @@ data class StoredSyncState(
     val unrestoredSuspendedArchiveCardIds: Set<Long>,
     val studyItems: List<RecordsStudyModels.StudyItem>,
     val latestSuccessfulSyncAtMillis: Long?,
+    val mirrorIdentityEvidence: CollectionMirrorIdentityEvidence =
+        CollectionMirrorIdentityEvidence.EMPTY,
 )
+
+data class CollectionMirrorIdentityEvidence(
+    val stableNoteIds: List<Long>,
+    val stableCardIds: List<Long>,
+) {
+    companion object {
+        @JvmField
+        val EMPTY = CollectionMirrorIdentityEvidence(emptyList(), emptyList())
+    }
+}
 
 data class SyncPublicationCommand(
     val snapshot: RecordsSyncModels.CollectionSnapshot,

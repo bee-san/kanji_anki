@@ -53,6 +53,31 @@ internal abstract class LocalStoreSync(
             tableHasRows(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID)
     }
 
+    fun collectionMirrorIdentityEvidence(): CollectionMirrorIdentityEvidence =
+        CollectionMirrorIdentityEvidence(
+            stableNoteIds = stableIdSample(TABLE_SOURCE_NOTES, COLUMN_NOTE_ID),
+            stableCardIds = stableIdSample(TABLE_SOURCE_CARDS, COLUMN_CARD_ID),
+        )
+
+    private fun stableIdSample(table: String, column: String): List<Long> {
+        val ids = ArrayList<Long>(64)
+        readableDatabase.query(
+            table,
+            arrayOf(column),
+            null,
+            null,
+            null,
+            null,
+            "($column < 0) ASC, $column ASC",
+            "64",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                ids += cursor.getLong(0)
+            }
+        }
+        return ids
+    }
+
     private fun tableHasRows(db: SQLiteDatabase, table: String, idColumn: String): Boolean {
         return db.query(table, arrayOf(idColumn), null, null, null, null, null, "1").use { it.moveToFirst() }
     }

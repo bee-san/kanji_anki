@@ -17,6 +17,7 @@ import dev.bee.kanjianki.data.SqliteStatsRepository
 import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
 import dev.bee.kanjianki.sync.SyncCancellation
+import dev.bee.kanjianki.sync.AndroidSourceBindingGate
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -39,6 +40,7 @@ internal class AndroidKaniContainer(
     override val settingsRepository = SqliteSettingsRepository(localStore)
     override val syncRepository = SqliteSyncRepository(localStore)
     val sourceBindingStore = SqliteSourceBindingStore(localStore)
+    val sourceBindingGate = AndroidSourceBindingGate(sourceBindingStore)
     override val deviceSettingsStore = AndroidDeviceSettingsStore(appContext)
     val homeUseCases = HomeUseCases(
         homeRepository,

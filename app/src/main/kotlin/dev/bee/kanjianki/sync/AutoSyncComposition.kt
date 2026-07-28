@@ -14,6 +14,7 @@ internal fun createAutoSyncRunner(
     deviceSettingsStore: DeviceSettingsStore,
     gateway: CollectionGateway,
     clock: AppClock? = AppClock.systemClock(),
+    sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
 ): AutoSyncRunner {
     val appContext = context.applicationContext
     return AutoSyncRunner(
@@ -29,6 +30,7 @@ internal fun createAutoSyncRunner(
                 SyncProgress.NONE,
                 syncClock,
                 repairedWriteBackAuthorized = false,
+                sourceBindingGate = sourceBindingGate,
             )
         },
         clock = clock,
@@ -40,6 +42,7 @@ internal fun createAutoSyncRunner(
     store: LocalStore,
     gateway: CollectionGateway,
     clock: AppClock? = AppClock.systemClock(),
+    sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
 ): AutoSyncRunner =
     createAutoSyncRunner(
         context,
@@ -47,6 +50,7 @@ internal fun createAutoSyncRunner(
         store.deviceSettingsStore(),
         gateway,
         clock,
+        sourceBindingGate,
     )
 
 private class DeviceAutoSyncState(

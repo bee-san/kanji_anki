@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.syncapi.PersistedSourceBinding
 import dev.bee.kanjianki.syncapi.SourceBindingRecordCodec
@@ -12,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -42,6 +44,7 @@ class SqliteSourceBindingStoreTest {
     @Test
     fun absentBindingLoadsAsNull() {
         assertNull(bindingStore.load())
+        assertFalse(bindingStore.legacyAndroidMigrationEligible())
     }
 
     @Test
@@ -85,6 +88,57 @@ class SqliteSourceBindingStoreTest {
         }
         putSetting(SourceBindingRecordCodec.KEY_NOTE_ID_DIGESTS, "raw-note-id")
         assertThrows(IllegalArgumentException::class.java) { bindingStore.load() }
+    }
+
+    @Test
+    fun legacyMigrationResultAtomicallyReplacesEligibilityMarker() {
+        putSetting(
+            SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION,
+            SourceBindingMigrationRecord.ELIGIBLE,
+        )
+        val binding = fixture()
+
+        bindingStore.saveLegacyMigrationResult(binding)
+
+        assertEquals(binding, bindingStore.load())
+        assertFalse(bindingStore.legacyAndroidMigrationEligible())
+        assertFalse(
+            settingsRows().containsKey(
+                SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION,
+            ),
+        )
+    }
+
+    @Test
+    fun failedLegacyMigrationSaveRollsBackBindingAndMarkerDeletion() {
+        putSetting(
+            SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION,
+            SourceBindingMigrationRecord.ELIGIBLE,
+        )
+        localStore.writableDatabase.execSQL(
+            """
+            CREATE TRIGGER reject_source_binding
+            BEFORE INSERT ON ${LocalStoreBase.TABLE_SETTINGS}
+            WHEN NEW.key = '${SourceBindingRecordCodec.KEY_SOURCE_KEY_DIGEST}'
+            BEGIN
+                SELECT RAISE(ABORT, 'injected binding failure');
+            END
+            """.trimIndent(),
+        )
+
+        assertThrows(SQLiteException::class.java) {
+            bindingStore.saveLegacyMigrationResult(fixture())
+        }
+
+        assertTrue(bindingStore.legacyAndroidMigrationEligible())
+        assertNull(bindingStore.load())
+        assertEquals(
+            mapOf(
+                SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION to
+                    SourceBindingMigrationRecord.ELIGIBLE,
+            ),
+            settingsRows(),
+        )
     }
 
     private fun settingsRows(): Map<String, String> {

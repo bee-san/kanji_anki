@@ -27,6 +27,7 @@ class AutoSyncRetryWorker internal constructor(
             container.syncUseCases,
             container.deviceSettingsStore,
             container.newAnkiDroidGateway(SyncCancellation { isStopped }),
+            sourceBindingGate = container.sourceBindingGate,
         ).run()
         return workerResult(sync, runAttemptCount)
     }

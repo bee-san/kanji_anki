@@ -17,6 +17,7 @@ internal class SqliteSyncRepository(
                 unrestoredSuspendedArchiveCardIds = store.unrestoredSuspendedArchiveCardIds().toSet(),
                 studyItems = store.studyItems().toList(),
                 latestSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
+                mirrorIdentityEvidence = store.collectionMirrorIdentityEvidence(),
             )
         }
     }

@@ -51,6 +51,7 @@ internal fun createManualSyncEngine(
     clock: AppClock? = AppClock.systemClock(),
     repairedWriteBackAuthorized: Boolean = false,
     confirmedRepairedNoteIds: Set<Long>? = null,
+    sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
 ): ManualSyncEngine {
     val appContext = context.applicationContext
     return ManualSyncEngine(
@@ -67,6 +68,7 @@ internal fun createManualSyncEngine(
         ),
         repairedWriteBackAuthorized = repairedWriteBackAuthorized,
         confirmedRepairedNoteIds = confirmedRepairedNoteIds,
+        sourceBindingGate = sourceBindingGate,
     )
 }
 
@@ -83,6 +85,7 @@ internal fun createManualSyncEngine(
     clock: AppClock? = AppClock.systemClock(),
     repairedWriteBackAuthorized: Boolean = false,
     confirmedRepairedNoteIds: Set<Long>? = null,
+    sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
 ): ManualSyncEngine {
     val useCases = syncUseCases(store)
     val settingsSnapshot = runBlocking { useCases.loadSettings() }.copy(sync = settings)
@@ -95,6 +98,7 @@ internal fun createManualSyncEngine(
         clock,
         repairedWriteBackAuthorized,
         confirmedRepairedNoteIds,
+        sourceBindingGate,
     )
 }
 

@@ -32,8 +32,8 @@ class SchemaBaselineTest {
     }
 
     @Test
-    fun freshV33MatchesTheFrozenSemanticFingerprint() {
-        val expected = GoldenFixtureResources.properties(SCHEMA_GOLDEN)
+    fun freshV34MatchesTheCurrentSemanticFingerprint() {
+        val expected = GoldenFixtureResources.properties(CURRENT_SCHEMA_GOLDEN)
         val snapshot = freshSnapshot()
 
         assertEquals("1", expected.required("fingerprint_format"))
@@ -69,8 +69,10 @@ class SchemaBaselineTest {
     }
 
     @Test
-    fun retainedHistoricalFreshSchemasMatchFrozenV33MigrationFingerprints() {
+    fun retainedHistoricalFreshSchemasMatchV34MigrationFingerprints() {
         val expected = freshSnapshot()
+        val expectedDigests =
+            GoldenFixtureResources.properties(CURRENT_MIGRATION_DIGESTS)
         val digestMismatches = ArrayList<String>()
         for (fixture in fixtureRegistry()) {
             deleteDatabase()
@@ -84,9 +86,10 @@ class SchemaBaselineTest {
                 )
                 SchemaGoldenVerifier.assertStructurallyEquivalent(expected, actual, fixture.id)
                 assertRepresentativeConstraints(actual)
-                if (fixture.expectedV33Sha256 != actual.sha256) {
+                val expectedDigest = expectedDigests.required(fixture.id)
+                if (expectedDigest != actual.sha256) {
                     digestMismatches +=
-                        "${fixture.id}: expected ${fixture.expectedV33Sha256}, actual ${actual.sha256}"
+                        "${fixture.id}: expected $expectedDigest, actual ${actual.sha256}"
                 }
             }
         }
@@ -230,7 +233,7 @@ class SchemaBaselineTest {
     }
 
     private fun java.util.Properties.required(key: String): String {
-        return requireNotNull(getProperty(key)) { "Missing $key in $SCHEMA_GOLDEN" }
+        return requireNotNull(getProperty(key)) { "Missing schema golden property: $key" }
     }
 
     private data class Fixture(
@@ -246,7 +249,10 @@ class SchemaBaselineTest {
 
     private companion object {
         const val RESOURCE_ROOT = "dev/bee/kanjianki/fixtures/goal165"
-        const val SCHEMA_GOLDEN = "$RESOURCE_ROOT/schema-v33.properties"
+        const val CURRENT_RESOURCE_ROOT = "dev/bee/kanjianki/fixtures/goal175"
+        const val CURRENT_SCHEMA_GOLDEN = "$CURRENT_RESOURCE_ROOT/schema-v34.properties"
+        const val CURRENT_MIGRATION_DIGESTS =
+            "$CURRENT_RESOURCE_ROOT/schema-v34-migration-digests.properties"
         const val FIXTURE_REGISTRY = "$RESOURCE_ROOT/schema-fixtures.tsv"
     }
 }

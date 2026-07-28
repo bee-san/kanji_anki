@@ -35,6 +35,22 @@ class CollectionSourceIdentity private constructor(
 
     internal fun hasStableIds(): Boolean = noteIds.isNotEmpty() || cardIds.isNotEmpty()
 
+    /**
+     * Reuses transient provider metadata with a different read-only ID sample.
+     * This lets compatibility migration compare a committed mirror with a live
+     * candidate without exposing or persisting the raw provider/source key.
+     */
+    fun withStableIds(
+        stableNoteIds: Collection<Long>,
+        stableCardIds: Collection<Long>,
+    ): CollectionSourceIdentity =
+        CollectionSourceIdentity(
+            providerKind,
+            sourceKey,
+            stableNoteIds,
+            stableCardIds,
+        )
+
     override fun toString(): String =
         "CollectionSourceIdentity(redacted, noteSample=${noteIds.size}, cardSample=${cardIds.size})"
 

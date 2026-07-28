@@ -19,6 +19,7 @@ import dev.bee.kanjianki.data.SyncPublicationResult
 import dev.bee.kanjianki.data.fakes.FakeSettingsRepository
 import dev.bee.kanjianki.data.fakes.FakeStudyRepository
 import dev.bee.kanjianki.data.fakes.FakeSyncRepository
+import dev.bee.kanjianki.syncapi.SourceBindingReason
 import dev.bee.kanjianki.time.AppClock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,9 +37,14 @@ class ManualSyncEngineRepositoryBoundaryTest {
         val events = mutableListOf<String>()
         val repositories = Repositories()
         val gateway = RecordingGateway(events)
+        var bindingChecks = 0
+        val sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+            bindingChecks += 1
+            events += if (bindingChecks == 1) "binding-publication" else "binding-archive"
+        }
         repositories.sync.publishHandler = {
             events += "publish"
-            assertEquals(listOf("publish"), events)
+            assertEquals(listOf("binding-publication", "publish"), events)
             StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
         }
         repositories.sync.removalHandler = { syncId, message ->
@@ -53,6 +59,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
                 Runnable { events += "reminder" },
                 Runnable { events += "widget" },
             ),
+            sourceBindingGate = sourceBindingGate,
         )
         engine.committedStudySummaryProvider = { _, _ ->
             events += "summary"
@@ -67,9 +74,11 @@ class ManualSyncEngineRepositoryBoundaryTest {
         assertEquals(1, gateway.archiveCalls)
         assertEquals(
             listOf(
+                "binding-publication",
                 "publish",
                 "reminder",
                 "widget",
+                "binding-archive",
                 "archive",
                 "persist-removal",
                 "summary",
@@ -112,6 +121,71 @@ class ManualSyncEngineRepositoryBoundaryTest {
         assertEquals(listOf("publish"), events)
     }
 
+    @Test
+    fun bindingFailureStopsBeforePublicationAndReportsRecoveryReason() {
+        val events = mutableListOf<String>()
+        val repositories = Repositories()
+        val gateway = RecordingGateway(events)
+        val engine = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                events += "binding"
+                throw SourceBindingFailure(
+                    SourceBindingReason.UNKNOWN_ORIGIN,
+                    "Source recovery is required.",
+                )
+            },
+        )
+
+        val result = engine.run()
+
+        assertFalse(result.success)
+        assertEquals(SourceBindingReason.UNKNOWN_ORIGIN, result.sourceBindingReason)
+        assertTrue(repositories.sync.publications.isEmpty())
+        assertEquals(0, gateway.archiveCalls)
+        assertEquals(listOf("binding"), events)
+        assertEquals(
+            "source_binding_unknown_origin",
+            repositories.sync.failures.single().errorCode,
+        )
+    }
+
+    @Test
+    fun archiveWriteIsBlockedWhenThePostCommitBindingRecheckFails() {
+        val events = mutableListOf<String>()
+        val repositories = Repositories()
+        val gateway = RecordingGateway(events)
+        repositories.sync.publishHandler = {
+            events += "publish"
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        var checks = 0
+        val engine = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                checks += 1
+                events += "binding-$checks"
+                if (checks == 2) {
+                    throw SourceBindingFailure(
+                        SourceBindingReason.SOURCE_KEY_CHANGED,
+                        "Source changed before provider write.",
+                    )
+                }
+            },
+        )
+        engine.committedStudySummaryProvider = { _, _ ->
+            ManualSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(0, gateway.archiveCalls)
+        assertEquals(listOf("binding-1", "publish", "binding-2"), events)
+    }
+
     private class Repositories {
         val sync = FakeSyncRepository().apply {
             storedStateHandler = {
@@ -132,6 +206,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
         fun engine(
             gateway: RecordingGateway,
             effects: SyncPostCommitEffects,
+            sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
         ): ManualSyncEngine =
             ManualSyncEngine(
                 syncUseCases = SyncUseCases(sync, study, settings),
@@ -144,6 +219,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
                 postCommitEffects = effects,
                 repairedWriteBackAuthorized = false,
                 confirmedRepairedNoteIds = null,
+                sourceBindingGate = sourceBindingGate,
             )
     }
 
@@ -203,5 +279,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
             fsrsPersonalizationEnabled = false,
             fsrsFitSummaryJson = "",
         )
+
+        fun noOpEffects() = SyncPostCommitEffects(Runnable { }, Runnable { })
     }
 }
