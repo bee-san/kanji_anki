@@ -5,7 +5,7 @@ import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore

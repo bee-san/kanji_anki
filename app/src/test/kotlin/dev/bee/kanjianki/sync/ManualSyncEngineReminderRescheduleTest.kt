@@ -3,7 +3,7 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.MissingKanjiCandidate

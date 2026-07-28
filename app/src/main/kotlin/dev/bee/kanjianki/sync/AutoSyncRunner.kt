@@ -1,11 +1,10 @@
 package dev.bee.kanjianki.sync
 
-import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.AutoSyncSchedulePolicy
 import dev.bee.kanjianki.data.RecordSyncFailureCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.time.AppClock
 import kotlinx.coroutines.runBlocking
 
@@ -36,25 +35,23 @@ internal class AutoSyncRunner(
         if (latestSuccessfulSync != null &&
             latestSuccessfulSync >= AutoSyncSchedulePolicy.localDayStart(now)
         ) {
-            return Result.skipped("AnkiDroid already synced today.")
+            return Result.skipped("The collection already synced today.")
         }
-        if (gateway is AnkiDroidGateway) {
-            val provider = gateway.status()
-            if (!provider.canSync) {
-                autoSyncState.recordAttempt(now, false)
-                runBlocking {
-                    syncUseCases.recordFailure(
-                        RecordSyncFailureCommand(
-                            now,
-                            now,
-                            "config_error",
-                            "permanent",
-                            provider.message,
-                        ),
-                    )
-                }
-                return Result.failed(provider.message)
+        val provider = gateway.status()
+        if (!provider.isReady()) {
+            autoSyncState.recordAttempt(now, false)
+            runBlocking {
+                syncUseCases.recordFailure(
+                    RecordSyncFailureCommand(
+                        now,
+                        now,
+                        "config_error",
+                        "permanent",
+                        provider.message,
+                    ),
+                )
             }
+            return Result.failed(provider.message)
         }
 
         val settings = runBlocking { syncUseCases.loadSettings() }

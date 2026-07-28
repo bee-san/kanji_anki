@@ -7,12 +7,13 @@ import android.util.Log
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.sync.SyncCancellation
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncdomain.ProviderCardPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 
 internal class AnkiDroidCardReader(
     private val resolver: ContentResolver?,
-    private val cancellation: SyncCancellation = SyncCancellation.NONE,
+    private val lifecycleCancellation: CollectionCancellation = SyncCancellation.NONE,
 ) {
     @Throws(AnkiDroidGateway.SyncFailure::class)
     fun queryCardsByNote(
@@ -20,6 +21,7 @@ internal class AnkiDroidCardReader(
         settings: RecordsSyncModels.Settings,
         noteIds: Set<Long>,
         progress: SyncProgress.Listener,
+        operationCancellation: CollectionCancellation = CollectionCancellation.NONE,
     ): List<RecordsSyncModels.Card> {
         val requestedNoteIds = noteIds.toList()
         val total = requestedNoteIds.size
@@ -29,8 +31,8 @@ internal class AnkiDroidCardReader(
             return emptyList()
         }
         // Abort early if the job was already stopped before any provider work started.
-        if (cancellation.isStopped()) {
-            throw AnkiDroidGateway.SyncFailure.retryable("Sync cancelled before reading cards.")
+        if (isCancelled(operationCancellation)) {
+            throw AnkiDroidGateway.SyncFailure.cancelled("Sync cancelled before reading cards.")
         }
 
         val suspendedNoteIds = querySuspendedNoteIds(authority, settings)
@@ -42,8 +44,8 @@ internal class AnkiDroidCardReader(
             // Cooperative cancellation: the provider/SQLite calls below ignore thread
             // interruption, so abort between batches with a retryable failure when the
             // job has been stopped.
-            if (cancellation.isStopped()) {
-                throw AnkiDroidGateway.SyncFailure.retryable("Sync cancelled before all cards were read.")
+            if (isCancelled(operationCancellation)) {
+                throw AnkiDroidGateway.SyncFailure.cancelled("Sync cancelled before all cards were read.")
             }
             val result = if (batchCardsUriUnsupported) {
                 readCardsPerNote(authority, noteBatch, suspendedNoteIds, projections, projectionIndex)
@@ -66,6 +68,9 @@ internal class AnkiDroidCardReader(
         }
         return cards
     }
+
+    private fun isCancelled(operationCancellation: CollectionCancellation): Boolean =
+        lifecycleCancellation.isCancelled() || operationCancellation.isCancelled()
 
     @Throws(AnkiDroidGateway.SyncFailure::class)
     private fun readCardsPerNote(

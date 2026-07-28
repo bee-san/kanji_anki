@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
+import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import android.util.Log
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 import java.util.regex.Pattern

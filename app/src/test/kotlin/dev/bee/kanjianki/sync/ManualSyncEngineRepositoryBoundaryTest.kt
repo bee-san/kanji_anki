@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.JitenKanjiRanks

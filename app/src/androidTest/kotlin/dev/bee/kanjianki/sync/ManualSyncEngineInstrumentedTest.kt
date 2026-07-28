@@ -4,13 +4,15 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.testing.DeviceRisk
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -580,14 +582,19 @@ class ManualSyncEngineInstrumentedTest {
 
         override fun readCollection(
             settings: RecordsSyncModels.Settings,
-            progress: SyncProgress.Listener?,
+            progress: CollectionProgressListener,
         ): RecordsSyncModels.CollectionSnapshot {
-            val listener = progress ?: SyncProgress.NONE
-            listener.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE))
-            listener.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES))
-            listener.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.FINDING_NOTE_TYPE))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.READING_NOTES))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS, 0, snapshot.cards.size))
             for (i in snapshot.cards.indices) {
-                listener.onSyncProgress(SyncProgress.cardsScanned(i + 1, snapshot.cards.size))
+                progress.onProgress(
+                    CollectionProgress(
+                        CollectionProgress.Stage.SCANNING_CARDS,
+                        i + 1,
+                        snapshot.cards.size,
+                    ),
+                )
             }
             return snapshot
         }
@@ -598,10 +605,9 @@ class ManualSyncEngineInstrumentedTest {
 
         override fun removeArchivedSuspendedCards(
             snapshot: RecordsSyncModels.CollectionSnapshot,
-            progress: SyncProgress.Listener?,
+            progress: CollectionProgressListener,
         ): AnkiDroidGateway.RemovalSummary {
-            val listener = progress ?: SyncProgress.NONE
-            listener.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
             return removal
         }
     }
@@ -623,11 +629,10 @@ class ManualSyncEngineInstrumentedTest {
         override fun removeArchivedSuspendedCards(
             snapshot: RecordsSyncModels.CollectionSnapshot,
             selectedSuspendedImports: List<RecordsImportModels.SuspendedImport>?,
-            progress: SyncProgress.Listener?,
+            progress: CollectionProgressListener,
         ): AnkiDroidGateway.RemovalSummary {
             this.selectedSuspendedImports = selectedSuspendedImports ?: emptyList()
-            val listener = progress ?: SyncProgress.NONE
-            listener.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
             return removal
         }
     }

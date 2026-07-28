@@ -243,6 +243,7 @@ dependencies {
     implementation(project(":data-api"))
     implementation(project(":dictionary-core"))
     implementation(project(":platform-contracts"))
+    implementation(project(":sync-api"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel)

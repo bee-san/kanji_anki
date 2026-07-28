@@ -3,8 +3,6 @@ package dev.bee.kanjianki.sync
 import android.util.Log
 import dev.bee.kanjianki.AppDebugLog
 import dev.bee.kanjianki.StudyNowCountCoordinator
-import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
@@ -28,6 +26,11 @@ import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.data.StoredSyncState
 import dev.bee.kanjianki.data.SyncPublicationCommand
 import dev.bee.kanjianki.data.SyncTimingSnapshot
+import dev.bee.kanjianki.syncapi.ArchiveTagSummary
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
+import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import dev.bee.kanjianki.time.AppClock
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
@@ -47,6 +50,9 @@ internal class ManualSyncEngine(
 ) {
     private val settings: RecordsSyncModels.Settings = settingsSnapshot.sync
     private val confirmedRepairedNoteIds: Set<Long>? = confirmedRepairedNoteIds?.toSet()
+    private val providerProgress = CollectionProgressListener { providerProgress ->
+        progress.onSyncProgress(SyncProgress.fromCollection(providerProgress))
+    }
 
     /**
      * Seam for the post-sync reminder re-arm (D4). Defaults to the real
@@ -109,7 +115,7 @@ internal class ManualSyncEngine(
         var committedMessage: String? = null
         AppDebugLog.log("sync start model=${settings.modelName}")
         try {
-            val snapshot = gateway.readCollection(settings, progress)
+            val snapshot = gateway.readProviderCollection(settings, providerProgress).snapshot
             val storedState = runBlocking { syncUseCases.loadStoredState() }
             rejectTransientEmptySnapshot(snapshot, storedState)
             progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.PROCESSING_IMPORTED_CARDS))
@@ -172,10 +178,14 @@ internal class ManualSyncEngine(
             // study items. Tagging is re-attempted on the next sync, so a
             // failure here degrades to a warning instead of a failed sync.
             val removal = try {
-                gateway.removeArchivedSuspendedCards(snapshot, currentSuspendedImports, progress)
+                gateway.removeArchivedSuspendedCards(
+                    snapshot,
+                    currentSuspendedImports,
+                    providerProgress,
+                )
             } catch (error: Exception) {
                 logPostCommitFailure("Could not archive imported notes after committed sync", error)
-                AnkiDroidGateway.RemovalSummary(
+                ArchiveTagSummary(
                     0,
                     0,
                     0,
@@ -199,10 +209,13 @@ internal class ManualSyncEngine(
                     val confirmedProposal = proposal?.let(::confirmedProposal)
                     if (confirmedProposal != null && !confirmedProposal.isEmpty()) {
                         val tagging = try {
-                            gateway.tagRepairedNotes(confirmedProposal.noteIdsToTag, progress)
+                            gateway.tagRepairedNotes(
+                                confirmedProposal.noteIdsToTag,
+                                providerProgress,
+                            )
                         } catch (error: Exception) {
                             logPostCommitFailure("Could not tag repaired notes; retrying next sync", error)
-                            dev.bee.kanjianki.anki.RepairedTagSummary(
+                            RepairedTagSummary(
                                 confirmedProposal.noteIdsToTag,
                                 emptySet(),
                                 confirmedProposal.noteIdsToTag,
@@ -260,21 +273,21 @@ internal class ManualSyncEngine(
                 committedSummary.readyCount,
                 AdaptiveFocusCopy.adaptiveFocusText(committedSummary.focusPlan),
             )
-        } catch (error: AnkiDroidGateway.SyncFailure) {
+        } catch (error: CollectionFailure) {
             committedState?.let { committed ->
                 return committedFailureResult(committed, committedMessage, error)
             }
-            Log.e(TAG, "Sync failed (${if (error.permanentFailure) "permanent" else "retryable"}).", error)
+            Log.e(TAG, "Sync failed (${if (error.retryable) "retryable" else "permanent"}).", error)
             AppDebugLog.logError(
-                "sync failed (${if (error.permanentFailure) "permanent" else "retryable"})",
+                "sync failed (${if (error.retryable) "retryable" else "permanent"})",
                 error,
             )
             val finished = clock.nowMillis()
             persistFailedSync(
                 started,
                 finished,
-                if (error.permanentFailure) "config_error" else "retryable_error",
-                if (error.permanentFailure) "permanent" else "retryable",
+                if (error.retryable) "retryable_error" else "config_error",
+                if (error.retryable) "retryable" else "permanent",
                 error,
             )
             return SyncResult.create(
@@ -284,7 +297,7 @@ internal class ManualSyncEngine(
                 0,
                 error.message,
                 "",
-                retryable = !error.permanentFailure,
+                retryable = error.retryable,
             )
         } catch (error: Exception) {
             committedState?.let { committed ->
@@ -481,8 +494,9 @@ internal class ManualSyncEngine(
         val hasDurableLocalState =
             storedState.studyItems.isNotEmpty() || storedState.hasCollectionMirror
         if (incomplete && hasDurableLocalState) {
-            throw AnkiDroidGateway.SyncFailure.retryable(
-                "AnkiDroid returned an incomplete collection; existing study progress was preserved.",
+            throw CollectionFailure(
+                dev.bee.kanjianki.syncapi.CollectionFailureKind.TRANSIENT,
+                "The provider returned an incomplete collection; existing study progress was preserved.",
             )
         }
     }

@@ -15,7 +15,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
@@ -47,6 +46,7 @@ import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.KaniThemeChoice

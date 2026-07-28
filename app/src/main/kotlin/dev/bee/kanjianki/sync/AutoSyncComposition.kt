@@ -1,11 +1,11 @@
 package dev.bee.kanjianki.sync
 
 import android.content.Context
-import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.DeviceSettingsStore
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.time.AppClock
 
 internal fun createAutoSyncRunner(

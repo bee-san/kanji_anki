@@ -3,13 +3,15 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
-import dev.bee.kanjianki.anki.RepairedTagSummary
+import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -227,9 +229,9 @@ class ManualSyncEngineRepairedWriteBackTest {
         override fun removeArchivedSuspendedCards(
             snapshot: RecordsSyncModels.CollectionSnapshot,
             selectedSuspendedImports: List<dev.bee.kanjianki.core.RecordsImportModels.SuspendedImport>?,
-            progress: SyncProgress.Listener?,
+            progress: CollectionProgressListener,
         ): AnkiDroidGateway.RemovalSummary {
-            progress?.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
             return AnkiDroidGateway.RemovalSummary(0, 0, 0, "archive done")
         }
 
@@ -238,10 +240,10 @@ class ManualSyncEngineRepairedWriteBackTest {
 
         override fun tagRepairedNotes(
             noteIds: Set<Long>,
-            progress: SyncProgress.Listener?,
+            progress: CollectionProgressListener,
         ): RepairedTagSummary {
             tagCalls++
-            progress?.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.TAGGING_REPAIRED))
+            progress.onProgress(CollectionProgress(CollectionProgress.Stage.TAGGING_REPAIRED))
             tagFailure?.let { throw it }
             return RepairedTagSummary(noteIds, noteIds, emptySet(), "Tagged 1 repaired note in AnkiDroid.")
         }

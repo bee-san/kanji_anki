@@ -3,7 +3,6 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.ReadingExposureMediaReader
-import dev.bee.kanjianki.anki.CollectionGateway
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.DictionaryLookup
@@ -18,6 +17,7 @@ import dev.bee.kanjianki.data.SqliteSettingsRepository
 import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
 import dev.bee.kanjianki.reminders.ReminderScheduler
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.time.AppClock
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.io.IOException

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.core.SyncProgressCopy
+import dev.bee.kanjianki.syncapi.CollectionProgress
 
 class SyncProgress private constructor(
     @JvmField val stage: Stage?,
@@ -38,6 +39,20 @@ class SyncProgress private constructor(
         @JvmStatic
         fun cardsScanned(scannedCards: Int, totalCards: Int): SyncProgress {
             return SyncProgress(Stage.SCANNING_CARDS, scannedCards.coerceAtLeast(0), totalCards.coerceAtLeast(0))
+        }
+
+        @JvmStatic
+        fun fromCollection(progress: CollectionProgress): SyncProgress {
+            val stage = when (progress.stage) {
+                CollectionProgress.Stage.FINDING_NOTE_TYPE -> Stage.FINDING_NOTE_TYPE
+                CollectionProgress.Stage.READING_NOTES -> Stage.READING_NOTES
+                CollectionProgress.Stage.SCANNING_CARDS -> Stage.SCANNING_CARDS
+                CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS -> Stage.ARCHIVING_IMPORTED_CARDS
+                CollectionProgress.Stage.TAGGING_REPAIRED -> Stage.TAGGING_REPAIRED
+                CollectionProgress.Stage.READING_INVENTORY -> Stage.READING_NOTES
+                CollectionProgress.Stage.WRITING_MISSING_KANJI -> Stage.SAVING_LOCAL_DATA
+            }
+            return SyncProgress(stage, progress.completed, progress.total ?: -1)
         }
 
         @JvmStatic

@@ -1,7 +1,7 @@
 package dev.bee.kanjianki
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.study.WritingRecognizer
 import java.util.concurrent.ExecutorService
 

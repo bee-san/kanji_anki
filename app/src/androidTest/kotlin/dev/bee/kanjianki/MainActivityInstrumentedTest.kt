@@ -34,7 +34,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
-import dev.bee.kanjianki.anki.CollectionGateway;
+import dev.bee.kanjianki.syncapi.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy;
@@ -54,6 +54,8 @@ import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.core.SyncSettings;
 
 import org.junit.After;
@@ -95,6 +97,7 @@ class MainActivityInstrumentedTest {
     companion object {
     var LIVE_ARG = "kanjiLiveAnkiDroid"
     var LIVE_FOREGROUND_SYNC_TEST = "testManualSyncButtonWorksAgainstLiveAnkiDroid"
+    var LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(30)
     var STUDY_NOW = "Study now"
     var REVEAL = "Reveal"
     var CHECK = "Check"
@@ -2240,6 +2243,7 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
                     items.any { it.hasSentenceReading },
                 )
             }
+            waitForText(scenario, "Sync complete", LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS)
         }
 
     }
@@ -2577,18 +2581,24 @@ class HoldingProgressGateway(
 
     override fun readCollection(
         settings: RecordsSyncModels.Settings,
-        progress: SyncProgress.Listener?,
+        progress: CollectionProgressListener,
     ): RecordsSyncModels.CollectionSnapshot {
-        progress?.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.FINDING_NOTE_TYPE))
-        progress?.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.READING_NOTES))
-        progress?.onSyncProgress(SyncProgress.cardsScanned(0, snapshot.cards.size))
-        progress?.onSyncProgress(SyncProgress.cardsScanned(1, snapshot.cards.size))
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.FINDING_NOTE_TYPE))
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.READING_NOTES))
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS, 0, snapshot.cards.size))
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS, 1, snapshot.cards.size))
         try {
             released.get(5L, TimeUnit.SECONDS)
         } catch (_: Exception) {
             // Continue when the UI release signal is not needed for this fake gateway path.
         }
-        progress?.onSyncProgress(SyncProgress.cardsScanned(snapshot.cards.size, snapshot.cards.size))
+        progress.onProgress(
+            CollectionProgress(
+                CollectionProgress.Stage.SCANNING_CARDS,
+                snapshot.cards.size,
+                snapshot.cards.size,
+            ),
+        )
         return snapshot
     }
 
@@ -2598,9 +2608,9 @@ class HoldingProgressGateway(
 
     override fun removeArchivedSuspendedCards(
         snapshot: RecordsSyncModels.CollectionSnapshot,
-        progress: SyncProgress.Listener?,
+        progress: CollectionProgressListener,
     ): AnkiDroidGateway.RemovalSummary {
-        progress?.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
         return removeArchivedSuspendedCards(snapshot)
     }
 }

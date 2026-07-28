@@ -5,6 +5,9 @@ package dev.bee.kanjianki.anki
 import android.database.Cursor
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionFailureKind
+import dev.bee.kanjianki.syncapi.NoteTypeDescriptor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -298,11 +301,11 @@ class AnkiDroidGatewayTest {
         val constructor = noteTypeClass.getDeclaredConstructor(Long::class.javaPrimitiveType!!, String::class.java, List::class.java)
         constructor.isAccessible = true
 
-        val noteType = constructor.newInstance(44L, null, null)
+        val noteType = constructor.newInstance(44L, null, null) as NoteTypeDescriptor
 
-        assertEquals(44L, fieldValue(noteType, "modelId") as Long)
-        assertEquals("", fieldValue(noteType, "name") as String)
-        assertTrue((fieldValue(noteType, "fields") as List<*>).isEmpty())
+        assertEquals(44L, noteType.modelId)
+        assertEquals("", noteType.name)
+        assertTrue(noteType.fields.isEmpty())
     }
 
     @Test
@@ -311,11 +314,16 @@ class AnkiDroidGatewayTest {
         val constructor = noteTypeClass.getDeclaredConstructor(Long::class.javaPrimitiveType!!, String::class.java, List::class.java)
         constructor.isAccessible = true
 
-        val noteType = constructor.newInstance(45L, "Kiku", listOf("Expression", "Meaning"))
+        val noteType =
+            constructor.newInstance(
+                45L,
+                "Kiku",
+                listOf("Expression", "Meaning"),
+            ) as NoteTypeDescriptor
 
-        assertEquals(45L, fieldValue(noteType, "modelId") as Long)
-        assertEquals("Kiku", fieldValue(noteType, "name") as String)
-        assertEquals(listOf("Expression", "Meaning"), fieldValue(noteType, "fields"))
+        assertEquals(45L, noteType.modelId)
+        assertEquals("Kiku", noteType.name)
+        assertEquals(listOf("Expression", "Meaning"), noteType.fields)
     }
 
     @Test
@@ -358,6 +366,30 @@ class AnkiDroidGatewayTest {
         }
 
         assertFalse(failure.permanentFailure)
+        assertEquals(CollectionFailureKind.CANCELLED, failure.kind)
+        assertTrue(failure.retryable)
+    }
+
+    @Test
+    fun queryCardsByNoteHonorsOperationCancellationAfterProgressStarts() {
+        var cancelled = false
+        val reader = AnkiDroidCardReader(null)
+
+        val failure = try {
+            reader.queryCardsByNote(
+                "authority",
+                RecordsSyncModels.Settings.kikuDefaults(),
+                setOf(1L),
+                SyncProgress.Listener { cancelled = true },
+                CollectionCancellation { cancelled },
+            )
+            throw AssertionError("expected operation cancellation to abort the read")
+        } catch (error: AnkiDroidGateway.SyncFailure) {
+            error
+        }
+
+        assertEquals(CollectionFailureKind.CANCELLED, failure.kind)
+        assertTrue(failure.retryable)
     }
 
     @Test
@@ -456,13 +488,23 @@ class AnkiDroidGatewayTest {
 
         val retryable = AnkiDroidGateway.SyncFailure.retryable("retry later", cause)
         val permanent = AnkiDroidGateway.SyncFailure.permanent(null, cause)
+        val unavailable = AnkiDroidGateway.SyncFailure.notAvailable("not installed")
+        val authRequired = AnkiDroidGateway.SyncFailure.authRequired("permission")
 
         assertFalse(retryable.permanentFailure)
+        assertEquals(CollectionFailureKind.TRANSIENT, retryable.kind)
         assertEquals("retry later", retryable.message)
         assertSame(cause, retryable.cause)
         assertTrue(permanent.permanentFailure)
+        assertEquals(CollectionFailureKind.INVALID_CONFIGURATION, permanent.kind)
         assertNull(permanent.message)
         assertSame(cause, permanent.cause)
+        assertFalse(unavailable.permanentFailure)
+        assertEquals(CollectionFailureKind.NOT_AVAILABLE, unavailable.kind)
+        assertTrue(unavailable.retryable)
+        assertTrue(authRequired.permanentFailure)
+        assertEquals(CollectionFailureKind.AUTH_REQUIRED, authRequired.kind)
+        assertFalse(authRequired.retryable)
     }
 
     private fun card(cardId: Long, noteId: Long, ord: Int = 0): RecordsSyncModels.Card {
