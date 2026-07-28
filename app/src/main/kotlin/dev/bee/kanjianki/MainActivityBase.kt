@@ -198,6 +198,14 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     var flashcardSwipeFeedback: StudySwipeFeedbackState? = null
 
     /**
+     * Whether the left/right swipe-to-grade gesture is active for the current card. Mirrors
+     * the `flashcard_swipe_gesture_enabled` setting; when false the card is never translated
+     * and a swipe never grades (tap-to-reveal and the Pass/Fail buttons still work).
+     */
+    @JvmField
+    var flashcardSwipeGestureEnabled: Boolean = true
+
+    /**
      * Exact selectable tasks in the user's current/next focus session, used for the
      * Study badge in the bottom nav and the count on the home Study-now card. This is
      * intentionally narrower than the adaptive plan's daily-focus `remaining` value.

@@ -776,6 +776,12 @@ internal abstract class LocalStoreStudy(
         studySettings().resetFsrsPersonalization()
     }
 
+    fun flashcardSwipeGestureEnabled(): Boolean = studySettings().flashcardSwipeGestureEnabled()
+
+    fun saveFlashcardSwipeGestureEnabled(enabled: Boolean) {
+        studySettings().saveFlashcardSwipeGestureEnabled(enabled)
+    }
+
     fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings = studySettings().learningStepSettings()
 
     fun saveLearningStepSettings(settings: RecordsSchedulerModels.LearningStepSettings?) {

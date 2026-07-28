@@ -33,6 +33,7 @@ data class SettingsSnapshot(
     val autoUpdate: AutoUpdateStatusSnapshot,
     val debugLogEnabled: Boolean,
     val fsrsPersonalizationEnabled: Boolean,
+    val flashcardSwipeGestureEnabled: Boolean,
     val fsrsFitSummaryJson: String,
     val updateCheckFailedAtMillis: Long,
     val installPermissionPromptShown: Boolean,
@@ -172,6 +173,8 @@ sealed interface SettingsSaveCommand {
     data class SchedulerFsrsWeights(val weights: List<Double>?) : SettingsSaveCommand
 
     data class FsrsPersonalizationEnabled(val enabled: Boolean) : SettingsSaveCommand
+
+    data class FlashcardSwipeGestureEnabled(val enabled: Boolean) : SettingsSaveCommand
 
     data class FsrsFitSummary(val summaryJson: String) : SettingsSaveCommand
 

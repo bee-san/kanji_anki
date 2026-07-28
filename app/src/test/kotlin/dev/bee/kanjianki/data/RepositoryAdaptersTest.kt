@@ -264,6 +264,7 @@ class RepositoryAdaptersTest {
             SettingsSaveCommand.SchedulerParameters(initial.schedulerParameters),
             SettingsSaveCommand.SchedulerFsrsWeights(null),
             SettingsSaveCommand.FsrsPersonalizationEnabled(true),
+            SettingsSaveCommand.FlashcardSwipeGestureEnabled(false),
             SettingsSaveCommand.FsrsFitSummary("{\"status\":\"tested\"}"),
             SettingsSaveCommand.ResetFsrsPersonalization,
             SettingsSaveCommand.LearningSteps(initial.learningSteps),
@@ -287,6 +288,7 @@ class RepositoryAdaptersTest {
         assertTrue(actual?.debugLogEnabled == true)
         assertEquals(15, actual?.studyAheadMinutes)
         assertEquals("v9.9.9", actual?.installPermissionPromptLastVersion)
+        assertEquals(false, actual?.flashcardSwipeGestureEnabled)
     }
 
     @Test

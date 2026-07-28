@@ -39,7 +39,7 @@ class MainActivityScreenshotModelsTest {
         assertEquals(SettingsTextCopy.settingsReferenceDataTitle(), referenceData.title)
         assertEquals("1 card", referenceData.panelCount)
         assertFalse(referenceData.contentDescription.isBlank())
-        assertEquals("9 cards", studyBehavior.panelCount)
+        assertEquals("10 cards", studyBehavior.panelCount)
         assertEquals("4 cards", automation.panelCount)
     }
 }

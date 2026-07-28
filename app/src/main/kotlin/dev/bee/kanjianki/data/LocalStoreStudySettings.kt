@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.util.Log
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner
+import dev.bee.kanjianki.core.FlashcardGesturePolicy
 import dev.bee.kanjianki.core.FsrsPersonalization
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.LocalDayPolicy
@@ -537,6 +538,16 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
             putStringSetting(FsrsPersonalization.FIT_SUMMARY_SETTING_KEY, "")
             markStatsDirty()
         }
+    }
+
+    fun flashcardSwipeGestureEnabled(): Boolean =
+        getIntSetting(
+            FlashcardGesturePolicy.SWIPE_GESTURE_ENABLED_SETTING_KEY,
+            FlashcardGesturePolicy.SWIPE_GESTURE_ENABLED_DEFAULT,
+        ) == 1
+
+    fun saveFlashcardSwipeGestureEnabled(enabled: Boolean) {
+        putIntSetting(FlashcardGesturePolicy.SWIPE_GESTURE_ENABLED_SETTING_KEY, if (enabled) 1 else 0)
     }
 
     fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings {
