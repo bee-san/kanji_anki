@@ -420,6 +420,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             home.store.searchKanjiInventory(""),
             meaningChoiceRandom,
             home.store.choiceWrongPickCounts(System.currentTimeMillis()),
+            home.currentDictionaryLookup(),
         )
     }
 

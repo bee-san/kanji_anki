@@ -246,6 +246,61 @@ class KanjiGameEngineTest {
         assertTrue(modes.contains(KanjiGameEngine.GameMode.MISS_SWEEP))
     }
 
+    @Test
+    fun confusableClashPrefersDictionaryGlossWithWordMeaningFallback() {
+        // 提 has no meaning (reading-only), so it is a valid choice but never the
+        // meaning-target; 裂 is the deterministic target regardless of seed.
+        val rows = listOf(
+            row("裂", "torn cloth", "れつ"),
+            row("提", "", "てい"),
+        )
+        val pairs = listOf(
+            RecordsImportModels.SimilarKanjiPair("裂", "提", "fixture", 1L, 1L),
+        )
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(
+                DictionaryLookup.KanjiEntry(
+                    DictionaryLookup.KanjiEntryFields(
+                        "裂",
+                        listOf("split", "rend"),
+                        emptyList(),
+                        emptyList(),
+                        emptyList(),
+                        0,
+                        0,
+                        0,
+                        0,
+                        null,
+                    ),
+                ),
+            ),
+        )
+
+        val withGloss = engine.nextQuestion(
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+            rows,
+            emptyList(),
+            pairs,
+            Random(0L),
+            dictionaryLookup = lookup,
+        )
+        assertNotNull(withGloss)
+        assertEquals("裂", withGloss!!.targetKanji)
+        assertEquals("Which kanji means Split, rend?", withGloss.prompt)
+
+        // No lookup: game rounds never vanish; fall back to the word meaning.
+        val fallback = engine.nextQuestion(
+            KanjiGameEngine.GameMode.CONFUSABLE_CLASH,
+            rows,
+            emptyList(),
+            pairs,
+            Random(0L),
+        )
+        assertNotNull(fallback)
+        assertEquals("裂", fallback!!.targetKanji)
+        assertEquals("Which kanji means torn cloth?", fallback.prompt)
+    }
+
     private fun row(kanji: String, meaning: String, reading: String): RecordsImportModels.DashboardRow {
         return rowWithExample(kanji, meaning, reading, example(kanji + "語", reading, meaning))
     }

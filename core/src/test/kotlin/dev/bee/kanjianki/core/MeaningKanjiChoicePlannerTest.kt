@@ -118,6 +118,73 @@ class MeaningKanjiChoicePlannerTest {
         assertEquals(4, card.choices.size)
     }
 
+    @Test
+    fun gateReturnsNullWhenTargetKanjiHasNoDictionaryGloss() {
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(entry("提", "present"), entry("浅", "shallow"), entry("腕", "arm")),
+        )
+        val rows = listOf(row("裂", "split"), row("提", "present"), row("浅", "shallow"), row("腕", "arm"))
+
+        val card = MeaningKanjiChoicePlanner().buildChoiceCard(
+            row("裂", "split"),
+            rows,
+            emptyList(),
+            Random(7),
+            emptyMap(),
+            lookup,
+        )
+
+        assertNull(card)
+    }
+
+    @Test
+    fun gatePassesWhenTargetHasGlossAndNullLookupStaysUngated() {
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(entry("裂", "split", "rend"), entry("提", "present"), entry("浅", "shallow"), entry("腕", "arm")),
+        )
+        val rows = listOf(row("裂", "split"), row("提", "present"), row("浅", "shallow"), row("腕", "arm"))
+
+        val gated = MeaningKanjiChoicePlanner().buildChoiceCard(row("裂", "split"), rows, emptyList(), Random(7), emptyMap(), lookup)
+        assertNotNull(gated)
+        assertTrue(gated!!.choices.contains("裂"))
+        assertEquals(4, gated.choices.size)
+
+        // A null lookup leaves the planner ungated: it still builds even with no dictionary.
+        val ungated = MeaningKanjiChoicePlanner().buildChoiceCard(row("裂", "split"), rows, emptyList(), Random(7), emptyMap(), null)
+        assertNotNull(ungated)
+        assertTrue(ungated!!.choices.contains("裂"))
+    }
+
+    @Test
+    fun decoyGuardExcludesDictionaryGlossCollisionEvenWhenWordMeaningDiffers() {
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(
+                entry("裂", "split"),
+                entry("割", "split"),
+                entry("提", "present"),
+                entry("浅", "shallow"),
+                entry("腕", "arm"),
+            ),
+        )
+        // 割's word meaning ("divide") differs from the target's ("tear"), so the
+        // word-level dedup keeps it; only the dictionary-gloss guard ("split" == "split")
+        // can remove it.
+        val rows = listOf(
+            row("裂", "tear"),
+            row("割", "divide"),
+            row("提", "present"),
+            row("浅", "shallow"),
+            row("腕", "arm"),
+        )
+
+        val card = MeaningKanjiChoicePlanner().buildChoiceCard(row("裂", "tear"), rows, emptyList(), Random(3), emptyMap(), lookup)
+
+        assertNotNull(card)
+        assertFalse(card!!.choices.contains("割"))
+        assertTrue(card.choices.contains("裂"))
+        assertEquals(4, card.choices.size)
+    }
+
     private fun row(kanji: String, meaning: String): RecordsImportModels.DashboardRow {
         return RecordsImportModels.DashboardRow(kanji, 100, meaning, "reading", "search", 10, "reason", "reason text", 1, 0, 0, arrayListOf<RecordsImportModels.Example>())
     }
@@ -129,4 +196,20 @@ class MeaningKanjiChoicePlannerTest {
     private fun inventory(kanji: String?, meaning: String): RecordsImportModels.KanjiInventoryItem {
         return RecordsImportModels.KanjiInventoryItem(kanji, meaning, "reading", "search", 1, 1, false, 0L)
     }
+
+    private fun entry(literal: String, vararg meanings: String): DictionaryLookup.KanjiEntry =
+        DictionaryLookup.KanjiEntry(
+            DictionaryLookup.KanjiEntryFields(
+                literal,
+                meanings.asList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                0,
+                0,
+                0,
+                0,
+                null,
+            ),
+        )
 }
