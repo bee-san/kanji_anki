@@ -337,7 +337,22 @@ reading-aware log near the end of section 14.
 - **UI**: `renderMeaningKanjiSession` (`MainActivityStudyChoiceSessions.kt:57-102`)
   — "Which kanji means …?" with four kanji choices built from the local
   inventory (`MeaningKanjiChoicePlanner`), biased by past wrong-pick
-  counts. Falls back to flashcard if four choices cannot be built.
+  counts.
+- **Clue source**: the displayed meaning is the target kanji's **KANJIDIC2
+  gloss** (via `StudyTextCopy.canonicalKanjiMeaning` →
+  `StudyCueFormatter.displayGlosses`), not the tested word's JMdict compound
+  gloss. This keeps the question canonically answerable from kanji knowledge
+  and consistent with `similar_kanji`; the question and both result branches
+  share one helper (`StudyTextCopy.meaningKanjiChoiceMeaning`). PR #87 briefly
+  flipped this to word-gloss-first, which is reverted here.
+- **Hard gate + decoy guard**: `MeaningKanjiChoicePlanner.buildChoiceCard`
+  takes the `DictionaryLookup` and returns `null` when the target kanji has no
+  KANJIDIC gloss, so the session degrades to a plain recognition flashcard
+  (same pattern as `kanji_reading`). Decoys whose own dictionary-first
+  displayed meaning matches the target's gloss are dropped so the card stays
+  answerable; the word-level dedup still applies. A `null` lookup leaves the
+  planner ungated for callers/tests without a dictionary. Also falls back to a
+  flashcard if four choices cannot be built.
 - **Rating surface**: selection + Pass/Fail result bar → `good`/`again`.
 - **No legacy source**: unreachable via the v16 migration; reached only by
   ladder movement.

@@ -233,7 +233,7 @@ class MainActivityStudyRouteSmokeInstrumentedTest {
             }
 
             assertVisible("Recall")
-            assertVisibleAfterScroll("Which kanji means Split?")
+            assertVisibleAfterScroll("Which kanji means Split, rend?")
             assertVisible("裂")
             assertVisible("烈")
             assertDescriptionVisible(StudyTextCopy.closeStudyLabel())
