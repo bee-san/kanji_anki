@@ -162,6 +162,10 @@ class SourceBindingPolicyTest {
         assertEquals(SourceBindingDecisionKind.ALLOW, rebound.kind)
         assertEquals(SourceBindingReason.EXPLICIT_REBIND, rebound.reason)
         assertEquals(SALT_B, rebound.bindingToPersist?.bindingSalt)
+        assertEquals(
+            SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS,
+            rebound.resetScope,
+        )
         assertNotEquals(persisted.providerKindDigest, rebound.bindingToPersist?.providerKindDigest)
     }
 

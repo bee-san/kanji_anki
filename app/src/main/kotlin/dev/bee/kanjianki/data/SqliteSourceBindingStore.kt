@@ -5,12 +5,18 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.syncapi.PersistedSourceBinding
 import dev.bee.kanjianki.syncapi.SourceBindingRecordCodec
+import dev.bee.kanjianki.syncapi.SourceBindingResetScope
 import dev.bee.kanjianki.syncapi.SourceBindingStore
 
 internal interface AndroidSourceBindingStateStore : SourceBindingStore {
     fun legacyAndroidMigrationEligible(): Boolean
 
     fun saveLegacyMigrationResult(binding: PersistedSourceBinding)
+
+    fun saveExplicitRecoveryResult(
+        binding: PersistedSourceBinding,
+        resetScope: SourceBindingResetScope,
+    )
 }
 
 internal object SourceBindingMigrationRecord {
@@ -20,7 +26,7 @@ internal object SourceBindingMigrationRecord {
 }
 
 internal class SqliteSourceBindingStore(
-    private val store: LocalStoreBase,
+    private val store: LocalStoreSync,
 ) : AndroidSourceBindingStateStore {
     override fun load(): PersistedSourceBinding? {
         val keys = SourceBindingRecordCodec.keys.toList()
@@ -81,6 +87,31 @@ internal class SqliteSourceBindingStore(
             }
         } finally {
             store.settingsStore().invalidate()
+        }
+    }
+
+    override fun saveExplicitRecoveryResult(
+        binding: PersistedSourceBinding,
+        resetScope: SourceBindingResetScope,
+    ) {
+        val database = store.writableDatabase
+        try {
+            database.transaction {
+                if (resetScope == SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS) {
+                    store.clearProviderStateForSourceRebind(this)
+                }
+                saveBinding(this, binding)
+                delete(
+                    LocalStoreBase.TABLE_SETTINGS,
+                    "key = ?",
+                    arrayOf(SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION),
+                )
+            }
+        } finally {
+            store.settingsStore().invalidate()
+            if (resetScope == SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS) {
+                store.invalidateProviderStateAfterSourceRebind()
+            }
         }
     }
 

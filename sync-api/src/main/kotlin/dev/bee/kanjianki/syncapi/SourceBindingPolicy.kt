@@ -122,6 +122,7 @@ object SourceBindingPolicy {
             SourceBindingDecisionKind.ALLOW,
             SourceBindingReason.EXPLICIT_REBIND,
             request.candidate.toBinding(replacementSalt, request.nowMillis),
+            SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS,
         )
     }
 

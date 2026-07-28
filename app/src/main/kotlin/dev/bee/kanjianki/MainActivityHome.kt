@@ -78,6 +78,9 @@ internal abstract class MainActivityHome : MainActivityBase() {
             onError = ::reportStatsPrecomputeError,
         )
     }
+    private val sourceBindingRecovery by lazy {
+        MainActivitySourceBindingRecovery(this)
+    }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     private var latestHomeRouteBackAction: Runnable? = null
     private var latestHomeRouteManagedScroll: Boolean = false
@@ -656,6 +659,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
 
     fun renderFailedSyncResult(result: ManualSyncEngine.SyncResult) {
+        if (sourceBindingRecovery.renderIfRequired(result)) return
         val classification = dev.bee.kanjianki.core.SyncFailureClassification.classify(
             result.message,
             permanentFailure = !result.retryable,
@@ -677,7 +681,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         )
     }
 
-    private fun renderSyncResultScreen(model: SyncResultScreenModel) {
+    internal fun renderSyncResultScreen(model: SyncResultScreenModel) {
         renderHomeRoute(backAction = Runnable { renderHome() }) {
             SyncResultScreen(model)
         }

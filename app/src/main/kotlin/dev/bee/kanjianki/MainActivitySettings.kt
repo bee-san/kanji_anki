@@ -14,7 +14,6 @@ import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
 import kotlinx.coroutines.runBlocking
-import kotlin.system.exitProcess
 
 internal abstract class MainActivitySettings : MainActivityStudy() {
     internal var settingsScrollY = 0
@@ -426,11 +425,6 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
 
     fun backupSettingsPanelModel(): SettingsBackupPanelModel {
         return backupRestoreSettings.backupSettingsPanelModel()
-    }
-
-    internal fun closeForStagedRestore() {
-        finishAffinity()
-        exitProcess(0)
     }
 
     fun runUpdate(cachedPending: Boolean) {

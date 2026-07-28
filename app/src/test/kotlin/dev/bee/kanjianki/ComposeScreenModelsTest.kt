@@ -400,6 +400,11 @@ class ComposeScreenModelsTest {
         val teal = 0xFF00AEB5.toInt()
         val primary = Runnable {}
         val secondary = Runnable {}
+        var recoveryRequested = false
+        val recovery = SyncResultActionModel(
+            "Start a new profile",
+            Runnable { recoveryRequested = true },
+        )
         val model = SyncResultScreenModel(
             title = "Sync complete",
             headline = "12 cards imported",
@@ -410,6 +415,7 @@ class ComposeScreenModelsTest {
             onPrimary = primary,
             secondaryLabel = "Back home",
             onSecondary = secondary,
+            additionalActions = listOf(recovery),
         )
 
         assertEquals("Sync complete", model.title)
@@ -421,6 +427,9 @@ class ComposeScreenModelsTest {
         assertSame(primary, model.onPrimary)
         assertEquals("Back home", model.secondaryLabel)
         assertSame(secondary, model.onSecondary)
+        assertEquals(listOf(recovery), model.additionalActions)
+        model.additionalActions.single().onAction.run()
+        assertTrue(recoveryRequested)
         assertEquals(model, model.copy())
     }
 

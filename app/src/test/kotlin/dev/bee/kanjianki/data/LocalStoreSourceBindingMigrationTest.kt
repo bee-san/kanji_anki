@@ -81,6 +81,22 @@ class LocalStoreSourceBindingMigrationTest {
         )
     }
 
+    @Test
+    fun profileEmptinessIgnoresFailedSyncAttemptsButDetectsKaniProgress() {
+        assertTrue(store.isEmptyKaniProfile())
+
+        insertSyncRun("retryable_error")
+        assertTrue(store.isEmptyKaniProfile())
+
+        store.writableDatabase.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_STUDY_ITEMS} " +
+                "(kanji, state, due_at, stability, difficulty, total_reviews, lapses, " +
+                "learning_step, writing_level, created_at) " +
+                "VALUES ('字', 'review', 1, 2.0, 3.0, 4, 0, 0, 0, 1)",
+        )
+        assertFalse(store.isEmptyKaniProfile())
+    }
+
     private fun insertSyncRun(status: String) {
         store.writableDatabase.insertOrThrow(
             LocalStoreBase.TABLE_SYNC_RUNS,

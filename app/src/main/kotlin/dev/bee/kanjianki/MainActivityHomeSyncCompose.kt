@@ -101,6 +101,28 @@ fun SyncResultScreen(model: SyncResultScreenModel) {
                 )
             }
         }
+        model.additionalActions.forEach { action ->
+            OutlinedButton(
+                onClick = {
+                    withButtonTrace(action.label) {
+                        action.onAction.run()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
+                shape = KaniUiTokens.ButtonShape,
+                border = BorderStroke(1.dp, KaniUiTokens.SubtleButtonBorder),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = KaniUiTokens.White,
+                    contentColor = KaniUiTokens.Ink,
+                ),
+            ) {
+                Text(
+                    text = action.label,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
         OutlinedButton(
             onClick = {
                 withButtonTrace(model.secondaryLabel) {

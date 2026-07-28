@@ -2,6 +2,7 @@ package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionProviderKind
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.JitenKanjiRanks
@@ -20,6 +21,7 @@ import dev.bee.kanjianki.data.fakes.FakeSettingsRepository
 import dev.bee.kanjianki.data.fakes.FakeStudyRepository
 import dev.bee.kanjianki.data.fakes.FakeSyncRepository
 import dev.bee.kanjianki.syncapi.SourceBindingReason
+import dev.bee.kanjianki.syncapi.RedactedSourceIdentityEvidence
 import dev.bee.kanjianki.time.AppClock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -126,6 +128,15 @@ class ManualSyncEngineRepositoryBoundaryTest {
         val events = mutableListOf<String>()
         val repositories = Repositories()
         val gateway = RecordingGateway(events)
+        val evidence = SourceBindingEvidence(
+            candidate = RedactedSourceIdentityEvidence(
+                CollectionProviderKind.ANKIDROID,
+                noteIdSampleSize = 20,
+                cardIdSampleSize = 21,
+            ),
+            priorNoteSampleSize = 18,
+            priorCardSampleSize = 19,
+        )
         val engine = repositories.engine(
             gateway = gateway,
             effects = noOpEffects(),
@@ -134,6 +145,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
                 throw SourceBindingFailure(
                     SourceBindingReason.UNKNOWN_ORIGIN,
                     "Source recovery is required.",
+                    evidence,
                 )
             },
         )
@@ -142,6 +154,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
 
         assertFalse(result.success)
         assertEquals(SourceBindingReason.UNKNOWN_ORIGIN, result.sourceBindingReason)
+        assertEquals(evidence, result.sourceBindingEvidence)
         assertTrue(repositories.sync.publications.isEmpty())
         assertEquals(0, gateway.archiveCalls)
         assertEquals(listOf("binding"), events)

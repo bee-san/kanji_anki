@@ -173,6 +173,11 @@ enum class SourceBindingDecisionKind {
     REJECT,
 }
 
+enum class SourceBindingResetScope {
+    NONE,
+    PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS,
+}
+
 enum class SourceBindingReason {
     VALIDATED,
     FIRST_BIND_REQUIRED,
@@ -206,6 +211,7 @@ data class SourceBindingDecision(
     val kind: SourceBindingDecisionKind,
     val reason: SourceBindingReason,
     val bindingToPersist: PersistedSourceBinding? = null,
+    val resetScope: SourceBindingResetScope = SourceBindingResetScope.NONE,
 ) {
     val allowsCollectionAccess: Boolean
         get() = kind == SourceBindingDecisionKind.ALLOW

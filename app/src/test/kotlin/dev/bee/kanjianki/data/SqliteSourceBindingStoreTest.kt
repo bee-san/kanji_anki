@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteException
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.syncapi.PersistedSourceBinding
 import dev.bee.kanjianki.syncapi.SourceBindingRecordCodec
+import dev.bee.kanjianki.syncapi.SourceBindingResetScope
 import dev.bee.kanjianki.syncapi.SourceBindingValidationState
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -140,6 +141,135 @@ class SqliteSourceBindingStoreTest {
             settingsRows(),
         )
     }
+
+    @Test
+    fun explicitRebindAtomicallyClearsProviderStateAndPreservesKaniProgress() {
+        seedProviderProjectionAndKaniProgress()
+        putSetting(REPAIRED_HANDOFF_SETTING_KEY, "修")
+        val replacement = fixture(
+            providerDigest = "c".repeat(64),
+            validatedAt = 99L,
+        )
+
+        bindingStore.saveExplicitRecoveryResult(
+            replacement,
+            SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS,
+        )
+
+        assertEquals(replacement, bindingStore.load())
+        assertEquals(0, rowCount(LocalStoreBase.TABLE_SOURCE_NOTES))
+        assertEquals(0, rowCount(LocalStoreBase.TABLE_DASHBOARD_ROWS))
+        assertEquals(0, rowCount(LocalStoreBase.TABLE_MISSING_KANJI_EXPORTS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SUSPENDED_IMPORTS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SUSPENDED_SOURCES))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SUSPENDED_ARCHIVE))
+        assertNull(suspendedArchiveRestoredAt())
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_STUDY_ITEMS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_REVIEW_LOG))
+        assertFalse(settingsRows().containsKey(REPAIRED_HANDOFF_SETTING_KEY))
+    }
+
+    @Test
+    fun failedExplicitRebindRollsBackProviderResetBindingAndMarker() {
+        val original = fixture()
+        bindingStore.save(original)
+        seedProviderProjectionAndKaniProgress()
+        putSetting(
+            SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION,
+            SourceBindingMigrationRecord.ELIGIBLE,
+        )
+        localStore.writableDatabase.execSQL(
+            """
+            CREATE TRIGGER reject_explicit_source_binding
+            BEFORE INSERT ON ${LocalStoreBase.TABLE_SETTINGS}
+            WHEN NEW.key = '${SourceBindingRecordCodec.KEY_SOURCE_KEY_DIGEST}'
+            BEGIN
+                SELECT RAISE(ABORT, 'injected explicit binding failure');
+            END
+            """.trimIndent(),
+        )
+
+        assertThrows(SQLiteException::class.java) {
+            bindingStore.saveExplicitRecoveryResult(
+                fixture(providerDigest = "c".repeat(64), validatedAt = 99L),
+                SourceBindingResetScope.PROVIDER_PROJECTIONS_AND_WRITE_RECEIPTS,
+            )
+        }
+
+        assertEquals(original, bindingStore.load())
+        assertTrue(bindingStore.legacyAndroidMigrationEligible())
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_SOURCE_NOTES))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_DASHBOARD_ROWS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_MISSING_KANJI_EXPORTS))
+        assertEquals(9L, suspendedArchiveRestoredAt())
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_STUDY_ITEMS))
+        assertEquals(1, rowCount(LocalStoreBase.TABLE_REVIEW_LOG))
+    }
+
+    private fun seedProviderProjectionAndKaniProgress() {
+        val database = localStore.writableDatabase
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_SOURCE_NOTES} " +
+                "(note_id, model_name, expression, reading, meaning, sentence, " +
+                "fields_json, tags, last_seen_sync_id) " +
+                "VALUES (1, 'Model', '修理', 'しゅうり', 'repair', '', '{}', '', 1)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_DASHBOARD_ROWS} " +
+                "(kanji, jiten_rank, primary_meaning, reading, browser_search, weakness_score, " +
+                "reason_code, reason_text, active_example_count, suspended_example_count, " +
+                "mature_support_count, rebuilt_at) " +
+                "VALUES ('修', 100, 'repair', 'しゅう', '修', 10, 'weak', 'weak', 1, 0, 0, 1)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_MISSING_KANJI_EXPORTS} " +
+                "(literal, destination_key, exported_at, external_note_id) " +
+                "VALUES ('修', 'old-provider', 1, 99)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_SUSPENDED_IMPORTS} " +
+                "(kanji, jiten_rank, rank_known, cutoff_used, first_imported_at, last_seen_sync_id) " +
+                "VALUES ('修', 100, 1, 2500, 1, 1)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_SUSPENDED_SOURCES} " +
+                "(kanji, card_id, note_id, expression, reading, meaning, sentence, sync_id) " +
+                "VALUES ('修', 2, 1, '修理', 'しゅうり', 'repair', '', 1)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_SUSPENDED_ARCHIVE} " +
+                "(card_id, note_id, deck_name, model_name, expression, reading, meaning, " +
+                "sentence, fields_json, archived_at, archived_sync_id, restored_at) " +
+                "VALUES (2, 1, 'Deck', 'Model', '修理', 'しゅうり', 'repair', '', '{}', 1, 1, 9)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_STUDY_ITEMS} " +
+                "(kanji, state, due_at, stability, difficulty, total_reviews, lapses, " +
+                "learning_step, writing_level, answer_signature, created_at) " +
+                "VALUES ('修', 'review', 100, 5.0, 4.0, 8, 1, 0, 2, '修理', 1)",
+        )
+        database.execSQL(
+            "INSERT INTO ${LocalStoreBase.TABLE_REVIEW_LOG} " +
+                "(kanji, token, rating, writing_required, writing_passed, manual_override, " +
+                "reviewed_at, answer_signature) " +
+                "VALUES ('修', 'review-token', 'good', 0, 0, 0, 1, '修理')",
+        )
+    }
+
+    private fun rowCount(table: String): Int =
+        localStore.readableDatabase.rawQuery("SELECT COUNT(*) FROM $table", null).use { cursor ->
+            check(cursor.moveToFirst())
+            cursor.getInt(0)
+        }
+
+    private fun suspendedArchiveRestoredAt(): Long? =
+        localStore.readableDatabase.rawQuery(
+            "SELECT restored_at FROM ${LocalStoreBase.TABLE_SUSPENDED_ARCHIVE} WHERE card_id=2",
+            null,
+        ).use { cursor ->
+            check(cursor.moveToFirst())
+            if (cursor.isNull(0)) null else cursor.getLong(0)
+        }
 
     private fun settingsRows(): Map<String, String> {
         val rows = LinkedHashMap<String, String>()

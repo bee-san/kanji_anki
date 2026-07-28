@@ -45,7 +45,7 @@ import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.ManualSyncEngine
-import dev.bee.kanjianki.sync.SyncSourceBindingGate
+import dev.bee.kanjianki.sync.AndroidSourceBindingGate
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.sync.createManualSyncEngine
@@ -54,6 +54,7 @@ import dev.bee.kanjianki.core.KaniThemeChoice
 import java.io.File
 import java.util.concurrent.ExecutorService
 import kotlinx.coroutines.runBlocking
+import kotlin.system.exitProcess
 
 internal abstract class MainActivityBase : MainActivityUiSupport() {
     @JvmField
@@ -142,7 +143,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     lateinit var syncUseCases: SyncUseCases
         private set
 
-    lateinit var sourceBindingGate: SyncSourceBindingGate
+    lateinit var sourceBindingGate: AndroidSourceBindingGate
         private set
 
     /** True once [store] has been assigned by startup (replaces the old NPE-catch). */
@@ -773,6 +774,11 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     internal fun snapshotBackupInto(destination: File) {
         store.snapshotInto(destination)
+    }
+
+    internal fun closeForStagedRestore() {
+        finishAffinity()
+        exitProcess(0)
     }
 
     fun studyLadderSettings(): RecordsBase.StudyLadderSettings {

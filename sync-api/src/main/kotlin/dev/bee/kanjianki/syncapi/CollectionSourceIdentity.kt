@@ -51,6 +51,13 @@ class CollectionSourceIdentity private constructor(
             stableCardIds,
         )
 
+    fun redactedEvidence(): RedactedSourceIdentityEvidence =
+        RedactedSourceIdentityEvidence(
+            providerKind = providerKind,
+            noteIdSampleSize = noteIds.size,
+            cardIdSampleSize = cardIds.size,
+        )
+
     override fun toString(): String =
         "CollectionSourceIdentity(redacted, noteSample=${noteIds.size}, cardSample=${cardIds.size})"
 
@@ -89,6 +96,19 @@ class CollectionSourceIdentity private constructor(
             hash.update(value.toByteArray(StandardCharsets.UTF_8))
             return hash.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
         }
+    }
+}
+
+data class RedactedSourceIdentityEvidence(
+    val providerKind: CollectionProviderKind,
+    val noteIdSampleSize: Int,
+    val cardIdSampleSize: Int,
+) {
+    init {
+        require(noteIdSampleSize >= 0) { "note ID sample size must not be negative" }
+        require(cardIdSampleSize >= 0) { "card ID sample size must not be negative" }
+        require(noteIdSampleSize <= CollectionSourceIdentity.MAX_IDS_PER_KIND)
+        require(cardIdSampleSize <= CollectionSourceIdentity.MAX_IDS_PER_KIND)
     }
 }
 

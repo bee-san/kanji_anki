@@ -10,4 +10,10 @@ data class SyncResultScreenModel(
     val onPrimary: Runnable?,
     val secondaryLabel: String,
     val onSecondary: Runnable,
+    val additionalActions: List<SyncResultActionModel> = emptyList(),
+)
+
+data class SyncResultActionModel(
+    val label: String,
+    val onAction: Runnable,
 )

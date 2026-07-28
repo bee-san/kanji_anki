@@ -290,6 +290,7 @@ internal class ManualSyncEngine(
             )
             val finished = clock.nowMillis()
             val sourceBindingReason = (error as? SourceBindingFailure)?.reason
+            val sourceBindingEvidence = (error as? SourceBindingFailure)?.evidence
             persistFailedSync(
                 started,
                 finished,
@@ -311,6 +312,7 @@ internal class ManualSyncEngine(
                 "",
                 retryable = error.retryable,
                 sourceBindingReason = sourceBindingReason,
+                sourceBindingEvidence = sourceBindingEvidence,
             )
         } catch (error: Exception) {
             committedState?.let { committed ->
@@ -546,6 +548,9 @@ internal class ManualSyncEngine(
         @JvmField
         var sourceBindingReason: SourceBindingReason? = null
 
+        @JvmField
+        var sourceBindingEvidence: SourceBindingEvidence? = null
+
         companion object {
             @JvmStatic
             internal fun create(
@@ -559,6 +564,7 @@ internal class ManualSyncEngine(
                 adaptiveFocusText: String = "",
                 retryable: Boolean = false,
                 sourceBindingReason: SourceBindingReason? = null,
+                sourceBindingEvidence: SourceBindingEvidence? = null,
             ): SyncResult {
                 return SyncResult(
                     success,
@@ -572,6 +578,7 @@ internal class ManualSyncEngine(
                     this.adaptiveFocusText = adaptiveFocusText
                     this.retryable = retryable
                     this.sourceBindingReason = sourceBindingReason
+                    this.sourceBindingEvidence = sourceBindingEvidence
                 }
             }
 

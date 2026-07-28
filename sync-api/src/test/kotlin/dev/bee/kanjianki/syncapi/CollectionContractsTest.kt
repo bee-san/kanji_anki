@@ -50,6 +50,25 @@ class CollectionContractsTest {
     }
 
     @Test
+    fun sourceIdentityProducesOnlyRedactedBoundedEvidenceForPresentation() {
+        val identity = CollectionSourceIdentity.create(
+            CollectionProviderKind.ANKIDROID,
+            "private.provider.authority",
+            listOf(123_456_789L, 222L),
+            listOf(987_654_321L),
+        )
+
+        val evidence = identity.redactedEvidence()
+
+        assertEquals(CollectionProviderKind.ANKIDROID, evidence.providerKind)
+        assertEquals(2, evidence.noteIdSampleSize)
+        assertEquals(1, evidence.cardIdSampleSize)
+        assertFalse(evidence.toString().contains("private.provider.authority"))
+        assertFalse(evidence.toString().contains("123456789"))
+        assertFalse(evidence.toString().contains("987654321"))
+    }
+
+    @Test
     fun failureKindsExposeStableDefaultRetryability() {
         assertTrue(CollectionFailure(CollectionFailureKind.NOT_AVAILABLE, null).retryable)
         assertFalse(CollectionFailure(CollectionFailureKind.AUTH_REQUIRED, null).retryable)

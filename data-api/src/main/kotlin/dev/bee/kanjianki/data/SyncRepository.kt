@@ -51,6 +51,12 @@ data class StoredSyncState(
     val latestSuccessfulSyncAtMillis: Long?,
     val mirrorIdentityEvidence: CollectionMirrorIdentityEvidence =
         CollectionMirrorIdentityEvidence.EMPTY,
+    val databaseIsEmpty: Boolean =
+        !hasCollectionMirror &&
+            suspendedImports.isEmpty() &&
+            unrestoredSuspendedArchiveCardIds.isEmpty() &&
+            studyItems.isEmpty() &&
+            latestSuccessfulSyncAtMillis == null,
 )
 
 data class CollectionMirrorIdentityEvidence(

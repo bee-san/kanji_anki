@@ -18,6 +18,7 @@ internal class SqliteSyncRepository(
                 studyItems = store.studyItems().toList(),
                 latestSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
                 mirrorIdentityEvidence = store.collectionMirrorIdentityEvidence(),
+                databaseIsEmpty = store.isEmptyKaniProfile(),
             )
         }
     }
