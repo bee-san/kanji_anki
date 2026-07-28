@@ -15,8 +15,9 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.ManualSyncEngine
-import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.sync.createManualSyncEngine
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.time.AppClock
 import java.io.File
@@ -260,14 +261,20 @@ class Goal165ProviderBaselineInstrumentedTest {
         resetProvider()
         val archiveGateway = gateway()
         val archiveSnapshot = archiveGateway.readCollection(RecordsSyncModels.Settings.kikuDefaults())
-        val archive = archiveGateway.removeArchivedSuspendedCards(archiveSnapshot, SyncProgress.NONE)
+        val archive = archiveGateway.removeArchivedSuspendedCards(
+            archiveSnapshot,
+            CollectionProgressListener.NONE,
+        )
         appendLine(
             "archive source=${archive.sourceCards} deleted=${archive.deletedNotes} tagged=${archive.taggedNotes} " +
                 "final-tags=${providerString("suspendedTags")}",
         )
 
         resetProvider()
-        val repaired = gateway().tagRepairedNotes(setOf(2L, 1L), SyncProgress.NONE)
+        val repaired = gateway().tagRepairedNotes(
+            setOf(2L, 1L),
+            CollectionProgressListener.NONE,
+        )
         appendLine(
             "repaired requested=${repaired.requestedNoteIds.sorted()} tagged=${repaired.taggedNoteIds.sorted()} " +
                 "failed=${repaired.failedNoteIds.sorted()} note1=${providerString("repairedTagsForNote", "1")} " +

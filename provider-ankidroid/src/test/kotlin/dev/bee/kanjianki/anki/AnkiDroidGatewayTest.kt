@@ -4,9 +4,10 @@ package dev.bee.kanjianki.anki
 
 import android.database.Cursor
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionFailureKind
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.NoteTypeDescriptor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -337,16 +338,24 @@ class AnkiDroidGatewayTest {
 
     @Test
     fun cardProgressReporterOnlyEmitsThrottledScanEvents() {
-        val events = mutableListOf<SyncProgress>()
+        val events = mutableListOf<CollectionProgress>()
 
-        AnkiDroidCardReader.reportCardProgressIfNeeded(SyncProgress.Listener { events.add(it) }, 11, 500)
+        AnkiDroidCardReader.reportCardProgressIfNeeded(
+            CollectionProgressListener(events::add),
+            11,
+            500,
+        )
         assertTrue(events.isEmpty())
 
-        AnkiDroidCardReader.reportCardProgressIfNeeded(SyncProgress.Listener { events.add(it) }, 20, 500)
+        AnkiDroidCardReader.reportCardProgressIfNeeded(
+            CollectionProgressListener(events::add),
+            20,
+            500,
+        )
         assertEquals(1, events.size)
-        assertEquals(SyncProgress.Stage.SCANNING_CARDS, events[0].stage)
-        assertEquals(20, events[0].scannedCards)
-        assertEquals(500, events[0].totalCards)
+        assertEquals(CollectionProgress.Stage.SCANNING_CARDS, events[0].stage)
+        assertEquals(20, events[0].completed)
+        assertEquals(500, events[0].total)
     }
 
     @Test
@@ -358,7 +367,7 @@ class AnkiDroidGatewayTest {
                 "authority",
                 RecordsSyncModels.Settings.kikuDefaults(),
                 setOf(1L, 2L, 3L),
-                SyncProgress.NONE,
+                CollectionProgressListener.NONE,
             )
             throw AssertionError("expected cancellation to abort the read")
         } catch (error: AnkiDroidGateway.SyncFailure) {
@@ -380,7 +389,7 @@ class AnkiDroidGatewayTest {
                 "authority",
                 RecordsSyncModels.Settings.kikuDefaults(),
                 setOf(1L),
-                SyncProgress.Listener { cancelled = true },
+                CollectionProgressListener { cancelled = true },
                 CollectionCancellation { cancelled },
             )
             throw AssertionError("expected operation cancellation to abort the read")

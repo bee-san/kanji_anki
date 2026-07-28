@@ -28,7 +28,7 @@ class AnkiMissingKanjiWriter private constructor(
         cancellation = Cancellation.NONE,
     )
 
-    internal constructor(context: Context, cancellation: Cancellation) : this(
+    constructor(context: Context, cancellation: Cancellation) : this(
         context = context,
         statusProvider = { AnkiDroidCollectionInventoryGateway(context).status() },
         cancellation = cancellation,

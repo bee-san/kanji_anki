@@ -5,28 +5,28 @@ import android.database.Cursor
 import android.net.Uri
 import android.util.Log
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.sync.SyncCancellation
-import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncdomain.ProviderCardPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 
-internal class AnkiDroidCardReader(
+class AnkiDroidCardReader(
     private val resolver: ContentResolver?,
-    private val lifecycleCancellation: CollectionCancellation = SyncCancellation.NONE,
+    private val lifecycleCancellation: CollectionCancellation = CollectionCancellation.NONE,
 ) {
     @Throws(AnkiDroidGateway.SyncFailure::class)
     fun queryCardsByNote(
         authority: String,
         settings: RecordsSyncModels.Settings,
         noteIds: Set<Long>,
-        progress: SyncProgress.Listener,
+        progress: CollectionProgressListener,
         operationCancellation: CollectionCancellation = CollectionCancellation.NONE,
     ): List<RecordsSyncModels.Card> {
         val requestedNoteIds = noteIds.toList()
         val total = requestedNoteIds.size
         var scanned = 0
-        progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total))
+        progress.onProgress(cardProgress(scanned, total))
         if (requestedNoteIds.isEmpty()) {
             return emptyList()
         }
@@ -390,11 +390,22 @@ internal class AnkiDroidCardReader(
         }
 
         @JvmStatic
-        fun reportCardProgressIfNeeded(progress: SyncProgress.Listener, scanned: Int, total: Int) {
+        fun reportCardProgressIfNeeded(
+            progress: CollectionProgressListener,
+            scanned: Int,
+            total: Int,
+        ) {
             if (shouldReportCardProgress(scanned, total)) {
-                progress.onSyncProgress(SyncProgress.cardsScanned(scanned, total))
+                progress.onProgress(cardProgress(scanned, total))
             }
         }
+
+        private fun cardProgress(scanned: Int, total: Int): CollectionProgress =
+            CollectionProgress(
+                stage = CollectionProgress.Stage.SCANNING_CARDS,
+                completed = scanned.coerceAtLeast(0),
+                total = total.coerceAtLeast(0),
+            )
 
         @JvmStatic
         fun shouldReportCardProgress(scanned: Int, total: Int): Boolean {

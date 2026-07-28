@@ -82,6 +82,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "data-api",
         "sync-api",
         "application",
+        "provider-ankidroid",
         "app",
         "desktop-app",
     },
@@ -115,6 +116,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "data-api": frozenset({"core", "sync-domain"}),
     "sync-api": frozenset({"core", "sync-domain"}),
     "application": frozenset({"data-api", "platform-contracts"}),
+    "provider-ankidroid": frozenset({"sync-api"}),
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
     ),
@@ -125,6 +127,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "data-api",
             "dictionary-core",
             "platform-contracts",
+            "provider-ankidroid",
             "sync-api",
             "update-core",
             "writing-core",

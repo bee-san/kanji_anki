@@ -13,7 +13,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import dev.bee.kanjianki.sync.createManualSyncEngine
-import dev.bee.kanjianki.sync.SyncProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.testing.CollectionGatewayContractKit
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.testing.DeviceSmoke
@@ -113,7 +113,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
             FakeAnkiDroidProvider.AUTHORITY,
             RecordsSyncModels.Settings.kikuDefaults(),
             noteIds,
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(7000, cards.size)
@@ -212,7 +212,10 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         context.contentResolver.call(providerUri(), "operationCanceledProviderFailure", null, null)
 
         try {
-            gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults(), null)
+            gateway.readCollection(
+                RecordsSyncModels.Settings.kikuDefaults(),
+                CollectionProgressListener.NONE,
+            )
             assertTrue("Expected timeout failure", false)
         } catch (error: AnkiDroidGateway.SyncFailure) {
             assertFalse(error.permanentFailure)
@@ -333,7 +336,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val summary = gateway.removeArchivedSuspendedCards(
             snapshot,
             emptyList<RecordsImportModels.SuspendedImport>(),
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(0, summary.sourceCards)
@@ -350,7 +353,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         )
         val emptySummary = AnkiDroidGateway
             .testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
-            .removeArchivedSuspendedCards(empty, null as SyncProgress.Listener?)
+            .removeArchivedSuspendedCards(empty, CollectionProgressListener.NONE)
 
         assertEquals(0, missingSummary.sourceCards)
         assertEquals("No provider removal attempted.", missingSummary.message)
@@ -818,7 +821,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val summary = gateway.removeArchivedSuspendedCards(
             snapshot,
             listOf(suspendedImportFor(2000L, 2L, true)),
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(1, summary.sourceCards)
@@ -831,7 +834,10 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         val snapshot = gateway.readCollection(RecordsSyncModels.Settings.kikuDefaults())
 
-        val summary = gateway.removeArchivedSuspendedCards(snapshot, null as SyncProgress.Listener?)
+        val summary = gateway.removeArchivedSuspendedCards(
+            snapshot,
+            CollectionProgressListener.NONE,
+        )
 
         assertEquals(1, summary.sourceCards)
         assertEquals(1, summary.taggedNotes)
@@ -847,7 +853,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val summary = gateway.removeArchivedSuspendedCards(
             snapshot,
             listOf(suspendedImportFor(2000L, 2L, true)),
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(1, summary.sourceCards)
@@ -866,7 +872,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val summary = gateway.removeArchivedSuspendedCards(
             snapshot,
             listOf(suspendedImportFor(2000L, 2L, true)),
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(1, summary.sourceCards)
@@ -899,7 +905,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
                     ),
                 ),
             ),
-            null as SyncProgress.Listener?,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(2, summary.sourceCards)
@@ -915,7 +921,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val summary = gateway.removeArchivedSuspendedCards(
             snapshotWithCards(card(9990L, 999L, true)),
             listOf(suspendedImportFor("謎", 9990L, 999L, true)),
-            SyncProgress.NONE,
+            CollectionProgressListener.NONE,
         )
 
         assertEquals(1, summary.sourceCards)
@@ -928,7 +934,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     fun repairedTaggingTagsRequestedNotes() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
-        val summary = gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+        val summary = gateway.tagRepairedNotes(setOf(1L), CollectionProgressListener.NONE)
 
         assertEquals(setOf(1L), summary.taggedNoteIds)
         assertTrue(summary.failedNoteIds.isEmpty())
@@ -940,7 +946,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     fun repairedTaggingLeavesExcludedNotesUntouched() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
-        gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+        gateway.tagRepairedNotes(setOf(1L), CollectionProgressListener.NONE)
 
         assertEquals("", providerString("repairedTagsForNote", "2"))
     }
@@ -950,7 +956,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "pretagSuspendedRepaired", null, null)
 
-        val summary = gateway.tagRepairedNotes(setOf(2L), SyncProgress.NONE)
+        val summary = gateway.tagRepairedNotes(setOf(2L), CollectionProgressListener.NONE)
 
         assertEquals(setOf(2L), summary.taggedNoteIds)
         assertEquals("leech kani_repaired", providerString("repairedTagsForNote", "2"))
@@ -961,7 +967,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "nullNoteCursor", null, null)
 
-        val summary = gateway.tagRepairedNotes(setOf(1L), SyncProgress.NONE)
+        val summary = gateway.tagRepairedNotes(setOf(1L), CollectionProgressListener.NONE)
 
         assertTrue(summary.taggedNoteIds.isEmpty())
         assertEquals(setOf(1L), summary.failedNoteIds)
@@ -974,7 +980,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
         context.contentResolver.call(providerUri(), "failRepairedNote", "1", null)
 
-        val summary = gateway.tagRepairedNotes(setOf(1L, 2L), SyncProgress.NONE)
+        val summary = gateway.tagRepairedNotes(setOf(1L, 2L), CollectionProgressListener.NONE)
 
         assertEquals(setOf(2L), summary.taggedNoteIds)
         assertEquals(setOf(1L), summary.failedNoteIds)
@@ -986,8 +992,8 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     fun unupdatableRepairedNoteRemainsFailedForRetry() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
-        val first = gateway.tagRepairedNotes(setOf(3L), SyncProgress.NONE)
-        val second = gateway.tagRepairedNotes(setOf(3L), SyncProgress.NONE)
+        val first = gateway.tagRepairedNotes(setOf(3L), CollectionProgressListener.NONE)
+        val second = gateway.tagRepairedNotes(setOf(3L), CollectionProgressListener.NONE)
 
         assertTrue(first.taggedNoteIds.isEmpty())
         assertEquals(setOf(3L), first.failedNoteIds)
@@ -1000,7 +1006,7 @@ class AnkiDroidGatewayProviderInstrumentedTest {
     fun emptyRepairedTaggingRequestIsNoOp() {
         val gateway = AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY)
 
-        val summary = gateway.tagRepairedNotes(emptySet(), SyncProgress.NONE)
+        val summary = gateway.tagRepairedNotes(emptySet(), CollectionProgressListener.NONE)
 
         assertTrue(summary.requestedNoteIds.isEmpty())
         assertEquals(0, providerInt("repairedTagUpdates"))

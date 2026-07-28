@@ -35,6 +35,7 @@ val sonarMainBinaries = listOf(
     rootPath("update-core/build/classes/kotlin/main"),
     rootPath("platform-contracts/build/classes/kotlin/main"),
     rootPath("desktop-app/build/classes/kotlin/main"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     sonarAppMainBinaries,
 )
@@ -53,6 +54,8 @@ val sonarTestBinaries = listOf(
     rootPath("update-core/build/classes/kotlin/test"),
     rootPath("platform-contracts/build/classes/kotlin/test"),
     rootPath("desktop-app/build/classes/kotlin/test"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
@@ -69,6 +72,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("platform-contracts/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("provider-ankidroid/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
@@ -116,7 +120,7 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/KaniBottomNavCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/SyncProgressPanel.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
+    "provider-ankidroid/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/HistoricalSyncStore.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/DictionaryStore.kt",
@@ -335,6 +339,10 @@ val fastCiTasks = listOf(
     ":platform-contracts:test",
     ":platform-contracts:jacocoTestReport",
     ":platform-contracts:jacocoTestCoverageVerification",
+    ":provider-ankidroid:testDebugUnitTest",
+    ":provider-ankidroid:jacocoDebugUnitTestReport",
+    ":provider-ankidroid:compileDebugAndroidTestKotlin",
+    ":provider-ankidroid:lintDebug",
     ":app:compileDebugKotlin",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
@@ -367,6 +375,7 @@ tasks.register("ciQuality") {
         ":dictionary-core:jar",
         ":update-core:jar",
         ":platform-contracts:jar",
+        ":provider-ankidroid:compileDebugKotlin",
         ":desktop-app:jacocoTestReport",
         ":desktop-app:jar",
         ":app:compileDebugKotlin",

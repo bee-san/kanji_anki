@@ -12,8 +12,6 @@ import androidx.annotation.RequiresApi
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SyncValidator
-import dev.bee.kanjianki.sync.SyncCancellation
-import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.syncapi.ArchiveTagSummary
 import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.syncapi.CollectionCancellation
@@ -37,7 +35,7 @@ import java.util.regex.Pattern
 class AnkiDroidGateway private constructor(
     context: Context,
     private val providerTargets: List<ProviderTarget>,
-    private val lifecycleCancellation: SyncCancellation,
+    private val lifecycleCancellation: CollectionCancellation,
 ) : CollectionGateway {
     private val packageManager: PackageManager
     private val resolver: ContentResolver
@@ -46,15 +44,16 @@ class AnkiDroidGateway private constructor(
     private val repairedTagging: AnkiDroidRepairedTagging
     private val permissionChecker: PermissionChecker
 
-    constructor(context: Context) : this(context, ProviderTarget.TARGETS, SyncCancellation.NONE)
+    constructor(context: Context) :
+        this(context, ProviderTarget.TARGETS, CollectionCancellation.NONE)
 
-    constructor(context: Context, cancellation: SyncCancellation) :
+    constructor(context: Context, cancellation: CollectionCancellation) :
         this(context, ProviderTarget.TARGETS, cancellation)
 
     // Retained (Context, List) signature so existing reflective test constructions keep
     // working; defaults cancellation to none.
     private constructor(context: Context, providerTargets: List<ProviderTarget>) :
-        this(context, providerTargets, SyncCancellation.NONE)
+        this(context, providerTargets, CollectionCancellation.NONE)
 
     init {
         val appContext = context.applicationContext
@@ -138,7 +137,7 @@ class AnkiDroidGateway private constructor(
                 target.authority,
                 settings,
                 notes.keys,
-                legacyProgress(reporter),
+                reporter,
                 cancellation,
             )
             throwIfCancelled(cancellation, "Sync cancelled before validating cards.")
@@ -160,12 +159,6 @@ class AnkiDroidGateway private constructor(
             throw SyncFailure.retryable("AnkiDroid provider read failed: ${error.message}", error)
         }
     }
-
-    fun readCollection(
-        settings: RecordsSyncModels.Settings,
-        progress: SyncProgress.Listener?,
-    ): RecordsSyncModels.CollectionSnapshot =
-        readCollection(settings, collectionProgress(progress))
 
     override fun readProviderCollection(
         settings: RecordsSyncModels.Settings,
@@ -262,22 +255,6 @@ class AnkiDroidGateway private constructor(
         return archiveCleanup.removeArchivedSuspendedCards(target.authority, snapshot, selectedSuspendedImports)
     }
 
-    fun removeArchivedSuspendedCards(
-        snapshot: RecordsSyncModels.CollectionSnapshot,
-        progress: SyncProgress.Listener?,
-    ): RemovalSummary = removeArchivedSuspendedCards(snapshot, collectionProgress(progress))
-
-    fun removeArchivedSuspendedCards(
-        snapshot: RecordsSyncModels.CollectionSnapshot,
-        selectedSuspendedImports: List<RecordsImportModels.SuspendedImport>?,
-        progress: SyncProgress.Listener?,
-    ): RemovalSummary =
-        removeArchivedSuspendedCards(
-            snapshot,
-            selectedSuspendedImports,
-            collectionProgress(progress),
-        )
-
     override fun tagRepairedNotes(
         noteIds: Set<Long>,
         progress: CollectionProgressListener,
@@ -294,11 +271,6 @@ class AnkiDroidGateway private constructor(
         return repairedTagging.tagRepairedNotes(target.authority, noteIds)
     }
 
-    fun tagRepairedNotes(
-        noteIds: Set<Long>,
-        progress: SyncProgress.Listener?,
-    ): RepairedTagSummary = tagRepairedNotes(noteIds, collectionProgress(progress))
-
     @Throws(SyncFailure::class)
     private fun requireProvider(): ProviderTarget {
         val target = resolveProviderTarget()
@@ -308,7 +280,7 @@ class AnkiDroidGateway private constructor(
 
     private fun combinedCancellation(operationCancellation: CollectionCancellation): CollectionCancellation =
         CollectionCancellation {
-            lifecycleCancellation.isStopped() || operationCancellation.isCancelled()
+            lifecycleCancellation.isCancelled() || operationCancellation.isCancelled()
         }
 
     private fun throwIfCancelled(
@@ -335,35 +307,6 @@ class AnkiDroidGateway private constructor(
         }
         return permissionChecker.check(permission) == PackageManager.PERMISSION_GRANTED
     }
-
-    private fun legacyProgress(listener: CollectionProgressListener): SyncProgress.Listener =
-        SyncProgress.Listener { progress ->
-            val stage = when (progress.stage) {
-                SyncProgress.Stage.FINDING_NOTE_TYPE -> CollectionProgress.Stage.FINDING_NOTE_TYPE
-                SyncProgress.Stage.READING_NOTES -> CollectionProgress.Stage.READING_NOTES
-                SyncProgress.Stage.SCANNING_CARDS -> CollectionProgress.Stage.SCANNING_CARDS
-                SyncProgress.Stage.PROCESSING_IMPORTED_CARDS,
-                SyncProgress.Stage.SAVING_LOCAL_DATA,
-                SyncProgress.Stage.BUILDING_PRACTICE_QUEUE,
-                -> return@Listener
-                SyncProgress.Stage.ARCHIVING_IMPORTED_CARDS ->
-                    CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS
-                SyncProgress.Stage.TAGGING_REPAIRED -> CollectionProgress.Stage.TAGGING_REPAIRED
-                null -> return@Listener
-            }
-            listener.onProgress(
-                CollectionProgress(
-                    stage = stage,
-                    completed = progress.scannedCards,
-                    total = progress.totalCards.takeIf { it >= 0 },
-                ),
-            )
-        }
-
-    private fun collectionProgress(listener: SyncProgress.Listener?): CollectionProgressListener =
-        CollectionProgressListener { progress ->
-            (listener ?: SyncProgress.NONE).onSyncProgress(SyncProgress.fromCollection(progress))
-        }
 
     @Throws(SyncFailure::class)
     private fun findConfiguredModel(target: ProviderTarget, settings: RecordsSyncModels.Settings): ModelMapping {
