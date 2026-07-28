@@ -3507,6 +3507,70 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   and unpushed; no PR, remote branch, tag, release, or external service was
   changed.
 
+### Goal 173 completion evidence (2026-07-28)
+
+- Started from: `7b84614b` on `desktop/support` in
+  `/local/home/skerraut/kanji_anki`.
+- Commits: `fcd4d42a refactor: route sync through SyncRepository` and
+  `4c54883b test: prove atomic sync publication through the repository`.
+- Implemented: `ManualSyncEngine` and `AutoSyncRunner` no longer reference
+  `LocalStore`; every production sync publication crosses one
+  `SyncUseCases.publish`/`SyncRepository` boundary. The pure-JVM
+  `ManualSyncQueuePlanner` owns queue planning, while
+  `ManualSyncComposition` and `AutoSyncComposition` isolate Android/store
+  construction. Provider-only evidence classification, sync-start timing,
+  atomic staged publication, pending-run rollback, successful-history-only
+  publication, mid-sync review reconciliation, automatic retry behavior, and
+  post-commit provider failure isolation remain intact. Reminder, widget,
+  provider-tagging, removal-message, summary, and logging effects run only
+  after committed publication succeeds.
+- Validation: fake-repository tests prove exactly one publication call and no
+  effects after failed publication; direct `:application` tests cover
+  `ManualSyncQueuePlanner`, its companion evidence helper, and
+  `SyncUseCases`. `python3 -m unittest tools.test_module_boundaries` passed all
+  19 tests. `./gradlew :application:test
+  :application:jacocoTestCoverageVerification --no-daemon
+  --dependency-verification=strict --console=plain` completed `BUILD
+  SUCCESSFUL` in 16s with 32 actionable tasks. The final deterministic command
+  `ANDROID_HOME=/tmp/android-sdk ANDROID_SDK_ROOT=/tmp/android-sdk ./gradlew
+  ciFast ciQuality ciDesktop sonarPreflight --no-daemon
+  --dependency-verification=strict --console=plain` completed `BUILD
+  SUCCESSFUL` in 2m10s with 143 actionable tasks (11 executed, 132
+  up-to-date). This includes app/unit tests, fake-provider coverage,
+  instrumentation compilation, lint, deterministic coverage, desktop checks,
+  Python asset/tooling tests, and Sonar input preflight. Fresh debug and
+  instrumentation APK assembly also completed `BUILD SUCCESSFUL` in 51s with
+  101 actionable tasks.
+- Live gates: Android 15 on the API 35 `google_atd` x86_64 emulator ran real
+  AnkiDroid `2.24.0` (`versionCode=422400300`); the pinned APK SHA-256 was
+  `b8aaef8c8ed13e96b7bbafbc46e690490684192147ab445db8a193c4ef6989b0`.
+  The four-note sanitized fixture passed the foreground sync, 62 provider
+  contract tests, and four live-provider tests as `OK (67 tests)` in
+  338.326s. A second private-data-free fixture contained 7,020 Kiku
+  notes/cards (7,019 active, zero orphan cards, SQLite integrity `ok`) and ran
+  the same command without `kanjiLiveMinimumNotes`, exercising the built-in
+  7,000-note threshold. It completed `OK (67 tests)` in 1,631.187s after the
+  foreground sync archived the one suspended fixture note and left 7,019
+  eligible notes. The live suite also covered collection-wide inventory,
+  idempotent create/render/delete of two disposable Missing Kanji notes, and
+  the non-destructive card-queue write probe. Full AOT compilation was needed
+  only because this host lacks KVM; no production artifact was changed.
+- Decisions: sync orchestration may prepare data and effects outside the
+  repository, but publication remains one atomic repository operation and no
+  externally visible effect may precede its committed success. The synthetic
+  default-threshold run is sufficient to close Goal 173's implementation and
+  real-provider compatibility work, but it is not represented as a copied
+  user-collection release gate.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `4c54883b` and then `fcd4d42a` to restore direct sync/store orchestration.
+  This requires no schema migration, provider repair, scheduler-state
+  conversion, or user-data rollback.
+- Gaps/blockers: none for Goal 173 implementation or sequential Goal 174 work.
+  The runbook's stricter release restriction remains: no provider/sync release
+  may be cut until a copied real user collection passes the default 7,000-note
+  gate. The branch remains local and unpushed; no PR, tag, release, or external
+  service was changed.
+
 Template:
 
 ```md
