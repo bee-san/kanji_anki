@@ -508,7 +508,7 @@ Dependency direction:
                 :reference-assets, :update-core
 :sync-engine -> :sync-api, :data-api, :core, :sync-domain, :dictionary-core,
                 :platform-contracts
-:data-sql -> :data-api, :core, :sync-domain, :dictionary-core
+:data-sql -> :data-api, :core, :sync-api, :sync-domain, :dictionary-core
 :backup-core -> :data-api, :platform-contracts
 :reference-assets -> :dictionary-core, :writing-core
 :data-android -> :data-sql, :backup-core

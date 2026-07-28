@@ -12,6 +12,7 @@ import dev.bee.kanjianki.data.AndroidDeviceSettingsStore
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.SqliteHomeRepository
 import dev.bee.kanjianki.data.SqliteSettingsRepository
+import dev.bee.kanjianki.data.SqliteSourceBindingStore
 import dev.bee.kanjianki.data.SqliteStatsRepository
 import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
@@ -37,6 +38,7 @@ internal class AndroidKaniContainer(
     override val statsRepository = SqliteStatsRepository(localStore)
     override val settingsRepository = SqliteSettingsRepository(localStore)
     override val syncRepository = SqliteSyncRepository(localStore)
+    val sourceBindingStore = SqliteSourceBindingStore(localStore)
     override val deviceSettingsStore = AndroidDeviceSettingsStore(appContext)
     val homeUseCases = HomeUseCases(
         homeRepository,

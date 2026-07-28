@@ -166,7 +166,7 @@ FINAL_PROJECT_DEPENDENCIES = {
         },
     ),
     "data-sql": frozenset(
-        {"core", "data-api", "dictionary-core", "sync-domain"},
+        {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
     ),
     "backup-core": frozenset({"data-api", "platform-contracts"}),
     "reference-assets": frozenset({"dictionary-core", "writing-core"}),
@@ -267,6 +267,7 @@ EDGE_RATIONALES = {
     ("data-sql", "core"): "Shared SQL persists canonical core state.",
     ("data-sql", "data-api"): "Shared SQL implements repository contracts.",
     ("data-sql", "dictionary-core"): "Shared SQL installs dictionary content.",
+    ("data-sql", "sync-api"): "Shared SQL persists opaque source-binding records.",
     ("data-sql", "sync-domain"): "Shared SQL persists sync-domain models.",
     ("backup-core", "data-api"): "Portable backup uses data-owned snapshot contracts.",
     ("backup-core", "platform-contracts"): "Backup durability uses platform ports.",
@@ -347,6 +348,7 @@ KANI_REFERENCE = re.compile(
 PERSISTENCE_ALLOWED_REFERENCE_PREFIXES = (
     "dev.bee.kanjianki.core",
     "dev.bee.kanjianki.data",
+    "dev.bee.kanjianki.syncapi",
     "dev.bee.kanjianki.syncdomain",
     "dev.bee.kanjianki.updatecore",
 )
