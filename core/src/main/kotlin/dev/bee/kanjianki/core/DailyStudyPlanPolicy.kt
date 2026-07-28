@@ -63,6 +63,8 @@ data class DailyStudyPlanRequest(
     val newProblemKanjiAvailable: Int = 0,
     val lastSuccessfulSyncAtMillis: Long? = null,
     val syncFreshnessMillis: Long? = 24L * 60L * 60L * 1000L,
+    val autoSyncEnabled: Boolean = false,
+    val consecutiveFailedSyncs: Int = 0,
     val dueLaterLookaheadMillis: Long = 0L,
     val estimatedSecondsPerItem: Int = 30,
 )
@@ -70,6 +72,8 @@ data class DailyStudyPlanRequest(
 object DailyStudyPlanPolicy {
     private const val DEFAULT_SECONDS_PER_ITEM = 30
     private const val DEFAULT_DUE_LATER_CLUSTER_WINDOW_MILLIS = 2L * 60L * 60L * 1000L
+    private const val AUTO_SYNC_GRACE_MILLIS = 3L * 24L * 60L * 60L * 1000L
+    private const val AUTO_SYNC_FAILURE_THRESHOLD = 3
 
     @JvmStatic
     fun plan(request: DailyStudyPlanRequest?): DailyStudyPlan {
@@ -86,7 +90,14 @@ object DailyStudyPlanPolicy {
         val currentDays = streak?.currentDays ?: 0
         val bestDays = streak?.bestDays ?: 0
         val hasUsefulEvidence = dueNow > 0 || dueLater > 0 || newProblemKanjiAvailable > 0 || studiedToday || currentDays > 0 || bestDays > 0
-        val syncStatus = syncStatus(nowMillis, safeRequest.lastSuccessfulSyncAtMillis, safeRequest.syncFreshnessMillis, hasUsefulEvidence)
+        val syncStatus = syncStatus(
+            nowMillis,
+            safeRequest.lastSuccessfulSyncAtMillis,
+            safeRequest.syncFreshnessMillis,
+            hasUsefulEvidence,
+            safeRequest.autoSyncEnabled,
+            safeRequest.consecutiveFailedSyncs,
+        )
         val recommendedAction = recommendedAction(
             dueNow = dueNow,
             dueLater = dueLater,
@@ -175,12 +186,22 @@ object DailyStudyPlanPolicy {
         lastSuccessfulSyncAtMillis: Long?,
         syncFreshnessMillis: Long?,
         hasUsefulEvidence: Boolean,
+        autoSyncEnabled: Boolean,
+        consecutiveFailedSyncs: Int,
     ): SyncStatus {
         val lastSync = lastSuccessfulSyncAtMillis?.takeIf { it > 0L }
         if (lastSync == null) {
             return if (hasUsefulEvidence) SyncStatus.NO_MANUAL_SYNC_YET else SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS
         }
-        val freshnessMillis = syncFreshnessMillis?.takeIf { it > 0L } ?: return SyncStatus.UNKNOWN
+        if (autoSyncEnabled && consecutiveFailedSyncs.coerceAtLeast(0) >= AUTO_SYNC_FAILURE_THRESHOLD) {
+            return SyncStatus.SYNC_NEEDED_TO_JUDGE_PROGRESS
+        }
+        val configuredFreshness = syncFreshnessMillis?.takeIf { it > 0L } ?: return SyncStatus.UNKNOWN
+        val freshnessMillis = if (autoSyncEnabled) {
+            maxOf(configuredFreshness, AUTO_SYNC_GRACE_MILLIS)
+        } else {
+            configuredFreshness
+        }
         return if (nonNegativeDifference(nowMillis, lastSync) <= freshnessMillis) {
             SyncStatus.CURRENT
         } else {

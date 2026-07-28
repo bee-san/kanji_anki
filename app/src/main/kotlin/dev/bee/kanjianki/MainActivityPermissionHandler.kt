@@ -15,7 +15,15 @@ internal class MainActivityPermissionHandler(private val activity: MainActivityB
 
     fun handleAnkiPermissionResult() {
         when (activity.currentRoute) {
-            MainActivityBase.NAV_HOME_ROUTE -> activity.renderHome()
+            MainActivityBase.NAV_HOME_ROUTE -> {
+                val home = activity as? MainActivityHome
+                val route = home?.currentHomeRouteRestoration
+                if (home != null && route != null) {
+                    home.renderRestoredHomeRoute(route)
+                } else {
+                    activity.renderHome()
+                }
+            }
             MainActivityBase.NAV_SETTINGS_IMPORT_SYNC_ROUTE ->
                 (activity as? MainActivitySettings)?.renderSettingsImportSync(true)
         }

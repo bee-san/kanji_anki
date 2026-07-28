@@ -57,6 +57,7 @@ internal class MainActivityShellHost(
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         studySessionActive: Boolean = false,
+        scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
         content: @Composable () -> Unit,
     ) {
         withRouteTrace(selected) {
@@ -81,6 +82,7 @@ internal class MainActivityShellHost(
                     navActions = navActions(studySessionActive),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,
+                    scrollMode = scrollMode,
                     content = content,
                     actionBar = null,
                 )
@@ -95,6 +97,7 @@ internal class MainActivityShellHost(
         scrollPositionLabel: String? = null,
         onScrollY: (Int) -> Unit = NoOpRouteScrollY,
         studySessionActive: Boolean = false,
+        scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
         beforeContent: () -> Unit = {},
         content: @Composable () -> Unit,
         actionBar: @Composable () -> Unit,
@@ -117,6 +120,7 @@ internal class MainActivityShellHost(
                     navActions = navActions(studySessionActive),
                     themeChoice = themeChoice,
                     isSystemDarkTheme = isSystemDarkTheme,
+                    scrollMode = scrollMode,
                     content = content,
                     actionBar = actionBar,
                 )
@@ -227,6 +231,7 @@ internal class MainActivityShellHost(
                 themeChoice = route.themeChoice,
                 isSystemDarkTheme = route.isSystemDarkTheme,
                 contentKey = route.stateKey,
+                scrollMode = route.scrollMode,
                 content = route.content,
             )
         } else {
@@ -238,6 +243,7 @@ internal class MainActivityShellHost(
                 themeChoice = route.themeChoice,
                 isSystemDarkTheme = route.isSystemDarkTheme,
                 contentKey = route.stateKey,
+                scrollMode = route.scrollMode,
                 content = route.content,
                 actionBar = actionBar,
             )
@@ -317,6 +323,7 @@ internal class MainActivityShellHost(
         val navActions: KaniNavActions,
         val themeChoice: KaniThemeChoice,
         val isSystemDarkTheme: Boolean,
+        val scrollMode: MainActivityRouteScrollMode,
         val content: @Composable () -> Unit,
         val actionBar: (@Composable () -> Unit)?,
     )

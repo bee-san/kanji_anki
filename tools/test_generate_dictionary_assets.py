@@ -148,6 +148,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
 
             with closing(sqlite3.connect(db_path)) as db:
                 columns = {row[1] for row in db.execute("PRAGMA table_info(kanji)")}
+                indexes = {row[1] for row in db.execute("PRAGMA index_list(kanji)")}
                 rank_columns = {row[1] for row in db.execute("PRAGMA table_info(jiten_ranks)")}
                 meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
                 row = db.execute("SELECT meanings, on_readings, stroke_count, kanjidic_frequency, jiten_rank FROM kanji WHERE literal='膨'").fetchone()
@@ -168,7 +169,8 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
                 columns,
             )
             self.assertEqual({"literal", "rank"}, rank_columns)
-            self.assertEqual("1", meta["schema_version"])
+            self.assertEqual("2", meta["schema_version"])
+            self.assertIn("idx_kanji_jiten_rank_literal", indexes)
             self.assertEqual("2026-129", meta["kanjidic2_database_version"])
             self.assertEqual("1", meta["jiten_rank_count"])
             self.assertEqual("1", meta["jiten_rank_join_count"])
@@ -244,6 +246,7 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
             jiten_count = db.execute("SELECT COUNT(*) FROM jiten_ranks").fetchone()[0]
             meta = dict(db.execute("SELECT key, value FROM dictionary_meta"))
             ranked = db.execute("SELECT COUNT(*) FROM kanji WHERE jiten_rank IS NOT NULL").fetchone()[0]
+            indexes = {row[1] for row in db.execute("PRAGMA index_list(kanji)")}
             bundled_ranks = dict(db.execute("SELECT literal, rank FROM jiten_ranks"))
             bundled_literals = db.execute("SELECT literal FROM kanji").fetchall()
 
@@ -256,11 +259,12 @@ class GenerateDictionaryAssetsTest(unittest.TestCase):
         self.assertEqual("ok", integrity)
         self.assertEqual(13108, count)
         self.assertEqual(10666, jiten_count)
-        self.assertEqual("1", meta["schema_version"])
+        self.assertEqual("2", meta["schema_version"])
         self.assertEqual("2026-129", meta["kanjidic2_database_version"])
         self.assertEqual("10666", meta["jiten_rank_count"])
         self.assertEqual("8031", meta["jiten_rank_join_count"])
         self.assertEqual(8031, ranked)
+        self.assertIn("idx_kanji_jiten_rank_literal", indexes)
         self.assertEqual([], [literal for (literal,) in bundled_literals if not generator.is_kanji_literal(literal)])
         self.assertEqual(source_ranks, bundled_ranks)
         self.assertEqual(f"{db_hash}  {db_path.name}\n", checksum_path.read_text(encoding="utf-8"))

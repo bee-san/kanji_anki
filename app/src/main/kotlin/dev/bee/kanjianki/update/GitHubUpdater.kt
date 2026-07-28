@@ -61,10 +61,11 @@ class GitHubUpdater @JvmOverloads constructor(
                 // not "up to date": it is the signature of a captive portal /
                 // intercepting proxy answering the releases API with an HTML
                 // interstitial (HTTP 200, empty tag_name). Classify it as a
-                // retryable connectivity failure so recordResult lights (does
-                // not clear) the update-check-failed flag and Home keeps a retry
-                // affordance, instead of collapsing the empty tag to 0.0.0 and
-                // reporting "already on version".
+                // retryable connectivity failure. Manual checks persist a Home
+                // retry affordance; automatic checks stay silent so Kani's
+                // offline-first study surface is not blocked by updater noise.
+                // In either case, never collapse the empty tag to 0.0.0 and
+                // report "already on version".
                 return recordResult(
                     checkedAt,
                     UpdateResult.failed(
@@ -76,6 +77,7 @@ class GitHubUpdater @JvmOverloads constructor(
                     "",
                     "",
                     "",
+                    source,
                 )
             }
             if (!ReleaseVersion.isNewerSemver(BuildConfig.VERSION_NAME, latest.tagName())) {
@@ -145,6 +147,7 @@ class GitHubUpdater @JvmOverloads constructor(
                 "",
                 "",
                 "",
+                source,
             )
         } catch (error: RuntimeException) {
             recordResult(
@@ -266,10 +269,14 @@ class GitHubUpdater @JvmOverloads constructor(
         version: String,
         pendingApkName: String,
         pendingMessage: String,
+        source: UpdateSource = UpdateSource.MANUAL,
     ): UpdateResult {
         AppLocalStoreFactory.create(context).use { store ->
             store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage)
-            if (!result.success && result.retryable) {
+            // Automatic checks are background maintenance. They may still return
+            // retryable=true so WorkManager can retry, but must not turn a
+            // transient GitHub/DNS failure into a prominent Home-screen warning.
+            if (!result.success && result.retryable && source == UpdateSource.MANUAL) {
                 store.recordUpdateCheckFailed(checkedAt)
             } else if (result.success || !result.retryable) {
                 store.clearUpdateCheckFailed()

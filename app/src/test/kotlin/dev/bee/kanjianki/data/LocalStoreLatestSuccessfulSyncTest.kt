@@ -46,6 +46,24 @@ class LocalStoreLatestSuccessfulSyncTest {
         assertEquals("failed", store.latestSync()?.status)
     }
 
+    @Test
+    fun consecutiveFailuresCountOnlyRowsAfterLatestSuccess() {
+        insertSync(status = "failed", finishedAt = 100L)
+        insertSync(status = LocalStoreBase.STATUS_SUCCESS, finishedAt = 200L)
+        insertSync(status = "failed", finishedAt = 300L)
+        insertSync(status = "failed", finishedAt = 400L)
+
+        assertEquals(2, store.consecutiveFailedSyncCount())
+    }
+
+    @Test
+    fun successfulLatestSyncHasNoConsecutiveFailures() {
+        insertSync(status = "failed", finishedAt = 100L)
+        insertSync(status = LocalStoreBase.STATUS_SUCCESS, finishedAt = 200L)
+
+        assertEquals(0, store.consecutiveFailedSyncCount())
+    }
+
     private fun insertSync(status: String, finishedAt: Long) {
         store.writableDatabase.execSQL(
             "INSERT INTO ${LocalStoreBase.TABLE_SYNC_RUNS} (" +

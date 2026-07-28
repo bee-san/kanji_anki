@@ -47,6 +47,7 @@ class WidgetFamilyContentTest {
         onNode(hasContentDescriptionEqualTo(presentation.contentDescription))
             .assertHasStartActivityClickAction(kaniWidgetLaunchIntent(context, snapshot))
         onNode(hasTextEqualTo(presentation.action)).assertExists()
+        onNode(hasContentDescriptionEqualTo(presentation.action)).assertDoesNotExist()
         onAllNodes(hasClickAction()).assertCountEquals(1)
     }
 

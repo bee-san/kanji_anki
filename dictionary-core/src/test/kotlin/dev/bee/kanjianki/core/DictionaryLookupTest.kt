@@ -167,6 +167,53 @@ class DictionaryLookupTest {
         assertEquals("", lookup.studyCue("", "fallback", "", "", "").meaning)
     }
 
+    @Test
+    fun inMemoryRangeQueryIsInclusivePagedAndRanksUnrankedLast() {
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(
+                kanji("三", listOf("three"), emptyList(), emptyList(), 3, 20),
+                kanji("一", listOf("one"), emptyList(), emptyList(), 1, 10),
+                kanji("無", listOf("none"), emptyList(), emptyList(), 0, null),
+                kanji("二", listOf("two"), emptyList(), emptyList(), 2, 10),
+                kanji("外", listOf("outside"), emptyList(), emptyList(), 4, 21),
+            ),
+        )
+        val range = DictionaryLookup.JitenRankRange(10, 20, includeUnranked = true)
+
+        val first = lookup.kanjiByJitenRank(range, offset = 0, limit = 2)
+        val second = lookup.kanjiByJitenRank(range, offset = first.nextOffset!!, limit = 2)
+
+        assertEquals(4, lookup.eligibleKanjiCount(range))
+        assertEquals(listOf("一", "二"), first.entries.map { it.literal })
+        assertEquals(4, first.totalEligible)
+        assertEquals(2, first.nextOffset)
+        assertEquals(listOf("三", "無"), second.entries.map { it.literal })
+        assertNull(second.nextOffset)
+    }
+
+    @Test
+    fun invalidRangeAndPageArgumentsReturnEmptyResults() {
+        val lookup = DictionaryLookup.fromKanjiEntries(
+            listOf(kanji("一", listOf("one"), emptyList(), emptyList(), 1, 1)),
+        )
+
+        assertEquals(0, lookup.eligibleKanjiCount(DictionaryLookup.JitenRankRange(2, 1)))
+        assertTrue(
+            lookup.kanjiByJitenRank(
+                DictionaryLookup.JitenRankRange(1, 1),
+                offset = -1,
+                limit = 100,
+            ).entries.isEmpty(),
+        )
+        assertTrue(
+            lookup.kanjiByJitenRank(
+                DictionaryLookup.JitenRankRange(1, 1),
+                offset = 0,
+                limit = 0,
+            ).entries.isEmpty(),
+        )
+    }
+
     private fun withLocale(locale: Locale, block: () -> Unit) {
         val previous = Locale.getDefault()
         Locale.setDefault(locale)

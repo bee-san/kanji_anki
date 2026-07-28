@@ -1008,7 +1008,11 @@ class UpdateFlowInstrumentedTest {
             result.message,
         )
         val failedAt = LocalStore(context).use { store -> store.updateCheckFailedAt() }
-        assertTrue("A no-route outage must light the persisted retry flag", failedAt > 0L)
+        assertEquals(
+            "An automatic no-route outage must not create a Home retry nag",
+            0L,
+            failedAt,
+        )
         assertEquals(0, client.downloads)
     }
 
@@ -1017,7 +1021,7 @@ class UpdateFlowInstrumentedTest {
     fun offlineTlsHandshakeFailureIsRetryableConnectivityFailureOnDevice() {
         val client = FakeUpdateClient().getTextFailure(SSLHandshakeException("handshake_failure"))
 
-        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
 
         assertFalse(result.success)
         assertTrue(
@@ -1084,9 +1088,9 @@ class UpdateFlowInstrumentedTest {
         // reopen, modeling an app kill/relaunch while offline: Home must still
         // show the retry banner after restart.
         GitHubUpdater(context, FakeUpdateClient().getTextFailure(NoRouteToHostException("api.github.com")))
-            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
         val firstProcessFlag = LocalStore(context).use { it.updateCheckFailedAt() }
-        assertTrue("Offline check must light the retry flag on-device", firstProcessFlag > 0L)
+        assertTrue("Manual offline check must light the retry flag on-device", firstProcessFlag > 0L)
 
         val secondProcessFlag = LocalStore(context).use { it.updateCheckFailedAt() }
         assertEquals(

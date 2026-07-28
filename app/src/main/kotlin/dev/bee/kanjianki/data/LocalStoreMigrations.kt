@@ -21,6 +21,7 @@ internal object LocalStoreMigrations {
         upgradeThroughThirty(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyOne(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyTwo(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirtyThree(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -304,6 +305,19 @@ internal object LocalStoreMigrations {
             // User-authored mnemonic notes live outside the sync mirror and
             // inventory tables so a routine inventory rebuild cannot erase them.
             hooks.createKanjiMnemonicNotesTable(db)
+        }
+    }
+
+    private fun upgradeThroughThirtyThree(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 33)) {
+            // Collection-wide Missing Kanji state is independent of the
+            // configured-model sync mirror and stores no raw note fields.
+            hooks.createMissingKanjiTables(db)
         }
     }
 

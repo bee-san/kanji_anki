@@ -440,7 +440,7 @@ class RalphOrchestratorTest(unittest.TestCase):
             self.assertEqual("passed", report["status"])
             self.assertEqual(7, report["summary"]["manifest_files"])
             self.assertEqual(len(button_contract.SEEDS), report["button_contract_summary"]["row_count"])
-            self.assertEqual(8, report["ui_view_matrix_summary"]["view_count"])
+            self.assertEqual(9, report["ui_view_matrix_summary"]["view_count"])
             self.assertEqual(1, report["summary"]["selected_files"])
             self.assertEqual(1, report["summary"]["interactive_files"])
             self.assertEqual(1, report["summary"]["qa_retries"])

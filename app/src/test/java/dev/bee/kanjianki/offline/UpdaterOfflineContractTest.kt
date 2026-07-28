@@ -57,6 +57,32 @@ class UpdaterOfflineContractTest {
     fun noRouteIsRetryableConnectivityFailure() = assertRetryableOfflineFailure(NetworkFaultTransport.Fault.NO_ROUTE)
 
     @Test
+    fun automaticConnectivityFailureDoesNotCreateAHomeScreenNag() {
+        val result = GitHubUpdater(context, NetworkFaultTransport.updateClient(NetworkFaultTransport.Fault.NO_ROUTE))
+            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        assertTrue("Background failure must remain retryable for WorkManager", result.retryable)
+        val failedAt = LocalStore(context).use { it.updateCheckFailedAt() }
+        assertEquals(
+            "Background update checks must fail silently in Kani's offline-first home experience",
+            0L,
+            failedAt,
+        )
+    }
+
+    @Test
+    fun automaticConnectivityFailurePreservesAnExistingManualRetryAffordance() {
+        val manualFailedAt = 1_700_000_000_000L
+        LocalStore(context).use { it.recordUpdateCheckFailed(manualFailedAt) }
+
+        GitHubUpdater(context, NetworkFaultTransport.updateClient(NetworkFaultTransport.Fault.NO_ROUTE))
+            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+
+        val failedAt = LocalStore(context).use { it.updateCheckFailedAt() }
+        assertEquals(manualFailedAt, failedAt)
+    }
+
+    @Test
     fun dnsFailureIsRetryableConnectivityFailure() =
         assertRetryableOfflineFailure(NetworkFaultTransport.Fault.DNS_FAILURE)
 
@@ -253,17 +279,17 @@ class UpdaterOfflineContractTest {
             ),
         )
 
-        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
         val afterFirstOutage = LocalStore(context).use { it.updateCheckFailedAt() }
-        assertTrue("First outage must light the retry flag", afterFirstOutage > 0L)
+        assertTrue("First manual outage must light the retry flag", afterFirstOutage > 0L)
 
-        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
         val afterRecovery = LocalStore(context).use { it.updateCheckFailedAt() }
         assertEquals("A healthy check must clear the retry flag", 0L, afterRecovery)
 
-        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
         val afterSecondOutage = LocalStore(context).use { it.updateCheckFailedAt() }
-        assertTrue("A fresh outage must re-light the retry flag", afterSecondOutage > 0L)
+        assertTrue("A fresh manual outage must re-light the retry flag", afterSecondOutage > 0L)
     }
 
     // ---------------------------------------------------------------------
@@ -277,9 +303,9 @@ class UpdaterOfflineContractTest {
     fun retryFlagSurvivesProcessRestart() {
         // First "process": go offline, which lights the persisted flag.
         GitHubUpdater(context, NetworkFaultTransport.updateClient(NetworkFaultTransport.Fault.NO_ROUTE))
-            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+            .checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
         val firstProcessFlag = LocalStore(context).use { it.updateCheckFailedAt() }
-        assertTrue("Offline check must light the retry flag", firstProcessFlag > 0L)
+        assertTrue("Manual offline check must light the retry flag", firstProcessFlag > 0L)
 
         // Second "process": a fresh LocalStore, as after an app kill/relaunch.
         // The persisted flag must still be there so Home shows the retry banner.
@@ -294,7 +320,7 @@ class UpdaterOfflineContractTest {
     private fun assertRetryableOfflineFailure(fault: NetworkFaultTransport.Fault) {
         val updater = GitHubUpdater(context, NetworkFaultTransport.updateClient(fault))
 
-        val result = updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.AUTOMATIC)
+        val result = updater.checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
 
         assertTrue("$fault should be a retryable connectivity failure", result.retryable)
         assertNotEquals(

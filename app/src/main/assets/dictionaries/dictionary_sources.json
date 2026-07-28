@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-09",
   "generated_by": "tools/generate_dictionary_assets.py",
-  "schema_version": "1",
+  "schema_version": "2",
   "update_package": [
     "kanji_dictionary.db",
     "dictionary_sources.json",
@@ -10,14 +10,14 @@
   "assets": [
     {
       "path": "kanji_dictionary.db",
-      "sha256": "bbcdd7788299f32dc689d4f88c65d495738b3d0f4feadc632956dc423b18ad19",
+      "sha256": "ebaead1723adcc6212722609484c2549779999f1c37ffabc46cc0150bbf47fe9",
       "records": 13108,
       "jiten_rank_records": 10666,
       "jiten_rank_join_records": 8031
     },
     {
       "path": "kanji_dictionary.db.sha256",
-      "sha256": "71a1549c32fb302fe6571484eeeebfaf691f67139dcc5292fc0cf8c3d430b825"
+      "sha256": "9b856484ea49e72cf3b4fed70900ec0640f6b0d3e96b14f68e8d4386c568a38e"
     }
   ],
   "sources": [

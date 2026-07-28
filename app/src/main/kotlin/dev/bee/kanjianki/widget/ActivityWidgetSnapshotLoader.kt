@@ -45,7 +45,13 @@ internal object ActivityWidgetSnapshotLoader {
             )
         }) {
             is WidgetStoreRead.Ready -> read.value
-            WidgetStoreRead.NotSetUp -> ActivityWidgetSnapshot(ActivityWidgetState.NOT_SET_UP)
-            WidgetStoreRead.Corrupt -> ActivityWidgetSnapshot(ActivityWidgetState.ERROR)
+            WidgetStoreRead.NotSetUp -> ActivityWidgetSnapshot(
+                ActivityWidgetState.NOT_SET_UP,
+                themeChoice = KaniThemeChoice.SYSTEM,
+            )
+            WidgetStoreRead.Corrupt -> ActivityWidgetSnapshot(
+                ActivityWidgetState.ERROR,
+                themeChoice = KaniThemeChoice.SYSTEM,
+            )
         }
 }

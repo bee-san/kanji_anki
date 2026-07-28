@@ -40,6 +40,9 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
     @Volatile
     private var readDatabase: SQLiteDatabase? = null
 
+    @Volatile
+    private var openFileFingerprint: FileFingerprint? = null
+
     private val entryCache = object : LinkedHashMap<String, KanjiEntry?>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, KanjiEntry?>): Boolean {
             return size > ENTRY_CACHE_MAX
@@ -80,6 +83,7 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         if (normalized.isEmpty()) {
             return null
         }
+        invalidateIfBackingFileChanged()
         synchronized(entryCache) {
             if (entryCache.containsKey(normalized)) {
                 return entryCache[normalized]
@@ -113,20 +117,7 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
             if (!cursor.moveToFirst()) {
                 null
             } else {
-                KanjiEntry(
-                    KanjiEntryFields(
-                        string(cursor, COLUMN_LITERAL),
-                        splitList(string(cursor, "meanings")),
-                        splitList(string(cursor, "on_readings")),
-                        splitList(string(cursor, "kun_readings")),
-                        splitList(string(cursor, "nanori_readings")),
-                        integer(cursor, "stroke_count"),
-                        integer(cursor, "grade"),
-                        integer(cursor, "radical"),
-                        integer(cursor, "kanjidic_frequency"),
-                        nullableInteger(cursor, "jiten_rank")
-                    )
-                )
+                entry(cursor)
             }
         }
     }
@@ -183,20 +174,7 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
                 val seen = HashSet<String>()
                 results.forEach { seen.add(it.literal) }
                 while (cursor.moveToNext() && results.size < boundedLimit) {
-                    val entry = KanjiEntry(
-                        KanjiEntryFields(
-                            string(cursor, COLUMN_LITERAL),
-                            splitList(string(cursor, "meanings")),
-                            splitList(string(cursor, "on_readings")),
-                            splitList(string(cursor, "kun_readings")),
-                            splitList(string(cursor, "nanori_readings")),
-                            integer(cursor, "stroke_count"),
-                            integer(cursor, "grade"),
-                            integer(cursor, "radical"),
-                            integer(cursor, "kanjidic_frequency"),
-                            nullableInteger(cursor, "jiten_rank")
-                        )
-                    )
+                    val entry = entry(cursor)
                     if (seen.add(entry.literal)) {
                         results.add(entry)
                     }
@@ -209,20 +187,110 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         }
     }
 
+    override fun eligibleKanjiCount(range: JitenRankRange): Int {
+        if (!range.isValid()) {
+            return 0
+        }
+        return try {
+            readableDatabase().rawQuery(
+                "SELECT COUNT(*) FROM kanji WHERE ${rangeSelection(range)}",
+                rangeSelectionArgs(range),
+            ).use { cursor ->
+                cursor.moveToFirst()
+                cursor.getInt(0)
+            }
+        } catch (_: SQLiteException) {
+            invalidateConnection()
+            0
+        }
+    }
+
+    override fun kanjiByJitenRank(
+        range: JitenRankRange,
+        offset: Int,
+        limit: Int,
+    ): KanjiEntryPage {
+        if (!range.isValid() || offset < 0 || limit < 1) {
+            return KanjiEntryPage.empty()
+        }
+        val boundedLimit = limit.coerceAtMost(MAX_KANJI_PAGE_SIZE)
+        return try {
+            val total = eligibleKanjiCount(range)
+            if (total == 0 || offset >= total) {
+                return KanjiEntryPage(emptyList(), total, null)
+            }
+            val entries = ArrayList<KanjiEntry>(minOf(boundedLimit, total - offset))
+            readableDatabase().query(
+                "kanji",
+                null,
+                rangeSelection(range),
+                rangeSelectionArgs(range),
+                null,
+                null,
+                rangeOrder(range),
+                "$offset,$boundedLimit",
+            ).use { cursor ->
+                while (cursor.moveToNext()) {
+                    entries.add(entry(cursor))
+                }
+            }
+            val nextOffset = (offset + entries.size).takeIf { next -> next < total }
+            KanjiEntryPage(entries, total, nextOffset)
+        } catch (_: SQLiteException) {
+            invalidateConnection()
+            KanjiEntryPage.empty()
+        }
+    }
+
+    private fun rangeSelection(range: JitenRankRange): String {
+        val ranked = "jiten_rank BETWEEN ? AND ?"
+        return if (range.includeUnranked) "($ranked OR jiten_rank IS NULL)" else ranked
+    }
+
+    private fun rangeSelectionArgs(range: JitenRankRange): Array<String> {
+        return arrayOf(range.minimumRank.toString(), range.maximumRank.toString())
+    }
+
+    private fun rangeOrder(range: JitenRankRange): String {
+        return if (range.includeUnranked) {
+            "CASE WHEN jiten_rank IS NULL THEN 1 ELSE 0 END, jiten_rank ASC, literal ASC"
+        } else {
+            "jiten_rank ASC, literal ASC"
+        }
+    }
+
     private fun readableDatabase(): SQLiteDatabase {
+        invalidateIfBackingFileChanged()
         readDatabase?.let { if (it.isOpen) return it }
         synchronized(connectionLock) {
             readDatabase?.let { if (it.isOpen) return it }
             val db = SQLiteDatabase.openDatabase(databaseFile.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
             readDatabase = db
+            openFileFingerprint = fileFingerprint()
             return db
         }
+    }
+
+    private fun invalidateIfBackingFileChanged() {
+        val opened = openFileFingerprint ?: return
+        if (opened != fileFingerprint()) {
+            invalidateCaches()
+        }
+    }
+
+    private fun fileFingerprint(): FileFingerprint {
+        return FileFingerprint(
+            exists = databaseFile.exists(),
+            length = databaseFile.length(),
+            lastModified = databaseFile.lastModified(),
+        )
     }
 
     private fun invalidateConnection() {
         synchronized(connectionLock) {
             readDatabase?.let { db -> runCatching { db.close() } }
             readDatabase = null
+            openFileFingerprint = null
         }
     }
 
@@ -232,6 +300,12 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
             entryCache.clear()
         }
     }
+
+    private data class FileFingerprint(
+        val exists: Boolean,
+        val length: Long,
+        val lastModified: Long,
+    )
 
     fun interface AssetOpener {
         @Throws(IOException::class)
@@ -289,7 +363,8 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         private const val PRIVATE_MANIFEST = "dictionary_sources.json"
         private const val PRIVATE_CHECKSUM = "kanji_dictionary.db.sha256"
         private const val BUNDLE_MARKER = "kanji_dictionary.bundle.sha256"
-        private const val SUPPORTED_SCHEMA_VERSION = "1"
+        private const val SUPPORTED_SCHEMA_VERSION = "2"
+        private const val REQUIRED_KANJI_RANK_INDEX = "idx_kanji_jiten_rank_literal"
         private const val LIST_SEPARATOR = "\u001f"
         private val LIST_PART_SEPARATOR: Pattern = Pattern.compile(LIST_SEPARATOR)
         private val REQUIRED_KANJI_COLUMNS: Set<String> = setOf(
@@ -471,8 +546,20 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
             validateColumnsOrReject(db, "kanji", REQUIRED_KANJI_COLUMNS)?.let { return it }
             validateColumnsOrReject(db, "jiten_ranks", REQUIRED_JITEN_RANK_COLUMNS)?.let { return it }
             validateColumnsOrReject(db, "dictionary_meta", setOf("key", "value"))?.let { return it }
+            if (!hasIndex(db, REQUIRED_KANJI_RANK_INDEX)) {
+                return ValidationResult.rejected("Dictionary is missing the Jiten rank index.")
+            }
             validateMeta(readMeta(db))?.let { return it }
             return validateHasKanjiRows(db)
+        }
+
+        private fun hasIndex(db: SQLiteDatabase, indexName: String): Boolean {
+            db.rawQuery(
+                "SELECT 1 FROM sqlite_master WHERE type='index' AND name=? LIMIT 1",
+                arrayOf(indexName),
+            ).use { cursor ->
+                return cursor.moveToFirst()
+            }
         }
 
         private fun validateColumnsOrReject(
@@ -561,6 +648,23 @@ class DictionaryStore private constructor(private val databaseFile: File) : Dict
         private fun nullableInteger(cursor: Cursor, column: String): Int? {
             val index = cursor.getColumnIndexOrThrow(column)
             return if (cursor.isNull(index)) null else cursor.getInt(index)
+        }
+
+        private fun entry(cursor: Cursor): KanjiEntry {
+            return KanjiEntry(
+                KanjiEntryFields(
+                    string(cursor, COLUMN_LITERAL),
+                    splitList(string(cursor, "meanings")),
+                    splitList(string(cursor, "on_readings")),
+                    splitList(string(cursor, "kun_readings")),
+                    splitList(string(cursor, "nanori_readings")),
+                    integer(cursor, "stroke_count"),
+                    integer(cursor, "grade"),
+                    integer(cursor, "radical"),
+                    integer(cursor, "kanjidic_frequency"),
+                    nullableInteger(cursor, "jiten_rank"),
+                ),
+            )
         }
 
         @JvmStatic

@@ -207,6 +207,12 @@ captive-portal `download` path still writes HTML that is rejected by
 checksum/APK validation. Commit `387a3dd5` additionally surfaces the lit flag
 as a recoverable Home banner with retry.
 
+The current offline-first policy further scopes that persisted Home retry flag
+to **manual** update checks. Automatic checks remain retryable for WorkManager,
+but a transient background GitHub/DNS/TLS failure no longer creates a prominent
+Home warning; successful or permanent outcomes still clear stale flags. This
+keeps local study fully calm and usable regardless of Internet availability.
+
 The regression matrix was subsequently expanded (this branch) to cover slow /
 high-latency responses, malformed/truncated payloads, request cancellation,
 online↔offline flapping, and process restart with pending work, and mirrored

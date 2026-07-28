@@ -18,8 +18,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -40,6 +43,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +57,8 @@ import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
+
+internal const val STUDY_MNEMONIC_EDITOR_ACTION_TEST_TAG = "study-mnemonic-editor-action"
 
 internal class FlashcardActionBarState(
     revealed: Boolean,
@@ -317,6 +323,7 @@ fun StudyFlashcardActionBar(
     swipeFeedback: StudySwipeFeedbackState? = null,
     onReview: ((source: String, rating: String) -> Boolean)? = null,
     feedbackState: StudyAnswerFeedbackState? = null,
+    mnemonicNote: BrowseMnemonicNoteModel? = null,
     onContinue: () -> Unit = {},
 ) {
     val submitReview: (String, String) -> Boolean = { source, rating ->
@@ -332,6 +339,7 @@ fun StudyFlashcardActionBar(
             StudyUndoSlot(undoMessage = undoMessage, onUndo = onUndo)
         }
         if (feedbackState?.feedbackVisible == true) {
+            mnemonicNote?.let { StudyMnemonicNoteAction(it) }
             StudyFlashcardFeedbackActions(feedbackState, onContinue)
         } else if (!revealed) {
             Column(
@@ -343,6 +351,38 @@ fun StudyFlashcardActionBar(
         } else {
             StudyFlashcardReviewActions(swipeFeedback, submitReview)
         }
+    }
+}
+
+@Composable
+private fun StudyMnemonicNoteAction(model: BrowseMnemonicNoteModel) {
+    var editorVisible by remember(model.initialNote) { mutableStateOf(false) }
+    var latestNote by remember(model.initialNote) { mutableStateOf(model.initialNote) }
+    OutlinedButton(
+        onClick = { editorVisible = true },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_MNEMONIC_EDITOR_ACTION_TEST_TAG),
+    ) {
+        Text(model.title)
+    }
+    if (editorVisible) {
+        AlertDialog(
+            onDismissRequest = { editorVisible = false },
+            confirmButton = {},
+            text = {
+                BrowseMnemonicNoteEditor(
+                    model.copy(
+                        initialNote = latestNote,
+                        onSave = { note ->
+                            latestNote = note
+                            model.onSave(note)
+                            editorVisible = false
+                        },
+                    ),
+                )
+            },
+        )
     }
 }
 

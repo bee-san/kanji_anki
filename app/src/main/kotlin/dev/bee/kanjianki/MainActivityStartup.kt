@@ -240,6 +240,8 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             MainActivityBase.NAV_SETTINGS_HOW_IT_WORKS_ROUTE ->
                 (activity as? MainActivitySettings)?.renderHowItWorks() ?: activity.renderSettings()
             "games" -> if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
+            MainActivityBase.SCREENSHOT_MISSING_KANJI_ROUTE ->
+                if (activity is MainActivityHome) activity.renderMissingKanji() else activity.renderHome()
             "update" -> activity.renderUpdate()
             else -> activity.renderHome()
         }

@@ -47,7 +47,7 @@ class StudyWidgetSnapshotLoaderTest {
 
         assertEquals(KaniWidgetState.NOT_SET_UP, snapshot.state)
         assertFalse(databaseFile.exists())
-        assertEquals(KaniThemeChoice.GIRLYPOP, snapshot.themeChoice)
+        assertEquals(KaniThemeChoice.SYSTEM, snapshot.themeChoice)
     }
 
     @Test
@@ -59,6 +59,7 @@ class StudyWidgetSnapshotLoaderTest {
         val snapshot = StudyWidgetSnapshotLoader.load(context, NOW)
 
         assertEquals(KaniWidgetState.ERROR, snapshot.state)
+        assertEquals(KaniThemeChoice.SYSTEM, snapshot.themeChoice)
     }
 
     @Test

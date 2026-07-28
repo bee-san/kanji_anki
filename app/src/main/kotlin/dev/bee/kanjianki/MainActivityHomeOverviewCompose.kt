@@ -83,6 +83,25 @@ fun HomeHeader(
                 textAlign = TextAlign.Start,
                 style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false))
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Alpha",
+                    color = KaniTheme.colors.primary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "By Bee",
+                    color = HomeMuted,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                )
+            }
             if (subtitle.isNotBlank()) {
                 Text(
                     text = subtitle,
@@ -96,8 +115,8 @@ fun HomeHeader(
         Spacer(modifier = Modifier.width(10.dp))
         Image(
             painter = painterResource(id = R.mipmap.ic_launcher_foreground),
-            contentDescription = null,
-            modifier = Modifier.size(110.dp),
+            contentDescription = "Kani logo",
+            modifier = Modifier.size(92.dp),
             contentScale = ContentScale.Fit
         )
     }

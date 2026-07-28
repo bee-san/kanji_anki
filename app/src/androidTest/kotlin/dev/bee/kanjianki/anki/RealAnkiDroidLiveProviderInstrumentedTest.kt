@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.RecordsSyncModels
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -56,6 +57,80 @@ class RealAnkiDroidLiveProviderInstrumentedTest {
         assertTrue("Expected the copied user Kiku collection, got ${snapshot.cards.size} cards.", snapshot.cards.size >= minimumNotes)
         assertAllCardsHaveNotes(snapshot)
         assertHasRealSchedulerState(snapshot)
+    }
+
+    @Test
+    fun scansCollectionWideKanjiInventoryThroughRealAnkiDroid() {
+        val gateway = AnkiDroidCollectionInventoryGateway(context)
+        val status = gateway.status()
+
+        assertTrue("Collection inventory provider must be installed.", status.installed)
+        assertTrue("Collection inventory permission must be granted.", status.permissionGranted)
+
+        val inventory = AnkiKanjiInventoryReader(gateway).read()
+        val minimumNotes = liveMinimumNotes()
+
+        assertTrue(
+            "Expected at least $minimumNotes collection notes, got ${inventory.notesScanned}.",
+            inventory.notesScanned >= minimumNotes,
+        )
+        assertTrue("Expected collection-wide kanji membership.", inventory.literals.isNotEmpty())
+        println(
+            "KANI_LIVE_INVENTORY authority=${status.authority} " +
+                "spec=${status.providerSpecVersion} notes=${inventory.notesScanned} " +
+                "models=${inventory.modelCount} uniqueKanji=${inventory.uniqueKanjiCount} " +
+                "skipped=${inventory.skippedNotes}",
+        )
+    }
+
+    @Test
+    fun createsRendersAndRetriesDisposableMissingKanjiNotesIdempotently() {
+        val status = AnkiDroidCollectionInventoryGateway(context).status()
+        assertTrue("Direct writer provider must be installed.", status.installed)
+        assertTrue("Direct writer permission must be granted.", status.permissionGranted)
+        assertTrue("Pinned provider must support writes.", status.canWriteCollection)
+        assertTrue("Pinned provider spec must be at least 2.", status.providerSpecVersion >= 2)
+        val candidates = listOf(
+            exportCandidate("水", "water", "スイ", "みず", 10),
+            exportCandidate("火", "fire", "カ", "ひ", 20),
+        )
+        val writer = AnkiMissingKanjiWriter(context)
+        val noteIds = LinkedHashSet<Long>()
+        try {
+            val first = writer.export(candidates)
+            noteIds.addAll(first.createdNotes.values)
+            noteIds.addAll(first.alreadyPresentNotes.values)
+            assertTrue("Initial direct export failed: ${first.failureKind}", first.completed)
+            assertEquals(2, first.createdCount + first.alreadyPresentCount)
+
+            val retry = AnkiMissingKanjiWriter(context).export(candidates)
+            noteIds.addAll(retry.createdNotes.values)
+            noteIds.addAll(retry.alreadyPresentNotes.values)
+            assertTrue("Direct export retry failed: ${retry.failureKind}", retry.completed)
+            assertEquals(0, retry.createdCount)
+            assertEquals(2, retry.alreadyPresentCount)
+            assertEquals(2, noteIds.size)
+            assertRenderedRecognitionCards(status.authority.orEmpty(), noteIds)
+            println(
+                "KANI_LIVE_EXPORT authority=${status.authority} " +
+                    "spec=${status.providerSpecVersion} destination=${retry.destinationKey} " +
+                    "notes=${noteIds.joinToString(",")}",
+            )
+        } finally {
+            val cleanupFailures = noteIds.filter { noteId ->
+                runCatching {
+                    context.contentResolver.delete(
+                        Uri.parse("content://${status.authority}/notes/$noteId"),
+                        null,
+                        null,
+                    )
+                }.getOrDefault(-1) != 1
+            }
+            assertTrue(
+                "Disposable export notes were not cleaned up: $cleanupFailures",
+                cleanupFailures.isEmpty(),
+            )
+        }
     }
 
     /**
@@ -117,4 +192,38 @@ class RealAnkiDroidLiveProviderInstrumentedTest {
         }
         throw AssertionError("Real AnkiDroid scheduler columns were not read from the live provider.")
     }
+
+    private fun assertRenderedRecognitionCards(authority: String, noteIds: Set<Long>) {
+        for (noteId in noteIds) {
+            val cursor = context.contentResolver.query(
+                Uri.parse("content://$authority/notes/$noteId/cards"),
+                null,
+                null,
+                null,
+                null,
+            ) ?: throw AssertionError("No card cursor for exported note $noteId")
+            cursor.use {
+                assertTrue("No rendered card for exported note $noteId", it.moveToFirst())
+                val question = it.getString(it.getColumnIndexOrThrow("question"))
+                val answer = it.getString(it.getColumnIndexOrThrow("answer"))
+                assertTrue("Export question did not render a kanji.", question.contains("kani-kanji"))
+                assertTrue("Export answer did not render meaning.", answer.contains("kani-meaning"))
+                assertTrue("Export answer did not render readings.", answer.contains("kani-reading"))
+            }
+        }
+    }
+
+    private fun exportCandidate(
+        literal: String,
+        meaning: String,
+        onReading: String,
+        kunReading: String,
+        rank: Int,
+    ): MissingKanjiCandidate = MissingKanjiCandidate(
+        literal = literal,
+        meanings = listOf(meaning),
+        onReadings = listOf(onReading),
+        kunReadings = listOf(kunReading),
+        jitenRank = rank,
+    )
 }

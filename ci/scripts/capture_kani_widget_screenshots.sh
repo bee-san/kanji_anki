@@ -30,6 +30,7 @@ adb_cmd() {
 }
 
 if [[ "${1:-}" == "--seed-fixture" ]]; then
+  adb_cmd shell am force-stop dev.bee.kanjianki
   adb_cmd shell am instrument -w \
     -e class "$FIXTURE_CLASS" \
     "$TEST_RUNNER"
@@ -57,7 +58,7 @@ required=(
   KANI_WIDGET_MIN_WIDTH KANI_WIDGET_MIN_HEIGHT
   KANI_WIDGET_MAX_WIDTH KANI_WIDGET_MAX_HEIGHT
 )
-export KANI_WIDGET_FIXTURE_ID="${KANI_WIDGET_FIXTURE_ID:-sanitized-focus-due-history-v1}"
+export KANI_WIDGET_FIXTURE_ID="${KANI_WIDGET_FIXTURE_ID:-sanitized-focus-due-history-v3}"
 for name in "${required[@]}"; do
   if [[ -z "${!name:-}" ]]; then
     printf 'Missing required environment variable: %s\n' "$name" >&2

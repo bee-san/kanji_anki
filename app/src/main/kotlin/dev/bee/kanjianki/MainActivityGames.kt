@@ -7,7 +7,7 @@ import dev.bee.kanjianki.core.KanjiGameRoundState
 import dev.bee.kanjianki.core.RecordsImportModels
 import java.util.Random
 
-internal abstract class MainActivityGames : MainActivityHome() {
+internal abstract class MainActivityGames : MainActivityMissingKanji() {
     private val gameEngine by lazy { KanjiGameEngine() }
 
     // Cosmetic game shuffling; a plain Random avoids SecureRandom's entropy blocking.

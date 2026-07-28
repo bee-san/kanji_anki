@@ -30,6 +30,11 @@ internal val NoOpRouteScrollY: (Int) -> Unit = {}
 
 internal fun shouldTrackRouteScroll(onScrollY: (Int) -> Unit): Boolean = onScrollY !== NoOpRouteScrollY
 
+internal enum class MainActivityRouteScrollMode {
+    SHELL,
+    CONTENT,
+}
+
 @Composable
 internal fun MainActivityComposeRoute(
     model: MainActivityShellModel = MainActivityShellModel(),
@@ -39,6 +44,7 @@ internal fun MainActivityComposeRoute(
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
     contentKey: Any? = null,
+    scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
     content: @Composable () -> Unit,
 ) {
     MainActivityShellFrame(
@@ -52,6 +58,7 @@ internal fun MainActivityComposeRoute(
             onScrollY = onScrollY,
             navActions = navActions,
             contentKey = contentKey,
+            scrollMode = scrollMode,
             content = content
         )
     }
@@ -66,6 +73,7 @@ internal fun MainActivityComposeRouteWithActionBar(
     themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
     isSystemDarkTheme: Boolean = false,
     contentKey: Any? = null,
+    scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -80,6 +88,7 @@ internal fun MainActivityComposeRouteWithActionBar(
             onScrollY = onScrollY,
             navActions = navActions,
             contentKey = contentKey,
+            scrollMode = scrollMode,
             content = content,
             actionBar = actionBar,
         )
@@ -112,6 +121,7 @@ internal fun MainActivityRouteContent(
     navActions: KaniNavActions? = null,
     imeVisible: Boolean = kaniImeVisible(),
     contentKey: Any? = null,
+    scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
     content: @Composable () -> Unit,
 ) {
     MainActivityScrollableRouteColumn(
@@ -121,6 +131,7 @@ internal fun MainActivityRouteContent(
         navActions = navActions,
         imeVisible = imeVisible,
         contentKey = contentKey,
+        scrollMode = scrollMode,
         content = content,
     )
 }
@@ -133,6 +144,7 @@ internal fun MainActivityRouteContentWithActionBar(
     navActions: KaniNavActions? = null,
     imeVisible: Boolean = kaniImeVisible(),
     contentKey: Any? = null,
+    scrollMode: MainActivityRouteScrollMode = MainActivityRouteScrollMode.SHELL,
     content: @Composable () -> Unit,
     actionBar: @Composable () -> Unit,
 ) {
@@ -143,6 +155,7 @@ internal fun MainActivityRouteContentWithActionBar(
         navActions = navActions,
         imeVisible = imeVisible,
         contentKey = contentKey,
+        scrollMode = scrollMode,
         content = content,
         footerContent = actionBar,
     )
@@ -156,6 +169,7 @@ private fun MainActivityScrollableRouteColumn(
     navActions: KaniNavActions?,
     imeVisible: Boolean = kaniImeVisible(),
     contentKey: Any?,
+    scrollMode: MainActivityRouteScrollMode,
     content: @Composable () -> Unit,
     footerContent: @Composable () -> Unit = {},
 ) {
@@ -170,16 +184,18 @@ private fun MainActivityScrollableRouteColumn(
     } else {
         KaniTheme.colors.bg
     }
-    key(model.selectedRoute, initialScrollY) {
+    key(model.selectedRoute, initialScrollY, scrollMode) {
         val scrollState = rememberScrollState(initial = initialScrollY)
-        LaunchedEffect(contentKey, scrollState) {
-            if (scrollState.value != initialScrollY) {
-                scrollState.scrollTo(initialScrollY)
+        if (scrollMode == MainActivityRouteScrollMode.SHELL) {
+            LaunchedEffect(contentKey, scrollState) {
+                if (scrollState.value != initialScrollY) {
+                    scrollState.scrollTo(initialScrollY)
+                }
             }
-        }
-        if (shouldTrackRouteScroll(onScrollY)) {
-            LaunchedEffect(scrollState, onScrollY) {
-                snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+            if (shouldTrackRouteScroll(onScrollY)) {
+                LaunchedEffect(scrollState, onScrollY) {
+                    snapshotFlow { scrollState.value }.collect { onScrollY(it) }
+                }
             }
         }
         val activeStudySession = model.selectedRoute == MainActivityBase.NAV_STUDY && model.studySessionActive
@@ -212,7 +228,13 @@ private fun MainActivityScrollableRouteColumn(
                                 .widthIn(max = 640.dp)
                                 .fillMaxWidth()
                                 .weight(1f)
-                                .verticalScroll(scrollState),
+                                .then(
+                                    if (scrollMode == MainActivityRouteScrollMode.SHELL) {
+                                        Modifier.verticalScroll(scrollState)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
                         ) {
                             key(contentKey) {
                                 saveableStateHolder.SaveableStateProvider(saveableContentKey) {
@@ -229,7 +251,13 @@ private fun MainActivityScrollableRouteColumn(
                         modifier = Modifier
                             .let { if (isExpanded) it.widthIn(max = 640.dp).align(Alignment.CenterHorizontally) else it.fillMaxWidth() }
                             .weight(1f)
-                            .verticalScroll(scrollState),
+                            .then(
+                                if (scrollMode == MainActivityRouteScrollMode.SHELL) {
+                                    Modifier.verticalScroll(scrollState)
+                                } else {
+                                    Modifier
+                                },
+                            ),
                     ) {
                         key(contentKey) {
                             saveableStateHolder.SaveableStateProvider(saveableContentKey) {

@@ -90,12 +90,15 @@ internal abstract class MainActivityHome : MainActivityBase() {
     }
     private var latestHomeRouteContent: (@Composable () -> Unit)? = null
     private var latestHomeRouteBackAction: Runnable? = null
+    private var latestHomeRouteManagedScroll: Boolean = false
     internal var pendingHomeSyncDialog: HomeSyncConfirmDialogModel? = null
     internal var pendingUpdatePermissionDialog: HomeUpdatePermissionDialogModel? = null
     private var confirmedRepairedNoteIds: Set<Long> = emptySet()
     private var lastObservedBrowseSelectionWriteId = 0L
 
     abstract fun renderGames()
+
+    abstract fun renderMissingKanji()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,7 +116,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
     }
 
-    override fun renderHome() {
+    open override fun renderHome() {
         asyncHomeRouteLoader.cancelPending()
         currentHomeRouteRestoration = null
         activeUpdateUiRunToken = 0
@@ -413,6 +416,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
             HomeRouteRestoration.Destination.READ_ONLY_DETAIL ->
                 renderReadOnlyDetail(route.kanji, route.query)
             HomeRouteRestoration.Destination.GAMES -> renderGames()
+            HomeRouteRestoration.Destination.MISSING_KANJI -> renderMissingKanji()
         }
     }
 
@@ -486,18 +490,26 @@ internal abstract class MainActivityHome : MainActivityBase() {
         }
     }
 
-    private fun openAnkiDroidInstallPage() {
+    protected fun openAnkiDroidInstallPage() {
         startActivity(Intent(Intent.ACTION_VIEW, ANKIDROID_INSTALL_URL.toUri()))
     }
 
-    internal fun rememberHomeRouteContent(backAction: Runnable?, content: @Composable () -> Unit) {
+    internal fun rememberHomeRouteContent(
+        backAction: Runnable?,
+        managedScroll: Boolean,
+        content: @Composable () -> Unit,
+    ) {
         latestHomeRouteContent = content
         latestHomeRouteBackAction = backAction
+        latestHomeRouteManagedScroll = managedScroll
     }
 
     internal fun rerenderLatestHomeRoute() {
         latestHomeRouteContent?.let { content ->
-            renderHomeRoute(latestHomeRouteBackAction) {
+            renderHomeRoute(
+                backAction = latestHomeRouteBackAction,
+                managedScroll = latestHomeRouteManagedScroll,
+            ) {
                 content()
             }
         }

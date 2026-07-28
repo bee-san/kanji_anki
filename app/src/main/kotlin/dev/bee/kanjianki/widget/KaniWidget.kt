@@ -8,24 +8,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.Image
+import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
+import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
@@ -42,6 +46,7 @@ import androidx.glance.semantics.semantics
 import androidx.glance.unit.ColorProvider
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.WidgetTextCopy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -94,32 +99,36 @@ internal class KaniWidget(
     }
 }
 
-internal data class OverviewActivityStripMetrics(
-    val cellSizeDp: Int,
-    val gapDp: Int,
-) {
-    fun widthDp(dayCount: Int): Int = if (dayCount <= 0) {
-        0
-    } else {
-        dayCount * cellSizeDp + (dayCount - 1) * gapDp
-    }
-}
-
-internal fun overviewActivityStripMetrics() = OverviewActivityStripMetrics(
-    cellSizeDp = 9,
-    gapDp = 2,
+internal data class OverviewActivityBarMetrics(
+    val trackHeightDp: Int,
+    val barWidthDp: Int,
+    val emptyHeightDp: Int,
 )
+
+internal fun overviewActivityBarMetrics() = OverviewActivityBarMetrics(
+    trackHeightDp = 24,
+    barWidthDp = 8,
+    emptyHeightDp = 4,
+)
+
+internal fun overviewActivityBarHeight(count: Int, maximum: Int): Int {
+    val metrics = overviewActivityBarMetrics()
+    if (count <= 0 || maximum <= 0) return metrics.emptyHeightDp
+    val ratio = count.coerceAtMost(maximum).toFloat() / maximum
+    return metrics.emptyHeightDp +
+        ((metrics.trackHeightDp - metrics.emptyHeightDp) * ratio).toInt()
+}
 
 internal data class OverviewActionMetrics(
     val widthDp: Int,
     val heightDp: Int,
-    val fontSp: Int,
+    val iconSizeDp: Int,
 )
 
 internal fun overviewActionMetrics() = OverviewActionMetrics(
-    widthDp = 80,
-    heightDp = 56,
-    fontSp = 13,
+    widthDp = 48,
+    heightDp = 48,
+    iconSizeDp = 20,
 )
 
 @Composable
@@ -132,7 +141,7 @@ internal fun KaniWidgetContent(
     val isExpanded = size.height >= 120.dp
     val fontScale = context.resources.configuration.fontScale
     val veryLargeFont = fontScale >= 1.8f
-    val showTertiary = isExpanded && fontScale < 1.3f
+    val showDetails = isExpanded && fontScale < 1.3f
     val copy = widgetCopy(snapshot, isExpanded)
     val visibleCopy = overviewVisibleCopy(snapshot, copy, veryLargeFont)
     val palette = KaniWidgetPalette.forChoice(options.resolveTheme(snapshot.themeChoice))
@@ -142,6 +151,7 @@ internal fun KaniWidgetContent(
     val cardModifier = GlanceModifier
         .fillMaxSize()
         .background(palette.background.toProvider())
+        .cornerRadius(16.dp)
         .padding(if (isExpanded) 12.dp else 8.dp)
     Row(
         modifier = cardModifier,
@@ -155,19 +165,20 @@ internal fun KaniWidgetContent(
                 .semantics { contentDescription = description },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            WidgetTextBlock(
-                copy = copy,
-                title = visibleCopy.title,
-                palette = palette,
-                visibility = WidgetTextBlockVisibility(
+            if (isExpanded) {
+                ExpandedOverview(
+                    snapshot = snapshot,
+                    copy = copy,
+                    title = visibleCopy.title,
+                    palette = palette,
                     showBody = fontScale < 2f,
-                    showBrand = showTertiary,
-                    showExtra = showTertiary,
-                    showStrip = showTertiary,
-                ),
-                dayCounts = snapshot.last7DayCounts,
-            )
+                    showDetails = showDetails,
+                )
+            } else {
+                CompactOverview(snapshot, palette)
+            }
         }
+        Spacer(GlanceModifier.width(8.dp))
         OverviewAction(visibleCopy.action, studyAction, palette)
     }
 }
@@ -199,6 +210,7 @@ internal fun LegacyActivityWidgetContent(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(palette.background.toProvider())
+            .cornerRadius(16.dp)
             .clickable(statsAction)
             .padding(12.dp)
             .semantics { contentDescription = activityHeaderLine(snapshot) },
@@ -206,64 +218,162 @@ internal fun LegacyActivityWidgetContent(
 }
 
 @Composable
-private fun WidgetTextBlock(
+private fun CompactOverview(
+    snapshot: KaniWidgetSnapshot,
+    palette: KaniWidgetPalette,
+) {
+    val presentation = overviewCompactPresentation(snapshot)
+    Row(
+        modifier = GlanceModifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WidgetMascot(40)
+        Spacer(GlanceModifier.width(8.dp))
+        Column(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = presentation.hero,
+                style = TextStyle(
+                    color = palette.ink.toProvider(),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                maxLines = 1,
+            )
+            Text(
+                text = presentation.status,
+                style = TextStyle(
+                    color = palette.primaryText.toProvider(),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+internal data class OverviewCompactPresentation(
+    val hero: String,
+    val status: String,
+)
+
+internal fun overviewCompactPresentation(snapshot: KaniWidgetSnapshot): OverviewCompactPresentation =
+    when (snapshot.state) {
+        KaniWidgetState.DUE_NOW -> OverviewCompactPresentation(
+            hero = WidgetTextCopy.visualCountLabel(snapshot.dueCount),
+            status = WidgetTextCopy.quickDueStatus(),
+        )
+        KaniWidgetState.NOTHING_DUE -> OverviewCompactPresentation(
+            hero = "0",
+            status = WidgetTextCopy.quickCaughtUpStatus(),
+        )
+        KaniWidgetState.NOT_SET_UP -> OverviewCompactPresentation(
+            hero = "—",
+            status = WidgetTextCopy.quickSetupStatus(),
+        )
+        KaniWidgetState.ERROR -> OverviewCompactPresentation(
+            hero = "!",
+            status = WidgetTextCopy.quickErrorStatus(),
+        )
+    }
+
+@Composable
+private fun ExpandedOverview(
+    snapshot: KaniWidgetSnapshot,
     copy: KaniWidgetCopy,
     title: String,
     palette: KaniWidgetPalette,
-    visibility: WidgetTextBlockVisibility,
-    dayCounts: List<Int> = emptyList(),
+    showBody: Boolean,
+    showDetails: Boolean,
 ) {
-    if (visibility.showBrand) {
-        Text(
-            text = WidgetTextCopy.appName(),
-            style = TextStyle(
-                color = palette.primaryText.toProvider(),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
+    if (showDetails) {
+        OverviewHeader(snapshot, palette)
         Spacer(GlanceModifier.height(3.dp))
     }
     Text(
         text = title,
         style = TextStyle(
             color = palette.ink.toProvider(),
-            fontSize = 18.sp,
+            fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
         ),
+        maxLines = 1,
     )
-    if (visibility.showBody) {
-        Spacer(GlanceModifier.height(3.dp))
-        Text(
-            text = copy.body,
-            style = TextStyle(
-                color = palette.muted.toProvider(),
-                fontSize = 13.sp,
-            ),
-        )
-    }
-    if (visibility.showExtra && copy.extraLine.isNotEmpty()) {
+    if (showBody) {
         Spacer(GlanceModifier.height(2.dp))
         Text(
-            text = copy.extraLine,
+            text = overviewSupportLine(snapshot, copy),
             style = TextStyle(
                 color = palette.muted.toProvider(),
                 fontSize = 12.sp,
             ),
+            maxLines = 1,
         )
     }
-    if (visibility.showStrip && dayCounts.isNotEmpty()) {
-        Spacer(GlanceModifier.height(8.dp))
-        ActivityStrip(dayCounts, palette)
+    if (showDetails && snapshot.last7DayCounts.isNotEmpty()) {
+        Spacer(GlanceModifier.height(6.dp))
+        OverviewActivityBars(snapshot.last7DayCounts, palette)
     }
 }
 
-private data class WidgetTextBlockVisibility(
-    val showBody: Boolean,
-    val showBrand: Boolean,
-    val showExtra: Boolean,
-    val showStrip: Boolean,
-)
+internal fun overviewSupportLine(snapshot: KaniWidgetSnapshot, copy: KaniWidgetCopy): String =
+    if (snapshot.state == KaniWidgetState.DUE_NOW && copy.extraLine.isNotEmpty()) {
+        copy.extraLine
+    } else {
+        copy.body
+    }
+
+@Composable
+private fun OverviewHeader(
+    snapshot: KaniWidgetSnapshot,
+    palette: KaniWidgetPalette,
+) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth().height(22.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WidgetMascot(22)
+        Spacer(GlanceModifier.width(5.dp))
+        Text(
+            text = WidgetTextCopy.appName(),
+            style = TextStyle(
+                color = palette.primaryText.toProvider(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 1,
+        )
+        if (snapshot.state != KaniWidgetState.NOT_SET_UP && snapshot.state != KaniWidgetState.ERROR) {
+            Spacer(GlanceModifier.defaultWeight())
+            Image(
+                provider = ImageProvider(R.drawable.ic_flame_24),
+                contentDescription = null,
+                modifier = GlanceModifier.size(13.dp),
+                colorFilter = ColorFilter.tint(palette.primaryText.toProvider()),
+            )
+            Spacer(GlanceModifier.width(3.dp))
+            Text(
+                text = WidgetTextCopy.streakLabel(snapshot.streakDays),
+                style = TextStyle(
+                    color = palette.primaryText.toProvider(),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WidgetMascot(sizeDp: Int) {
+    Image(
+        provider = ImageProvider(R.drawable.kani_widget_mascot),
+        contentDescription = null,
+        modifier = GlanceModifier.size(sizeDp.dp),
+        contentScale = ContentScale.Fit,
+    )
+}
 
 @Composable
 private fun OverviewAction(
@@ -282,34 +392,42 @@ private fun OverviewAction(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = TextStyle(
-                color = palette.onPrimary.toProvider(),
-                fontSize = metrics.fontSp.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            ),
-            maxLines = 2,
+        Image(
+            provider = ImageProvider(R.drawable.ic_arrow_forward_24),
+            contentDescription = null,
+            modifier = GlanceModifier.size(metrics.iconSizeDp.dp),
+            colorFilter = ColorFilter.tint(palette.onPrimary.toProvider()),
         )
     }
 }
 
 @Composable
-private fun ActivityStrip(dayCounts: List<Int>, palette: KaniWidgetPalette) {
-    val maxCount = dayCounts.maxOrNull() ?: 1
-    val metrics = overviewActivityStripMetrics()
+private fun OverviewActivityBars(dayCounts: List<Int>, palette: KaniWidgetPalette) {
+    val visibleCounts = dayCounts.takeLast(StudyWidgetSnapshotLoader.STRIP_DAYS)
+    val maximum = visibleCounts.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val metrics = overviewActivityBarMetrics()
     Row(
-        modifier = GlanceModifier.padding(vertical = 2.dp),
+        modifier = GlanceModifier.fillMaxWidth().height(metrics.trackHeightDp.dp),
+        verticalAlignment = Alignment.Bottom,
     ) {
-        dayCounts.forEachIndexed { index, count ->
-            if (index > 0) Spacer(GlanceModifier.width(metrics.gapDp.dp))
+        visibleCounts.forEachIndexed { index, count ->
             Box(
-                modifier = GlanceModifier
-                    .size(metrics.cellSizeDp.dp)
-                    .background(heatCellRole(count, maxCount, palette).toProvider()),
-                contentAlignment = Alignment.Center,
-            ) {}
+                modifier = GlanceModifier.defaultWeight().height(metrics.trackHeightDp.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                val role = when {
+                    count <= 0 -> palette.track
+                    index == visibleCounts.lastIndex -> palette.primary
+                    else -> heatCellRole(count, maximum, palette)
+                }
+                Box(
+                    modifier = GlanceModifier
+                        .width(metrics.barWidthDp.dp)
+                        .height(overviewActivityBarHeight(count, maximum).dp)
+                        .background(role.toProvider())
+                        .cornerRadius(4.dp),
+                ) {}
+            }
         }
     }
 }
@@ -466,11 +584,14 @@ internal fun overviewVisibleCopy(
  * unit-testable without a Glance host.
  */
 internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
-    KaniWidgetState.NOT_SET_UP,
-    KaniWidgetState.ERROR,
-    -> KaniWidgetCopy(
+    KaniWidgetState.NOT_SET_UP -> KaniWidgetCopy(
         WidgetTextCopy.notSetUpTitle(),
         WidgetTextCopy.notSetUpBody(),
+        WidgetTextCopy.openKaniLabel(),
+    )
+    KaniWidgetState.ERROR -> KaniWidgetCopy(
+        WidgetTextCopy.errorTitle(),
+        WidgetTextCopy.errorBody(),
         WidgetTextCopy.openKaniLabel(),
     )
     KaniWidgetState.NOTHING_DUE -> KaniWidgetCopy(
@@ -480,7 +601,7 @@ internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): Kani
         extraLine = if (isExpanded) WidgetTextCopy.bestStreakLabel(snapshot.bestStreakDays) else "",
     )
     KaniWidgetState.DUE_NOW -> {
-        val reviewCount = snapshot.dueCount - snapshot.newDueCount
+        val reviewCount = (snapshot.dueCount - snapshot.newDueCount).coerceAtLeast(0)
         val title = if (isExpanded && snapshot.newDueCount > 0 && reviewCount > 0) {
             WidgetTextCopy.dueSplitLabel(reviewCount, snapshot.newDueCount)
         } else {

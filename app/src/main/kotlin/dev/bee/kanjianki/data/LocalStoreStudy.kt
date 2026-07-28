@@ -545,6 +545,8 @@ internal abstract class LocalStoreStudy(
 
     fun latestSuccessfulSyncFinishedAt(): Long? = studyStatus().latestSuccessfulSyncFinishedAt()
 
+    fun consecutiveFailedSyncCount(): Int = studyStatus().consecutiveFailedSyncCount()
+
     fun hasSuccessfulSyncSince(finishedAtMillis: Long): Boolean = studyStatus().hasSuccessfulSyncSince(finishedAtMillis)
 
     override fun getIntSetting(key: String, fallback: Int): Int = studySettings().getIntSetting(key, fallback)

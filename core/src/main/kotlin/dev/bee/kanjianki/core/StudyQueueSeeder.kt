@@ -208,6 +208,7 @@ class StudyQueueSeeder {
         current: RecordsStudyModels.StudyItem,
     ): Boolean {
         return StudyLadderRules.STATE_RETIRED == current.state &&
+            !ManualKanjiAdmissionPolicy.isDictionaryOnly(row) &&
             row.matureSupportCount < settings.matureSupportThreshold
     }
 
@@ -390,6 +391,7 @@ class StudyQueueSeeder {
         current: RecordsStudyModels.StudyItem,
     ): Boolean {
         return StudyLadderRules.STATE_RETIRED == current.state &&
+            !ManualKanjiAdmissionPolicy.isDictionaryOnly(row) &&
             (
                 row.matureSupportCount < request.settings.matureSupportThreshold ||
                     hasRegressingEvidence(request, row.kanji)
@@ -551,7 +553,9 @@ class StudyQueueSeeder {
         // case and only adopt the new signature; months of ladder/FSRS progress
         // must not be destroyed by a suspension toggle. Reset only when the
         // meaning itself materially changed (effectively a different card).
-        if (signatureMeaning(signature) == signatureMeaning(item.answerSignature)) {
+        if (ManualKanjiAdmissionPolicy.hasDictionarySource(row) ||
+            signatureMeaning(signature) == signatureMeaning(item.answerSignature)
+        ) {
             return alignForRoutingVersion(item.withAnswerSignature(signature), ladder)
         }
         return item.copyBuilder()
