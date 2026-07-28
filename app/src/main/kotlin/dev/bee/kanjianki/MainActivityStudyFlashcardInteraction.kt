@@ -18,10 +18,23 @@ import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.TypingAnswerMatcher
 import dev.bee.kanjianki.core.TypedReadingPolicy
+import kotlin.math.abs
 
 internal class MainActivityStudyFlashcardInteraction(private val activity: MainActivityStudy) {
     private var gestureSessionToken: String? = null
     private var gestureRecovery: StoredActiveStudyRecovery? = null
+
+    /**
+     * Per-gesture axis lock. Until the finger travels past touch slop the gesture is
+     * [GestureOrientation.UNDECIDED]. It then latches to [GestureOrientation.HORIZONTAL]
+     * (a swipe-to-grade) or [GestureOrientation.VERTICAL] (a pull-down-to-read scroll) and
+     * never flips for the rest of the gesture. Only a horizontal lock feeds the swipe
+     * translation, so pulling straight down can no longer wobble the card sideways.
+     */
+    private enum class GestureOrientation { UNDECIDED, HORIZONTAL, VERTICAL }
+
+    private var gestureOrientation = GestureOrientation.UNDECIDED
+    private var gestureTouchSlop = 0
 
     fun buildFlashcardActionBar(revealed: Boolean) {
         val activeUiRecovery = activity.activeSession?.token?.let(activity::activeStudyUiRecovery)
@@ -168,7 +181,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
 
             MotionEvent.ACTION_MOVE -> {
                 if (activity.flashcardTouchTracking && activity.flashcardAnswerRevealed) {
-                    activity.flashcardSwipeFeedback?.update(event.rawX - activity.flashcardTouchStartX)
+                    updateSwipeFeedbackForMove(event)
                 }
                 false
             }
@@ -217,11 +230,33 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             gestureRecovery = activity.activeStudyUiRecovery(session.token)
             activity.flashcardTouchStartX = event.rawX
             activity.flashcardTouchStartY = event.rawY
+            gestureOrientation = GestureOrientation.UNDECIDED
+            gestureTouchSlop = ViewConfiguration.get(activity).scaledTouchSlop
         } else {
             gestureSessionToken = null
             gestureRecovery = null
         }
         return false
+    }
+
+    /**
+     * Latches the gesture axis (see [GestureOrientation]) and only translates the card while
+     * the gesture is a horizontal swipe. A vertical pull-down keeps the card centered so the
+     * learner can scroll the answer without the card jittering left/right.
+     */
+    private fun updateSwipeFeedbackForMove(event: MotionEvent) {
+        val dx = event.rawX - activity.flashcardTouchStartX
+        val dy = event.rawY - activity.flashcardTouchStartY
+        if (gestureOrientation == GestureOrientation.UNDECIDED) {
+            if (abs(dx) > gestureTouchSlop && abs(dx) > abs(dy)) {
+                gestureOrientation = GestureOrientation.HORIZONTAL
+            } else if (abs(dy) > gestureTouchSlop) {
+                gestureOrientation = GestureOrientation.VERTICAL
+            }
+        }
+        if (gestureOrientation == GestureOrientation.HORIZONTAL) {
+            activity.flashcardSwipeFeedback?.update(dx)
+        }
     }
 
     fun handleFlashcardRelease(event: MotionEvent): Boolean {
@@ -246,7 +281,8 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
             event.rawY,
             touchSlop,
             activity.dp(72),
-            activity.flashcardAnswerRevealed
+            activity.flashcardAnswerRevealed,
+            activity.flashcardSwipeGestureEnabled,
         )
         return when (decision.action) {
             FlashcardGesturePolicy.Decision.Action.REVEAL -> {

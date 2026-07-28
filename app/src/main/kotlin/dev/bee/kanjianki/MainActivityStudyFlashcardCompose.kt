@@ -321,6 +321,7 @@ fun StudyFlashcardActionBar(
     undoMessage: String? = null,
     onUndo: (() -> Unit)? = null,
     swipeFeedback: StudySwipeFeedbackState? = null,
+    swipeGestureEnabled: Boolean = true,
     onReview: ((source: String, rating: String) -> Boolean)? = null,
     feedbackState: StudyAnswerFeedbackState? = null,
     mnemonicNote: BrowseMnemonicNoteModel? = null,
@@ -349,7 +350,7 @@ fun StudyFlashcardActionBar(
                 StudyRevealButton(onReveal = onReveal)
             }
         } else {
-            StudyFlashcardReviewActions(swipeFeedback, submitReview)
+            StudyFlashcardReviewActions(swipeFeedback, submitReview, swipeGestureEnabled)
         }
     }
 }
@@ -405,13 +406,20 @@ private fun StudyFlashcardFeedbackActions(
 private fun StudyFlashcardReviewActions(
     swipeFeedback: StudySwipeFeedbackState?,
     submitReview: (source: String, rating: String) -> Boolean,
+    swipeGestureEnabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .revealedReviewSwipeGestures(
-                swipeFeedback = swipeFeedback,
-                submitReview = submitReview,
+            .then(
+                if (swipeGestureEnabled) {
+                    Modifier.revealedReviewSwipeGestures(
+                        swipeFeedback = swipeFeedback,
+                        submitReview = submitReview,
+                    )
+                } else {
+                    Modifier
+                },
             ),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {

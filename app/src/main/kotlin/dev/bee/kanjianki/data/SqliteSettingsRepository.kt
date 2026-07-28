@@ -29,6 +29,7 @@ internal class SqliteSettingsRepository(
                 autoUpdate = store.autoUpdateStatus().toRepositorySnapshot(),
                 debugLogEnabled = store.debugLogEnabled(),
                 fsrsPersonalizationEnabled = store.fsrsPersonalizationEnabled(),
+                flashcardSwipeGestureEnabled = store.flashcardSwipeGestureEnabled(),
                 fsrsFitSummaryJson = store.fsrsFitSummaryJson(),
                 updateCheckFailedAtMillis = store.updateCheckFailedAt(),
                 installPermissionPromptShown = store.installPermissionPromptShown(),
@@ -90,6 +91,8 @@ internal class SqliteSettingsRepository(
                 store.saveSchedulerFsrsWeights(command.weights?.toDoubleArray())
             is SettingsSaveCommand.FsrsPersonalizationEnabled ->
                 store.saveFsrsPersonalizationEnabled(command.enabled)
+            is SettingsSaveCommand.FlashcardSwipeGestureEnabled ->
+                store.saveFlashcardSwipeGestureEnabled(command.enabled)
             is SettingsSaveCommand.FsrsFitSummary -> store.saveFsrsFitSummaryJson(command.summaryJson)
             SettingsSaveCommand.ResetFsrsPersonalization -> store.resetFsrsPersonalization()
             is SettingsSaveCommand.LearningSteps -> store.saveLearningStepSettings(command.value)

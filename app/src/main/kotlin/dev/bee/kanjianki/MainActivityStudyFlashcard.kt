@@ -85,7 +85,9 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         activity.flashcardRevealState = revealState
         activity.flashcardHeroPanel = null
         activity.studyAnswerPanel = null
-        val swipeFeedback = StudySwipeFeedbackState()
+        val swipeGestureEnabled = activity.store.flashcardSwipeGestureEnabled()
+        activity.flashcardSwipeGestureEnabled = swipeGestureEnabled
+        val swipeFeedback = if (swipeGestureEnabled) StudySwipeFeedbackState() else null
         activity.flashcardSwipeFeedback = swipeFeedback
         val failureCauseState = RecognitionFailureCauseState()
         activity.recognitionFailureCauseState = failureCauseState
@@ -130,6 +132,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             actionBarState = actionBarState,
             mnemonicNote = mnemonicNote,
             swipeFeedback = swipeFeedback,
+            swipeGestureEnabled = swipeGestureEnabled,
             sessionToken = session.token,
             activeRecovery = activeUiRecovery,
             failureCauseState = failureCauseState,
@@ -358,6 +361,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 }
             },
             swipeFeedback = route.swipeFeedback,
+            swipeGestureEnabled = route.swipeGestureEnabled,
             onReview = route.onReview,
             feedbackState = activity.studyAnswerFeedbackState,
             mnemonicNote = route.mnemonicNote,
@@ -409,7 +413,8 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
         val mnemonicNote: BrowseMnemonicNoteModel,
-        val swipeFeedback: StudySwipeFeedbackState,
+        val swipeFeedback: StudySwipeFeedbackState?,
+        val swipeGestureEnabled: Boolean,
         val sessionToken: String,
         val activeRecovery: StoredActiveStudyRecovery?,
         val failureCauseState: RecognitionFailureCauseState,

@@ -41,6 +41,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
                 MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
                 activity.ladderThresholdSettingsPanelModel(),
+                MainActivitySettingsFlashcardGesture(activity).panelModel(),
             ),
         )
     }
@@ -111,7 +112,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 title = SettingsTextCopy.settingsStudyBehaviorTitle(),
                 summary = SettingsTextCopy.settingsStudyBehaviorBody(),
                 iconRes = R.drawable.ic_study_24,
-                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(9),
+                panelCount = SettingsSectionTextCopy.settingsCategoryPanelCount(10),
                 contentDescription = SettingsSectionTextCopy.sectionOpenDescription(SettingsTextCopy.settingsStudyBehaviorTitle()),
                 onOpen = Runnable { activity.renderSettingsStudyBehavior() },
             ),
