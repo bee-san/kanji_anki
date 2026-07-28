@@ -3571,6 +3571,69 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   gate. The branch remains local and unpushed; no PR, tag, release, or external
   service was changed.
 
+### Goal 174 completion evidence (2026-07-28)
+
+- Started from: `19609ee9` on `desktop/support` in
+  `/local/home/skerraut/kanji_anki`.
+- Commits: `58d4b36c refactor: introduce provider-neutral collection
+  contracts`, `c028889f sync: add the provider-neutral source binding policy`,
+  `a4584903 data: persist opaque collection source bindings`, and
+  `2d3dab3b test: add the collection gateway contract kit`.
+- Implemented: the pure-JVM `:sync-api` module now owns provider-neutral
+  collection, inventory, Missing Kanji, capability, progress, cancellation,
+  retryability, typed failure, source-identity, and source-binding contracts
+  around the canonical `RecordsSyncModels.CollectionSnapshot`. Android sync
+  orchestration and `AnkiDroidGateway` consume those contracts without
+  exposing Android types through the shared API. The source-binding policy
+  salts and hashes provider/source identity plus the unsigned-lowest 64 note
+  and card IDs, enforces the frozen small/large overlap thresholds, and
+  requires explicit first-bind or backup-backed rebind decisions. SQLite
+  persists the versioned opaque record atomically in settings, and the
+  canonical fixture/contract kit exercises adapters without provider-specific
+  types.
+- Validation: the first aggregate run exposed two `UseKtx` lint findings in
+  `SqliteSourceBindingStore`; both manual transaction blocks were replaced
+  with the existing KTX transaction helper. The final command
+  `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk ./gradlew ciFast ciQuality
+  ciDesktop sonarPreflight --no-daemon --dependency-verification=strict
+  --console=plain` completed `BUILD SUCCESSFUL` in 2m25s with 138 actionable
+  tasks (19 executed, 119 up-to-date). Result XML contains 3,330 passing
+  module/app tests plus 27 passing build-logic tests, with zero failures,
+  errors, or skips. The aggregate Python surfaces passed 126
+  dictionary/tooling, 94 Ralph-script, 96 CI, 18 desktop-CI-script, and 70
+  desktop-tooling tests. Android lint, deterministic coverage, instrumentation
+  compilation, desktop checks, Sonar input preflight, `git diff --check`, and
+  all four implementation-commit `git show --check` runs passed.
+- Live gates: Android 15 on the API 35 `kanji_anki_api35_atd` x86_64 emulator
+  ran real AnkiDroid `2.24.0` (`versionCode=422400300`); the pinned APK
+  SHA-256 was
+  `b8aaef8c8ed13e96b7bbafbc46e690490684192147ab445db8a193c4ef6989b0`.
+  A throwaway emulator copy of `~/anki/collection.anki2` contained 12,480
+  notes and 12,705 cards; the desktop source remained untouched. The
+  foreground sync, 63 fake-provider/contract tests, and four real-provider
+  tests completed `OK (68 tests)` in 9,743.722s with the default 7,000-note
+  threshold. The live inventory reported 12,480 notes, 34 models, 3,463
+  unique kanji, and zero skipped notes. Two disposable Missing Kanji notes
+  were created, rendered, retried idempotently, and deleted. The
+  non-destructive card update probe was rejected with
+  `IllegalArgumentException` (`updatedRows=-1`) and queue remained `2`.
+- Decisions: a changed provider kind or source key never auto-binds even with
+  perfect stable-ID overlap. Explicit rebind requires a durable backup,
+  qualifying overlap against the prior salt, and a fresh replacement salt.
+  A genuinely empty Kani database may enter explicit first bind only after a
+  read-only candidate supplies stable IDs. Raw profile/source names and raw
+  stable IDs are transient and never persisted or printed by binding DTOs.
+- Rollback: because these commits are unmerged and unreleased, revert
+  `2d3dab3b`, `a4584903`, `c028889f`, and `58d4b36c` in that order. Goal 174
+  adds no schema migration or provider write beyond the pre-existing live
+  probes; source-binding enforcement is not enabled yet, so rollback requires
+  no scheduler, mirror, or Anki collection conversion.
+- Gaps/blockers: none for Goal 174. Existing Android install migration,
+  mismatch recovery UI, and binding enforcement remain deliberately assigned
+  to Goal 175. The branch remains local and unpushed; no PR, tag, release, or
+  external service was changed.
+
 Template:
 
 ```md
