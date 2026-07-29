@@ -35,9 +35,22 @@ class SchemaBaselineTest {
     fun freshV34MatchesTheCurrentSemanticFingerprint() {
         val expected = GoldenFixtureResources.properties(CURRENT_SCHEMA_GOLDEN)
         val snapshot = freshSnapshot()
+        val executableSnapshot = executableSchemaSnapshot()
 
+        assertEquals("1", expected.required("manifest_format"))
         assertEquals("1", expected.required("fingerprint_format"))
+        assertEquals(LocalStoreSchema.DB_NAME, expected.required("database_name"))
+        assertEquals(LocalStoreSchema.DB_VERSION, expected.required("database_version").toInt())
+        assertEquals(
+            LocalStoreBase.STATS_CACHE_SOURCE_VERSION_KEY,
+            expected.required("stats_source_version_key"),
+        )
         assertEquals(LocalStoreSchema.DB_VERSION, snapshot.userVersion)
+        SchemaGoldenVerifier.assertSchemaEquivalent(
+            executableSnapshot,
+            snapshot,
+            "fresh v${LocalStoreSchema.DB_VERSION} against executable schema",
+        )
         SchemaGoldenVerifier.assertDigest(
             expected.required("schema_sha256"),
             snapshot,
@@ -130,9 +143,10 @@ class SchemaBaselineTest {
             val perturbed = SchemaFingerprint.capture(store.writableDatabase)
 
             val failure = assertThrows(AssertionError::class.java) {
-                SchemaGoldenVerifier.assertEquivalent(expected, perturbed, "dropped-index probe")
+                SchemaGoldenVerifier.assertSchemaEquivalent(expected, perturbed, "dropped-index probe")
             }
-            assertTrue(failure.message.orEmpty().contains("schema fingerprint mismatch"))
+            assertTrue(failure.message.orEmpty().contains("schema mismatch"))
+            assertTrue(failure.message.orEmpty().contains("first difference at line"))
             assertTrue(failure.message.orEmpty().contains("idx_study_due"))
         }
     }
@@ -159,6 +173,32 @@ class SchemaBaselineTest {
         deleteDatabase()
         return LocalStore(context).use { store ->
             SchemaFingerprint.capture(store.writableDatabase)
+        }
+    }
+
+    private fun executableSchemaSnapshot(): SchemaFingerprint.Snapshot {
+        val path = context.getDatabasePath("goal178-canonical-v34.db")
+        path.delete()
+        File(path.absolutePath + "-wal").delete()
+        File(path.absolutePath + "-shm").delete()
+        return try {
+            val parent = requireNotNull(path.parentFile)
+            check(parent.isDirectory || parent.mkdirs()) { "Unable to create database directory" }
+            SQLiteDatabase.openDatabase(
+                path.absolutePath,
+                null,
+                SQLiteDatabase.CREATE_IF_NECESSARY,
+            ).use { database ->
+                SqlSchemaFixtureLoader.load(
+                    database,
+                    GoldenFixtureResources.text(CURRENT_SCHEMA_SQL),
+                )
+                SchemaFingerprint.capture(database)
+            }
+        } finally {
+            path.delete()
+            File(path.absolutePath + "-wal").delete()
+            File(path.absolutePath + "-shm").delete()
         }
     }
 
@@ -249,8 +289,9 @@ class SchemaBaselineTest {
 
     private companion object {
         const val RESOURCE_ROOT = "dev/bee/kanjianki/fixtures/goal165"
-        const val CURRENT_RESOURCE_ROOT = "dev/bee/kanjianki/fixtures/goal175"
+        const val CURRENT_RESOURCE_ROOT = "dev/bee/kanjianki/fixtures/goal178"
         const val CURRENT_SCHEMA_GOLDEN = "$CURRENT_RESOURCE_ROOT/schema-v34.properties"
+        const val CURRENT_SCHEMA_SQL = "$CURRENT_RESOURCE_ROOT/schema-v34.sql"
         const val CURRENT_MIGRATION_DIGESTS =
             "$CURRENT_RESOURCE_ROOT/schema-v34-migration-digests.properties"
         const val FIXTURE_REGISTRY = "$RESOURCE_ROOT/schema-fixtures.tsv"

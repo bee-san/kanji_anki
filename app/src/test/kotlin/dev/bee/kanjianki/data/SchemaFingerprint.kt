@@ -19,6 +19,10 @@ internal object SchemaFingerprint {
     data class Snapshot(
         val canonical: String,
         val sha256: String,
+        val schemaCanonical: String,
+        val schemaSha256: String,
+        val structuralSchemaCanonical: String,
+        val structuralSchemaSha256: String,
         val structuralCanonical: String,
         val structuralSha256: String,
         val userVersion: Int,
@@ -35,7 +39,7 @@ internal object SchemaFingerprint {
         val tables = schemaRows.filter { it.type == "table" }.map { it.name }
         val explicitIndexes = schemaRows.filter { it.type == "index" }.map { it.name }
         val triggers = schemaRows.filter { it.type == "trigger" }.map { it.name }
-        val canonical = buildString {
+        val schemaCanonical = buildString {
             appendLine("fingerprint_format=1")
             appendLine("user_version=${db.version}")
             for (row in schemaRows) {
@@ -51,6 +55,9 @@ internal object SchemaFingerprint {
             for (table in tables) {
                 appendTableDetails(db, table)
             }
+        }
+        val canonical = buildString {
+            append(schemaCanonical)
             appendLine("seed|settings_rows=${scalarLong(db, "SELECT COUNT(*) FROM settings")}")
             appendLine(
                 "seed|stats_source_version=" +
@@ -58,10 +65,15 @@ internal object SchemaFingerprint {
             )
             appendLine("contract|stats_cache_format_version=$STATS_CACHE_FORMAT_VERSION")
         }
+        val structuralSchemaCanonical = structuralCanonical(schemaCanonical)
         val structuralCanonical = structuralCanonical(canonical)
         return Snapshot(
             canonical = canonical,
             sha256 = GoldenFixtureResources.sha256(canonical),
+            schemaCanonical = schemaCanonical,
+            schemaSha256 = GoldenFixtureResources.sha256(schemaCanonical),
+            structuralSchemaCanonical = structuralSchemaCanonical,
+            structuralSchemaSha256 = GoldenFixtureResources.sha256(structuralSchemaCanonical),
             structuralCanonical = structuralCanonical,
             structuralSha256 = GoldenFixtureResources.sha256(structuralCanonical),
             userVersion = db.version,
@@ -361,6 +373,53 @@ internal object SchemaFingerprint {
 }
 
 internal object SchemaGoldenVerifier {
+    fun assertSchemaEquivalent(
+        expected: SchemaFingerprint.Snapshot,
+        actual: SchemaFingerprint.Snapshot,
+        label: String,
+    ) {
+        if (expected.schemaCanonical == actual.schemaCanonical) return
+        val expectedLines = expected.schemaCanonical.lines()
+        val actualLines = actual.schemaCanonical.lines()
+        val differingIndex = (0 until maxOf(expectedLines.size, actualLines.size))
+            .firstOrNull { index -> expectedLines.getOrNull(index) != actualLines.getOrNull(index) }
+        val detail = if (differingIndex == null) {
+            "canonical schema text differs"
+        } else {
+            "first difference at line ${differingIndex + 1}: " +
+                "expected <${expectedLines.getOrNull(differingIndex) ?: "<missing>"}> " +
+                "but was <${actualLines.getOrNull(differingIndex) ?: "<missing>"}>"
+        }
+        throw AssertionError(
+            "$label schema mismatch: $detail; " +
+                "expected sha256=${expected.schemaSha256}, actual sha256=${actual.schemaSha256}",
+        )
+    }
+
+    fun assertStructurallySchemaEquivalent(
+        expected: SchemaFingerprint.Snapshot,
+        actual: SchemaFingerprint.Snapshot,
+        label: String,
+    ) {
+        if (expected.structuralSchemaCanonical == actual.structuralSchemaCanonical) return
+        val expectedLines = expected.structuralSchemaCanonical.lines()
+        val actualLines = actual.structuralSchemaCanonical.lines()
+        val differingIndex = (0 until maxOf(expectedLines.size, actualLines.size))
+            .firstOrNull { index -> expectedLines.getOrNull(index) != actualLines.getOrNull(index) }
+        val detail = if (differingIndex == null) {
+            "structural schema text differs"
+        } else {
+            "first difference at line ${differingIndex + 1}: " +
+                "expected <${expectedLines.getOrNull(differingIndex) ?: "<missing>"}> " +
+                "but was <${actualLines.getOrNull(differingIndex) ?: "<missing>"}>"
+        }
+        throw AssertionError(
+            "$label structural schema mismatch: $detail; " +
+                "expected sha256=${expected.structuralSchemaSha256}, " +
+                "actual sha256=${actual.structuralSchemaSha256}",
+        )
+    }
+
     fun assertEquivalent(
         expected: SchemaFingerprint.Snapshot,
         actual: SchemaFingerprint.Snapshot,
