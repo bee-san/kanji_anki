@@ -25,23 +25,6 @@ import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 import kotlinx.coroutines.runBlocking
 
-internal interface SyncAssetReaders {
-    @Throws(IOException::class)
-    fun loadRanks(): JitenKanjiRanks
-
-    fun loadDictionary(): DictionaryLookup?
-
-    @Throws(IOException::class)
-    fun loadSimilarKanjiIndex(): SimilarKanjiIndex
-
-    fun loadReadingExposure(): ReadingExposureModels.ExposureIndex
-}
-
-internal data class SyncPostCommitEffects(
-    val reminderRescheduler: Runnable,
-    val widgetRefresher: Runnable,
-)
-
 internal fun createManualSyncEngine(
     context: Context,
     syncUseCases: SyncUseCases,
@@ -52,6 +35,7 @@ internal fun createManualSyncEngine(
     repairedWriteBackAuthorized: Boolean = false,
     confirmedRepairedNoteIds: Set<Long>? = null,
     sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
+    cancellation: SyncCancellation = SyncCancellation.NONE,
 ): ManualSyncEngine {
     val appContext = context.applicationContext
     return ManualSyncEngine(
@@ -69,6 +53,8 @@ internal fun createManualSyncEngine(
         repairedWriteBackAuthorized = repairedWriteBackAuthorized,
         confirmedRepairedNoteIds = confirmedRepairedNoteIds,
         sourceBindingGate = sourceBindingGate,
+        cancellation = cancellation,
+        logger = AndroidSyncLogger,
     )
 }
 
@@ -86,6 +72,7 @@ internal fun createManualSyncEngine(
     repairedWriteBackAuthorized: Boolean = false,
     confirmedRepairedNoteIds: Set<Long>? = null,
     sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
+    cancellation: SyncCancellation = SyncCancellation.NONE,
 ): ManualSyncEngine {
     val useCases = syncUseCases(store)
     val settingsSnapshot = runBlocking { useCases.loadSettings() }.copy(sync = settings)
@@ -99,6 +86,7 @@ internal fun createManualSyncEngine(
         repairedWriteBackAuthorized,
         confirmedRepairedNoteIds,
         sourceBindingGate,
+        cancellation,
     )
 }
 

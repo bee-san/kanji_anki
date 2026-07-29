@@ -245,6 +245,7 @@ dependencies {
     implementation(project(":platform-contracts"))
     implementation(project(":provider-ankidroid"))
     implementation(project(":sync-api"))
+    implementation(project(":sync-engine"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel)

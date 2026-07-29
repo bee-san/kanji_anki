@@ -14,7 +14,7 @@ import dev.bee.kanjianki.data.SyncPublicationCommand
 import dev.bee.kanjianki.data.SyncPublicationResult
 import dev.bee.kanjianki.data.SyncRepository
 
-/** Portable repository boundary used by sync orchestration and host adapters. */
+/** Portable repository boundary owned by the shared sync engine. */
 class SyncUseCases(
     private val syncRepository: SyncRepository,
     private val studyRepository: StudyRepository,

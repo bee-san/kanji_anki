@@ -1,8 +1,11 @@
 package dev.bee.kanjianki.sync
 
-import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.syncapi.ArchiveTagSummary
+import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.syncapi.CollectionProviderKind
+import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.JitenKanjiRanks
@@ -23,19 +26,16 @@ import dev.bee.kanjianki.data.fakes.FakeSyncRepository
 import dev.bee.kanjianki.syncapi.SourceBindingReason
 import dev.bee.kanjianki.syncapi.RedactedSourceIdentityEvidence
 import dev.bee.kanjianki.platform.AppClock
+import dev.bee.kanjianki.platform.AppLogger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
-class ManualSyncEngineRepositoryBoundaryTest {
+class PlatformNeutralSyncEngineRepositoryBoundaryTest {
     @Test
     fun committedPublicationRunsExactlyOnceBeforeEveryEffect() {
+        assertFalse(PlatformNeutralSyncEngine.isRunning())
         val events = mutableListOf<String>()
         val repositories = Repositories()
         val gateway = RecordingGateway(events)
@@ -65,12 +65,13 @@ class ManualSyncEngineRepositoryBoundaryTest {
         )
         engine.committedStudySummaryProvider = { _, _ ->
             events += "summary"
-            ManualSyncEngine.CommittedStudySummary(0, adaptivePlan())
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
         }
 
         val result = engine.run()
 
         assertTrue(result.success)
+        assertFalse(PlatformNeutralSyncEngine.isRunning())
         assertEquals(1, repositories.sync.publications.size)
         assertTrue(repositories.sync.failures.isEmpty())
         assertEquals(1, gateway.archiveCalls)
@@ -87,6 +88,40 @@ class ManualSyncEngineRepositoryBoundaryTest {
             ),
             events,
         )
+    }
+
+    @Test
+    fun processWideRunningGuardRejectsReentrantRunAndResetsAfterCompletion() {
+        val repositories = Repositories()
+        val gateway = RecordingGateway(mutableListOf())
+        repositories.sync.publishHandler = {
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        lateinit var engine: PlatformNeutralSyncEngine
+        var overlappingResult: PlatformNeutralSyncEngine.SyncResult? = null
+        engine = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                assertTrue(PlatformNeutralSyncEngine.Companion.isRunning())
+                if (overlappingResult == null) {
+                    overlappingResult = engine.run()
+                }
+            },
+        )
+        engine.committedStudySummaryProvider = { _, _ ->
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        val result = engine.run()
+        val overlapping = checkNotNull(overlappingResult)
+
+        assertTrue(result.success)
+        assertFalse(overlapping.success)
+        assertTrue(overlapping.skipped)
+        assertTrue(overlapping.retryable)
+        assertEquals("Sync already running.", overlapping.message)
+        assertFalse(PlatformNeutralSyncEngine.Companion.isRunning())
     }
 
     @Test
@@ -189,7 +224,7 @@ class ManualSyncEngineRepositoryBoundaryTest {
             },
         )
         engine.committedStudySummaryProvider = { _, _ ->
-            ManualSyncEngine.CommittedStudySummary(0, adaptivePlan())
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
         }
 
         val result = engine.run()
@@ -197,6 +232,96 @@ class ManualSyncEngineRepositoryBoundaryTest {
         assertTrue(result.success)
         assertEquals(0, gateway.archiveCalls)
         assertEquals(listOf("binding-1", "publish", "binding-2"), events)
+    }
+
+    @Test
+    fun preCancelledRunStopsBeforeCallingTheProvider() {
+        val repositories = Repositories()
+        var providerReads = 0
+        val gateway = object : CollectionGateway {
+            override fun readCollection(
+                settings: RecordsSyncModels.Settings,
+            ): RecordsSyncModels.CollectionSnapshot {
+                providerReads += 1
+                error("pre-cancelled sync must not call the provider")
+            }
+
+            override fun removeArchivedSuspendedCards(
+                snapshot: RecordsSyncModels.CollectionSnapshot,
+            ): ArchiveTagSummary = error("not reached")
+        }
+
+        val result = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            cancellation = SyncCancellation { true },
+        ).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertEquals(0, providerReads)
+        assertTrue(repositories.sync.publications.isEmpty())
+        assertEquals("retryable", repositories.sync.failures.single().errorCode)
+    }
+
+    @Test
+    fun cancellationIsForwardedAndRecheckedAfterTheProviderStage() {
+        val repositories = Repositories()
+        var stopped = false
+        val expectedCancellation = SyncCancellation { stopped }
+        val gateway = object : CollectionGateway {
+            override fun readCollection(
+                settings: RecordsSyncModels.Settings,
+            ): RecordsSyncModels.CollectionSnapshot = error("three-argument read required")
+
+            override fun readProviderCollection(
+                settings: RecordsSyncModels.Settings,
+                progress: CollectionProgressListener,
+                cancellation: CollectionCancellation,
+            ): ProviderCollectionSnapshot {
+                assertSame(expectedCancellation, cancellation)
+                stopped = true
+                return ProviderCollectionSnapshot(
+                    RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),
+                    emptySet(),
+                    null,
+                )
+            }
+
+            override fun removeArchivedSuspendedCards(
+                snapshot: RecordsSyncModels.CollectionSnapshot,
+            ): ArchiveTagSummary = error("not reached")
+        }
+
+        val result = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            cancellation = expectedCancellation,
+        ).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertTrue(repositories.sync.publications.isEmpty())
+        assertEquals("retryable", repositories.sync.failures.single().errorCode)
+    }
+
+    @Test
+    fun loggerFailureCannotChangeACommittedResult() {
+        val events = mutableListOf<String>()
+        val repositories = Repositories()
+        repositories.sync.publishHandler = {
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        val engine = repositories.engine(
+            gateway = RecordingGateway(events),
+            effects = noOpEffects(),
+            logger = AppLogger { throw IllegalStateException("logger unavailable") },
+        )
+        engine.committedStudySummaryProvider = { _, _ ->
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        assertTrue(engine.run().success)
     }
 
     private class Repositories {
@@ -217,11 +342,13 @@ class ManualSyncEngineRepositoryBoundaryTest {
         private val settings = FakeSettingsRepository()
 
         fun engine(
-            gateway: RecordingGateway,
+            gateway: CollectionGateway,
             effects: SyncPostCommitEffects,
             sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
-        ): ManualSyncEngine =
-            ManualSyncEngine(
+            cancellation: SyncCancellation = SyncCancellation.NONE,
+            logger: AppLogger = AppLogger.NONE,
+        ): PlatformNeutralSyncEngine =
+            PlatformNeutralSyncEngine(
                 syncUseCases = SyncUseCases(sync, study, settings),
                 gateway = gateway,
                 settingsSnapshot = settingsSnapshot(),
@@ -233,6 +360,8 @@ class ManualSyncEngineRepositoryBoundaryTest {
                 repairedWriteBackAuthorized = false,
                 confirmedRepairedNoteIds = null,
                 sourceBindingGate = sourceBindingGate,
+                cancellation = cancellation,
+                logger = logger,
             )
     }
 
@@ -248,10 +377,10 @@ class ManualSyncEngineRepositoryBoundaryTest {
 
         override fun removeArchivedSuspendedCards(
             snapshot: RecordsSyncModels.CollectionSnapshot,
-        ): AnkiDroidGateway.RemovalSummary {
+        ): ArchiveTagSummary {
             archiveCalls += 1
             events += "archive"
-            return AnkiDroidGateway.RemovalSummary(0, 0, 0, "archived")
+            return ArchiveTagSummary(0, 0, 0, "archived")
         }
     }
 

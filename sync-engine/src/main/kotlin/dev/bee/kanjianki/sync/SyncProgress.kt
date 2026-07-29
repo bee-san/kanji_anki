@@ -3,6 +3,7 @@ package dev.bee.kanjianki.sync
 import dev.bee.kanjianki.core.SyncProgressCopy
 import dev.bee.kanjianki.syncapi.CollectionProgress
 
+/** Provider-neutral progress exposed by shared sync orchestration. */
 class SyncProgress private constructor(
     @JvmField val stage: Stage?,
     @JvmField val scannedCards: Int,

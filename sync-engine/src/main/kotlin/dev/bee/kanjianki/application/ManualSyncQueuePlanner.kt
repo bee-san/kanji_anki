@@ -14,7 +14,7 @@ import dev.bee.kanjianki.data.SyncQueuePlan
 import dev.bee.kanjianki.data.SyncQueuePlanner
 import dev.bee.kanjianki.data.SyncQueuePlanningSnapshot
 
-/** Pure queue derivation used inside the repository's staged publication. */
+/** Pure queue derivation used inside the sync repository's staged publication. */
 class ManualSyncQueuePlanner(
     private val readingExposure: ReadingExposureModels.ExposureIndex,
 ) : SyncQueuePlanner {

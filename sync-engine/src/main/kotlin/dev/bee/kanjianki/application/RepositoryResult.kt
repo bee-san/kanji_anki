@@ -13,7 +13,7 @@ class RepositoryOperationException(
     cause: Exception,
 ) : RuntimeException("$operation failed (${kind.name.lowercase()})", cause)
 
-internal fun <T> StoreResult<T>.valueOrThrow(operation: String): T = when (this) {
+fun <T> StoreResult<T>.valueOrThrow(operation: String): T = when (this) {
     is StoreResult.Ok -> value
     is StoreResult.TransientError -> throw RepositoryOperationException(
         operation,

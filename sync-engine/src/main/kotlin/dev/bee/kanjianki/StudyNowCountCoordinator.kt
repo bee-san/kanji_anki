@@ -10,7 +10,7 @@ import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.StudyNowCountPolicy
 
 /** Dry-runs the same seed, annotate, replan, and select pipeline as the Study route. */
-internal object StudyNowCountCoordinator {
+object StudyNowCountCoordinator {
     fun count(request: Request): Result {
         val queue = request.queue
         val mode = request.mode

@@ -281,6 +281,7 @@ class AutoSyncJobService : JobService {
                     sourceBindingGate = AndroidSourceBindingGate(
                         dev.bee.kanjianki.data.SqliteSourceBindingStore(store),
                     ),
+                    cancellation = cancellation,
                 ).run()
             } finally {
                 finishJob(
