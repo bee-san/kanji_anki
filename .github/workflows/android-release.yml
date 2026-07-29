@@ -155,7 +155,7 @@ jobs:
         if: github.event_name != 'workflow_run'
         run: |
           ./gradlew \
-            :fsrs-java:test \
+            :bee-fsrs:test \
             :core:test \
             :domain:test \
             :sync-domain:test \

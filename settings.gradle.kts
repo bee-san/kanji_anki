@@ -16,7 +16,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Kani"
-include(":fsrs-java")
+include(":bee-fsrs")
 include(":core")
 include(":domain")
 include(":sync-domain")

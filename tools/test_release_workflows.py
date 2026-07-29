@@ -284,7 +284,7 @@ class WorkflowAnalysisIntegrityTest(unittest.TestCase):
         self.assertLess(init_index, compile_index)
         for expected in (
             "./gradlew clean",
-            ":fsrs-java:compileKotlin",
+            ":bee-fsrs:compileKotlin",
             ":core:compileKotlin",
             ":domain:compileKotlin",
             ":sync-domain:compileKotlin",
@@ -361,7 +361,7 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         tests_step = self.workflow.split("Run deterministic tests (manual releases only)", maxsplit=1)[1]
         tests_step = tests_step.split("Build signed release APK", maxsplit=1)[0]
         for task in (
-            ":fsrs-java:test",
+            ":bee-fsrs:test",
             ":core:test",
             ":domain:test",
             ":sync-domain:test",
@@ -557,7 +557,7 @@ class CiPathFilterCoverageTest(unittest.TestCase):
     REQUIRED_COVERED_DIRS = (
         "app",
         "core",
-        "fsrs-java",
+        "bee-fsrs",
         "domain",
         "sync-domain",
         "writing-core",

@@ -8,7 +8,7 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
-      - 'fsrs-java/**'
+      - 'bee-fsrs/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
@@ -69,8 +69,8 @@ jobs:
       - name: Force clean compiler activity for extraction
         run: |
           ./gradlew clean \
-            :fsrs-java:compileKotlin \
-            :fsrs-java:compileJava \
+            :bee-fsrs:compileKotlin \
+            :bee-fsrs:compileJava \
             :core:compileKotlin \
             :core:compileJava \
             :domain:compileKotlin \

@@ -27,7 +27,7 @@ DESKTOP_AND_SHARED_PREFIXES = (
     "dictionary-core/",
     "domain/",
     "feature-",
-    "fsrs-java/",
+    "bee-fsrs/",
     "platform-contracts/",
     "platform-desktop/",
     "presentation-api/",

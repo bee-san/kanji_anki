@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CURRENT_SHARED_JVM_MODULES = (
     "domain",
     "dictionary-core",
-    "fsrs-java",
+    "bee-fsrs",
     "sync-domain",
     "writing-core",
     "update-core",
@@ -108,7 +108,7 @@ MODULE_CLASSES = {
 CURRENT_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
     "dictionary-core": frozenset(),
-    "fsrs-java": frozenset(),
+    "bee-fsrs": frozenset(),
     "sync-domain": frozenset({"domain"}),
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
@@ -118,7 +118,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "application": frozenset({"data-api", "platform-contracts"}),
     "provider-ankidroid": frozenset({"sync-api"}),
     "core": frozenset(
-        {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
+        {"dictionary-core", "domain", "sync-domain", "bee-fsrs", "update-core"},
     ),
     "app": frozenset(
         {
@@ -138,12 +138,12 @@ CURRENT_PROJECT_DEPENDENCIES = {
 FINAL_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
     "dictionary-core": frozenset(),
-    "fsrs-java": frozenset(),
+    "bee-fsrs": frozenset(),
     "sync-domain": frozenset({"domain"}),
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
     "core": frozenset(
-        {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
+        {"dictionary-core", "domain", "sync-domain", "bee-fsrs", "update-core"},
     ),
     "data-api": frozenset({"core", "sync-domain"}),
     "sync-api": frozenset({"core", "sync-domain"}),
@@ -249,7 +249,7 @@ EDGE_RATIONALES = {
     ("core", "dictionary-core"): "Scheduler policy consumes dictionary models.",
     ("core", "domain"): "Core policy builds on shared domain models.",
     ("core", "sync-domain"): "Core policy consumes pure sync contracts.",
-    ("core", "fsrs-java"): "Core delegates memory scheduling to FSRS.",
+    ("core", "bee-fsrs"): "Core delegates memory scheduling to FSRS.",
     ("core", "update-core"): "Core consumes pure update policy.",
     ("data-api", "core"): "Repository contracts use canonical core models.",
     ("data-api", "sync-domain"): "Repository contracts expose sync-domain values.",

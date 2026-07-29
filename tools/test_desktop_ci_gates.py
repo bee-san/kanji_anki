@@ -40,7 +40,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
         self.assertEqual(
             (
                 "testBuildLogic",
-                ":fsrs-java:check",
+                ":bee-fsrs:check",
                 ":core:check",
                 ":domain:check",
                 ":sync-domain:check",

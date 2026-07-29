@@ -24,7 +24,7 @@ val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String
 val sonarAppMainBinaries = providers.gradleProperty("sonarAppMainBinaries")
     .getOrElse(rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"))
 val sonarMainBinaries = listOf(
-    rootPath("fsrs-java/build/classes/kotlin/main"),
+    rootPath("bee-fsrs/build/classes/kotlin/main"),
     rootPath("core/build/classes/kotlin/main"),
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
@@ -40,7 +40,7 @@ val sonarMainBinaries = listOf(
     sonarAppMainBinaries,
 )
 val sonarTestBinaries = listOf(
-    rootPath("fsrs-java/build/classes/kotlin/test"),
+    rootPath("bee-fsrs/build/classes/kotlin/test"),
     rootPath("core/build/classes/kotlin/test"),
     rootPath("core/build/classes/java/test"),
     rootPath("domain/build/classes/kotlin/test"),
@@ -61,7 +61,7 @@ val sonarTestBinaries = listOf(
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
 )
 val sonarCoveragePaths = buildList<String> {
-    add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("bee-fsrs/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -254,7 +254,7 @@ tasks.register<Exec>("testDesktopCiScripts") {
 
 val desktopCiTasks = listOf(
     "testBuildLogic",
-    ":fsrs-java:check",
+    ":bee-fsrs:check",
     ":core:check",
     ":domain:check",
     ":sync-domain:check",
@@ -309,9 +309,9 @@ tasks.register("ciDesktopPackage") {
 
 val fastCiTasks = listOf(
     "testBuildLogic",
-    ":fsrs-java:test",
-    ":fsrs-java:jacocoTestReport",
-    ":fsrs-java:jacocoTestCoverageVerification",
+    ":bee-fsrs:test",
+    ":bee-fsrs:jacocoTestReport",
+    ":bee-fsrs:jacocoTestCoverageVerification",
     ":core:test",
     ":core:jacocoTestReport",
     ":core:jacocoTestCoverageVerification",
@@ -365,7 +365,7 @@ tasks.register("ciQuality") {
     description = "Builds the deterministic test, coverage, and bytecode inputs used by SonarQube."
     dependsOn(
         "ciFast",
-        ":fsrs-java:jar",
+        ":bee-fsrs:jar",
         ":core:jar",
         ":domain:jar",
         ":sync-domain:jar",

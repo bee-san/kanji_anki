@@ -88,7 +88,7 @@ project. Keep the CodeQL build step after `github/codeql-action/init` as a
 forced clean compile:
 
 ```sh
-./gradlew clean :fsrs-java:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+./gradlew clean :bee-fsrs:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
 ```
 
 Do not simplify that to a normal compile. Gradle can mark the compile tasks

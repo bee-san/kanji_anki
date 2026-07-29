@@ -7,7 +7,7 @@ import kotlin.math.sqrt
 
 /**
  * Deterministic, bounded finite-difference Adam fitter for FSRS-6 weights.
- * This deliberately lives in :core; :fsrs-java remains the pristine engine.
+ * This deliberately lives in :core; :bee-fsrs remains the pristine vendored engine.
  */
 class FsrsWeightFitter(
     private val config: Config = Config(),

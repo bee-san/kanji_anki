@@ -34,7 +34,7 @@ Module layout:
 
 | Module | Role | Key files |
 | --- | --- | --- |
-| `fsrs-java` | Pure FSRS-6 memory math (stability, difficulty, retrievability, intervals) | `DefaultFsrsEngine.kt`, `FsrsParameters.kt` |
+| `bee-fsrs` | Pure memory math (stability, difficulty, retrievability, intervals). Vendored, not editable here | `DefaultFsrsEngine.kt`, `FsrsParameters.kt` |
 | `core` | Scheduler: queue seeding, session selection, review transitions, ladder rules, settings models | `BridgeScheduler.kt`, `ReviewTransitionEngine.kt`, `StudyQueueSeeder.kt`, `StudySessionSelector.kt`, `StudyLadderRules.kt`, `RecordsBase.kt` |
 | `domain` | Rating wire names | `StudyRatings.kt` |
 | `writing-core` | Handwriting analysis and rating mapping for the writing rung | `WritingAnalysisEngine.kt`, `WritingRatingMapper.kt` |
@@ -395,11 +395,25 @@ engine, but is unreachable from the current UI (open decision D1).
 
 ---
 
-## 5. The FSRS Engine (`fsrs-java`)
+## 5. The FSRS Engine (`bee-fsrs`)
 
 `DefaultFsrsEngine` implements FSRS with the 21-parameter model
 (FSRS-6-style, including the trainable decay in `values[20]`;
 `FsrsParameters.kt:60-70` holds the default weights).
+
+This module is a **vendored checkout** of
+[`bee-san/bee-fsrs`](https://github.com/bee-san/bee-fsrs) 0.2.0, shared with BeeCode.
+Do not change the mathematics here — change it upstream and re-vendor, or the two
+consumers silently diverge. `FsrsVendoringTest` in `:core` asserts this copy is the
+version it claims to be.
+
+The vendored release also contains a complete **FSRS-7** engine (35 parameters,
+fractional intervals, two-power-law forgetting curve) which Kani does not currently use:
+`LatestFsrsAdapter` reaches for `FsrsEngine`, not `Fsrs7Engine`. Adopting it is a
+scheduler change with a data migration, not an adapter swap — the integer-day
+`KaniFsrsAdapter` interface, the 21-value `scheduler_fsrs_weights` storage, the
+FSRS-6-shaped state seeded from AnkiDroid, and the whole-day ladder thresholds all sit in
+the way. `bee-fsrs/PROVENANCE.md` enumerates them.
 
 Key formulas (`DefaultFsrsEngine.kt`):
 
@@ -431,7 +445,7 @@ retention ∈ [0.01, 0.99], elapsed ≥ 0) and two operations:
 
 Correctness is pinned by golden/parity test resources
 (`core/src/test/resources/dev/bee/kanjianki/core/scheduler-goldens/`,
-`scheduler-parity/`) and `fsrs-java` unit tests.
+`scheduler-parity/`) and `bee-fsrs` unit tests.
 
 ### 5.1 Scheduler parameters and retention
 

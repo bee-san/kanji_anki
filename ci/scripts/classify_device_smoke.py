@@ -40,7 +40,7 @@ FULL_PRODUCT_PREFIXES = (
     "writing-core/src/main/",
     "dictionary-core/src/main/",
     "update-core/src/main/",
-    "fsrs-java/src/main/",
+    "bee-fsrs/src/main/",
 )
 
 FULL_RELEASE_PREFIXES = (
@@ -91,7 +91,7 @@ SMOKE_PREFIXES = (
     "writing-core/",
     "dictionary-core/",
     "update-core/",
-    "fsrs-java/",
+    "bee-fsrs/",
     "branding/",
     "build-logic/",
     "ci/",

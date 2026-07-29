@@ -1,7 +1,7 @@
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 // Shared configuration for the pure-JVM Kotlin library modules (core, domain,
-// sync-domain, dictionary-core, writing-core, update-core, fsrs-java): toolchain 17,
+// sync-domain, dictionary-core, writing-core, update-core, bee-fsrs): toolchain 17,
 // JUnit4, and a JaCoCo report + 100% class-coverage verification wired into `check`.
 // Modules add coverage exclusions via the `kaniLibrary { coverageExcludes.add(...) }`
 // extension.

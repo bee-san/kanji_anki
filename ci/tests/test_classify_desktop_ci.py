@@ -29,7 +29,7 @@ class DesktopCiClassifierTest(unittest.TestCase):
             "writing-core/src/main/java/WritingPolicy.java",
             "dictionary-core/src/main/java/Dictionary.java",
             "update-core/src/main/java/UpdatePolicy.java",
-            "fsrs-java/src/main/java/FSRS.java",
+            "bee-fsrs/src/main/java/FSRS.java",
         )
         for path in paths:
             with self.subTest(path=path):

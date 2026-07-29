@@ -7,7 +7,7 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
-      - 'fsrs-java/**'
+      - 'bee-fsrs/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
@@ -37,7 +37,7 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
-      - 'fsrs-java/**'
+      - 'bee-fsrs/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
