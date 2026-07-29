@@ -5,9 +5,30 @@ ankidroid_apk="${1:?AnkiDroid APK path is required}"
 collection_path="${2:?Fixture collection path is required}"
 logcat_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-logcat.txt"
 instrumentation_output_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-instrumentation.txt"
+provider_instrumentation_output_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-provider-instrumentation.txt"
+app_instrumentation_output_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-app-instrumentation.txt"
 provider_probe_path="${RUNNER_TEMP:-/tmp}/ankidroid-fixture-provider-probe.txt"
 ankidroid_dir="/storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid"
 legacy_ankidroid_dir="/storage/emulated/0/AnkiDroid"
+provider_test_package="dev.bee.kanjianki.provider.ankidroid.test"
+app_package="dev.bee.kanjianki"
+provider_runner="${provider_test_package}/androidx.test.runner.AndroidJUnitRunner"
+app_runner="${app_package}.test/androidx.test.runner.AndroidJUnitRunner"
+
+if [ "${KANJI_LIVE_TEST_CLASSES+x}" = "x" ]; then
+  # Backward-compatible provider-only override used by local operators.
+  provider_test_classes="${KANJI_LIVE_TEST_CLASSES}"
+  app_test_classes=""
+else
+  provider_test_classes="${KANJI_LIVE_PROVIDER_TEST_CLASSES-dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest}"
+  app_test_classes="${KANJI_LIVE_APP_TEST_CLASSES-dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid}"
+fi
+
+current_instrumentation_name=""
+current_instrumentation_output_path=""
+current_test_classes=""
+current_test_package=""
+current_test_runner=""
 
 retry() {
   local description="$1"
@@ -181,6 +202,13 @@ launch_ankidroid() {
   adb shell am start -W -n com.ichi2.anki/.IntentHandler
 }
 
+grant_ankidroid_permission() {
+  local package_name="$1"
+  adb shell pm grant \
+    "${package_name}" \
+    com.ichi2.anki.permission.READ_WRITE_DATABASE || true
+}
+
 wait_for_ankidroid_provider() {
   # Poll the flashcards provider until it serves the Kiku model. A plain
   # permission-only retry (probe_ankidroid_provider) cannot recover when the
@@ -211,7 +239,8 @@ wait_for_ankidroid_provider() {
       configure_ankidroid_collection_path || true
       adb shell am force-stop com.ichi2.anki || true
       launch_ankidroid || true
-      adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
+      grant_ankidroid_permission "${provider_test_package}"
+      grant_ankidroid_permission "${app_package}"
     fi
 
     echo "AnkiDroid provider model readiness failed on attempt ${attempt}/${attempts}; retrying in ${delay_seconds}s" >&2
@@ -222,7 +251,6 @@ wait_for_ankidroid_provider() {
 
 run_instrumentation_gate_once() {
   local minimum_notes="${KANJI_LIVE_MINIMUM_NOTES-1}"
-  local test_classes="${KANJI_LIVE_TEST_CLASSES:-dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid,dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest}"
   local instrumentation_args=(
     -e kanjiLiveAnkiDroid true
   )
@@ -232,34 +260,38 @@ run_instrumentation_gate_once() {
     )
   fi
   instrumentation_args+=(
-    -e class "${test_classes}"
-    dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
+    -e class "${current_test_classes}"
+    "${current_test_runner}"
   )
 
   set +e
   adb shell am instrument -w "${instrumentation_args[@]}" \
-    | tee "${instrumentation_output_path}"
+    | tee "${current_instrumentation_output_path}"
   local adb_status=${PIPESTATUS[0]}
   set -e
+  {
+    printf '\n=== %s ===\n' "${current_instrumentation_name}"
+    cat "${current_instrumentation_output_path}"
+  } >> "${instrumentation_output_path}"
 
   if [ "${adb_status}" -ne 0 ]; then
-    echo "Instrumentation command failed with exit status ${adb_status}" >&2
+    echo "${current_instrumentation_name} command failed with exit status ${adb_status}" >&2
     return "${adb_status}"
   fi
 
-  if grep -Eq 'FAILURES!!!|INSTRUMENTATION_RESULT: shortMsg=.|Process crashed' "${instrumentation_output_path}"; then
-    echo "Instrumentation reported a failure; failing the live-provider gate" >&2
+  if grep -Eq 'FAILURES!!!|INSTRUMENTATION_RESULT: shortMsg=.|Process crashed' "${current_instrumentation_output_path}"; then
+    echo "${current_instrumentation_name} reported a failure; failing the live-provider gate" >&2
     return 1
   fi
 
-  if ! grep -Eq '^OK \([0-9]+ tests?\)' "${instrumentation_output_path}"; then
-    echo "Instrumentation did not report a successful test completion marker" >&2
+  if ! grep -Eq '^OK \([0-9]+ tests?\)' "${current_instrumentation_output_path}"; then
+    echo "${current_instrumentation_name} did not report a successful test completion marker" >&2
     return 1
   fi
 }
 
 instrumentation_failure_is_transient() {
-  grep -Eqi 'Process crashed|INSTRUMENTATION_RESULT: shortMsg=Process crashed|INSTRUMENTATION_CODE: 0|No test results|Test run failed to complete' "${instrumentation_output_path}"
+  grep -Eqi 'Process crashed|INSTRUMENTATION_RESULT: shortMsg=Process crashed|INSTRUMENTATION_CODE: 0|No test results|Test run failed to complete' "${current_instrumentation_output_path}"
 }
 
 instrumentation_failure_is_known_fake_provider_classpath_crash() {
@@ -279,28 +311,37 @@ settle_before_instrumentation() {
 }
 
 reset_apps_after_transient_instrumentation_failure() {
-  adb shell am force-stop dev.bee.kanjianki || true
+  adb shell am force-stop "${current_test_package}" || true
   adb shell am force-stop com.ichi2.anki || true
   launch_ankidroid || true
   sleep 5
-  adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
+  grant_ankidroid_permission "${current_test_package}"
   retry "AnkiDroid provider model readiness after instrumentation retry reset" 6 5 probe_ankidroid_provider
   adb shell am force-stop com.ichi2.anki || true
 }
 
 run_instrumentation_gate() {
+  current_instrumentation_name="$1"
+  current_test_package="$2"
+  current_test_runner="$3"
+  current_test_classes="$4"
+  current_instrumentation_output_path="$5"
+  if [ -z "${current_test_classes}" ]; then
+    return 0
+  fi
+
   local attempts="${KANJI_LIVE_INSTRUMENTATION_ATTEMPTS:-4}"
   local attempt=1
 
   while true; do
     settle_before_instrumentation
-    echo "Running live-provider instrumentation attempt ${attempt}/${attempts}"
+    echo "Running ${current_instrumentation_name} attempt ${attempt}/${attempts}"
     if run_instrumentation_gate_once; then
       return 0
     fi
 
     if [ "${attempt}" -ge "${attempts}" ] || ! instrumentation_failure_is_transient; then
-      echo "Instrumentation reported a non-retriable failure; failing the live-provider gate" >&2
+      echo "${current_instrumentation_name} reported a non-retriable failure; failing the live-provider gate" >&2
       return 1
     fi
 
@@ -310,7 +351,7 @@ run_instrumentation_gate() {
       return 1
     fi
 
-    echo "Instrumentation appears to have hit a transient runner/process failure; resetting apps and retrying" >&2
+    echo "${current_instrumentation_name} hit a transient runner/process failure; resetting apps and retrying" >&2
     reset_apps_after_transient_instrumentation_failure
     clear_logcat_best_effort
     attempt=$((attempt + 1))
@@ -328,12 +369,20 @@ on_exit() {
 
 trap on_exit EXIT
 
-# The debug and androidTest APKs are built before the emulator step (CI) or by
-# the operator (local runs) so emulator wall time is spent only on device work.
+# The test APKs are built before the emulator step (CI) or by the operator
+# (local runs) so emulator wall time is spent only on device work.
+provider_test_apk="provider-ankidroid/build/outputs/apk/androidTest/debug/provider-ankidroid-debug-androidTest.apk"
 app_apk="app/build/outputs/apk/debug/app-debug.apk"
-test_apk="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
-if [ ! -f "${app_apk}" ] || [ ! -f "${test_apk}" ]; then
-  ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+app_test_apk="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+build_tasks=()
+if [ -n "${provider_test_classes}" ] && [ ! -f "${provider_test_apk}" ]; then
+  build_tasks+=(":provider-ankidroid:assembleDebugAndroidTest")
+fi
+if [ -n "${app_test_classes}" ] && { [ ! -f "${app_apk}" ] || [ ! -f "${app_test_apk}" ]; }; then
+  build_tasks+=(":app:assembleDebug" ":app:assembleDebugAndroidTest")
+fi
+if [ "${#build_tasks[@]}" -gt 0 ]; then
+  ./gradlew "${build_tasks[@]}" --parallel -Dorg.gradle.parallel=true
 fi
 
 adb wait-for-device
@@ -352,11 +401,34 @@ adb shell am force-stop com.ichi2.anki
 launch_ankidroid
 sleep 5
 
-install_apk "Debug app APK install" "${app_apk}"
-install_apk "Debug androidTest APK install" "${test_apk}"
-adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE || true
-wait_for_ankidroid_provider
-adb shell am force-stop com.ichi2.anki || true
+: > "${instrumentation_output_path}"
 
-clear_logcat_best_effort
-run_instrumentation_gate
+if [ -n "${provider_test_classes}" ]; then
+  install_apk "Provider androidTest APK install" "${provider_test_apk}"
+  grant_ankidroid_permission "${provider_test_package}"
+  wait_for_ankidroid_provider
+  adb shell am force-stop com.ichi2.anki || true
+  clear_logcat_best_effort
+  run_instrumentation_gate \
+    "provider instrumentation" \
+    "${provider_test_package}" \
+    "${provider_runner}" \
+    "${provider_test_classes}" \
+    "${provider_instrumentation_output_path}"
+  adb uninstall "${provider_test_package}" >/dev/null 2>&1 || true
+fi
+
+if [ -n "${app_test_classes}" ]; then
+  install_apk "Debug app APK install" "${app_apk}"
+  install_apk "Debug androidTest APK install" "${app_test_apk}"
+  grant_ankidroid_permission "${app_package}"
+  wait_for_ankidroid_provider
+  adb shell am force-stop com.ichi2.anki || true
+  clear_logcat_best_effort
+  run_instrumentation_gate \
+    "app instrumentation" \
+    "${app_package}" \
+    "${app_runner}" \
+    "${app_test_classes}" \
+    "${app_instrumentation_output_path}"
+fi

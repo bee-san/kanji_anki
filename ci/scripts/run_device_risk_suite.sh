@@ -2,8 +2,19 @@
 
 set -euo pipefail
 
+readonly risk_annotation='dev.bee.kanjianki.testing.DeviceRisk'
+readonly provider_test_package='dev.bee.kanjianki.provider.ankidroid.test'
+
+./gradlew :provider-ankidroid:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.annotation="${risk_annotation}" \
+  --no-daemon
+
+# Both debug hosts expose the same fake AnkiDroid authority. Remove the
+# standalone provider host before installing the app test host.
+adb uninstall "${provider_test_package}" >/dev/null 2>&1 || true
+
 ./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceRisk \
+  -Pandroid.testInstrumentationRunnerArguments.annotation="${risk_annotation}" \
   --no-daemon
 
 ./gradlew :app:assembleMinifiedSmoke --no-daemon

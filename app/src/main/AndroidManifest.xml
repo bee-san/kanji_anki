@@ -1,10 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <queries>
-        <package android:name="com.ichi2.anki" />
-        <package android:name="com.ichi2.anki.debug" />
-    </queries>
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -13,9 +8,6 @@
         android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"
         tools:ignore="ProtectedPermissions"
         tools:targetApi="s" />
-    <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
-    <uses-permission android:name="com.ichi2.anki.debug.permission.READ_WRITE_DATABASE" />
-
     <application
         android:name=".KaniApplication"
         android:allowBackup="false"

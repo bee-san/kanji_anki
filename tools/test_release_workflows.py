@@ -20,12 +20,16 @@ ANDROID_DEVICE_SMOKE_WORKFLOW = ROOT / ".github/workflows/android-device-smoke.y
 DEVICE_RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
 SONAR_WORKFLOW = ROOT / ".github/workflows/sonarqube.yml"
 CODEQL_WORKFLOW = ROOT / ".github/workflows/codeql.yml"
-DEBUG_MANIFEST = ROOT / "app/src/debug/AndroidManifest.xml"
+DEBUG_MANIFEST = ROOT / "provider-ankidroid/src/debug/AndroidManifest.xml"
 FAKE_PROVIDER_DEBUG_SOURCE = (
-    ROOT / "app/src/debug/kotlin/dev/bee/kanjianki/anki/FakeAnkiDroidProvider.kt"
+    ROOT
+    / "provider-ankidroid/src/debug/kotlin/dev/bee/kanjianki/anki/"
+    "FakeAnkiDroidProvider.kt"
 )
 FAKE_PROVIDER_ANDROID_TEST_SOURCE = (
-    ROOT / "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/FakeAnkiDroidProvider.kt"
+    ROOT
+    / "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki/anki/"
+    "FakeAnkiDroidProvider.kt"
 )
 
 
@@ -212,6 +216,7 @@ class AndroidDeviceSmokeWorkflowTest(unittest.TestCase):
         self.assertIn("script: bash ci/scripts/run_device_risk_suite.sh", risk_job)
         self.assertNotIn("script: |", risk_job)
         self.assertIn("set -euo pipefail", risk_script)
+        self.assertIn(":provider-ankidroid:connectedDebugAndroidTest", risk_script)
         self.assertIn(":app:connectedDebugAndroidTest", risk_script)
         self.assertIn(":app:assembleMinifiedSmoke", risk_script)
         self.assertIn("adb logcat -b all -c", risk_script)
@@ -478,6 +483,8 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
         self.assertIn("${{ steps.ankidroid.outputs.apk_path }}", self.workflow)
         self.assertIn("${{ steps.fixture.outputs.collection_path }}", self.workflow)
         self.assertIn("${{ steps.fixture.outputs.lifecycle_fixture_dir }}", self.workflow)
+        self.assertIn(":provider-ankidroid:assembleDebugAndroidTest", self.workflow)
+        self.assertIn(":app:assembleDebugAndroidTest", self.workflow)
 
     def test_sanitized_fixture_is_generated_in_runner_temp(self) -> None:
         self.assertIn("python3 ci/scripts/create_ankidroid_kiku_fixture.py", self.workflow)
@@ -494,21 +501,29 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
             "${{ runner.temp }}/ankidroid-fixture-logcat.txt",
             "${{ runner.temp }}/ankidroid-fixture-provider-probe.txt",
             "${{ runner.temp }}/ankidroid-fixture-instrumentation.txt",
+            "${{ runner.temp }}/ankidroid-fixture-provider-instrumentation.txt",
+            "${{ runner.temp }}/ankidroid-fixture-app-instrumentation.txt",
             "${{ runner.temp }}/ankidroid-retired-lifecycle-*.txt",
             "app/build/reports/**",
             "app/build/outputs/androidTest-results/**",
+            "provider-ankidroid/build/reports/**",
+            "provider-ankidroid/build/outputs/androidTest-results/**",
         ):
             with self.subTest(path=path):
                 self.assertIn(path, diagnostics)
 
 
 class FakeAnkiDroidProviderPackagingTest(unittest.TestCase):
-    def test_fake_provider_source_lives_in_debug_app_not_android_test_apk(self) -> None:
+    def test_fake_provider_source_lives_in_provider_debug_not_android_test(self) -> None:
         self.assertTrue(FAKE_PROVIDER_DEBUG_SOURCE.exists())
         self.assertFalse(FAKE_PROVIDER_ANDROID_TEST_SOURCE.exists())
         android_test_fake_providers = sorted(
             path.relative_to(ROOT).as_posix()
-            for path in (ROOT / "app/src/androidTest").rglob("FakeAnkiDroidProvider.*")
+            for source_root in (
+                ROOT / "app/src/androidTest",
+                ROOT / "provider-ankidroid/src/androidTest",
+            )
+            for path in source_root.rglob("FakeAnkiDroidProvider.*")
         )
         self.assertEqual([], android_test_fake_providers)
 

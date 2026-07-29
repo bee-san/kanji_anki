@@ -19,16 +19,6 @@ card id=101000 note=101 ord=0 deck=Kiku/Kiku queue=2 type=2 due=12 interval=42 r
 card id=102000 note=102 ord=0 deck=Kiku/Kiku queue=-1 type=2 due=0 interval=10 reps=5 lapses=1 suspended=true fsrs=12.5,7.0,0.42 browser=false
 queries bulk=1 per-note=0 explicit-id=0
 
-[manual-sync-fixed-clock]
-result success=true skipped=false rows=2 imports=1 ready=2 retryable=false cleanup=true
-latest status=success active-notes=1 active-cards=1 suspended-cards=1 imports=1 finished=T+0 error=false cleanup=true
-history-count=1
-dashboard kanji=箱 rank=1003 weakness=22 reason=suspended_archive active=0 suspended=1 mature=0 sources=2000:2:suspended
-dashboard kanji=認 rank=282 weakness=23 reason=fsrs_weak_memory active=1 suspended=0 mature=1 sources=1000:1:active
-import kanji=箱 rank=1003 known=true cutoff=3000 sources=2000:2:suspended:suspended
-queue kanji=箱 task=kanji_meaning rung=kanji_meaning phase=new_learning state=new due=T+0 routing=1 adaptive=false token=true core=- repair=-
-queue kanji=認 task=word_reading rung=word_reading phase=review state=review due=T+0 routing=2 adaptive=true token=true core=contextual_reading repair=-
-
 [browser-query]
 active-matches=[1000] queries=1
 suspended-matches=[2000] suspended=[2000] queries=1

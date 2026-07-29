@@ -54,8 +54,14 @@ import dev.bee.kanjianki.data.StudyStatsStore;
 import dev.bee.kanjianki.study.CapturedWriting;
 import dev.bee.kanjianki.study.WritingRecognizer;
 import dev.bee.kanjianki.sync.SyncProgress;
+import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionCapability
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionProviderKind
 import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
+import dev.bee.kanjianki.syncapi.CollectionSourceIdentity
+import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
 import dev.bee.kanjianki.core.SyncSettings;
 
 import org.junit.After;
@@ -2131,6 +2137,7 @@ fun testManualSyncShowsLiveCardProgress() {
                 assertHasText(activity, "1 / 2 cards scanned")
             }
             progressGateway.finish()
+            confirmFirstCollectionBinding(scenario)
             waitForText(scenario, "Sync complete")
         }
     } finally {
@@ -2178,6 +2185,7 @@ fun testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
+            confirmFirstCollectionBinding(scenario)
             val status = requireNotNull(waitForLatestSync())
             assertEquals("success", status.status)
 
@@ -2204,6 +2212,10 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
+            confirmFirstCollectionBinding(
+                scenario,
+                LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS,
+            )
             val startedAt = System.currentTimeMillis();
             val status = waitForLiveSyncImport(startedAt, 9000)
             assertEquals("success", status.status)
@@ -2602,6 +2614,34 @@ class HoldingProgressGateway(
         return snapshot
     }
 
+    override fun readProviderCollection(
+        settings: RecordsSyncModels.Settings,
+        progress: CollectionProgressListener,
+        cancellation: CollectionCancellation,
+    ): ProviderCollectionSnapshot {
+        if (cancellation.isCancelled()) {
+            throw CollectionFailure.cancelled()
+        }
+        val result = readCollection(settings, progress)
+        if (cancellation.isCancelled()) {
+            throw CollectionFailure.cancelled()
+        }
+        val capabilities = setOf(
+            CollectionCapability.READ_COLLECTION,
+            CollectionCapability.SOURCE_IDENTITY,
+        )
+        return ProviderCollectionSnapshot(
+            result,
+            capabilities,
+            CollectionSourceIdentity.create(
+                CollectionProviderKind.TEST,
+                "holding-progress",
+                result.notes.map { it.noteId },
+                result.cards.map { it.cardId },
+            ),
+        )
+    }
+
     override fun removeArchivedSuspendedCards(snapshot: RecordsSyncModels.CollectionSnapshot): AnkiDroidGateway.RemovalSummary {
         return AnkiDroidGateway.RemovalSummary(0, 0, 0, "cleanup done")
     }
@@ -2620,6 +2660,15 @@ private fun clickHomeSyncEntryPoint(scenario: ActivityScenario<MainActivity>) {
         return
     }
     clickText(scenario, "Sync")
+}
+
+private fun confirmFirstCollectionBinding(
+    scenario: ActivityScenario<MainActivity>,
+    timeoutMillis: Long = 5_000L,
+) {
+    val label = SourceBindingRecoveryUi.firstBindLabel()
+    waitForText(scenario, label, timeoutMillis)
+    clickText(scenario, label)
 }
 
 private fun clickTextInActivityIfPresent(scenario: ActivityScenario<MainActivity>, text: String): Boolean {

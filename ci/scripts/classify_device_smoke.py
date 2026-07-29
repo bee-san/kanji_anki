@@ -71,13 +71,15 @@ FULL_ANDROID_TEST_FILES = frozenset(
         "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityPrimaryRouteSmokeInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityStudyRouteSmokeInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/StudySevenItemRouteInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
+        "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidSyncProviderIntegrationInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165AndroidRouteBaselineInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165ProviderBaselineInstrumentedTest.kt",
+        "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165SyncBaselineInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/backup/DatabaseBackupWorkerInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/data/LocalStoreInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/sync/ManualSyncEngineInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/update/UpdateFlowInstrumentedTest.kt",
+        "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
+        "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165ProviderBaselineInstrumentedTest.kt",
     }
 )
 
@@ -98,6 +100,7 @@ SMOKE_PREFIXES = (
     "gradle/",
     "platform-desktop/",
     "provider-ankiconnect/",
+    "provider-ankidroid/",
     ".github/",
 )
 

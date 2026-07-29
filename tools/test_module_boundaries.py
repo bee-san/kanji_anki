@@ -345,6 +345,33 @@ COMMON_PLATFORM_IMPORT = re.compile(
     r"^import\s+(android|androidx|java\.awt|javax\.swing)\.",
     re.MULTILINE,
 )
+ANKIDROID_IMPLEMENTATION_IMPORT = re.compile(
+    r"(?m)^\s*import\s+dev\.bee\.kanjianki\.anki\."
+    r"(?:AnkiDroid(?:ArchiveCleanup|CardReader|CollectionInventoryGateway|Gateway|"
+    r"RepairedTagging)|AnkiFieldTextNormalizer|AnkiKanjiInventoryReader|"
+    r"AnkiMissingKanjiWriter)\b",
+)
+ANKIDROID_PRODUCTION_FILES = frozenset(
+    {
+        "AnkiDroidArchiveCleanup.kt",
+        "AnkiDroidCardReader.kt",
+        "AnkiDroidCollectionInventoryGateway.kt",
+        "AnkiDroidGateway.kt",
+        "AnkiDroidRepairedTagging.kt",
+        "AnkiFieldTextNormalizer.kt",
+        "AnkiKanjiInventoryReader.kt",
+        "AnkiMissingKanjiWriter.kt",
+    },
+)
+ANKIDROID_CONTRACT_TEST_FILES = frozenset(
+    {
+        "anki/AnkiDroidCollectionInventoryGatewayInstrumentedTest.kt",
+        "anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
+        "anki/AnkiMissingKanjiWriterInstrumentedTest.kt",
+        "anki/RealAnkiDroidLiveProviderInstrumentedTest.kt",
+        "baseline/Goal165ProviderBaselineInstrumentedTest.kt",
+    },
+)
 KANI_REFERENCE = re.compile(
     r"\b(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
 )
@@ -686,6 +713,61 @@ class ModuleBoundaryTest(unittest.TestCase):
             [],
             violations,
             "common presentation must not import Android, AWT, or Swing APIs",
+        )
+
+    def test_ankidroid_implementation_and_contract_tests_live_in_provider_module(
+        self,
+    ) -> None:
+        provider_main = (
+            ROOT / "provider-ankidroid/src/main/kotlin/dev/bee/kanjianki/anki"
+        )
+        self.assertEqual(
+            ANKIDROID_PRODUCTION_FILES,
+            frozenset(path.name for path in provider_main.glob("*.kt")),
+        )
+        app_main = ROOT / "app/src/main/kotlin/dev/bee/kanjianki/anki"
+        self.assertEqual([], list(app_main.rglob("*")) if app_main.exists() else [])
+
+        provider_tests = (
+            ROOT
+            / "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki"
+        )
+        actual_contract_tests = frozenset(
+            path.relative_to(provider_tests).as_posix()
+            for path in provider_tests.rglob("*.kt")
+        )
+        self.assertEqual(ANKIDROID_CONTRACT_TEST_FILES, actual_contract_tests)
+        self.assertFalse(
+            (
+                ROOT
+                / "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/"
+                "AnkiDroidGatewayProviderInstrumentedTest.kt"
+            ).exists(),
+        )
+
+        card_reader = (provider_main / "AnkiDroidCardReader.kt").read_text(
+            encoding="utf-8",
+        )
+        self.assertRegex(card_reader, r"\binternal class AnkiDroidCardReader\b")
+
+    def test_shared_feature_and_desktop_sources_cannot_import_ankidroid_types(
+        self,
+    ) -> None:
+        violations = []
+        excluded_modules = {"app", "provider-ankidroid"}
+        for module in sorted(EXPECTED_CURRENT_MODULES - excluded_modules):
+            source_root = ROOT / module / "src"
+            for source in sorted(
+                (*source_root.rglob("*.kt"), *source_root.rglob("*.java")),
+            ):
+                if ANKIDROID_IMPLEMENTATION_IMPORT.search(
+                    source.read_text(encoding="utf-8"),
+                ):
+                    violations.append(source.relative_to(ROOT).as_posix())
+        self.assertEqual(
+            [],
+            violations,
+            "shared, feature, and desktop modules must use :sync-api contracts",
         )
 
     def test_persistence_reference_policy_rejects_application_layers(self) -> None:

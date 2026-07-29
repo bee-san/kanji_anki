@@ -605,10 +605,32 @@ desktop collection directly.
 
 ## Running The Live Tests
 
-Build and install the debug app plus instrumentation APK.
+Build both instrumentation hosts. The provider tests are a standalone library
+test APK; uninstall it before installing the app because both debug hosts expose
+the same fake-provider authority.
 
 ```sh
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+./gradlew :provider-ankidroid:assembleDebugAndroidTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest
+adb install -r provider-ankidroid/build/outputs/apk/androidTest/debug/provider-ankidroid-debug-androidTest.apk
+adb shell pm grant dev.bee.kanjianki.provider.ankidroid.test \
+  com.ichi2.anki.permission.READ_WRITE_DATABASE
+```
+
+Run the direct provider gate first:
+
+```sh
+adb logcat -c
+adb shell am instrument -w \
+  -e kanjiLiveAnkiDroid true \
+  -e class dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
+  dev.bee.kanjianki.provider.ankidroid.test/androidx.test.runner.AndroidJUnitRunner
+adb uninstall dev.bee.kanjianki.provider.ankidroid.test
+```
+
+Then install the app host:
+
+```sh
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE
@@ -622,14 +644,15 @@ path; unrelated UI tests use the fake provider in the normal local gate.
 adb logcat -c
 adb shell am instrument -w \
   -e kanjiLiveAnkiDroid true \
-  -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid,dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
+  -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid \
   dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-Expected result:
+Expected results:
 
 ```text
-OK (62 tests)
+OK (54 tests)
+OK (1 test)
 ```
 
 Important live tests:

@@ -11,7 +11,7 @@ import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncdomain.ProviderCardPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 
-class AnkiDroidCardReader(
+internal class AnkiDroidCardReader(
     private val resolver: ContentResolver?,
     private val lifecycleCancellation: CollectionCancellation = CollectionCancellation.NONE,
 ) {
