@@ -1,8 +1,6 @@
 package dev.bee.kanjianki
 
-import android.net.Uri
 import android.os.Build
-import android.provider.OpenableColumns
 import android.widget.Toast
 import dev.bee.kanjianki.backup.BackupExportOperations
 import dev.bee.kanjianki.backup.BackupExportPreparation
@@ -10,12 +8,14 @@ import dev.bee.kanjianki.backup.BackupRestoreStager
 import dev.bee.kanjianki.backup.BackupRestoreValidation
 import dev.bee.kanjianki.backup.BackupRestoreValidator
 import dev.bee.kanjianki.backup.PendingExportHolder
-import dev.bee.kanjianki.backup.UriStreams
 import dev.bee.kanjianki.backup.ValidatedBackup
 import dev.bee.kanjianki.core.BackupExportPolicy
 import dev.bee.kanjianki.core.BackupRestorePolicy
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
+import dev.bee.kanjianki.platform.PlatformFileAccess
+import dev.bee.kanjianki.platform.PlatformFileReference
+import dev.bee.kanjianki.platform.android.AndroidPlatformFileAccess
 import dev.bee.kanjianki.sync.ManualSyncEngine
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
@@ -41,6 +41,7 @@ internal class MainActivitySettingsAutomationBackup(
     private val activity: MainActivitySettings,
     private val syncGate: BackupRestoreSyncGate = BackupRestoreSyncGate(),
     private val platformGate: BackupPlatformGate = BackupPlatformGate(),
+    private val fileAccess: PlatformFileAccess = AndroidPlatformFileAccess(activity),
 ) {
     private var pendingValidatedBackup: ValidatedBackup? = null
 
@@ -62,13 +63,13 @@ internal class MainActivitySettingsAutomationBackup(
         )
     }
 
-    fun onExportDocumentSelected(uri: Uri?) {
+    fun onExportDocumentSelected(file: PlatformFileReference?) {
         val prepared = PendingExportHolder.take() ?: return
         if (!ensurePlatformAvailable()) {
             BackupExportOperations.discard(prepared)
             return
         }
-        if (uri == null) {
+        if (file == null) {
             BackupExportOperations.discard(prepared)
             return
         }
@@ -77,12 +78,10 @@ internal class MainActivitySettingsAutomationBackup(
             traceSection = "kani.settings.backup.export-write",
             write = {
                 result.set(
-                    BackupExportOperations.copyToUri(
+                    BackupExportOperations.copyToFile(
                         prepared,
-                        uri,
-                        UriStreams { destination ->
-                            activity.contentResolver.openOutputStream(destination, "w")
-                        },
+                        file,
+                        fileAccess,
                     ),
                 )
             },
@@ -93,12 +92,12 @@ internal class MainActivitySettingsAutomationBackup(
         }
     }
 
-    fun onRestoreDocumentSelected(uri: Uri?) {
-        if (uri == null) return
+    fun onRestoreDocumentSelected(file: PlatformFileReference?) {
+        if (file == null) return
         if (!ensurePlatformAvailable()) return
         if (!ensureRestoreAllowed()) return
         val result = AtomicReference<BackupRestoreValidation>()
-        val sourceName = sourceName(uri)
+        val sourceName = file.displayName
         activity.runSettingsWrite(
             traceSection = "kani.settings.backup.restore-validate",
             write = {
@@ -107,7 +106,7 @@ internal class MainActivitySettingsAutomationBackup(
                         context = activity,
                         restoreDir = BackupRestoreStager.restoreDir(activity.filesDir),
                         sourceName = sourceName,
-                        input = { activity.contentResolver.openInputStream(uri) },
+                        input = { fileAccess.openInput(file) },
                     ),
                 )
             },
@@ -238,20 +237,6 @@ internal class MainActivitySettingsAutomationBackup(
     private fun discardPendingValidatedBackup() {
         pendingValidatedBackup?.databaseFile?.let { BackupRestoreStager.deleteBestEffort(it) }
         pendingValidatedBackup = null
-    }
-
-    private fun sourceName(uri: Uri): String {
-        return runCatching {
-            activity.contentResolver.query(
-                uri,
-                arrayOf(OpenableColumns.DISPLAY_NAME),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: "selected-backup.db.gz"
     }
 
     private fun backupArchives(directory: File): List<File> {

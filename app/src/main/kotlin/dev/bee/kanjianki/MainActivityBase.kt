@@ -3,7 +3,6 @@ package dev.bee.kanjianki
 import android.content.Intent
 import android.graphics.Rect
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -42,6 +41,10 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.platform.DeviceSettingsStore
+import dev.bee.kanjianki.platform.FilePickerPurpose
+import dev.bee.kanjianki.platform.FilePickerRequest
+import dev.bee.kanjianki.platform.PlatformFileReference
+import dev.bee.kanjianki.platform.android.AndroidFilePicker
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.study.WritingRecognizer
 import dev.bee.kanjianki.sync.ManualSyncEngine
@@ -401,6 +404,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     private lateinit var backupExportDocumentLauncher: ActivityResultLauncher<String>
     private lateinit var backupRestoreDocumentLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var backupFilePicker: AndroidFilePicker
     private lateinit var ankiDatabasePermissionLauncher: ActivityResultLauncher<String>
     private lateinit var postNotificationPermissionLauncher: ActivityResultLauncher<String>
 
@@ -477,12 +481,27 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         // Activity-result launchers must be registered once, before the activity reaches STARTED.
         // Keep the established SAF launchers first: ComponentActivity's automatic registry keys
         // are positional, so changing their order can misroute a result restored from older code.
+        backupFilePicker = AndroidFilePicker(
+            this,
+            launchSaveDocument = { backupExportDocumentLauncher.launch(it) },
+            launchOpenDocument = { backupRestoreDocumentLauncher.launch(it) },
+        )
         backupExportDocumentLauncher = registerForActivityResult(
             ActivityResultContracts.CreateDocument("application/gzip"),
-        ) { uri -> onBackupExportDocumentSelected(uri) }
+        ) { uri ->
+            if (!backupFilePicker.onSaveResult(uri)) {
+                // Activity Result can outlive an Activity instance. Preserve the
+                // pre-adapter behavior when Android restores a pending result.
+                onBackupExportDocumentSelected(backupFilePicker.referenceFor(uri))
+            }
+        }
         backupRestoreDocumentLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocument(),
-        ) { uri -> onBackupRestoreDocumentSelected(uri) }
+        ) { uri ->
+            if (!backupFilePicker.onOpenResult(uri)) {
+                onBackupRestoreDocumentSelected(backupFilePicker.referenceFor(uri))
+            }
+        }
         // Permission callbacks preserve the previous request-code behavior: either AnkiDroid
         // permission result refreshes Home, while notification permission settles the pending
         // reminder settings before returning to the same Settings surface.
@@ -528,20 +547,22 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         )
     }
 
-    protected open fun onBackupExportDocumentSelected(uri: Uri?) = Unit
+    protected open fun onBackupExportDocumentSelected(file: PlatformFileReference?) = Unit
 
-    protected open fun onBackupRestoreDocumentSelected(uri: Uri?) = Unit
+    protected open fun onBackupRestoreDocumentSelected(file: PlatformFileReference?) = Unit
 
     fun launchBackupExportDocument(suggestedName: String): Boolean {
-        return runCatching { backupExportDocumentLauncher.launch(suggestedName) }.isSuccess
+        return backupFilePicker.launchForResult(
+            FilePickerRequest(FilePickerPurpose.SAVE, suggestedName),
+            ::onBackupExportDocumentSelected,
+        )
     }
 
     fun launchBackupRestoreDocument(): Boolean {
-        return runCatching {
-            backupRestoreDocumentLauncher.launch(
-                arrayOf("application/gzip", "application/octet-stream", "*/*"),
-            )
-        }.isSuccess
+        return backupFilePicker.launchForResult(
+            FilePickerRequest(FilePickerPurpose.OPEN),
+            ::onBackupRestoreDocumentSelected,
+        )
     }
 
     override fun onNewIntent(intent: Intent) {

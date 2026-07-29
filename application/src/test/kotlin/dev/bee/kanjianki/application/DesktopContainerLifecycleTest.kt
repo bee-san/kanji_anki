@@ -199,6 +199,7 @@ class DesktopContainerLifecycleTest {
         override val deviceSettingsStore = TestDeviceSettingsStore
         override val userIoExecutor = DirectExecutor
         override val maintenanceExecutor = DirectExecutor
+        override val appLifecycle = TestAppLifecycle
 
         override fun close() {
             events += "close-data"
@@ -208,6 +209,15 @@ class DesktopContainerLifecycleTest {
 
     private object DirectExecutor : Executor {
         override fun execute(command: Runnable) = command.run()
+    }
+
+    private object TestAppLifecycle : dev.bee.kanjianki.platform.AppLifecycle {
+        override fun currentState() =
+            dev.bee.kanjianki.platform.AppLifecycleState.BACKGROUND
+
+        override fun observe(
+            observer: (dev.bee.kanjianki.platform.AppLifecycleState) -> Unit,
+        ) = dev.bee.kanjianki.platform.PlatformSubscription { }
     }
 
     private object TestDeviceSettingsStore : DeviceSettingsStore {

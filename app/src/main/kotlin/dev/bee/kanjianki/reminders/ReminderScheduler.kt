@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.reminders
 
 import android.annotation.SuppressLint
-import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -13,6 +12,7 @@ import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.automation.AndroidAlarmManagerGateway
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
@@ -498,30 +498,23 @@ object ReminderScheduler {
     }
 
     private class AndroidReminderServices(private val context: Context) : ReminderServices {
+        private val alarms = AndroidAlarmManagerGateway(context)
         private val notifications = AndroidNotificationGateway(context)
 
         override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false, "") ?: return
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pendingIntent
-            )
+            alarms.scheduleWakeup(triggerAtMillis, pendingIntent)
         }
 
         override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true, family) ?: return
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            alarms.scheduleWakeup(triggerAtMillis, pendingIntent)
         }
 
         override fun cancelAlarm() {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
             val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false, "")
             if (pendingIntent != null) {
-                alarmManager?.cancel(pendingIntent)
-                pendingIntent.cancel()
+                alarms.cancel(pendingIntent)
             }
         }
 

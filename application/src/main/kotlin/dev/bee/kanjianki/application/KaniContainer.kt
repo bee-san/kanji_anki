@@ -6,6 +6,7 @@ import dev.bee.kanjianki.data.StatsRepository
 import dev.bee.kanjianki.data.StudyRepository
 import dev.bee.kanjianki.data.SyncRepository
 import dev.bee.kanjianki.platform.DeviceSettingsStore
+import dev.bee.kanjianki.platform.AppLifecycle
 import java.util.concurrent.Executor
 
 interface RepositoryOwner {
@@ -25,9 +26,14 @@ interface TaskExecutorOwner {
     val maintenanceExecutor: Executor
 }
 
+interface PlatformLifecycleOwner {
+    val appLifecycle: AppLifecycle
+}
+
 /** Process-owned host dependencies shared by UI and background components. */
 interface KaniContainer :
     RepositoryOwner,
     DeviceSettingsOwner,
     TaskExecutorOwner,
+    PlatformLifecycleOwner,
     AutoCloseable

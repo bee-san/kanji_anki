@@ -1,16 +1,11 @@
 package dev.bee.kanjianki.backup
 
-import android.net.Uri
 import dev.bee.kanjianki.core.BackupExportPolicy
+import dev.bee.kanjianki.platform.PlatformFileAccess
+import dev.bee.kanjianki.platform.PlatformFileReference
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
-import java.io.OutputStream
-
-fun interface UriStreams {
-    @Throws(IOException::class)
-    fun openOutputStream(uri: Uri): OutputStream?
-}
 
 internal data class PreparedBackupExport(
     val file: File,
@@ -81,13 +76,13 @@ internal object BackupExportOperations {
     }
 
     @JvmStatic
-    fun copyToUri(
+    fun copyToFile(
         prepared: PreparedBackupExport,
-        destination: Uri,
-        streams: UriStreams,
+        destination: PlatformFileReference,
+        files: PlatformFileAccess,
     ): BackupExportCopyResult {
         return try {
-            val output = streams.openOutputStream(destination)
+            val output = files.openOutput(destination)
                 ?: throw IOException("Document provider returned no output stream")
             output.use { destinationStream ->
                 FileInputStream(prepared.file).use { source ->

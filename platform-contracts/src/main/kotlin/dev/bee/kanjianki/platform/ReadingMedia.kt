@@ -13,6 +13,12 @@ data class ReadingMediaMetadata(
 }
 
 interface ReadingMediaSource {
+    /**
+     * Stable opaque identity used only to invalidate process-local parse
+     * caches when a host switches media roots.
+     */
+    fun cacheIdentity(): String? = null
+
     fun metadata(name: String): ReadingMediaMetadata?
 
     fun read(name: String, maximumBytes: Int): ByteArray?

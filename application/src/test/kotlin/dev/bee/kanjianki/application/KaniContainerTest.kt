@@ -6,6 +6,9 @@ import dev.bee.kanjianki.data.fakes.FakeStatsRepository
 import dev.bee.kanjianki.data.fakes.FakeStudyRepository
 import dev.bee.kanjianki.data.fakes.FakeSyncRepository
 import dev.bee.kanjianki.platform.DeviceSettingKey
+import dev.bee.kanjianki.platform.AppLifecycle
+import dev.bee.kanjianki.platform.AppLifecycleState
+import dev.bee.kanjianki.platform.PlatformSubscription
 import dev.bee.kanjianki.platform.DeviceSettingsEditor
 import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.platform.DeviceSettingsStore
@@ -27,6 +30,7 @@ class KaniContainerTest {
         assertSame(TestDeviceSettingsStore, container.deviceSettingsStore)
         assertSame(DirectExecutor, container.userIoExecutor)
         assertSame(DirectExecutor, container.maintenanceExecutor)
+        assertSame(TestAppLifecycle, container.appLifecycle)
 
         container.close()
         assertTrue(container.events.single() == "close-data")
@@ -46,6 +50,13 @@ class KaniContainerTest {
         override fun edit(block: DeviceSettingsEditor.() -> Unit) = Unit
     }
 
+    private object TestAppLifecycle : AppLifecycle {
+        override fun currentState(): AppLifecycleState = AppLifecycleState.BACKGROUND
+
+        override fun observe(observer: (AppLifecycleState) -> Unit): PlatformSubscription =
+            PlatformSubscription { }
+    }
+
     private class TestContainer(
         val events: MutableList<String>,
     ) : KaniContainer {
@@ -63,6 +74,7 @@ class KaniContainerTest {
         override val deviceSettingsStore = TestDeviceSettingsStore
         override val userIoExecutor = DirectExecutor
         override val maintenanceExecutor = DirectExecutor
+        override val appLifecycle = TestAppLifecycle
 
         override fun close() {
             events += "close-data"

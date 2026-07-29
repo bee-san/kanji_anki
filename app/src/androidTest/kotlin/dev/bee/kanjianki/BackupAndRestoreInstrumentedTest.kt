@@ -17,7 +17,8 @@ import dev.bee.kanjianki.backup.BackupExportOperations
 import dev.bee.kanjianki.backup.BackupExportPreparation
 import dev.bee.kanjianki.backup.BackupRestoreStager
 import dev.bee.kanjianki.backup.StagedRestoreApplier
-import dev.bee.kanjianki.backup.UriStreams
+import dev.bee.kanjianki.platform.PlatformFileAccess
+import dev.bee.kanjianki.platform.PlatformFileReference
 import dev.bee.kanjianki.backup.ValidatedBackup
 import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
@@ -97,10 +98,18 @@ class BackupAndRestoreInstrumentedTest {
         assertTrue(preparation is BackupExportPreparation.Ready)
         val prepared = (preparation as BackupExportPreparation.Ready).export
         val destination = File(context.cacheDir, "backup-export-test.db.gz")
-        val copied = BackupExportOperations.copyToUri(
+        val copied = BackupExportOperations.copyToFile(
             prepared,
-            Uri.fromFile(destination),
-            UriStreams { FileOutputStream(destination) },
+            PlatformFileReference.create(
+                "content://dev.bee.kanjianki.test/export",
+                destination.name,
+            ),
+            object : PlatformFileAccess {
+                override fun openInput(file: PlatformFileReference) = null
+
+                override fun openOutput(file: PlatformFileReference) =
+                    FileOutputStream(destination)
+            },
         )
         assertTrue(copied.success)
         val header = GZIPInputStream(destination.inputStream()).use { gzip ->

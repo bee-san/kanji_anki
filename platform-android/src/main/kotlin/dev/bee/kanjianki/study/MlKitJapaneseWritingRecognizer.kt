@@ -131,22 +131,20 @@ class MlKitJapaneseWritingRecognizer : WritingRecognizer {
         fun onFailure(error: Exception)
     }
 
-    class TaskBridge private constructor() {
-        companion object {
-            @JvmStatic
-            fun <T> toFuture(task: MlKitTask<T>): CompletableFuture<T> {
-                val future = CompletableFuture<T>()
-                task.addOnSuccessListener(DIRECT_EXECUTOR, SuccessListener { result -> future.complete(result) })
-                task.addOnFailureListener(DIRECT_EXECUTOR, FailureListener { error ->
-                    future.completeExceptionally(error)
-                })
-                task.addOnCanceledListener(DIRECT_EXECUTOR, Runnable {
-                    future.completeExceptionally(
-                        CancellationException("Handwriting checker task was canceled.")
-                    )
-                })
-                return future
-            }
+    object TaskBridge {
+        @JvmStatic
+        fun <T> toFuture(task: MlKitTask<T>): CompletableFuture<T> {
+            val future = CompletableFuture<T>()
+            task.addOnSuccessListener(DIRECT_EXECUTOR, SuccessListener { result -> future.complete(result) })
+            task.addOnFailureListener(DIRECT_EXECUTOR, FailureListener { error ->
+                future.completeExceptionally(error)
+            })
+            task.addOnCanceledListener(DIRECT_EXECUTOR, Runnable {
+                future.completeExceptionally(
+                    CancellationException("Handwriting checker task was canceled.")
+                )
+            })
+            return future
         }
     }
 

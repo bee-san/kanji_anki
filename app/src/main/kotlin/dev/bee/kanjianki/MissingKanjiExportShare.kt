@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -9,6 +8,9 @@ import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiCsv
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.MissingKanjiTextCopy
+import dev.bee.kanjianki.platform.PlatformFileReference
+import dev.bee.kanjianki.platform.ShareRequest
+import dev.bee.kanjianki.platform.android.AndroidShareService
 import java.io.File
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -65,14 +67,16 @@ internal object MissingKanjiExportShare {
             return null
         }
         val subject = "Kani Missing Kanji"
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = MissingKanjiCsv.MIME_TYPE
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, subject)
-            putExtra(Intent.EXTRA_TEXT, MissingKanjiTextCopy.csvImportInstructions())
-            clipData = ClipData.newRawUri(subject, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        val intent = AndroidShareService.intentFor(
+            ShareRequest(
+                title = subject,
+                text = MissingKanjiTextCopy.csvImportInstructions(),
+                attachments = listOf(
+                    PlatformFileReference.create(uri.toString(), fileName),
+                ),
+                mimeType = MissingKanjiCsv.MIME_TYPE,
+            ),
+        ) ?: return null
         return PreparedExport(intent, csvResult, fileName)
     }
 

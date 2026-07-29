@@ -1,6 +1,5 @@
 package dev.bee.kanjianki
 
-import android.net.Uri
 import android.text.InputType
 import android.widget.EditText
 import android.widget.Toast
@@ -10,6 +9,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SettingsTextCopy
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
+import dev.bee.kanjianki.platform.PlatformFileReference
 import dev.bee.kanjianki.update.GitHubUpdater
 import dev.bee.kanjianki.updatecore.UpdateRunScreenCopy
 import java.util.Locale
@@ -28,12 +28,12 @@ internal abstract class MainActivitySettings : MainActivityStudy() {
         return MainActivitySettingsAnkiSource(this)
     }
 
-    protected final override fun onBackupExportDocumentSelected(uri: Uri?) {
-        backupRestoreSettings.onExportDocumentSelected(uri)
+    protected final override fun onBackupExportDocumentSelected(file: PlatformFileReference?) {
+        backupRestoreSettings.onExportDocumentSelected(file)
     }
 
-    protected final override fun onBackupRestoreDocumentSelected(uri: Uri?) {
-        backupRestoreSettings.onRestoreDocumentSelected(uri)
+    protected final override fun onBackupRestoreDocumentSelected(file: PlatformFileReference?) {
+        backupRestoreSettings.onRestoreDocumentSelected(file)
     }
 
     override fun renderUpdate() {

@@ -230,6 +230,7 @@ class PlatformServicesTest {
             override fun read(name: String, maximumBytes: Int): ByteArray? =
                 "abc".toByteArray().takeIf { it.size <= maximumBytes }
         }
+        assertNull(media.cacheIdentity())
         assertEquals(3L, media.metadata("stats.json").sizeBytes)
         assertEquals("abc", media.read("stats.json", 3)?.decodeToString())
 

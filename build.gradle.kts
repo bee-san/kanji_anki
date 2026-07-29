@@ -92,6 +92,7 @@ val sonarCoveragePaths = buildList<String> {
 val sonarPreflight = tasks.register("sonarPreflight") {
     group = "verification"
     description = "Fails closed when deterministic Sonar bytecode or coverage inputs are missing."
+    mustRunAfter("ciQuality")
     inputs.property("binaryPaths", (sonarMainBinaries + sonarTestBinaries).distinct())
     inputs.property("coveragePaths", sonarCoveragePaths)
     doLast {

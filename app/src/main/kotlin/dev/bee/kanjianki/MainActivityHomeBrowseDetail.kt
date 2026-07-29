@@ -1,8 +1,5 @@
 package dev.bee.kanjianki
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.widget.Toast
 import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -18,6 +15,7 @@ import dev.bee.kanjianki.core.study.StrokeOrderDiagramPolicy
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
 import dev.bee.kanjianki.data.SaveMnemonicCommand
 import dev.bee.kanjianki.data.SetLocalSuspensionCommand
+import dev.bee.kanjianki.platform.android.AndroidClipboardService
 import kotlinx.coroutines.runBlocking
 
 internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) {
@@ -525,8 +523,10 @@ internal class MainActivityHomeBrowseDetail(private val home: MainActivityHome) 
     }
 
     private fun copyAnkiSearch(browserSearch: String) {
-        val clipboard = home.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText(HomeTextCopy.ankiSearchClipLabel(), browserSearch))
+        AndroidClipboardService(home).setText(
+            HomeTextCopy.ankiSearchClipLabel(),
+            browserSearch,
+        )
         Toast.makeText(home, HomeTextCopy.ankiSearchCopiedToast(), Toast.LENGTH_SHORT).show()
     }
 

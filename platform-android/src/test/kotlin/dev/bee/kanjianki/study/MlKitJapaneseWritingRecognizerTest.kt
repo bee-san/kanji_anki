@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.study
 
+import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.vision.digitalink.common.Point
 import com.google.mlkit.vision.digitalink.common.RecognitionCandidate
@@ -181,6 +182,15 @@ class MlKitJapaneseWritingRecognizerTest {
         val cancelFailure = joinFailure(canceledFuture)
         assertTrue(cancelFailure is CancellationException)
         assertEquals("Handwriting checker task was canceled.", cancelFailure.message)
+    }
+
+    @Test
+    fun googleTaskBridgesACompletedPlayServicesTask() {
+        val future = MlKitJapaneseWritingRecognizer.TaskBridge.toFuture(
+            MlKitJapaneseWritingRecognizer.GoogleTask(Tasks.forResult("done")),
+        )
+
+        assertEquals("done", future.join())
     }
 
     @Test

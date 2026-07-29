@@ -45,6 +45,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 ":domain:check",
                 ":sync-domain:check",
                 ":data-api:check",
+                ":sync-engine:check",
                 ":application:check",
                 ":writing-core:check",
                 ":dictionary-core:check",
@@ -59,6 +60,9 @@ class DesktopRootGateContractTest(unittest.TestCase):
         block = kotlin_block('tasks.register("ciDesktop")')
         self.assertIn("dependsOn(desktopCiTasks)", block)
         self.assertNotIn(":app:", block)
+
+        sonar_block = kotlin_block('tasks.register("sonarPreflight")')
+        self.assertIn('mustRunAfter("ciQuality")', sonar_block)
 
     def test_desktop_package_gate_builds_image_package_and_runs_smoke(self) -> None:
         smoke_block = kotlin_block(

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki
 
 import android.content.Context
+import android.app.Application
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.application.HomeUseCases
 import dev.bee.kanjianki.application.KaniContainer
@@ -18,6 +19,7 @@ import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
 import dev.bee.kanjianki.sync.SyncCancellation
 import dev.bee.kanjianki.sync.AndroidSourceBindingGate
+import dev.bee.kanjianki.platform.android.AndroidAppLifecycle
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -42,6 +44,7 @@ internal class AndroidKaniContainer(
     val sourceBindingStore = SqliteSourceBindingStore(localStore)
     val sourceBindingGate = AndroidSourceBindingGate(sourceBindingStore)
     override val deviceSettingsStore = AndroidDeviceSettingsStore(appContext)
+    override val appLifecycle = AndroidAppLifecycle(appContext as Application)
     val homeUseCases = HomeUseCases(
         homeRepository,
         studyRepository,
@@ -61,6 +64,7 @@ internal class AndroidKaniContainer(
         }
     val dispatchers = KaniDispatchers(userIoExecutor, maintenanceExecutor)
     private val resourceShutdown = ProcessResourceShutdown(
+        appLifecycle::close,
         { userIoExecutor.shutdownNow() },
         { maintenanceExecutor.shutdownNow() },
         localStore::close,
