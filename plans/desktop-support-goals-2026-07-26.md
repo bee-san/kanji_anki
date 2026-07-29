@@ -3634,6 +3634,139 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   to Goal 175. The branch remains local and unpushed; no PR, tag, release, or
   external service was changed.
 
+### Goal 175 completion evidence (2026-07-29)
+
+- Started from: `91df9d55` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `5601c9c3 refactor: extract the AnkiDroid provider adapter`;
+  `560d2f3a sync: migrate and validate existing Android source bindings`;
+  `d72b172b ui: add Android source binding recovery`; `44697bc0 test: pin
+  AnkiDroid compatibility behavior at the module boundary`; and `485cde35
+  fix: restore AnkiDroid fixture ownership from package uid`.
+- Implemented: all production provider access, fake-provider infrastructure,
+  provider baselines, and real-provider probes now live in
+  `:provider-ankidroid`. Database v34 migrates existing successful Android
+  mirrors through read-only overlap evidence, records only the opaque source
+  binding, and fails closed before publication or provider writes when
+  evidence is insufficient. Home now handles explicit first bind, mismatch,
+  safe new-profile creation, and backup-backed rebind without silently
+  discarding scheduler state; unsafe API 26-29 recovery paths remain disabled.
+  Module rules prevent shared, feature, and desktop code from importing the
+  Android provider implementation.
+- Validation: the final combined-tree command
+  `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk ./gradlew ciFast ciQuality
+  ciDesktop sonarPreflight --no-daemon --console=plain` completed `BUILD
+  SUCCESSFUL` in 2m34s with 332 tasks. It covered deterministic JVM/app tests,
+  provider fakes, instrumentation compilation, lint, coverage, shared and
+  desktop checks, Python assets/tooling, and Sonar input preflight.
+  `git diff --check` also passed.
+- Live gates: AnkiDroid `2.24.0` (`versionCode=422400300`) ran against a
+  throwaway emulator copy of the user's collection with the default
+  7,000-note threshold. The real Home flow required first-bind confirmation,
+  then completed a successful foreground sync with nonempty dashboard and
+  Study data as `OK (1 test)` in 4,188.415s. The standalone provider host then
+  passed 50 fake-provider and four real-provider tests as `OK (54 tests)` in
+  3,354.171s. The non-destructive queue probe was rejected with
+  `IllegalArgumentException` (`updatedRows=-1`) and reread queue `2`.
+- Decisions: authority alone never establishes trust; migration and rebind
+  require the frozen overlap policy, and explicit rebind additionally requires
+  a durable safety backup. Raw authority/profile values and stable IDs remain
+  transient and are neither persisted nor printed. The foreground test's
+  internal assertions are the durable success evidence; its teardown deletes
+  the app database, so no post-run SQLite query is claimed.
+- Rollback: while this work remains unreleased, first revert dependent Goals
+  177 and 176, then revert `485cde35`, `44697bc0`, `d72b172b`, `560d2f3a`,
+  and `5601c9c3`. If v34 is ever distributed, do not downgrade
+  `user_version`; use a forward compatibility migration that preserves the
+  opaque binding and recovery metadata before removing the adapter/UI.
+- Gaps/blockers: none. The copied desktop collection was never modified.
+
+### Goal 176 completion evidence (2026-07-29)
+
+- Started from: `51a3874a` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `76271d2f refactor: define platform service contracts`;
+  `dc2fcdac refactor: extract the platform-neutral sync engine`; `20840f46
+  refactor: make sync provider capability fallbacks explicit`; and `794f3eae
+  test: cover shared sync publication and failure isolation`.
+- Implemented: pure-JVM `:platform-contracts` now defines the clock, logging,
+  file, user interaction, notification, lifecycle, scheduling, media, secret,
+  snapshot, event, and update-delivery ports. `:sync-engine` owns the canonical
+  read, analyze, normalize, queue, publish, and cleanup orchestration against
+  `CollectionGateway` and repository contracts. Android composition supplies
+  resources and effects. Source binding runs before publication and again
+  before provider writes; capability-aware FSRS state and interval/lapse
+  fallback are explicit pure policies; provider write-back remains isolated
+  after committed publication.
+- Validation: the same final 332-task aggregate
+  `ciFast ciQuality ciDesktop sonarPreflight` command passed in 2m34s.
+  Focused repository-boundary tests cover cancellation, retry
+  classification, staged rollback, exactly-once publication, successful
+  history, binding rejection, both provider-FSRS capability paths, and
+  post-commit effect isolation. Module-boundary checks confirm that
+  `:sync-engine` has no Android dependency.
+- Live gates: the combined foreground and standalone copied-collection runs
+  described under Goal 175 exercised the production Android composition over
+  `:sync-engine`. They passed `OK (1 test)` and `OK (54 tests)` respectively,
+  with successful sync output, dashboard/Study queue publication, provider
+  reads, Missing Kanji reconciliation, and the rejected queue-write probe.
+- Decisions: publication is one repository transaction; no reminder, widget,
+  logging, provider-tagging, or other externally visible post-commit effect
+  may run before it succeeds. Provider write failure cannot roll back a
+  committed local sync, but binding rejection prevents both publication and
+  writes.
+- Rollback: after reverting Goal 177, revert `794f3eae`, `20840f46`,
+  `dc2fcdac`, and `76271d2f` in that order. This restores Android-host
+  orchestration without changing schema, provider data, or scheduler records;
+  Goal 175's binding enforcement must remain intact.
+- Gaps/blockers: none.
+
+### Goal 177 completion evidence (2026-07-29)
+
+- Started from: `794f3eae` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `23519307 refactor: extract core Android platform adapters`;
+  `8abbfbf4 refactor: extract Android automation infrastructure`; and
+  `9cd7fb70 refactor: complete Android platform adapter extraction`.
+- Implemented: `:platform-android` now owns the byte-compatible
+  `AndroidDeviceSettingsStore`, notification delivery, ML Kit handwriting,
+  app directories, SAF/file access, clipboard/share, external navigation,
+  reading media, package installation, and process lifecycle adapters.
+  `:automation-android` owns WorkManager persistence, receiver async work, and
+  alarm scheduling. Existing app composition routes backup/restore, debug and
+  CSV sharing, clipboard handoff, reading exposure, updater installation,
+  reminders, notifications, retries, backup, and FSRS fitting through those
+  boundaries. Intent actions/extras, MIME types, notification channels,
+  `PendingIntent` flags, receiver behavior, and restore-before-open ordering
+  remain unchanged; widget ownership intentionally stays in `:app`.
+- Validation: the exact aggregate command
+  `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk ./gradlew ciFast ciQuality
+  ciDesktop sonarPreflight --no-daemon --console=plain` completed `BUILD
+  SUCCESSFUL` in 2m34s with 332 tasks. Adapter tests cover SAF result
+  restoration, opaque URI handling, read-only shares, media containment and
+  limits, lifecycle transitions, installer fsync/commit/abandon ordering,
+  notification compatibility, WorkManager persistence, alarms, and missing
+  Android services. `:application` and `:sync-engine` run under fakes with no
+  Android imports. `git diff --check` passed.
+- Live gates: the final Goal 177 tree passed the same real AnkiDroid
+  `2.24.0` foreground run as `OK (1 test)` in 4,188.415s and the strict
+  copied-collection provider gate as `OK (54 tests)` in 3,354.171s, using the
+  default 7,000-note threshold. This validates both the user-visible sync path
+  and provider compatibility after all adapter ownership changes.
+- Decisions: portable contracts expose opaque references and stable host
+  behavior, never Android `Uri`, `Intent`, `Context`, or WorkManager types.
+  Android activity-result launcher registration order remains positional and
+  unchanged. Process lifecycle registration is owned and closed by the
+  process container before its executors and database.
+- Rollback: revert `9cd7fb70`, `8abbfbf4`, and `23519307` in that order.
+  These commits move effect ownership without changing persisted formats,
+  database schema, provider state, or scheduler records.
+- Gaps/blockers: none. Draft PR
+  [#592](https://github.com/bee-san/kanji_anki/pull/592) remains intentionally
+  unmerged.
+
 Template:
 
 ```md

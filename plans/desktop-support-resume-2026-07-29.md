@@ -1,14 +1,19 @@
 # Desktop support resume checkpoint (2026-07-29)
 
+> **Status:** Completed and superseded on 2026-07-29. Goals 175-177 passed
+> their aggregate, foreground, and strict copied-collection provider gates.
+> Canonical completion evidence now lives in
+> `plans/desktop-support-goals-2026-07-26.md`.
+
 ## Branch and scope
 
 - PR: `https://github.com/bee-san/kanji_anki/pull/592`
 - Push target: `origin/desktop/support`
 - This checkpoint consolidates Goals 175-177, the live-test harness fix, the
   concurrent `bee-fsrs` vendoring work, and the FSRS-7 scheduler commit.
-- Do not mark Goals 175, 176, or 177 complete from this checkpoint. The user
-  requested a quick stop before the combined tree completed its required
-  aggregate and foreground live gates.
+- The original instruction not to mark Goals 175-177 complete is superseded:
+  the resumed combined tree completed all required gates and the implementation
+  was committed at `9cd7fb70`.
 - The old `/local/home/skerraut/kanji_anki` worktree has a duplicate,
   uncommitted copy of the Goal 175 harness change. Resume from a fresh
   worktree based on `origin/desktop/support`, not from that stale worktree.
