@@ -4,8 +4,9 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
-import androidx.work.Operation
-import androidx.work.WorkManager
+import dev.bee.kanjianki.automation.AndroidWorkManagerGateway
+import dev.bee.kanjianki.automation.PendingWorkOperation
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,20 +21,19 @@ internal object AutoSyncRetryScheduler {
     internal const val UNIQUE_WORK_NAME = "kani_auto_sync_retry"
     internal const val MAX_EXECUTIONS = 3
     internal const val BASE_DELAY_MINUTES = 15L
-    internal const val PERSISTENCE_TIMEOUT_SECONDS = 15L
 
     @JvmStatic
     fun schedule(context: Context) {
-        schedule(WorkManagerBackend(context.applicationContext))
+        schedule(AndroidWorkManagerGateway(context.applicationContext))
     }
 
     /** Persists the retry before a JobService releases its component lifetime. */
     @JvmStatic
     fun scheduleAndAwait(context: Context) {
-        schedule(WorkManagerBackend(context.applicationContext)).await()
+        schedule(AndroidWorkManagerGateway(context.applicationContext)).await()
     }
 
-    internal fun schedule(backend: SchedulerBackend): PendingOperation =
+    internal fun schedule(backend: WorkManagerGateway): PendingWorkOperation =
         backend.enqueueUniqueWork(
             UNIQUE_WORK_NAME,
             ExistingWorkPolicy.KEEP,
@@ -42,16 +42,16 @@ internal object AutoSyncRetryScheduler {
 
     @JvmStatic
     fun cancel(context: Context) {
-        cancel(WorkManagerBackend(context.applicationContext))
+        cancel(AndroidWorkManagerGateway(context.applicationContext))
     }
 
     /** Persists cancellation before a JobService reports terminal completion. */
     @JvmStatic
     fun cancelAndAwait(context: Context) {
-        cancel(WorkManagerBackend(context.applicationContext)).await()
+        cancel(AndroidWorkManagerGateway(context.applicationContext)).await()
     }
 
-    internal fun cancel(backend: SchedulerBackend): PendingOperation =
+    internal fun cancel(backend: WorkManagerGateway): PendingWorkOperation =
         backend.cancelUniqueWork(UNIQUE_WORK_NAME)
 
     private fun request(): OneTimeWorkRequest =
@@ -63,41 +63,4 @@ internal object AutoSyncRetryScheduler {
                 TimeUnit.MINUTES,
             )
             .build()
-
-    internal interface SchedulerBackend {
-        fun enqueueUniqueWork(
-            uniqueWorkName: String,
-            policy: ExistingWorkPolicy,
-            request: OneTimeWorkRequest,
-        ): PendingOperation
-
-        fun cancelUniqueWork(uniqueWorkName: String): PendingOperation
-    }
-
-    internal fun interface PendingOperation {
-        fun await()
-    }
-
-    private class WorkManagerBackend(context: Context) : SchedulerBackend {
-        private val workManager = WorkManager.getInstance(context)
-
-        override fun enqueueUniqueWork(
-            uniqueWorkName: String,
-            policy: ExistingWorkPolicy,
-            request: OneTimeWorkRequest,
-        ): PendingOperation =
-            workManager.enqueueUniqueWork(uniqueWorkName, policy, request).pendingOperation()
-
-        override fun cancelUniqueWork(uniqueWorkName: String): PendingOperation =
-            workManager.cancelUniqueWork(uniqueWorkName).pendingOperation()
-
-        private fun Operation.pendingOperation(): PendingOperation = PendingOperation {
-            try {
-                result[PERSISTENCE_TIMEOUT_SECONDS, TimeUnit.SECONDS]
-            } catch (interrupted: InterruptedException) {
-                Thread.currentThread().interrupt()
-                throw interrupted
-            }
-        }
-    }
 }

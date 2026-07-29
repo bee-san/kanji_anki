@@ -6,7 +6,8 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
+import dev.bee.kanjianki.automation.AndroidWorkManagerGateway
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy
@@ -26,11 +27,11 @@ object AutoUpdateScheduler {
     internal fun schedule(context: Context, store: LocalStore) {
         schedule(
             store.autoUpdateStatus().enabled,
-            WorkManagerSchedulerBackend(context.applicationContext),
+            AndroidWorkManagerGateway(context.applicationContext),
         )
     }
 
-    internal fun schedule(enabled: Boolean, backend: SchedulerBackend) {
+    internal fun schedule(enabled: Boolean, backend: WorkManagerGateway) {
         val plan = AutoUpdateSchedulePolicy.plan(enabled)
         if (!plan.enabled()) {
             cancel(backend, plan.uniqueWorkName())
@@ -66,12 +67,12 @@ object AutoUpdateScheduler {
     @JvmStatic
     fun cancel(context: Context) {
         cancel(
-            WorkManagerSchedulerBackend(context.applicationContext),
+            AndroidWorkManagerGateway(context.applicationContext),
             AutoUpdateSchedulePolicy.UNIQUE_WORK_NAME,
         )
     }
 
-    private fun cancel(backend: SchedulerBackend, uniqueWorkName: String) {
+    private fun cancel(backend: WorkManagerGateway, uniqueWorkName: String) {
         try {
             backend.cancelUniqueWork(uniqueWorkName)
         } catch (error: RuntimeException) {
@@ -87,29 +88,4 @@ object AutoUpdateScheduler {
         }
     }
 
-    internal interface SchedulerBackend {
-        fun enqueueUniquePeriodicWork(
-            uniqueWorkName: String,
-            policy: ExistingPeriodicWorkPolicy,
-            request: PeriodicWorkRequest,
-        )
-
-        fun cancelUniqueWork(uniqueWorkName: String)
-    }
-
-    private class WorkManagerSchedulerBackend(context: Context) : SchedulerBackend {
-        private val context = context.applicationContext
-
-        override fun enqueueUniquePeriodicWork(
-            uniqueWorkName: String,
-            policy: ExistingPeriodicWorkPolicy,
-            request: PeriodicWorkRequest,
-        ) {
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(uniqueWorkName, policy, request)
-        }
-
-        override fun cancelUniqueWork(uniqueWorkName: String) {
-            WorkManager.getInstance(context).cancelUniqueWork(uniqueWorkName)
-        }
-    }
 }
