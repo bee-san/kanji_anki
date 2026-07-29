@@ -102,19 +102,19 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         self.assertIn("logcat -c", (tmp_path / "adb-calls.log").read_text())
         self.assertEqual(SCRIPT.read_text(encoding="utf-8").count("adb logcat -c"), 1)
 
-    def test_fixture_derives_external_storage_owner_uid_and_gid(self):
+    def test_fixture_derives_owner_from_package_managed_internal_storage(self):
         source = SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn(
+            "owner_uid=\\$(stat -c '%u' /data/user/0/com.ichi2.anki",
+            source,
+        )
+        self.assertNotIn(
             "owner_uid=\\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki",
             source,
         )
-        self.assertIn(
-            "owner_gid=\\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki",
-            source,
-        )
-        self.assertIn('chown -R \\"\\$owner_uid\\":\\"\\$owner_gid\\"', source)
-        self.assertNotIn("ext_data_rw", source)
+        self.assertIn('chown -R \\"\\$owner_uid\\":ext_data_rw', source)
+        self.assertIn('chown -R \\"\\$owner_uid\\":media_rw', source)
 
     def test_fixture_retries_transient_external_storage_mount_failure(self):
         fake_adb = base_fake_adb(

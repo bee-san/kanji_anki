@@ -577,11 +577,11 @@ desktop collection directly.
    continuing:
 
    ```sh
-   adb shell 'chown -R u0_aNNN:ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid && chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid'
+   adb shell 'owner_uid=$(stat -c %u /data/user/0/com.ichi2.anki) && chown -R "$owner_uid":ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid && chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid'
    ```
 
-   Replace `u0_aNNN` with the owner of
-   `/storage/emulated/0/Android/data/com.ichi2.anki`.
+   Derive the uid from `/data/user/0/com.ichi2.anki`, which remains
+   package-manager-owned even when a root push created the external directory.
 
 6. Point AnkiDroid at that copied collection path.
 

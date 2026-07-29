@@ -143,7 +143,10 @@ probe_ankidroid_provider() {
 }
 
 repair_ankidroid_dir_permissions() {
-  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); owner_gid=\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ] && [ -n \"\$owner_gid\" ]; then chown -R \"\$owner_uid\":\"\$owner_gid\" ${ankidroid_dir}; chown -R \"\$owner_uid\":\"\$owner_gid\" ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
+  # A root push can create the external package directory as root, so it is
+  # not a trustworthy source for AnkiDroid's uid. The internal data directory
+  # is package-manager-owned even on a brand-new AVD.
+  adb shell "mkdir -p ${ankidroid_dir}/collection.media ${legacy_ankidroid_dir}/collection.media && owner_uid=\$(stat -c '%u' /data/user/0/com.ichi2.anki 2>/dev/null || true); if [ -n \"\$owner_uid\" ]; then chown -R \"\$owner_uid\":ext_data_rw ${ankidroid_dir}; chown -R \"\$owner_uid\":media_rw ${legacy_ankidroid_dir} 2>/dev/null || true; fi; chmod -R u+rwX,g+rwX ${ankidroid_dir}; chmod -R u+rwX,g+rwX ${legacy_ankidroid_dir} 2>/dev/null || true; test -w ${ankidroid_dir}"
 }
 
 configure_ankidroid_collection_path() {
