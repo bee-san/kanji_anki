@@ -3,10 +3,13 @@ package dev.bee.kanjianki.sync
 import dev.bee.kanjianki.syncapi.ArchiveTagSummary
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionFailureKind
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.syncapi.CollectionProviderKind
 import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
+import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.core.AdmissionEvidencePolicy
@@ -16,6 +19,7 @@ import dev.bee.kanjianki.core.ReadingExposureModels
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.SettingsSnapshot
@@ -309,6 +313,153 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
     }
 
     @Test
+    fun cancellationAtEveryInjectedPreCommitBoundaryPreventsPublication() {
+        val boundaries = listOf("binding", "ranks", "similar", "dictionary", "reading", "progress")
+        for (boundary in boundaries) {
+            var stopped = false
+            val repositories = Repositories()
+            val assets = CancellableAssets(boundary) { stopped = true }
+            val result = repositories.engine(
+                gateway = RecordingGateway(mutableListOf()),
+                effects = noOpEffects(),
+                sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                    if (boundary == "binding") stopped = true
+                },
+                cancellation = SyncCancellation { stopped },
+                assets = assets,
+                progress = SyncProgress.Listener {
+                    if (
+                        boundary == "progress" &&
+                        it.stage == SyncProgress.Stage.BUILDING_PRACTICE_QUEUE
+                    ) {
+                        stopped = true
+                    }
+                },
+            ).run()
+
+            assertFalse("boundary=$boundary", result.success)
+            assertTrue("boundary=$boundary", result.retryable)
+            assertTrue("boundary=$boundary", repositories.sync.publications.isEmpty())
+            assertEquals("boundary=$boundary", "retryable", repositories.sync.failures.single().errorCode)
+        }
+    }
+
+    @Test
+    fun cancellationAfterPublicationRetainsCommittedSuccess() {
+        var stopped = false
+        val repositories = Repositories()
+        val gateway = RecordingGateway(mutableListOf())
+        repositories.sync.publishHandler = {
+            stopped = true
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        val engine = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            cancellation = SyncCancellation { stopped },
+        )
+        engine.committedStudySummaryProvider = { _, _ ->
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(0, gateway.archiveCalls)
+        assertTrue(repositories.sync.failures.isEmpty())
+        assertTrue(result.message.orEmpty().contains("retry on the next sync"))
+    }
+
+    @Test
+    fun providerFailureRetryabilityAndPersistenceClassificationRemainExplicit() {
+        val cases = listOf(
+            Triple(
+                CollectionFailure(
+                    CollectionFailureKind.INVALID_CONFIGURATION,
+                    "bad configuration",
+                ),
+                false,
+                "config_error" to "permanent",
+            ),
+            Triple(
+                CollectionFailure(
+                    CollectionFailureKind.TRANSIENT,
+                    "provider busy",
+                ),
+                true,
+                "retryable_error" to "retryable",
+            ),
+        )
+
+        for ((failure, retryable, expectedPersistence) in cases) {
+            val repositories = Repositories()
+            val result = repositories.engine(
+                gateway = ThrowingGateway(failure),
+                effects = noOpEffects(),
+            ).run()
+
+            assertFalse(result.success)
+            assertEquals(retryable, result.retryable)
+            val persisted = repositories.sync.failures.single()
+            assertEquals(expectedPersistence.first, persisted.status)
+            assertEquals(expectedPersistence.second, persisted.errorCode)
+        }
+    }
+
+    @Test
+    fun unexpectedExceptionStaysTerminalWhileRetainingLegacyHistoryLabel() {
+        val repositories = Repositories()
+
+        val result = repositories.engine(
+            gateway = ThrowingGateway(IllegalStateException("private failure")),
+            effects = noOpEffects(),
+        ).run()
+
+        assertFalse(result.success)
+        assertFalse(result.retryable)
+        val persisted = repositories.sync.failures.single()
+        assertEquals("retryable_error", persisted.status)
+        assertEquals("unexpected", persisted.errorCode)
+    }
+
+    @Test
+    fun errorsPropagateWithoutFailureHistoryAndReleaseTheRunningGuard() {
+        val repositories = Repositories()
+        try {
+            repositories.engine(
+                gateway = ThrowingGateway(OutOfMemoryError("heap")),
+                effects = noOpEffects(),
+            ).run()
+            throw AssertionError("Error must propagate")
+        } catch (expected: OutOfMemoryError) {
+            assertEquals("heap", expected.message)
+        }
+
+        assertTrue(repositories.sync.failures.isEmpty())
+        assertFalse(PlatformNeutralSyncEngine.isRunning())
+    }
+
+    @Test
+    fun failureHistoryPersistenceCannotMaskTheOriginalFailure() {
+        val repositories = Repositories()
+        repositories.sync.failureHandler = {
+            throw IllegalStateException("history unavailable")
+        }
+
+        val result = repositories.engine(
+            gateway = ThrowingGateway(
+                CollectionFailure(CollectionFailureKind.TRANSIENT, "provider unavailable"),
+            ),
+            effects = noOpEffects(),
+        ).run()
+
+        assertFalse(result.success)
+        assertTrue(result.retryable)
+        assertEquals("provider unavailable", result.message)
+        assertEquals(1, repositories.sync.failures.size)
+    }
+
+    @Test
     fun loggerFailureCannotChangeACommittedResult() {
         val events = mutableListOf<String>()
         val repositories = Repositories()
@@ -325,6 +476,93 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
         }
 
         assertTrue(engine.run().success)
+    }
+
+    @Test
+    fun everyPostCommitFailureRetainsTheSingleSuccessfulPublication() {
+        val repositories = Repositories()
+        repositories.sync.publishHandler = {
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        val engine = repositories.engine(
+            gateway = ThrowingArchiveGateway(),
+            effects = SyncPostCommitEffects(
+                Runnable { throw IllegalStateException("private reminder failure") },
+                Runnable { throw IllegalStateException("private widget failure") },
+            ),
+            logger = AppLogger { throw IllegalStateException("private logger failure") },
+        )
+        engine.removalMessagePersister = { _, _ ->
+            throw IllegalStateException("private persistence failure")
+        }
+        engine.committedStudySummaryProvider = { _, _ ->
+            throw IllegalStateException("private summary failure")
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(1, repositories.sync.publications.size)
+        assertTrue(repositories.sync.failures.isEmpty())
+        assertEquals(0, result.studyReadyCount)
+        assertTrue(result.message.orEmpty().contains("retry on the next sync"))
+        assertFalse(result.message.orEmpty().contains("private"))
+    }
+
+    @Test
+    fun repairedWriteIsBlockedByTheSamePostPublicationBindingGate() {
+        val events = mutableListOf<String>()
+        val repositories = Repositories()
+        val gateway = RecordingRepairedGateway(events)
+        repositories.sync.publishHandler = {
+            events += "publish"
+            StoreResult.ok(SyncPublicationResult(7L, emptyList(), adaptivePlan()))
+        }
+        var bindingChecks = 0
+        val engine = repositories.engine(
+            gateway = gateway,
+            effects = noOpEffects(),
+            sourceBindingGate = SyncSourceBindingGate { _, _, _ ->
+                bindingChecks += 1
+                events += "binding-$bindingChecks"
+                if (bindingChecks == 3) {
+                    throw SourceBindingFailure(
+                        SourceBindingReason.SOURCE_KEY_CHANGED,
+                        "Source changed before repaired-note tagging.",
+                    )
+                }
+            },
+            snapshot = settingsSnapshot(tagRepairedCards = true),
+            repairedWriteBackAuthorized = true,
+        )
+        engine.repairedProposalProvider = { _, _ ->
+            RepairedWriteBackPolicy.Proposal(
+                noteIdsToTag = setOf(1L),
+                cardIdsByNote = mapOf(1L to setOf(10L)),
+                kanjiByNote = mapOf(1L to setOf("徴")),
+                repairedKanji = listOf("徴"),
+                candidateSourceCount = 1,
+                rejectedCardCount = 0,
+            )
+        }
+        engine.repairedWriteBackRecorder = { _, tagged, _, _ ->
+            assertTrue(tagged.isEmpty())
+            emptyList()
+        }
+        engine.committedStudySummaryProvider = { _, _ ->
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        val result = engine.run()
+
+        assertTrue(result.success)
+        assertEquals(0, gateway.tagCalls)
+        assertEquals(
+            listOf("binding-1", "publish", "binding-2", "archive", "binding-3"),
+            events,
+        )
+        assertTrue(result.message.orEmpty().contains("retry on the next sync"))
+        assertTrue(repositories.sync.failures.isEmpty())
     }
 
     @Test
@@ -416,17 +654,21 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
             sourceBindingGate: SyncSourceBindingGate = SyncSourceBindingGate.ALLOW_ALL,
             cancellation: SyncCancellation = SyncCancellation.NONE,
             logger: AppLogger = AppLogger.NONE,
+            assets: SyncAssetReaders = EmptyAssets,
+            progress: SyncProgress.Listener = SyncProgress.NONE,
+            snapshot: SettingsSnapshot = settingsSnapshot(),
+            repairedWriteBackAuthorized: Boolean = false,
         ): PlatformNeutralSyncEngine =
             PlatformNeutralSyncEngine(
                 syncUseCases = SyncUseCases(sync, study, settings),
                 gateway = gateway,
-                settingsSnapshot = settingsSnapshot(),
-                progress = SyncProgress.NONE,
+                settingsSnapshot = snapshot,
+                progress = progress,
                 clock = AppClock { NOW },
-                assetReaders = EmptyAssets,
+                assetReaders = assets,
                 queuePlannerFactory = ::ManualSyncQueuePlanner,
                 postCommitEffects = effects,
-                repairedWriteBackAuthorized = false,
+                repairedWriteBackAuthorized = repairedWriteBackAuthorized,
                 confirmedRepairedNoteIds = null,
                 sourceBindingGate = sourceBindingGate,
                 cancellation = cancellation,
@@ -453,6 +695,56 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
         }
     }
 
+    private class ThrowingGateway(
+        private val failure: Throwable,
+    ) : CollectionGateway {
+        override fun readCollection(
+            settings: RecordsSyncModels.Settings,
+        ): RecordsSyncModels.CollectionSnapshot = throw failure
+
+        override fun removeArchivedSuspendedCards(
+            snapshot: RecordsSyncModels.CollectionSnapshot,
+        ): ArchiveTagSummary = error("not reached")
+    }
+
+    private class ThrowingArchiveGateway : CollectionGateway {
+        override fun readCollection(
+            settings: RecordsSyncModels.Settings,
+        ): RecordsSyncModels.CollectionSnapshot =
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList())
+
+        override fun removeArchivedSuspendedCards(
+            snapshot: RecordsSyncModels.CollectionSnapshot,
+        ): ArchiveTagSummary = throw IllegalStateException("private archive failure")
+    }
+
+    private class RecordingRepairedGateway(
+        private val events: MutableList<String>,
+    ) : CollectionGateway {
+        var tagCalls = 0
+
+        override fun readCollection(
+            settings: RecordsSyncModels.Settings,
+        ): RecordsSyncModels.CollectionSnapshot =
+            RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList())
+
+        override fun removeArchivedSuspendedCards(
+            snapshot: RecordsSyncModels.CollectionSnapshot,
+        ): ArchiveTagSummary {
+            events += "archive"
+            return ArchiveTagSummary(0, 0, 0, "")
+        }
+
+        override fun tagRepairedNotes(
+            noteIds: Set<Long>,
+            progress: CollectionProgressListener,
+        ): RepairedTagSummary {
+            tagCalls += 1
+            events += "tag"
+            return RepairedTagSummary(noteIds, noteIds, emptySet(), "")
+        }
+    }
+
     private class CapabilityGateway(
         private val capabilities: Set<CollectionCapability>,
     ) : CollectionGateway {
@@ -470,6 +762,31 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
         override fun removeArchivedSuspendedCards(
             snapshot: RecordsSyncModels.CollectionSnapshot,
         ): ArchiveTagSummary = ArchiveTagSummary(0, 0, 0, "")
+    }
+
+    private class CancellableAssets(
+        private val boundary: String,
+        private val cancel: () -> Unit,
+    ) : SyncAssetReaders {
+        override fun loadRanks(): JitenKanjiRanks {
+            if (boundary == "ranks") cancel()
+            return JitenKanjiRanks.empty()
+        }
+
+        override fun loadDictionary(): Nothing? {
+            if (boundary == "dictionary") cancel()
+            return null
+        }
+
+        override fun loadSimilarKanjiIndex(): SimilarKanjiIndex {
+            if (boundary == "similar") cancel()
+            return SimilarKanjiIndex.empty()
+        }
+
+        override fun loadReadingExposure(): ReadingExposureModels.ExposureIndex {
+            if (boundary == "reading") cancel()
+            return ReadingExposureModels.ExposureIndex.EMPTY
+        }
     }
 
     private object EmptyAssets : SyncAssetReaders {
@@ -531,9 +848,9 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
             "all",
         )
 
-        fun settingsSnapshot() = SettingsSnapshot(
+        fun settingsSnapshot(tagRepairedCards: Boolean = false) = SettingsSnapshot(
             sync = RecordsSyncModels.Settings.kikuDefaults(),
-            tagRepairedCards = false,
+            tagRepairedCards = tagRepairedCards,
             adaptiveWorkload = AdaptiveWorkloadSnapshot(100, 25, "all"),
             studyAheadMinutes = 0,
             studyLadder = RecordsBase.StudyLadderSettings.defaults(),
