@@ -257,6 +257,21 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun meaningKanjiChoiceQuestionCleansInlineJmdictSenseMetadataWhenDictionaryGlossIsUnavailable() {
+        val card = RecordsImportModels.MeaningKanjiChoiceCard(
+            "招",
+            "Invitation 1. [★, priority form] nounsuru transitive invitation",
+            "しょうたい",
+            listOf("丘", "招", "博", "勧"),
+        )
+
+        assertEquals(
+            "Which kanji means Invitation?",
+            StudyTextCopy.meaningKanjiChoiceQuestion(DictionaryLookup.empty(), card, "fallback"),
+        )
+    }
+
+    @Test
     fun meaningKanjiChoiceCopyTranslatesToJapaneseLocale() {
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "静",
