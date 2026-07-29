@@ -123,7 +123,7 @@ class PlatformNeutralSyncEngine(
             ensureActive()
             val provider = gateway.readProviderCollection(settings, providerProgress, cancellation)
             ensureActive()
-            val snapshot = provider.snapshot
+            val snapshot = ProviderCapabilityPolicy.normalize(provider).snapshot
             val storedState = runBlocking { syncUseCases.loadStoredState() }
             ensureActive()
             rejectTransientEmptySnapshot(snapshot, storedState)

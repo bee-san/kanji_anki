@@ -2,12 +2,14 @@ package dev.bee.kanjianki.sync
 
 import dev.bee.kanjianki.syncapi.ArchiveTagSummary
 import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionCapability
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.syncapi.CollectionProviderKind
 import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
 import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.application.SyncUseCases
+import dev.bee.kanjianki.core.AdmissionEvidencePolicy
 import dev.bee.kanjianki.core.JitenKanjiRanks
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.ReadingExposureModels
@@ -29,6 +31,7 @@ import dev.bee.kanjianki.platform.AppClock
 import dev.bee.kanjianki.platform.AppLogger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -324,6 +327,72 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
         assertTrue(engine.run().success)
     }
 
+    @Test
+    fun fsrsCapabilityUsesProviderMemoryForAdmissionSeed() {
+        val publication = runCapabilityFixture(
+            setOf(
+                CollectionCapability.READ_COLLECTION,
+                CollectionCapability.FSRS_MEMORY_STATE,
+            ),
+        )
+
+        val card = publication.snapshot.cards.single()
+        val example = publication.rows.single().examples.single()
+        val seed = AdmissionEvidencePolicy.seedFor(
+            publication.rows.single(),
+            RecordsBase.StudyLadderSettings.defaults(),
+            publication.settings,
+        )
+        assertEquals(80.0, card.fsrsStability!!, 0.0)
+        assertEquals(9.0, example.fsrsDifficulty!!, 0.0)
+        assertEquals(30, example.intervalDays)
+        assertEquals(3, example.lapses)
+        assertEquals(80.0, seed.stability, 0.0)
+        assertEquals(9.0, seed.difficulty, 0.0)
+    }
+
+    @Test
+    fun absentFsrsCapabilityUsesIntervalAndLapseAdmissionFallback() {
+        val publication = runCapabilityFixture(setOf(CollectionCapability.READ_COLLECTION))
+
+        val card = publication.snapshot.cards.single()
+        val example = publication.rows.single().examples.single()
+        val seed = AdmissionEvidencePolicy.seedFor(
+            publication.rows.single(),
+            RecordsBase.StudyLadderSettings.defaults(),
+            publication.settings,
+        )
+        assertNull(card.fsrsStability)
+        assertNull(card.fsrsDifficulty)
+        assertNull(card.fsrsRetrievability)
+        assertNull(example.fsrsStability)
+        assertNull(example.fsrsDifficulty)
+        assertNull(example.fsrsRetrievability)
+        assertEquals(30, example.intervalDays)
+        assertEquals(3, example.lapses)
+        assertEquals(30.0, seed.stability, 0.0)
+        assertEquals(8.0, seed.difficulty, 0.0)
+    }
+
+    private fun runCapabilityFixture(
+        capabilities: Set<CollectionCapability>,
+    ): dev.bee.kanjianki.data.SyncPublicationCommand {
+        val repositories = Repositories()
+        repositories.sync.publishHandler = {
+            StoreResult.ok(SyncPublicationResult(7L, it.rows, adaptivePlan()))
+        }
+        val engine = repositories.engine(
+            gateway = CapabilityGateway(capabilities),
+            effects = noOpEffects(),
+        )
+        engine.committedStudySummaryProvider = { _, _ ->
+            PlatformNeutralSyncEngine.CommittedStudySummary(0, adaptivePlan())
+        }
+
+        assertTrue(engine.run().success)
+        return repositories.sync.publications.single()
+    }
+
     private class Repositories {
         val sync = FakeSyncRepository().apply {
             storedStateHandler = {
@@ -384,6 +453,25 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
         }
     }
 
+    private class CapabilityGateway(
+        private val capabilities: Set<CollectionCapability>,
+    ) : CollectionGateway {
+        override fun readCollection(
+            settings: RecordsSyncModels.Settings,
+        ): RecordsSyncModels.CollectionSnapshot = CAPABILITY_SNAPSHOT
+
+        override fun readProviderCollection(
+            settings: RecordsSyncModels.Settings,
+            progress: CollectionProgressListener,
+            cancellation: CollectionCancellation,
+        ): ProviderCollectionSnapshot =
+            ProviderCollectionSnapshot(CAPABILITY_SNAPSHOT, capabilities, null)
+
+        override fun removeArchivedSuspendedCards(
+            snapshot: RecordsSyncModels.CollectionSnapshot,
+        ): ArchiveTagSummary = ArchiveTagSummary(0, 0, 0, "")
+    }
+
     private object EmptyAssets : SyncAssetReaders {
         override fun loadRanks(): JitenKanjiRanks = JitenKanjiRanks.empty()
 
@@ -397,6 +485,41 @@ class PlatformNeutralSyncEngineRepositoryBoundaryTest {
 
     private companion object {
         const val NOW = 2_000L
+
+        val CAPABILITY_SNAPSHOT = RecordsSyncModels.CollectionSnapshot(
+            listOf(
+                RecordsSyncModels.Note(
+                    101L,
+                    7L,
+                    "Kiku",
+                    mapOf(
+                        "Expression" to "橋",
+                        "ExpressionReading" to "はし",
+                        "MainDefinition" to "bridge",
+                        "Sentence" to "橋を渡る。",
+                    ),
+                    emptyList(),
+                ),
+            ),
+            listOf(
+                RecordsSyncModels.Card(
+                    201L,
+                    101L,
+                    0,
+                    "Deck",
+                    2,
+                    2,
+                    0,
+                    30,
+                    10,
+                    3,
+                    false,
+                    80.0,
+                    9.0,
+                    0.2,
+                ),
+            ),
+        )
 
         fun adaptivePlan() = RecordsSchedulerModels.AdaptiveLoadPlan(
             100,
