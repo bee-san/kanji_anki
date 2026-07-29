@@ -6,7 +6,7 @@ import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.syncapi.CollectionGateway
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 
 internal fun createAutoSyncRunner(
     context: Context,

@@ -259,7 +259,7 @@ class ManualSyncEngineRepairedWriteBackTest {
         gateway,
         RecordsSyncModels.Settings.kikuDefaults(),
         progress,
-        dev.bee.kanjianki.time.AppClock.systemClock(),
+        dev.bee.kanjianki.platform.AppClock.systemClock(),
         repairedWriteBackAuthorized,
         confirmedRepairedNoteIds,
         sourceBindingGate,

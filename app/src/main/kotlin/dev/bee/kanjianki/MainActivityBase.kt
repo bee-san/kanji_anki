@@ -749,7 +749,7 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
             gateway,
             settingsSnapshot,
             progress,
-            dev.bee.kanjianki.time.AppClock.systemClock(),
+            dev.bee.kanjianki.platform.AppClock.systemClock(),
             repairedWriteBackAuthorized = true,
             confirmedRepairedNoteIds = confirmedRepairedNoteIds,
             sourceBindingGate = sourceBindingGate,

@@ -18,7 +18,7 @@ import dev.bee.kanjianki.data.SqliteStudyRepository
 import dev.bee.kanjianki.data.SqliteSyncRepository
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.syncapi.CollectionGateway
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.io.IOException
 import java.io.InputStreamReader

@@ -14,7 +14,7 @@ import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.sync.SyncProgress
 import dev.bee.kanjianki.sync.createManualSyncEngine
 import dev.bee.kanjianki.testing.DeviceRisk
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import java.io.File
 import java.nio.charset.StandardCharsets
 import org.junit.After

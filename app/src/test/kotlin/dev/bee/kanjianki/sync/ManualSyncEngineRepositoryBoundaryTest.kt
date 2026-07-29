@@ -22,7 +22,7 @@ import dev.bee.kanjianki.data.fakes.FakeStudyRepository
 import dev.bee.kanjianki.data.fakes.FakeSyncRepository
 import dev.bee.kanjianki.syncapi.SourceBindingReason
 import dev.bee.kanjianki.syncapi.RedactedSourceIdentityEvidence
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

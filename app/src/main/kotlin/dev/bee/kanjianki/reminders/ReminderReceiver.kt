@@ -83,7 +83,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 // Swipe-dismiss is the user's strongest anti-spam signal: suppress
                 // this family for the rest of the local day, then re-arm from fresh
                 // state so the next eligible time reflects the dismissal.
-                store.recordReminderDismissed(dev.bee.kanjianki.time.AppClock.systemClock().nowMillis(), family)
+                store.recordReminderDismissed(dev.bee.kanjianki.platform.AppClock.systemClock().nowMillis(), family)
             }
             ReminderScheduler.schedule(safeContext)
         }

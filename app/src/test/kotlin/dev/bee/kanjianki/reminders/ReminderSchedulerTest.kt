@@ -13,7 +13,7 @@ import dev.bee.kanjianki.core.ReminderCopyPolicy
 import dev.bee.kanjianki.core.ReminderFamily
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

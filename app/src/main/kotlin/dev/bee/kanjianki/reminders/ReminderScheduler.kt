@@ -34,7 +34,7 @@ import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.notifications.AndroidNotificationGateway
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"

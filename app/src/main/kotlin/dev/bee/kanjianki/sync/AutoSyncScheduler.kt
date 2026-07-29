@@ -9,7 +9,7 @@ import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.AutoSyncSchedulePolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 
 internal object AutoSyncScheduler {
     private const val TAG = "AutoSyncScheduler"

@@ -5,7 +5,7 @@ import dev.bee.kanjianki.core.AutoSyncSchedulePolicy
 import dev.bee.kanjianki.data.RecordSyncFailureCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.syncapi.CollectionGateway
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import kotlinx.coroutines.runBlocking
 
 internal class AutoSyncRunner(

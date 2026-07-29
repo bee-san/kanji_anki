@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.time
+package dev.bee.kanjianki.platform
 
 fun interface AppClock {
     fun nowMillis(): Long

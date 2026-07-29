@@ -330,7 +330,7 @@ class ManualSyncEngineReminderRescheduleTest {
             SnapshotGateway(suspendedSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -374,7 +374,7 @@ class ManualSyncEngineReminderRescheduleTest {
             SnapshotGateway(suspendedSnapshot("痛")),
             settings,
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -392,7 +392,7 @@ class ManualSyncEngineReminderRescheduleTest {
             SnapshotGateway(currentProvider),
             settings,
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now + 1_000L },
+            dev.bee.kanjianki.platform.AppClock { now + 1_000L },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -421,7 +421,7 @@ class ManualSyncEngineReminderRescheduleTest {
             SnapshotGateway(suspendedSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -469,7 +469,7 @@ class ManualSyncEngineReminderRescheduleTest {
             SnapshotGateway(matureProviderSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }

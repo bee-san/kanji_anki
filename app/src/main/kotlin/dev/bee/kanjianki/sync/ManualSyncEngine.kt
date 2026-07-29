@@ -32,7 +32,7 @@ import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import dev.bee.kanjianki.syncapi.SourceBindingReason
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 
