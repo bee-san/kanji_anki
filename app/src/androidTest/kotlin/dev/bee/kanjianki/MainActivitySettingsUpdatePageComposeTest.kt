@@ -23,6 +23,7 @@ class MainActivitySettingsUpdatePageComposeTest {
         var checkClicked = false
         var installClicked = false
         var toggleClicked = false
+        var betaClicked = false
 
         composeRule.setContent {
             SettingsUpdatePage(
@@ -49,7 +50,11 @@ class MainActivitySettingsUpdatePageComposeTest {
                         automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(true),
                         showAutoUpdateInBackground = false,
                         autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
-                        onAutoUpdateInBackground = {}
+                        onAutoUpdateInBackground = {},
+                        betaUpdatesEnabled = false,
+                        betaUpdatesToggleLabel = SettingsTextCopy.betaUpdatesToggleLabel(false),
+                        betaUpdatesDescription = SettingsTextCopy.betaUpdatesDescription(),
+                        onToggleBetaUpdates = { betaClicked = true },
                     )
                 )
             )
@@ -67,6 +72,8 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesDescription()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).assertDoesNotExist()
 
@@ -74,6 +81,7 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).performClick()
         composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).performClick()
 
         composeRule.runOnIdle {
@@ -81,6 +89,7 @@ class MainActivitySettingsUpdatePageComposeTest {
             assertTrue(backClicked)
             assertTrue(installClicked)
             assertTrue(toggleClicked)
+            assertTrue(betaClicked)
             assertTrue(checkClicked)
         }
     }
@@ -110,7 +119,11 @@ class MainActivitySettingsUpdatePageComposeTest {
                         automaticUpdatesToggleLabel = SettingsTextCopy.automaticUpdatesToggleLabel(false),
                         showAutoUpdateInBackground = true,
                         autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
-                        onAutoUpdateInBackground = { backgroundClicked = true }
+                        onAutoUpdateInBackground = { backgroundClicked = true },
+                        betaUpdatesEnabled = false,
+                        betaUpdatesToggleLabel = SettingsTextCopy.betaUpdatesToggleLabel(false),
+                        betaUpdatesDescription = SettingsTextCopy.betaUpdatesDescription(),
+                        onToggleBetaUpdates = {},
                     ),
                     openUpdaterLabel = SettingsTextCopy.openUpdaterLabel(),
                     onOpenUpdater = { openClicked = true }

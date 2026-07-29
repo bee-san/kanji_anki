@@ -19,6 +19,10 @@ data class SettingsUpdatePanelModel(
     val showAutoUpdateInBackground: Boolean,
     val autoUpdateInBackgroundLabel: String,
     val onAutoUpdateInBackground: () -> Unit,
+    val betaUpdatesEnabled: Boolean,
+    val betaUpdatesToggleLabel: String,
+    val betaUpdatesDescription: String,
+    val onToggleBetaUpdates: () -> Unit,
 )
 
 data class SettingsUpdateOverviewPanelModel(

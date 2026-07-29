@@ -83,6 +83,26 @@ class GitHubUpdaterTest {
     }
 
     @Test
+    fun stableUpdatesRequestGitHubLatestStableRelease() {
+        val client = RecordingReleaseClient("{\"tag_name\":\"${BuildConfig.VERSION_NAME}\"}")
+
+        GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertTrue(client.requestedUrls.single().endsWith("/releases/latest"))
+    }
+
+    @Test
+    fun betaUpdatesRequestNewestReleaseFeedAndParseArrayResponse() {
+        LocalStore(context).use { it.saveBetaUpdatesEnabled(true) }
+        val client = RecordingReleaseClient("[{\"tag_name\":\"${BuildConfig.VERSION_NAME}\",\"prerelease\":true}]")
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertTrue(client.requestedUrls.single().endsWith("/releases?per_page=1"))
+        assertEquals(UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME), result.message)
+    }
+
+    @Test
     fun checkDownloadAndInstallReportsLocalizedFailureWhenFetchingReleaseFails() {
         context.deleteDatabase("kanji_anki_simple.db")
         val updater = GitHubUpdater(context, failingTextClient(IOException("network down")))
@@ -726,6 +746,38 @@ class GitHubUpdaterTest {
         val file = File(dir, name)
         file.writeText(content)
         return file
+    }
+
+    private inner class RecordingReleaseClient(
+        private val response: String,
+    ) : GitHubUpdater.UpdateClient {
+        val requestedUrls = ArrayList<String>()
+
+        override fun getText(url: String): String {
+            requestedUrls.add(url)
+            return response
+        }
+
+        override fun download(url: String, file: File) = error("download should not be called")
+
+        override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata =
+            error("inspectApk should not be called")
+
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo =
+            error("installedSigningCertificates should not be called")
+
+        override fun canRequestPackageInstalls(): Boolean =
+            error("canRequestPackageInstalls should not be called")
+
+        override fun startPackageInstaller(
+            apkFile: File,
+            version: String,
+            source: GitHubUpdater.UpdateSource,
+            targetSdkVersion: Int,
+        ) = error("startPackageInstaller should not be called")
+
+        override fun showPendingUpdate(version: String, message: String): Boolean =
+            error("showPendingUpdate should not be called")
     }
 
     private inner class ConfigurableClient(

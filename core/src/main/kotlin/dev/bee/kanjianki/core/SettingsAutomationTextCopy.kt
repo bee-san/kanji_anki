@@ -120,6 +120,18 @@ object SettingsAutomationTextCopy {
     }
 
     @JvmStatic
+    fun betaUpdatesToggleLabel(enabled: Boolean): String {
+        val state = if (enabled) localizedText("On", "オン") else localizedText("Off", "オフ")
+        return localizedText("Beta builds: $state", "ベータ版: $state")
+    }
+
+    @JvmStatic
+    fun betaUpdatesDescription(): String = localizedText(
+        "Get prerelease builds from GitHub. Beta builds may be unstable.",
+        "GitHubからプレリリース版を取得します。ベータ版は不安定な場合があります。",
+    )
+
+    @JvmStatic
     fun backToSettingsLabel(): String = localizedText("Back to settings", "設定に戻る")
 
     @JvmStatic

@@ -40,18 +40,20 @@ pushes and `workflow_dispatch` releases (which can target commits no CI run
 has vouched for) run the deterministic unit-test surface inline before
 assembling. `ciRelease` is the local gate, not the CI release build command.
 
-Releases are cut automatically: every successful `Android CI` run on a `main`
+Beta releases are cut automatically: every successful `Android CI` run on a `main`
 push triggers `android-release.yml` through a `workflow_run` trigger, which
 computes the next `vMAJOR.MINOR.PATCH` patch tag, builds and verifies the
-signed APK at that CI run's commit, and publishes the GitHub release (creating
-the tag at publish time). The release path is deliberately self-contained: it
+signed APK at that CI run's commit, and publishes a GitHub prerelease (creating
+the tag at publish time). Stable users remain on GitHub's latest stable release;
+users who opt into beta builds in Kani receive the newest prerelease. The release
+path is deliberately self-contained: it
 does not poll SonarQube/CodeQL check runs and it never runs emulator jobs.
 Those were the top causes of blocked, flaky, and multi-hour releases; SonarQube
 and CodeQL are advisory scans on `main`, and live AnkiDroid provider coverage
 lives in the nightly/dispatch `android-instrumented.yml` workflow plus the
 stricter local gate below. `tools/test_release_workflows.py` locks these
 invariants in. Manual tag pushes and `workflow_dispatch` with an explicit
-`release_tag` still work for deliberate versions.
+`release_tag` still work for deliberate stable versions.
 
 SonarCloud and CodeQL run on pushes to `main`, and can also be run manually.
 CodeQL also has a scheduled weekly run. If you change either workflow, push it

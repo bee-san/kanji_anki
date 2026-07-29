@@ -24,6 +24,7 @@ internal fun settingsUpdatePanelModel(
     title: String,
 ): SettingsUpdatePanelModel {
     val status = activity.store.autoUpdateStatus()
+    val betaUpdatesEnabled = activity.store.betaUpdatesEnabled()
     val canInstallUpdates = canInstallUpdates(activity)
     return SettingsUpdatePanelModel(
         title = title,
@@ -58,6 +59,10 @@ internal fun settingsUpdatePanelModel(
         showAutoUpdateInBackground = BackgroundAutoUpdateOptionPolicy.optionVisible(status.enabled, canInstallUpdates),
         autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
         onAutoUpdateInBackground = { autoUpdateInBackground(activity, status.enabled) },
+        betaUpdatesEnabled = betaUpdatesEnabled,
+        betaUpdatesToggleLabel = SettingsTextCopy.betaUpdatesToggleLabel(betaUpdatesEnabled),
+        betaUpdatesDescription = SettingsTextCopy.betaUpdatesDescription(),
+        onToggleBetaUpdates = { toggleBetaUpdates(activity, betaUpdatesEnabled) },
     )
 }
 
@@ -106,6 +111,15 @@ private fun toggleAutomaticUpdates(activity: MainActivitySettings, enabled: Bool
             AutoUpdateScheduler.cancel(activity)
         }
         Toast.makeText(activity, result.message(), Toast.LENGTH_SHORT).show()
+        activity.renderUpdate(true)
+    }
+}
+
+private fun toggleBetaUpdates(activity: MainActivitySettings, enabled: Boolean) {
+    activity.runSettingsWrite(
+        traceSection = "kani.settings.beta-updates.toggle",
+        write = { activity.store.saveBetaUpdatesEnabled(!enabled) },
+    ) {
         activity.renderUpdate(true)
     }
 }

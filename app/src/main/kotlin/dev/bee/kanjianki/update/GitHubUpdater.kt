@@ -15,7 +15,7 @@ import android.util.Log
 import androidx.core.net.toUri
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.LocalStore
-import dev.bee.kanjianki.updatecore.GitHubReleaseMetadataParser
+import dev.bee.kanjianki.updatecore.GitHubReleaseChannelPolicy
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.ReleaseVersion
 import dev.bee.kanjianki.updatecore.Sha256Digest
@@ -53,9 +53,13 @@ class GitHubUpdater @JvmOverloads constructor(
     fun checkDownloadAndInstall(source: UpdateSource): UpdateResult {
         val checkedAt = System.currentTimeMillis()
         return try {
-            val api = "$API_BASE${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}/releases/latest"
+            val betaEnabled = AppLocalStoreFactory.create(context).use { store ->
+                store.betaUpdatesEnabled()
+            }
+            val api = "$API_BASE${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}" +
+                GitHubReleaseChannelPolicy.apiPath(betaEnabled)
             val json = client.getText(api)
-            val latest = GitHubReleaseMetadataParser.parseLatest(json)
+            val latest = GitHubReleaseChannelPolicy.parseRelease(betaEnabled, json)
             if (!ReleaseVersion.isValidSemver(latest.tagName())) {
                 // A successful HTTP read that carries no usable release tag is
                 // not "up to date": it is the signature of a captive portal /

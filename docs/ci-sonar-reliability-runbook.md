@@ -9,7 +9,7 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
 | Deterministic fast gate | `./gradlew ciFast` | `Fast confidence gate` in `.github/workflows/android-ci.yml` | Split in CI into JVM module tests, app unit tests, app lint/androidTest compile, and Python asset tests. |
 | Connected device smoke | targeted `connectedDebugAndroidTest` annotation run | `.github/workflows/android-device-smoke.yml` | PR/manual-only. Runs a compact API 26/35 matrix and adds an API 35 risk suite for product/provider/scheduler/database/UI changes. Documentation-only changes explicitly skip emulators. |
 | Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the complete bytecode and deterministic coverage set on every analysis. `sonarPreflight` fails closed if any expected class/report input is absent. Advisory on `main`; never blocks releases. |
-| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run triggers the release, which tags, builds, verifies, and publishes with no further gating. Manual tag/dispatch runs the unit-test surface inline first. |
+| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run tags, builds, verifies, and publishes a beta prerelease with no further gating. Manual tag/dispatch publishes deliberate stable releases after running the unit-test surface inline. |
 | CodeQL extraction | Forced clean compile in `.github/workflows/codeql.yml` | `Analyze Java/Kotlin` | Advisory security scan on `main`; never blocks releases. Keep the clean, no-build-cache compile after CodeQL init so the extractor sees real compiler work. |
 | Live AnkiDroid fixture | workflow-dispatch/nightly Android instrumented workflow | `AnkiDroid provider fixture` | Nightly/dispatch only; deliberately removed from the release path because emulator/provider readiness flakes were the top cause of blocked releases. The local copied-user-collection gate remains the requirement for provider/sync release-risk changes. |
 
@@ -68,8 +68,9 @@ cannot be blocked by flaky or external gates:
 - The auto path triggers only off a successful `Android CI` run on a `main`
   push (`workflow_run`), so the deterministic test surface is already green
   for the exact release commit. The release then tags, builds the signed APK,
-  verifies signature/identity, and publishes. Target wall time is under ten
-  minutes after CI.
+  verifies signature/identity, and publishes a GitHub prerelease for opt-in beta
+  users. Because prereleases are excluded from GitHub's `latest` endpoint,
+  stable users are unaffected. Target wall time is under ten minutes after CI.
 - Manual tag pushes and `workflow_dispatch` releases run the deterministic
   unit-test surface inline in the validate job before assembling, because
   those events can target commits no CI run has vouched for.

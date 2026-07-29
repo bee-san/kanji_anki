@@ -180,6 +180,10 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
             showAutoUpdateInBackground = false,
             autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
             onAutoUpdateInBackground = {},
+            betaUpdatesEnabled = false,
+            betaUpdatesToggleLabel = SettingsTextCopy.betaUpdatesToggleLabel(false),
+            betaUpdatesDescription = SettingsTextCopy.betaUpdatesDescription(),
+            onToggleBetaUpdates = {},
         ),
     )
 }

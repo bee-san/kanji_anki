@@ -696,6 +696,12 @@ internal abstract class LocalStoreStudy(
         studySettings().saveAutoUpdateEnabled(enabled)
     }
 
+    fun betaUpdatesEnabled(): Boolean = studySettings().betaUpdatesEnabled()
+
+    fun saveBetaUpdatesEnabled(enabled: Boolean) {
+        studySettings().saveBetaUpdatesEnabled(enabled)
+    }
+
     fun debugLogEnabled(): Boolean = studySettings().debugLogEnabled()
 
     fun saveDebugLogEnabled(enabled: Boolean) {
