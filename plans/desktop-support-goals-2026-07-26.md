@@ -3767,6 +3767,51 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   [#592](https://github.com/bee-san/kanji_anki/pull/592) remains intentionally
   unmerged.
 
+### Goal 178 completion evidence (2026-07-29)
+
+- Started from: `bde3e3b0` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commit: `e1dc8e98 test: freeze executable v34 schema corpus`.
+- Implemented: `goal178` now contains an executable canonical v34 SQL schema,
+  a semantic manifest with persisted format constants and provenance hashes,
+  a complete migration dependency inventory, and deterministic compressed
+  v1/v30/v31/v32/v33 SQLite databases. Each historical database was built
+  from the provenance-pinned old DDL and populated with synthetic
+  representative rows while still at that version; none is a current database
+  with only a lowered `user_version`. Schema fingerprints now separate
+  schema-only and seed/contract digests without changing the existing
+  fingerprint format. Robolectric opens each binary before migration, compares
+  it with the pinned source DDL, runs the real `LocalStore` upgrade, checks
+  schema/row/default/source-binding/compatibility state, and exercises the real
+  downgrade callback. Python's independent SQLite path checks the manifest,
+  old shapes, production SQL features, and byte-reproducible regeneration.
+- Validation: `python3 -m unittest tools.test_schema_corpus` passed six tests,
+  and the complete tools discovery passed 134 tests. The focused
+  `SchemaBaselineTest` plus `SchemaMigrationCorpusTest` run passed all seven
+  tests. The exact aggregate command
+  `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk ./gradlew ciFast ciQuality
+  ciDesktop sonarPreflight --no-daemon --console=plain` completed `BUILD
+  SUCCESSFUL` in 2m14s with 323 tasks (15 executed, 308 up-to-date).
+  `git diff --check` and `git show --check e1dc8e98` passed. The independent
+  host oracle was Python 3.9.25 with SQLite 3.40.0.
+- Live gates: not required for this goal. It adds tests, generated fixtures,
+  and test-only fingerprint tooling; production schema creation, migrations,
+  repositories, provider access, and sync behavior are unchanged. The final
+  runtime tree is therefore the same one that passed the Goal 175-177 live
+  AnkiDroid gates above.
+- Decisions: v34 remains the canonical version; its fresh schema shape is v33
+  because v34 adds only a conditional migration settings row. Android/
+  Robolectric executes the current production migrations, while host Python
+  SQLite is an independent compatibility oracle. Goal 178 does not select the
+  desktop driver, introduce a shared SQL abstraction, squash history, or
+  rewrite any production migration; those decisions remain in Goal 179.
+- Rollback: revert `e1dc8e98`. This removes only tests and frozen corpus
+  resources, with no database, scheduler, provider, or user-data conversion.
+- Gaps/blockers: none. Goal 179 is next. Draft PR
+  [#592](https://github.com/bee-san/kanji_anki/pull/592) remains intentionally
+  unmerged.
+
 Template:
 
 ```md
