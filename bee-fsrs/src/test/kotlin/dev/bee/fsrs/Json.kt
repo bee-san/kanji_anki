@@ -115,7 +115,11 @@ internal object Json {
             return when (escaped) {
                 '"', '\\', '/' -> escaped
                 'b' -> '\b'
-                'f' -> ''
+                // Kotlin has no '\f', and a literal form feed here is a raw 0x0C byte
+                // in the source: it renders as nothing, so the line reads as an empty
+                // character literal beside its '\b'/'\n'/'\r'/'\t' neighbours. Spelled
+                // as a unicode escape so this file stays plain ASCII.
+                'f' -> '\u000C'
                 'n' -> '\n'
                 'r' -> '\r'
                 't' -> '\t'

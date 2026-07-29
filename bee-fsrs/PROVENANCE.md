@@ -32,7 +32,7 @@ build integration and Kani's record, not upstream's. Upstream's own `build.gradl
 | Package | `dev.bee:bee-fsrs` |
 | Version | `0.2.0` |
 | Upstream repository | https://github.com/bee-san/bee-fsrs |
-| Upstream commit | `e2b337753a10986947b2ea8cb4c485753875d362` |
+| Upstream commit | `98f3ed75a9b7f3fa7243320721671557908eea2d` |
 | Algorithms | **FSRS-7** (35 parameters) and **FSRS-6.x** (21 parameters), side by side |
 | License | MIT |
 
@@ -41,7 +41,7 @@ check is the point:
 
 ```sh
 git clone https://github.com/bee-san/bee-fsrs /tmp/bee-fsrs
-git -C /tmp/bee-fsrs checkout e2b337753a10986947b2ea8cb4c485753875d362
+git -C /tmp/bee-fsrs checkout 98f3ed75a9b7f3fa7243320721671557908eea2d
 diff -r /tmp/bee-fsrs/src bee-fsrs/src && diff -r /tmp/bee-fsrs/testdata bee-fsrs/testdata
 ```
 
@@ -51,6 +51,14 @@ but mainly so that byte-identity is achievable at all: upstream's fixture tests 
 a module-relative fallback path, and under the old name they had `fsrs-java` written
 into them — one guaranteed diff, forever, in the file whose whole job is to be
 comparable.
+
+Byte-identity has already earned its keep once. Kani forbids raw control bytes in tracked
+sources, and `Json.kt` held a literal `0x0C` form feed in its handler for JSON's `\f`
+escape — invisible in an editor, and rendering as what looked like an empty character
+literal. Because patching it here would have created exactly the permanent diff this
+setup exists to avoid, it was fixed upstream (`98f3ed7`) and re-vendored. That is the
+intended failure mode: downstream lint finds something, upstream fixes it, both consumers
+get the fix.
 
 ### FSRS-6.x, retained
 
