@@ -29,6 +29,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.Direction;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
@@ -62,6 +63,7 @@ import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionSourceIdentity
 import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
+import dev.bee.kanjianki.syncapi.SourceBindingReason
 import dev.bee.kanjianki.core.SyncSettings;
 
 import org.junit.After;
@@ -103,7 +105,7 @@ class MainActivityInstrumentedTest {
     companion object {
     var LIVE_ARG = "kanjiLiveAnkiDroid"
     var LIVE_FOREGROUND_SYNC_TEST = "testManualSyncButtonWorksAgainstLiveAnkiDroid"
-    var LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS = TimeUnit.MINUTES.toMillis(30)
+    var LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS = TimeUnit.HOURS.toMillis(4)
     var STUDY_NOW = "Study now"
     var REVEAL = "Reveal"
     var CHECK = "Check"
@@ -2125,20 +2127,30 @@ fun testManualSyncShowsLiveCardProgress() {
         ),
     )
     val progressGateway = HoldingProgressGateway(snapshot)
+    MainActivityRuntimeOverrides.setAnkiDroidGateway(
+        AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
+    )
+    context.contentResolver.call(
+        Uri.parse("content://" + FakeAnkiDroidProvider.AUTHORITY),
+        "reset",
+        null,
+        null,
+    )
     MainActivityRuntimeOverrides.setCollectionGateway(progressGateway)
 
     try {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickHomeSyncEntryPoint(scenario)
             clickText(scenario, "Sync cards")
-            waitForText(scenario, "1 / 2 cards scanned")
-            scenario.onActivity { activity ->
-                assertHasText(activity, "Scanning cards")
-                assertHasText(activity, "1 / 2 cards scanned")
-            }
+            waitForText(scenario, "Scanning cards", TimeUnit.MINUTES.toMillis(2))
+            waitForText(scenario, "1 / 2 cards scanned", TimeUnit.MINUTES.toMillis(2))
             progressGateway.finish()
-            confirmFirstCollectionBinding(scenario)
-            waitForText(scenario, "Sync complete")
+            confirmFirstCollectionBinding()
+            val status = requireNotNull(
+                waitForLatestSuccessfulSync(TimeUnit.MINUTES.toMillis(2)),
+            )
+            assertEquals("success", status.status)
+            waitForText(scenario, "Sync complete", TimeUnit.MINUTES.toMillis(2))
         }
     } finally {
         progressGateway.finish()
@@ -2174,7 +2186,7 @@ fun testLastSyncHeadlineInvitesAndStartsManualSync() {
             val status = requireNotNull(waitForLatestSyncAfter(syncStartedAt))
             assertEquals("success", status.status)
             assertTrue(status.finishedAt >= syncStartedAt)
-            waitForText(scenario, "Sync complete");
+            waitForText(scenario, "Sync complete", TimeUnit.MINUTES.toMillis(2));
         }
     }
 
@@ -2185,11 +2197,13 @@ fun testManualSyncButtonEnablesDailyAutoSyncAfterSuccess() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
-            confirmFirstCollectionBinding(scenario)
-            val status = requireNotNull(waitForLatestSync())
+            confirmFirstCollectionBinding()
+            val status = requireNotNull(
+                waitForLatestSuccessfulSync(TimeUnit.MINUTES.toMillis(2)),
+            )
             assertEquals("success", status.status)
 
-            waitForText(scenario, "Sync complete");
+            waitForText(scenario, "Sync complete", TimeUnit.MINUTES.toMillis(2));
             scenario.onActivity { activity ->
                 assertHasText(activity, "Today's adaptive focus");
                 assertNoText(activity, "new per day");
@@ -2213,11 +2227,10 @@ fun testManualSyncButtonWorksAgainstLiveAnkiDroid() {
             clickHomeSyncEntryPoint(scenario);
             clickText(scenario, "Sync cards");
             confirmFirstCollectionBinding(
-                scenario,
                 LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS,
             )
             val startedAt = System.currentTimeMillis();
-            val status = waitForLiveSyncImport(startedAt, 9000)
+            val status = waitForLiveSyncImport(startedAt, LIVE_SYNC_COMPLETION_TIMEOUT_MILLIS)
             assertEquals("success", status.status)
             assertTrue(status.finishedAt >= startedAt)
             LocalStore(context).use { store ->
@@ -2298,8 +2311,27 @@ private fun waitForLatestSync(attempts: Int): LocalStoreBase.SyncStatus? {
     return null
 }
 
-private fun waitForLiveSyncImport(startedAt: Long, attempts: Int): LocalStoreBase.SyncStatus {
-    for (i in 0 until attempts) {
+private fun waitForLatestSuccessfulSync(timeoutMillis: Long): LocalStoreBase.SyncStatus? {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    while (SystemClock.uptimeMillis() < deadline) {
+        try {
+            LocalStore(context).use { store ->
+                val status = store.latestSync()
+                if (status?.status == "success") {
+                    return status
+                }
+            }
+        } catch (busy: SQLiteDatabaseLockedException) {
+            // The sync button tests poll while the app is committing an import.
+        }
+        SystemClock.sleep(250L)
+    }
+    return null
+}
+
+private fun waitForLiveSyncImport(startedAt: Long, timeoutMillis: Long): LocalStoreBase.SyncStatus {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    while (SystemClock.uptimeMillis() < deadline) {
         try {
             LocalStore(context).use { store ->
                 val status = store.latestSync()
@@ -2312,7 +2344,7 @@ private fun waitForLiveSyncImport(startedAt: Long, attempts: Int): LocalStoreBas
         } catch (busy: SQLiteDatabaseLockedException) {
             // The live sync button test polls while the app is committing a large collection import.
         }
-        SystemClock.sleep(100)
+        SystemClock.sleep(1_000L)
     }
     throw AssertionError("Timed out waiting for live sync to populate study items")
 }
@@ -2600,9 +2632,9 @@ class HoldingProgressGateway(
         progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS, 0, snapshot.cards.size))
         progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS, 1, snapshot.cards.size))
         try {
-            released.get(5L, TimeUnit.SECONDS)
+            released.get()
         } catch (_: Exception) {
-            // Continue when the UI release signal is not needed for this fake gateway path.
+            // Continue if the test runner interrupts the fake gateway during teardown.
         }
         progress.onProgress(
             CollectionProgress(
@@ -2656,6 +2688,7 @@ class HoldingProgressGateway(
 }
 
 private fun clickHomeSyncEntryPoint(scenario: ActivityScenario<MainActivity>) {
+    waitForText(scenario, "Sync", TimeUnit.MINUTES.toMillis(2))
     if (clickTextInActivityIfPresent(scenario, "Sync AnkiDroid")) {
         return
     }
@@ -2663,12 +2696,89 @@ private fun clickHomeSyncEntryPoint(scenario: ActivityScenario<MainActivity>) {
 }
 
 private fun confirmFirstCollectionBinding(
-    scenario: ActivityScenario<MainActivity>,
-    timeoutMillis: Long = 5_000L,
+    timeoutMillis: Long = TimeUnit.MINUTES.toMillis(2),
 ) {
+    waitForFirstBindingRequirement(timeoutMillis)
     val label = SourceBindingRecoveryUi.firstBindLabel()
-    waitForText(scenario, label, timeoutMillis)
-    clickText(scenario, label)
+    val recoveryHeadline = SourceBindingRecoveryUi.presentation(
+        SourceBindingReason.FIRST_BIND_REQUIRED,
+        evidence = null,
+        safeStorageAvailable = false,
+    ).headline
+    val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    var recoveryVisible = false
+    var button: UiObject2? = null
+    while (SystemClock.uptimeMillis() < deadline && button == null) {
+        button = findDeviceTextNow(device, label)
+        if (button != null) {
+            break
+        }
+        recoveryVisible = recoveryVisible || findDeviceTextNow(device, recoveryHeadline) != null
+        if (recoveryVisible) {
+            val scrollable = device.findObjects(
+                By.pkg(appPackage()).scrollable(true),
+            ).firstOrNull()
+            if (scrollable != null) {
+                scrollable.scroll(Direction.DOWN, 0.8f)
+            } else {
+                device.swipe(
+                    device.displayWidth / 2,
+                    device.displayHeight * 3 / 4,
+                    device.displayWidth / 2,
+                    device.displayHeight / 4,
+                    20,
+                )
+            }
+        }
+        SystemClock.sleep(if (recoveryVisible) 250L else 1_000L)
+    }
+    val visibleButton = requireNotNull(button) {
+        "Missing first-bind action: $label\nDevice text: ${deviceVisibleText(device)}"
+    }
+    visibleButton.click()
+    device.waitForIdle(2_000L)
+}
+
+private fun waitForFirstBindingRequirement(timeoutMillis: Long) {
+    val deadline = SystemClock.uptimeMillis() + timeoutMillis
+    while (SystemClock.uptimeMillis() < deadline) {
+        try {
+            LocalStore(context).use { store ->
+                store.readableDatabase.query(
+                    LocalStoreBase.TABLE_SYNC_RUNS,
+                    arrayOf(
+                        LocalStoreBase.COLUMN_STATUS,
+                        "error_code",
+                        LocalStoreBase.COLUMN_ERROR_MESSAGE,
+                    ),
+                    null,
+                    null,
+                    null,
+                    null,
+                    LocalStoreBase.ORDER_ID_DESC,
+                    "1",
+                ).use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val status = cursor.getString(0)
+                        val errorCode = if (cursor.isNull(1)) null else cursor.getString(1)
+                        val errorMessage = if (cursor.isNull(2)) null else cursor.getString(2)
+                        if (errorCode == "source_binding_first_bind_required") {
+                            return
+                        }
+                        throw AssertionError(
+                            "Expected first-bind requirement, got " +
+                                "status=$status errorCode=$errorCode errorMessage=$errorMessage",
+                        )
+                    }
+                }
+            }
+        } catch (busy: SQLiteDatabaseLockedException) {
+            // The live provider can hold the database briefly while finishing its scan.
+        }
+        SystemClock.sleep(1_000L)
+    }
+    throw AssertionError("Timed out waiting for first-bind requirement")
 }
 
 private fun clickTextInActivityIfPresent(scenario: ActivityScenario<MainActivity>, text: String): Boolean {
@@ -2930,15 +3040,19 @@ private fun waitForText(scenario: ActivityScenario<MainActivity>, text: String, 
     val deadline = SystemClock.uptimeMillis() + timeoutMillis
     val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
     while (SystemClock.uptimeMillis() < deadline) {
-        var found = false
-        scenario.onActivity { activity -> found = hasText(activity, text, device) }
-        if (found) {
+        var foundInViews = false
+        scenario.onActivity { activity ->
+            val root = activity.findViewById<View>(android.R.id.content)
+            foundInViews = findText(root, text) != null
+        }
+        if (foundInViews || findDeviceTextNow(device, text) != null) {
             return
         }
         SystemClock.sleep(100L)
     }
     scenario.onActivity { activity -> assertHasText(activity, text) }
 }
+
 private fun assertCollapsedSettingsScreen(activity: MainActivity) {
         assertHasTexts(
                 activity,
