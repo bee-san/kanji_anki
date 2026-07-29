@@ -112,6 +112,18 @@ class StudyCueFormatterTest {
     }
 
     @Test
+    fun cleanFallbackMeaningKeepsHeadingBeforeInlineNumberedSenseMetadata() {
+        assertEquals(
+            "Invitation",
+            StudyCueFormatter.cleanFallbackMeaning(
+                "Invitation 1. [★, priority form] nounsuru transitive invitation",
+                "",
+                96,
+            ),
+        )
+    }
+
+    @Test
     fun cleanMeaningStripsJapaneseExamplesWithoutUnicodeRegexProperties() {
         assertEquals("To eat", StudyCueFormatter.cleanFallbackMeaning("to eat たべます", "", 96))
         assertEquals("Loan word", StudyCueFormatter.cleanFallbackMeaning("loan word カタカナ", "", 96))
