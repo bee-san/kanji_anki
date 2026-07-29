@@ -10,7 +10,7 @@ import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.platform.DeviceSettingsStore
 import java.util.WeakHashMap
 
-internal class AndroidDeviceSettingsStore(
+class AndroidDeviceSettingsStore(
     context: Context,
     private val commitEditor: (SharedPreferences.Editor) -> Boolean = SharedPreferences.Editor::commit,
 ) : DeviceSettingsStore {
@@ -106,7 +106,7 @@ internal class AndroidDeviceSettingsStore(
         }
     }
 
-    internal companion object {
+    companion object {
         const val PREFERENCES_NAME = "kani_device_settings"
         private val EDIT_LOCK = Any()
         private val DURABILITY_STATES = WeakHashMap<SharedPreferences, DurabilityState>()

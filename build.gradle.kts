@@ -35,6 +35,7 @@ val sonarMainBinaries = listOf(
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
     rootPath("platform-contracts/build/classes/kotlin/main"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
     rootPath("desktop-app/build/classes/kotlin/main"),
     rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
@@ -55,6 +56,8 @@ val sonarTestBinaries = listOf(
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
     rootPath("platform-contracts/build/classes/kotlin/test"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("desktop-app/build/classes/kotlin/test"),
     rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
@@ -74,6 +77,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("platform-contracts/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("platform-android/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     add(rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("provider-ankidroid/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
@@ -346,6 +350,10 @@ val fastCiTasks = listOf(
     ":platform-contracts:test",
     ":platform-contracts:jacocoTestReport",
     ":platform-contracts:jacocoTestCoverageVerification",
+    ":platform-android:testDebugUnitTest",
+    ":platform-android:jacocoDebugUnitTestReport",
+    ":platform-android:compileDebugAndroidTestKotlin",
+    ":platform-android:lintDebug",
     ":provider-ankidroid:testDebugUnitTest",
     ":provider-ankidroid:jacocoDebugUnitTestReport",
     ":provider-ankidroid:compileDebugAndroidTestKotlin",
@@ -383,6 +391,7 @@ tasks.register("ciQuality") {
         ":dictionary-core:jar",
         ":update-core:jar",
         ":platform-contracts:jar",
+        ":platform-android:compileDebugKotlin",
         ":provider-ankidroid:compileDebugKotlin",
         ":desktop-app:jacocoTestReport",
         ":desktop-app:jar",

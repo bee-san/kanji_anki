@@ -7,7 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 
-internal class AndroidNotificationGateway(
+class AndroidNotificationGateway(
     context: Context,
     private val sdkInt: Int = Build.VERSION.SDK_INT,
 ) {
