@@ -678,19 +678,18 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         lateinit var rung: RecordsBase.LadderRung
         lateinit var phase: RecordsBase.SchedulerPhase
         var nowMillis: Long = 0L
-        var elapsedReviewDays: Int = 0
+        var elapsedReviewDays: Double = 0.0
         lateinit var rating: String
         lateinit var reviewedTaskType: String
         var cleanWritingPass: Boolean = false
         var failedWriting: Boolean = false
 
-        private fun elapsedReviewDays(): Int {
-            val previousIntervalMillis = max(0L, previousTaskMemory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
-            val lastReviewAtMillis = previousTaskMemory.lastReviewedAtMillis.takeIf { it > 0L }
-                ?: max(0L, saturatingSubtract(previousTaskMemory.dueAtMillis, previousIntervalMillis))
-            val elapsedMillis = nonNegativeDifference(nowMillis, lastReviewAtMillis)
-            return min(Int.MAX_VALUE.toLong(), elapsedMillis / StudyLadderRules.DAY).toInt()
-        }
+        private fun elapsedReviewDays(): Double = FsrsElapsedTime.elapsedDays(
+            nowMillis,
+            previousTaskMemory.lastReviewedAtMillis,
+            previousTaskMemory.dueAtMillis,
+            previousTaskMemory.matureIntervalDays,
+        )
 
         private fun activeTaskMemory(): RecordsStudyModels.TaskMemory {
             val memory = item.memoryForRung(rung)

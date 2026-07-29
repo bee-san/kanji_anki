@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.database.sqlite.SQLiteDatabase
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.CoreSkill
+import dev.bee.kanjianki.core.FsrsElapsedTime
 import dev.bee.kanjianki.core.FsrsReplaySample
 import dev.bee.kanjianki.core.FsrsReplaySequence
 import dev.bee.kanjianki.core.RecordsStudyModels
@@ -100,16 +101,24 @@ internal class FsrsTrainingDataQueries(
 
     companion object {
         private const val REVIEW_PHASE = "review"
-        private const val DAY_MILLIS = 86_400_000L
 
-        /** Exact mirror of ReviewContext.elapsedReviewDays(). */
+        /**
+         * Delegates to [FsrsElapsedTime] rather than mirroring it.
+         *
+         * This used to be a hand-copied duplicate of the scheduler's computation,
+         * annotated "exact mirror of ReviewContext.elapsedReviewDays()". A mirror
+         * maintained by comment is one edit away from being a lie, and the failure
+         * would be near-invisible: the fitter would train on a different elapsed
+         * time than the scheduler schedules with, and the loss would just come out
+         * slightly wrong.
+         */
         @JvmStatic
-        fun elapsedDays(reviewedAtMillis: Long, memory: RecordsStudyModels.TaskMemory): Int {
-            val previousIntervalMillis = memory.matureIntervalDays.toLong().coerceAtLeast(0L) * DAY_MILLIS
-            val lastReviewAtMillis = memory.lastReviewedAtMillis.takeIf { it > 0L }
-                ?: (memory.dueAtMillis - previousIntervalMillis).coerceAtLeast(0L)
-            val elapsedMillis = (reviewedAtMillis - lastReviewAtMillis).coerceAtLeast(0L)
-            return (elapsedMillis / DAY_MILLIS).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        }
+        fun elapsedDays(reviewedAtMillis: Long, memory: RecordsStudyModels.TaskMemory): Double =
+            FsrsElapsedTime.elapsedDays(
+                reviewedAtMillis,
+                memory.lastReviewedAtMillis,
+                memory.dueAtMillis,
+                memory.matureIntervalDays,
+            )
     }
 }

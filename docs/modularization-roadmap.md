@@ -20,7 +20,7 @@ graph, and effort estimates for breaking up the monolithic `:app` module.
 | `:dictionary-core` | Kotlin JVM library | 7 Kotlin | Dictionary lookup interface + asset loader |
 | `:writing-core` | Kotlin JVM library | 29 Kotlin | Handwriting analysis, stroke model, recognition types |
 | `:update-core` | Kotlin JVM library | 18 Kotlin | Update policies, version parsing, artifact validation |
-| `:bee-fsrs` | Kotlin JVM library | 14 Kotlin | Vendored checkout of `dev.bee:bee-fsrs` 0.2.0: FSRS-6.x (in use) and FSRS-7 (unused). Do not edit — see `bee-fsrs/PROVENANCE.md` |
+| `:bee-fsrs` | Kotlin JVM library | 14 Kotlin | Vendored checkout of `dev.bee:bee-fsrs` 0.2.0: FSRS-7 (in use) and FSRS-6.x (unreached). Do not edit — see `bee-fsrs/PROVENANCE.md` |
 | `:domain` | Kotlin JVM library | 1 Kotlin | Shared domain model interfaces |
 | `:sync-domain` | Kotlin JVM library | 8 Kotlin | Sync-specific domain models |
 | `:build-logic` | Gradle convention plugin | — | Shared Kotlin library build conventions |

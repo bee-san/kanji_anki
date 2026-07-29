@@ -37,6 +37,12 @@ kaniLibrary {
     // satisfies the gate only because it also carries one covered default method —
     // so the pre-vendoring module passed this rule by accident, not by coverage.
     //
+    // Still required after Kani adopted FSRS-7. Adoption made `Fsrs7Engine.create`
+    // a production call, but from Kotlin, so it resolves to the companion and leaves
+    // the bridge untouched; and this gate measures :bee-fsrs's own tests regardless
+    // of who calls in from :core. Re-checked by deleting this line and rerunning
+    // `:bee-fsrs:check`, which still reported 0.96.
+    //
     // Scoped to the one class file: `Fsrs7Engine$Companion` and `DefaultFsrs7Engine`
     // are still held to 100%.
     coverageExcludes.add("**/Fsrs7Engine.class")

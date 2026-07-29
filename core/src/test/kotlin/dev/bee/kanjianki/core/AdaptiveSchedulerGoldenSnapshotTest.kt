@@ -441,10 +441,16 @@ class AdaptiveSchedulerGoldenSnapshotTest {
             stability: Double,
             difficulty: Double,
             rating: String?,
-            elapsedDays: Int,
+            elapsedDays: Double,
             targetRetention: Double,
         ): KaniFsrsReviewResult {
-            calls += "${StudyRatings.normalize(rating)}:$elapsedDays"
+            // Formatted to four decimals rather than interpolated raw. FSRS-7 elapsed
+            // times are fractional, and a bare Double would put values like
+            // 0.006944444444444444 into a golden file — unreadable, and sensitive to
+            // the last bit of a division. Four decimals still distinguish ten minutes
+            // (0.0069) from an hour (0.0417), which is the resolution these timelines
+            // are about.
+            calls += "${StudyRatings.normalize(rating)}:${"%.4f".format(Locale.ROOT, elapsedDays)}"
             return KaniFsrsReviewResult(
                 stability + 1.0,
                 difficulty,

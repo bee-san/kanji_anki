@@ -1019,12 +1019,18 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 dueAt
         )
+        // matureIntervalDays ceils the real interval, which under FSRS-7 is fractional:
+        // ~17.76 days here, so 18. The due time keeps the fraction rather than snapping
+        // to the whole-day multiple it used to equal exactly.
         assertEquals(18, result.item.matureIntervalDays)
-        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis)
-        // Persistence now keeps full FSRS precision (was rounded to 2 dp). Assert with a
-        // tolerance instead of the previously-rounded 18.01 / 5.99 literals.
-        assertEquals(18.005, result.item.stability, 0.01)
-        assertEquals(5.99, result.item.difficulty, 0.01)
+        assertTrue(
+            "due time should keep FSRS-7's fractional interval",
+            result.item.dueAtMillis > dueAt + 17L * BridgeScheduler.DAY &&
+                result.item.dueAtMillis < dueAt + 18L * BridgeScheduler.DAY,
+        )
+        // Persistence keeps full FSRS precision (it was once rounded to 2 dp).
+        assertEquals(12.3806, result.item.stability, 0.01)
+        assertEquals(5.968, result.item.difficulty, 0.01)
     }
 
     @Test
@@ -1059,13 +1065,13 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 now
         )
-        assertEquals(9, adapter.elapsedDays)
+        assertEquals(9.0, adapter.elapsedDays, 0.0)
         assertEquals(now + 3L * BridgeScheduler.DAY, result.item.dueAtMillis)
         assertEquals(3, result.item.matureIntervalDays)
     }
 
     @Test
-    public fun reviewTransitionFloorsFractionalElapsedDaysForFsrs() {
+    public fun reviewTransitionPassesFractionalElapsedDaysToFsrs() {
         var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(4L * BridgeScheduler.DAY)
         var scheduler: BridgeScheduler = BridgeScheduler(adapter)
         var halfDay: Long = BridgeScheduler.DAY / 2L
@@ -1093,7 +1099,10 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 now
         )
-        assertEquals(9, adapter.elapsedDays)
+        // 9.5, not 9. This test used to assert the floor; FSRS-7 takes fractional
+        // days, and dropping the half day here would discard the sub-day resolution
+        // at the boundary rather than in the engine.
+        assertEquals(9.5, adapter.elapsedDays, 0.0)
         assertEquals(now + 4L * BridgeScheduler.DAY, result.item.dueAtMillis)
         assertEquals(4, result.item.matureIntervalDays)
     }
@@ -1131,7 +1140,7 @@ public class BridgeSchedulerTest {
                 now
         )
 
-        assertEquals(7, adapter.elapsedDays)
+        assertEquals(7.5, adapter.elapsedDays, 0.0)
         assertEquals(now, result.item.kanjiMeaningMemory.lastReviewedAtMillis)
     }
 
@@ -1196,7 +1205,11 @@ public class BridgeSchedulerTest {
                 dueAt
         )
         assertEquals(18, result.item.matureIntervalDays)
-        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis)
+        assertTrue(
+            "due time should keep FSRS-7's fractional interval",
+            result.item.dueAtMillis > dueAt + 17L * BridgeScheduler.DAY &&
+                result.item.dueAtMillis < dueAt + 18L * BridgeScheduler.DAY,
+        )
         assertEquals(18, result.item.fontMeaningMemory.matureIntervalDays)
     }
 
@@ -2365,14 +2378,14 @@ public class BridgeSchedulerTest {
             return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
         }
 
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
+        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Double, targetRetention: Double): KaniFsrsReviewResult {
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }
     }
 
     private class RecordingFsrsAdapter : KaniFsrsAdapter {
         private val reviewIntervalMillis: Long
-        var elapsedDays: Int = -1
+        var elapsedDays: Double = -1.0
         constructor(reviewIntervalMillis: Long) {
             this.reviewIntervalMillis = reviewIntervalMillis
         }
@@ -2381,7 +2394,7 @@ public class BridgeSchedulerTest {
             return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
         }
 
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
+        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Double, targetRetention: Double): KaniFsrsReviewResult {
             this.elapsedDays = elapsedDays
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }

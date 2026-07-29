@@ -1,20 +1,28 @@
 package dev.bee.kanjianki.core
 
-import dev.bee.fsrs.FsrsEngine
+import dev.bee.fsrs.Fsrs7Engine
+import dev.bee.fsrs.Fsrs7Parameters
 import dev.bee.fsrs.FsrsMemoryState
-import dev.bee.fsrs.FsrsParameters
 import dev.bee.fsrs.FsrsRating
 import kotlin.math.ln
 
-/** One persisted, real-due review used by the personalized FSRS replay. */
+/**
+ * One persisted, real-due review used by the personalized FSRS replay.
+ *
+ * [elapsedDays] is fractional so the fitter sees the same elapsed time the
+ * scheduler schedules with; see [FsrsElapsedTime]. Training on floored days while
+ * scheduling on fractional ones would optimize the wrong objective.
+ */
 data class FsrsReplaySample(
-    val elapsedDays: Int,
+    val elapsedDays: Double,
     val rating: Int,
     val outcome: Boolean = rating != FsrsRating.AGAIN.value(),
     val reviewedAtMillis: Long = 0L,
 ) {
     init {
-        require(elapsedDays >= 0) { "elapsedDays must not be negative" }
+        require(elapsedDays.isFinite() && elapsedDays >= 0.0) {
+            "elapsedDays must be finite and non-negative"
+        }
         FsrsRating.fromValue(rating)
     }
 }
@@ -52,7 +60,7 @@ object FsrsReplayEvaluator {
         sequences: List<FsrsReplaySequence>,
         includedSamples: Set<Long>?,
     ): Evaluation {
-        val engine = FsrsEngine.create(FsrsParameters.of(weights))
+        val engine = Fsrs7Engine.create(Fsrs7Parameters.of(weights))
         var total = 0.0
         var count = 0
         sequences.forEachIndexed { sequenceIndex, sequence ->

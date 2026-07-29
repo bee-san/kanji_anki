@@ -33,7 +33,7 @@ build integration and Kani's record, not upstream's. Upstream's own `build.gradl
 | Version | `0.2.0` |
 | Upstream repository | https://github.com/bee-san/bee-fsrs |
 | Upstream commit | `98f3ed75a9b7f3fa7243320721671557908eea2d` |
-| Algorithms | **FSRS-7** (35 parameters) and **FSRS-6.x** (21 parameters), side by side |
+| Algorithms | **FSRS-7** (35 parameters, in use) and **FSRS-6.x** (21 parameters, unreached) |
 | License | MIT |
 
 `src/` and `testdata/` are byte-identical to that commit. This is checkable, and the
@@ -60,19 +60,7 @@ setup exists to avoid, it was fixed upstream (`98f3ed7`) and re-vendored. That i
 intended failure mode: downstream lint finds something, upstream fixes it, both consumers
 get the fix.
 
-### FSRS-6.x, retained
-
-| Field | Value |
-|---|---|
-| Upstream reference | [`open-spaced-repetition/py-fsrs`](https://github.com/open-spaced-repetition/py-fsrs) `v6.3.1` |
-| Upstream commit | `3abe686e9c058d3f3c00bbeb92e68b71211b2b31` |
-| Reference vectors | 38 |
-
-This is the engine Kani schedules with today, reached through
-`LatestFsrsAdapter`/`BridgeScheduler`. Nothing about Kani's scheduling behaviour changed
-when this directory was vendored.
-
-### FSRS-7, available but not yet wired in
+### FSRS-7, the engine in use
 
 | Field | Value |
 |---|---|
@@ -85,18 +73,30 @@ Pinned to a commit and a blob rather than a release, because FSRS-7 has none: it
 as research code in a repository whose `main` moves, so "the FSRS-7 in srs-benchmark" is
 not a reproducible statement without a hash.
 
+This is what Kani schedules with, reached through `LatestFsrsAdapter`/`BridgeScheduler`.
+
+### FSRS-6.x, vendored but unreached
+
+| Field | Value |
+|---|---|
+| Upstream reference | [`open-spaced-repetition/py-fsrs`](https://github.com/open-spaced-repetition/py-fsrs) `v6.3.1` |
+| Upstream commit | `3abe686e9c058d3f3c00bbeb92e68b71211b2b31` |
+| Reference vectors | 38 |
+
+Kept because the checkout is byte-identical to upstream and upstream keeps both engines;
+deleting it here is not an option that preserves the invariant. Nothing in Kani reaches
+for it, and `FsrsVendoringTest` asserts that — including that `scheduler_fsrs_weights`
+now rejects an FSRS-6-shaped vector, which is the check that the switch went all the way
+through rather than leaving one path on the old parameter count.
+
 Full chain of custody for both engines is in the upstream repository's
 [PROVENANCE.md](https://github.com/bee-san/bee-fsrs/blob/main/PROVENANCE.md).
 
-## Why FSRS-7 is present but unused
+## What adopting FSRS-7 required in Kani
 
-Vendoring the engine and adopting FSRS-7 are separate changes, and this was the first
-one. `Fsrs7Engine` compiles, is covered by its 384 upstream-generated vectors, and is
-reachable from `:core` — but no Kani code path calls it, and `README.md`'s "FSRS 7"
-still describes an intention rather than the scheduler.
-
-Switching is not a one-line adapter change, because three FSRS-7 properties cross the
-engine boundary:
+FSRS-7 was vendored unused first and adopted second, so this section records what the
+adoption actually cost rather than what it was estimated to cost. Three engine properties
+cross the boundary into `:core`:
 
 | | FSRS-6.x | FSRS-7 |
 |---|---|---|
@@ -106,36 +106,55 @@ engine boundary:
 | Forgetting curve | single power law | two power laws, blended by stability |
 | Same-day reviews | separate branch below one day | continuous blend |
 
-Each of those has a consequence in this repository specifically:
+**Memory state needed no migration.** This was the blocker that turned out not to be one:
+`FsrsMemoryState` is shared by both engines — the same `(stability, difficulty)` pair,
+stability in days, difficulty on the same 1..10 scale — so every persisted `study_items`
+row and the state Kani seeds from AnkiDroid during admission (`AdmissionEvidencePolicy`)
+stayed readable. No schema change, no golden-state regeneration. Intervals moved, because
+the mathematics applied to that state changed, which is the point.
 
-- **`KaniFsrsAdapter` is an integer-day interface.** `initialReview`/`review` return
-  `Int` day counts and take `elapsedDays: Int`. Handing FSRS-7 a floored elapsed time
-  and rounding its answer would discard the sub-day resolution the revision exists to
-  provide — at the boundary rather than in the engine — while still changing every
-  interval. That is the worst of both.
-- **Persisted memory state is not reinterpretable.** Stability and difficulty fitted
-  under 21 parameters do not mean the same thing under 35. Every existing
-  `study_items` row carries FSRS-6 state, and Kani additionally *seeds* state from
-  AnkiDroid's own FSRS memory during admission (`AdmissionEvidencePolicy`), which is
-  FSRS-6-shaped too.
-- **`scheduler_fsrs_weights` stores 21 values.** `FsrsPersonalization.decodeWeights`
-  validates through `FsrsParameters.of`, and `FsrsWeightFitter` carries a hardcoded
-  21-element bounds pair from fsrs-rs's `parameter_clipper.rs`. A stored personalized
-  vector would have to be discarded or migrated, and the fitter retrained against
-  FSRS-7's own clipper bounds.
-- **The ladder is calibrated in whole days.** `ladder_promotion_interval_days`
-  (default 21) and the fixed-0.90 `promotionIntervalDays` memory-strength signal are
-  integer-day comparisons. They would still function, but the thresholds were tuned
-  against FSRS-6 intervals.
+**Elapsed time became fractional, from one definition.** `KaniFsrsAdapter.review` now
+takes a `Double`, and `FsrsElapsedTime` computes it. That computation previously existed
+as three hand-copied integer versions — the review context, the adaptive engine, and
+`FsrsTrainingDataQueries`, whose copy was annotated "exact mirror of
+`ReviewContext.elapsedReviewDays()`". A mirror maintained by comment is one edit from
+being a lie, and the failure mode is near-invisible: the fitter would train on a
+different elapsed time than the scheduler schedules with, and the loss would just come
+out slightly wrong.
 
-None of that argues against adopting FSRS-7; it argues that the adoption is a
-scheduler change with a data migration, and it needs golden-timeline regeneration and
-a parity decision per the `CLAUDE.md` scheduler rules. Vendoring first means that work
-starts from an engine that is already pinned, tested, and shared with BeeCode.
+**Scheduled intervals are floored at one day above the engine, not inside it.** FSRS-6's
+`nextIntervalDays` rounded and clamped to `[1, max]`; FSRS-7 removes that, correctly — an
+engine should answer "when does retrievability reach the target" without assuming what
+the caller does with sub-day answers. Kani's answer is that its `review` phase is a
+day-granularity long-term queue and sub-day repetition is already modelled by
+learning/relearning steps, which are explicitly practice-only. Without the floor, a
+lapsed card's post-lapse stability of a few thousandths of a day scheduled it *seconds*
+out; it came due in the same session, and because ladder movement keys off the persisted
+FSRS due time rather than the calendar day, a card could accumulate real-due fails and
+demote a rung in seconds. That regression was caught by two existing tests
+(`reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval` and
+`dueRelearningRepeatWithEmptyReviewStepsReturnsToReviewWithoutCrashing`) that had pinned
+the one-day post-lapse interval, and it is now pinned deliberately in
+`FsrsVendoringTest.theEngineReturnsSubDayIntervalsAndTheAdapterFloorsThem`.
 
-BeeCode has made this switch, so the shape of the work is known rather than
-speculative: schema migration widening the interval columns, a versioned export bump,
-removing the elapsed-time floor, and a shared interval formatter for sub-day values.
+**Personalized weights were discarded, not migrated.** `scheduler_fsrs_weights` now holds
+35 values validated through `Fsrs7Parameters.of`. A stored 21-value vector is rejected
+like any other malformed value and the reader falls open to defaults. There is no correct
+migration: 21 weights fitted for a single power law do not describe a blended pair, so
+padding or reinterpreting them would schedule against a parameter set no optimizer ever
+validated. `FsrsWeightFitter` carries FSRS-7's clipper bounds, plus an ordering repair for
+the three constraints whose bound is *another parameter* rather than a constant — a box
+clamp alone would emit vectors the engine rejects, degrading a real fit into a caught
+exception and a silent fallback to defaults.
+
+**The ladder thresholds needed no change.** `promotesByMemoryStrength` already compared
+milliseconds rather than day counts, so the fixed-0.90 `promotionIntervalDays` signal and
+`ladder_promotion_interval_days` (default 21) kept working against fractional intervals
+unchanged. The thresholds were tuned against FSRS-6 intervals and were deliberately not
+retuned here; that is a separate calibration question with its own evidence requirement.
+
+BeeCode made the same switch, and its `BeeCodeScheduler` was the reference for the
+fractional-elapsed-time boundary.
 
 ## Why vendored rather than resolved from a repository
 
@@ -161,6 +180,12 @@ That class file contains nothing but the two `@JvmStatic` Java-interop bridges f
 `create`/`latestDefault`; Kotlin callers compile to `Fsrs7Engine$Companion.create`,
 which is covered, as is every line of `DefaultFsrs7Engine`. It is unreachable interop
 bytecode rather than an untested path.
+
+Still required after Kani adopted FSRS-7. Adoption made `Fsrs7Engine.create` a production
+call, but from Kotlin, so it resolves to the companion and leaves the bridge untouched —
+and this gate measures `:bee-fsrs`'s own tests regardless of who calls in from `:core`.
+Re-checked by deleting the exclusion and rerunning `:bee-fsrs:check`, which still reported
+0.96, rather than assumed.
 
 Worth recording: FSRS-6's `FsrsEngine` has the identical pair of uncovered bridges and
 satisfies the gate only because it also happens to carry one covered default method. The

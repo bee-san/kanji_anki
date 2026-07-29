@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.FsrsElapsedTime
 import dev.bee.kanjianki.core.RecordsStudyModels
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -45,25 +46,46 @@ class FsrsTrainingDataQueriesTest {
         val sequence = sequences.single()
         assertEquals(7.5, sequence.initialStability, 0.0)
         assertEquals(4.25, sequence.initialDifficulty, 0.0)
-        assertEquals(listOf(0, 15), sequence.samples.map { it.elapsedDays })
+        assertEquals(listOf(0.0, 15.0), sequence.samples.map { it.elapsedDays })
         assertEquals(listOf(3, 1), sequence.samples.map { it.rating })
         assertEquals(listOf(true, false), sequence.samples.map { it.outcome })
     }
 
     @Test
-    fun elapsedDerivationExactlyMirrorsReviewContextFormula() {
+    fun elapsedDerivationDelegatesToTheSharedSchedulerHelper() {
         val memory = RecordsStudyModels.TaskMemory(
             "review", 12 * DAY, 4.0, 5.0, 3, 0,
             0, "good", 7,
         )
-        assertEquals(4, FsrsTrainingDataQueries.elapsedDays(9 * DAY, memory))
-        assertEquals(0, FsrsTrainingDataQueries.elapsedDays(1 * DAY, memory))
+        assertEquals(4.0, FsrsTrainingDataQueries.elapsedDays(9 * DAY, memory), 0.0)
+        assertEquals(0.0, FsrsTrainingDataQueries.elapsedDays(1 * DAY, memory), 0.0)
 
         val exactMemory = RecordsStudyModels.TaskMemory(
             "review", 12 * DAY, 4.0, 5.0, 3, 0,
             0, "good", 7, 0, 0L, 3 * DAY,
         )
-        assertEquals(6, FsrsTrainingDataQueries.elapsedDays(9 * DAY, exactMemory))
+        assertEquals(6.0, FsrsTrainingDataQueries.elapsedDays(9 * DAY, exactMemory), 0.0)
+
+        // This used to be a hand-copied mirror of ReviewContext.elapsedReviewDays().
+        // It now delegates to the same FsrsElapsedTime the scheduler uses, so identity
+        // is asserted directly rather than by matching numbers that could drift apart.
+        assertEquals(
+            FsrsElapsedTime.elapsedDays(
+                9 * DAY,
+                exactMemory.lastReviewedAtMillis,
+                exactMemory.dueAtMillis,
+                exactMemory.matureIntervalDays,
+            ),
+            FsrsTrainingDataQueries.elapsedDays(9 * DAY, exactMemory),
+            0.0,
+        )
+
+        // And the fractional resolution actually survives: half a day is 0.5, not 0.
+        val halfDayAgo = RecordsStudyModels.TaskMemory(
+            "review", 12 * DAY, 4.0, 5.0, 3, 0,
+            0, "good", 7, 0, 0L, 9 * DAY - DAY / 2,
+        )
+        assertEquals(0.5, FsrsTrainingDataQueries.elapsedDays(9 * DAY, halfDayAgo), 0.0)
     }
 
     @Test
