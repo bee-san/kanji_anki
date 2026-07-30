@@ -16,6 +16,10 @@ RESOURCE_ROOT = (
 GOAL165_ROOT = (
     ROOT / "app/src/test/resources/dev/bee/kanjianki/fixtures/goal165"
 )
+DATA_SQL_SCHEMA = (
+    ROOT
+    / "data-sql/src/main/resources/dev/bee/kanjianki/data/sql/schema-v34.sql"
+)
 
 
 def sha256(path: Path) -> str:
@@ -126,6 +130,12 @@ def portable_manifest(path: Path) -> dict[str, str]:
 
 
 class SchemaCorpusTest(unittest.TestCase):
+    def test_shared_schema_resource_matches_the_frozen_corpus(self) -> None:
+        self.assertEqual(
+            (RESOURCE_ROOT / "schema-v34.sql").read_bytes(),
+            DATA_SQL_SCHEMA.read_bytes(),
+        )
+
     def test_manifest_hashes_every_executable_resource(self) -> None:
         manifest = properties(RESOURCE_ROOT / "schema-v34.properties")
         self.assertEqual("1", manifest["manifest_format"])
