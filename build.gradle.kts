@@ -29,6 +29,7 @@ val sonarMainBinaries = listOf(
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
     rootPath("data-api/build/classes/kotlin/main"),
+    rootPath("data-sql/build/classes/kotlin/main"),
     rootPath("sync-engine/build/classes/kotlin/main"),
     rootPath("application/build/classes/kotlin/main"),
     rootPath("writing-core/build/classes/kotlin/main"),
@@ -51,6 +52,7 @@ val sonarTestBinaries = listOf(
     rootPath("data-api/build/classes/kotlin/test"),
     rootPath("data-api/build/classes/java/test"),
     rootPath("data-api/build/classes/kotlin/testFixtures"),
+    rootPath("data-sql/build/classes/kotlin/test"),
     rootPath("sync-engine/build/classes/kotlin/test"),
     rootPath("application/build/classes/kotlin/test"),
     rootPath("writing-core/build/classes/kotlin/test"),
@@ -73,6 +75,7 @@ val sonarCoveragePaths = buildList<String> {
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("data-sql/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-engine/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("application/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -270,6 +273,7 @@ val desktopCiTasks = listOf(
     ":domain:check",
     ":sync-domain:check",
     ":data-api:check",
+    ":data-sql:check",
     ":sync-engine:check",
     ":application:check",
     ":writing-core:check",
@@ -336,6 +340,13 @@ val fastCiTasks = listOf(
     ":data-api:test",
     ":data-api:jacocoTestReport",
     ":data-api:jacocoTestCoverageVerification",
+    ":data-sql:test",
+    ":data-sql:jacocoTestReport",
+    ":data-sql:jacocoTestCoverageVerification",
+    ":data-android:testDebugUnitTest",
+    ":data-android:jacocoDebugUnitTestReport",
+    ":data-android:compileDebugAndroidTestKotlin",
+    ":data-android:lintDebug",
     ":sync-engine:test",
     ":sync-engine:jacocoTestReport",
     ":sync-engine:jacocoTestCoverageVerification",
@@ -393,6 +404,8 @@ tasks.register("ciQuality") {
         ":domain:jar",
         ":sync-domain:jar",
         ":data-api:jar",
+        ":data-sql:jar",
+        ":data-android:compileDebugKotlin",
         ":sync-engine:jar",
         ":application:jar",
         ":writing-core:jar",
