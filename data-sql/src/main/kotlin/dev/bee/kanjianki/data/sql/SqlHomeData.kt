@@ -169,10 +169,20 @@ internal class SqlHomeData(
         ) { row -> row.textOrEmpty(0) }.orEmpty()
     }
 
-    private fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> {
+    internal fun activeDashboardRows(): List<RecordsImportModels.DashboardRow> =
+        activeDashboardRows(admittedOnly = true)
+
+    /**
+     * The scheduler-facing dashboard. [admittedOnly] mirrors the legacy split:
+     * Home shows only admitted manual sources (`true`), while the Study queue
+     * surfaces every active manual source candidate (`false`).
+     */
+    internal fun activeDashboardRows(
+        admittedOnly: Boolean,
+    ): List<RecordsImportModels.DashboardRow> {
         val suspended = locallySuspendedKanji()
         val providerRows = dashboardRows(excludeLocallySuspended = suspended.isNotEmpty())
-        val sources = manualSources(admittedOnly = true)
+        val sources = manualSources(admittedOnly)
             .filterNot { it.candidate.literal in suspended }
         if (sources.isEmpty()) return providerRows
 
@@ -333,7 +343,7 @@ internal class SqlHomeData(
         return if (item.hasSimilarKanji == hasSimilar) item else item.withHasSimilarKanji(hasSimilar)
     }
 
-    private fun studyItemsForKanji(
+    internal fun studyItemsForKanji(
         kanji: Collection<String>,
     ): List<RecordsStudyModels.StudyItem> {
         val keys = kanji.filter(String::isNotBlank).distinct().sorted()
@@ -358,7 +368,7 @@ internal class SqlHomeData(
         return annotateConditionalRungs(items)
     }
 
-    private fun annotateConditionalRungs(
+    internal fun annotateConditionalRungs(
         items: List<RecordsStudyModels.StudyItem>,
     ): List<RecordsStudyModels.StudyItem> {
         if (items.isEmpty()) return items
@@ -441,7 +451,7 @@ internal class SqlHomeData(
             )
         }
 
-    private fun latestSuccessfulSyncAtMillis(): Long? =
+    internal fun latestSuccessfulSyncAtMillis(): Long? =
         session.queryOneOrNull(
             """
             SELECT finished_at
@@ -453,7 +463,7 @@ internal class SqlHomeData(
             bind = { bindText(1, STATUS_SUCCESS) },
         ) { row -> row.long(0) }
 
-    private fun consecutiveFailedSyncCount(): Int =
+    internal fun consecutiveFailedSyncCount(): Int =
         session.queryOneOrNull(
             """
             SELECT COUNT(*)
@@ -469,7 +479,7 @@ internal class SqlHomeData(
             },
         ) { row -> row.long(0).coerceAtLeast(0).toInt() } ?: 0
 
-    private fun studyStreak(nowMillis: Long): StudyStreakSnapshot {
+    internal fun studyStreak(nowMillis: Long): StudyStreakSnapshot {
         val today = LocalDayPolicy.localDayStart(nowMillis)
         val rows = session.queryList(
             """
@@ -501,7 +511,7 @@ internal class SqlHomeData(
         )
     }
 
-    private fun dueWritingRepairs(
+    internal fun dueWritingRepairs(
         nowMillis: Long,
     ): List<RecordsImportModels.SimilarKanjiWritingRepair> =
         session.queryList(
@@ -531,7 +541,7 @@ internal class SqlHomeData(
             .sorted()
             .toList()
 
-    private fun similarPairsForKanji(
+    internal fun similarPairsForKanji(
         kanji: String,
     ): List<RecordsImportModels.SimilarKanjiPair> {
         val normalized = TextUtil.normalizeSingleKanji(kanji)
@@ -561,7 +571,7 @@ internal class SqlHomeData(
             map = ::similarPair,
         )
 
-    private fun wrongPickCounts(nowMillis: Long): Map<String, Map<String, Int>> {
+    internal fun wrongPickCounts(nowMillis: Long): Map<String, Map<String, Int>> {
         val counts = LinkedHashMap<String, MutableMap<String, Int>>()
         session.queryList(
             """

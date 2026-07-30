@@ -484,7 +484,19 @@ class SqlSettingsRepository(
             if (value > 0) value else fallback
     }
 
-    private companion object {
+    internal companion object {
+        /**
+         * Reads the typed settings snapshot within an existing read scope,
+         * without the read-repair write-back that [load] performs. Shared with
+         * the Study queue read so both surfaces derive settings identically.
+         */
+        fun readSnapshot(scope: SqlReadScope): SettingsSnapshot {
+            val values = scope.queryList("SELECT key, value FROM settings ORDER BY key") { row ->
+                row.text(0) to row.text(1)
+            }.toMap(LinkedHashMap())
+            return SnapshotSettingsStore(values).toSnapshot()
+        }
+
         const val SUSPENDED_RANK_MIN_KEY = "suspended_rank_min"
         const val SUSPENDED_RANK_MAX_KEY = "suspended_rank_max"
         const val ADAPTIVE_LOAD_MAX_ITEMS_KEY = "adaptive_load_max_items"
