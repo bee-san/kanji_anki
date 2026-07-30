@@ -482,6 +482,64 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun finalCardContinueDoesNotRetryTheTerminalStudyRouteForever() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val session = flashcardSession()
+        val item = requireNotNull(session.item)
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = feedback.snapshot(),
+                    kanji = item.kanji,
+                    taskType = session.taskType,
+                    writingRequired = session.writingRequired,
+                    prompt = session.prompt,
+                    answerSignature = item.answerSignature,
+                    schedulerRevision = item.schedulerRevision,
+                ),
+            ),
+        )
+        requireNotNull(recoveryStore.continuePending(applied))
+        assertTrue(feedback.tryContinue())
+        activity.studySessionTracker.setTargetCount(1)
+        val completedKey = StudySessionTracker.sessionTaskKey(session)
+        activity.studySessionTracker.markTaskCompleted(completedKey)
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { task ->
+                    // Reproduce the captured device race: a no-visible-change tracker
+                    // publication advances the CAS revision after terminal compute.
+                    activity.studySessionTracker.registerTaskShown(completedKey)
+                    mainTasks.addLast(task)
+                },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+
+        activity.renderStudy()
+        backgroundTasks.removeFirst().run()
+        mainTasks.removeFirst().run()
+
+        assertTrue("the terminal render must not enqueue a retry", backgroundTasks.isEmpty())
+        val done = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertTrue(done.isComplete)
+        assertEquals(StudyRouteCompletionReason.HARD_CAP, done.completionReason)
+        preferences.edit().clear().commit()
+    }
+
+    @Test
     fun processRestartRejectsContinuedHandoffWithoutExactReviewEvidence() {
         val restored = restoreContinuedHandoffAfterProcessRestart(
             hasNextCard = true,

@@ -691,6 +691,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     private fun acceptedCandidateRender(
         candidate: StudyLoadCandidate,
         publishTracker: Boolean = true,
+        acceptCurrentTerminalOnTrackerRace: Boolean = false,
         render: () -> Unit,
     ): () -> Unit = {
         val acceptedRoute = if (publishTracker) {
@@ -698,14 +699,23 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         } else {
             study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
         }
-        if (acceptedRoute != null) {
+        val currentRoute = if (acceptedRoute == null && publishTracker) {
+            study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
+        } else {
+            null
+        }
+        // A terminal loader does not need to publish staged tracker internals when the
+        // still-current canonical route already proves completion. Retrying that CAS
+        // race can livelock because each retry can lose to another tracker revision.
+        val terminalRaceAccepted = acceptCurrentTerminalOnTrackerRace &&
+            currentRoute?.canComplete == true &&
+            study.studySessionTracker.hasSameStateAs(candidate.tracker)
+        if (acceptedRoute != null || terminalRaceAccepted) {
             if (publishTracker && candidate.recoveredTargetReconciliationPending) {
                 study.recoveredStudyRunNeedsTargetReconciliation = false
             }
             render()
-        } else if (publishTracker &&
-            study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute) != null
-        ) {
+        } else if (currentRoute != null) {
             candidate.retry()
         }
     }
@@ -745,7 +755,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         advancingRecovery: StoredPendingStudyRecovery?,
         candidate: StudyLoadCandidate,
         render: (StudyRouteSnapshot) -> Unit,
-    ): () -> Unit = acceptedCandidateRender(candidate) {
+    ): () -> Unit = acceptedCandidateRender(
+        candidate,
+        acceptCurrentTerminalOnTrackerRace = true,
+    ) {
         val terminalEvidence = study.studySessionViewModel.acceptedRouteSnapshot()
         if (advancingRecovery == null) {
             render(terminalEvidence)

@@ -40,6 +40,21 @@ class StudySessionTrackerTest {
     }
 
     @Test
+    fun stateEquivalenceIgnoresRevisionButDetectsMeaningfulChanges() {
+        val tracker = StudySessionTracker()
+        val completedKey = "session:kanji_meaning:裂:token"
+        tracker.setTargetCount(1)
+        tracker.markTaskCompleted(completedKey)
+        val staged = tracker.copyForStaging()
+
+        tracker.registerTaskShown(completedKey)
+
+        assertTrue("duplicate publication changes revision only", tracker.hasSameStateAs(staged))
+        staged.setTargetCount(2)
+        assertFalse("target reconciliation is meaningful state", tracker.hasSameStateAs(staged))
+    }
+
+    @Test
     fun stagedCommitCannotClobberCanonicalMutationWaitingToPublish() {
         val blockFirstPublication = AtomicBoolean(false)
         val mutationCommitted = CountDownLatch(1)
