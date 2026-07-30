@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":sync-domain"))
     implementation(libs.kotlinx.coroutines.core)
     testFixturesImplementation(libs.junit)
+    testImplementation(testFixtures(project(":data-api")))
     testImplementation(libs.androidx.sqlite.bundled)
     testImplementation(libs.kotlinx.coroutines.test)
 }
