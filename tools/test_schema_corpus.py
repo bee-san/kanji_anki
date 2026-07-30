@@ -61,9 +61,10 @@ def schema_objects(connection: sqlite3.Connection) -> dict[tuple[str, str], str]
     }
 
 
-def historical_rows() -> list[list[str]]:
+def historical_rows(
+    registry: Path = RESOURCE_ROOT / "historical-databases.tsv",
+) -> list[list[str]]:
     rows: list[list[str]] = []
-    registry = RESOURCE_ROOT / "historical-databases.tsv"
     for raw_line in registry.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#"):
@@ -73,6 +74,55 @@ def historical_rows() -> list[list[str]]:
             raise AssertionError(f"Malformed historical database row: {raw_line}")
         rows.append(fields)
     return rows
+
+
+def database_semantics(
+    path: Path,
+    unpacked: Path,
+) -> tuple[int, dict[tuple[str, str], str], list[tuple[str, list[str], list[tuple]]]]:
+    unpacked.write_bytes(gzip.decompress(path.read_bytes()))
+    connection = sqlite3.connect(unpacked)
+    try:
+        tables = [
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"
+            )
+        ]
+        contents = []
+        for table in tables:
+            quoted_table = '"' + table.replace('"', '""') + '"'
+            columns = [
+                str(row[1])
+                for row in connection.execute(f"PRAGMA table_info({quoted_table})")
+            ]
+            order_by = ", ".join(
+                '"' + column.replace('"', '""') + '"' for column in columns
+            )
+            rows = list(
+                connection.execute(
+                    f"SELECT * FROM {quoted_table} ORDER BY {order_by}"
+                )
+            )
+            contents.append((table, columns, rows))
+        return (
+            int(connection.execute("PRAGMA user_version").fetchone()[0]),
+            schema_objects(connection),
+            contents,
+        )
+    finally:
+        connection.close()
+
+
+def portable_manifest(path: Path) -> dict[str, str]:
+    manifest = properties(path)
+    database_keys = sorted(
+        candidate for candidate in manifest if candidate.startswith("historical_v")
+    )
+    for key in ("historical_registry", *database_keys):
+        resource, _digest = manifest[key].split("|", 1)
+        manifest[key] = resource
+    return manifest
 
 
 class SchemaCorpusTest(unittest.TestCase):
@@ -105,7 +155,7 @@ class SchemaCorpusTest(unittest.TestCase):
         self.assertEqual(manifest["canonical_source_commit"], source_row[3])
         self.assertEqual(source_hash, sha256(ROOT / "app/src/test/resources" / source_resource))
 
-    def test_generated_corpus_is_byte_reproducible(self) -> None:
+    def test_generated_corpus_is_semantically_reproducible(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "goal178"
             generate(ROOT, output)
@@ -124,11 +174,43 @@ class SchemaCorpusTest(unittest.TestCase):
                 ],
                 generated_names,
             )
-            for name in generated_names:
+            for name in (
+                "schema-v34-migration-digests.properties",
+                "schema-v34.sql",
+            ):
                 self.assertEqual(
                     (RESOURCE_ROOT / name).read_bytes(),
                     (output / name).read_bytes(),
                     name,
+                )
+            self.assertEqual(
+                portable_manifest(RESOURCE_ROOT / "schema-v34.properties"),
+                portable_manifest(output / "schema-v34.properties"),
+            )
+
+            committed_rows = historical_rows()
+            generated_rows = historical_rows(output / "historical-databases.tsv")
+            self.assertEqual(len(committed_rows), len(generated_rows))
+            unpacked = output / "unpacked"
+            unpacked.mkdir()
+            for committed, generated in zip(committed_rows, generated_rows):
+                self.assertEqual(
+                    committed[:7] + committed[8:],
+                    generated[:7] + generated[8:],
+                    committed[0],
+                )
+                committed_database = ROOT / "app/src/test/resources" / committed[6]
+                generated_database = output / Path(generated[6]).name
+                self.assertEqual(
+                    database_semantics(
+                        committed_database,
+                        unpacked / f"committed-{committed[0]}.db",
+                    ),
+                    database_semantics(
+                        generated_database,
+                        unpacked / f"generated-{generated[0]}.db",
+                    ),
+                    committed[0],
                 )
 
     def test_historical_databases_have_real_old_shapes_and_fixture_rows(self) -> None:

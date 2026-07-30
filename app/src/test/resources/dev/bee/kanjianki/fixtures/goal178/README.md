@@ -8,8 +8,10 @@ This directory is the executable Android/desktop persistence contract.
   `LocalStore`.
 - `historical-*.db.gz` files are genuine SQLite databases created from the
   historical DDL pinned under `goal165`, populated while still at that version,
-  and then compressed deterministically. They are not current databases with a
-  lowered `user_version`.
+  and then compressed with deterministic gzip metadata. SQLite may choose a
+  different byte-level page layout across engine versions, so regeneration is
+  checked by schema/data dump and `user_version`, not by generated file bytes.
+  They are not current databases with a lowered `user_version`.
 - `historical-databases.tsv` pins source and database hashes.
 - `migration-dependencies.tsv` records every migration's clock, defaults,
   input-data, and Android SQLite dependency for Goal 179 injection.
