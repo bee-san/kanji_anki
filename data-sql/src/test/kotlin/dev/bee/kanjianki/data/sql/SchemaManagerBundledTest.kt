@@ -51,6 +51,19 @@ class SchemaManagerBundledTest {
     }
 
     @Test
+    fun systemMigrationContextUsesTheWallClockAndDefaultSettings() {
+        val before = System.currentTimeMillis()
+        val context = MigrationContext.system()
+        val observed = context.clock.nowMillis()
+        val after = System.currentTimeMillis()
+
+        assertTrue("system clock $observed was outside $before..$after", observed in before..after)
+        assertEquals("Kiku", context.defaults.settings.modelName)
+        assertEquals(21, context.defaults.settings.matureDays)
+        assertEquals("stats_source_version", context.defaults.statsSourceVersionKey)
+    }
+
+    @Test
     fun historicalCorpusMigratesToTheSameSchemaAndRepresentativeRows() =
         runBlocking {
             val canonicalPath = temporaryDatabase("canonical")
@@ -314,6 +327,72 @@ class SchemaManagerBundledTest {
                     FROM similar_kanji_choice_state
                     WHERE target_kanji='体'
                     """.trimIndent(),
+                ),
+            )
+
+            database.write {
+                execute(
+                    """
+                    UPDATE similar_kanji_choice_state
+                    SET due_at=101, passed_at=102, last_reviewed_at=103,
+                        correct_count=4, wrong_count=5, first_seen_at=99
+                    WHERE target_kanji='休'
+                    """.trimIndent(),
+                )
+                MigrationBackfills.similarChoiceStates(this, migrationContext())
+            }
+
+            assertEquals(
+                101L,
+                scalarLong(
+                    database,
+                    "SELECT due_at FROM similar_kanji_choice_state WHERE target_kanji='休'",
+                ),
+            )
+            assertEquals(
+                102L,
+                scalarLong(
+                    database,
+                    "SELECT passed_at FROM similar_kanji_choice_state WHERE target_kanji='休'",
+                ),
+            )
+            assertEquals(
+                103L,
+                scalarLong(
+                    database,
+                    """
+                    SELECT last_reviewed_at
+                    FROM similar_kanji_choice_state
+                    WHERE target_kanji='休'
+                    """.trimIndent(),
+                ),
+            )
+            assertEquals(
+                4L,
+                scalarLong(
+                    database,
+                    "SELECT correct_count FROM similar_kanji_choice_state WHERE target_kanji='休'",
+                ),
+            )
+            assertEquals(
+                5L,
+                scalarLong(
+                    database,
+                    "SELECT wrong_count FROM similar_kanji_choice_state WHERE target_kanji='休'",
+                ),
+            )
+            assertEquals(
+                99L,
+                scalarLong(
+                    database,
+                    "SELECT first_seen_at FROM similar_kanji_choice_state WHERE target_kanji='休'",
+                ),
+            )
+            assertEquals(
+                FIXED_NOW,
+                scalarLong(
+                    database,
+                    "SELECT last_seen_at FROM similar_kanji_choice_state WHERE target_kanji='休'",
                 ),
             )
         }
