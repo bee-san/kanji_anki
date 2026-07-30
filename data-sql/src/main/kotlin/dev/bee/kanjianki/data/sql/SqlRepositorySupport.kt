@@ -25,6 +25,37 @@ internal fun SqlSession.executeBound(
     }
 }
 
+/**
+ * Inserts one row into [table] from an ordered column→value map, building the
+ * `INSERT OR <conflict>` statement and binding each value by its runtime type.
+ * A `null` value binds SQL NULL. Mirrors the legacy ContentValues inserts.
+ */
+internal fun SqlSession.insertRow(
+    table: String,
+    conflict: String,
+    values: Map<String, Any?>,
+) {
+    val columns = values.keys.toList()
+    val placeholders = columns.joinToString(",") { "?" }
+    prepare(
+        "INSERT OR $conflict INTO $table(${columns.joinToString(",")}) VALUES ($placeholders)",
+    ).use { statement ->
+        columns.forEachIndexed { index, column ->
+            val position = index + 1
+            when (val value = values[column]) {
+                null -> statement.bindNull(position)
+                is String -> statement.bindText(position, value)
+                is Int -> statement.bindLong(position, value.toLong())
+                is Long -> statement.bindLong(position, value)
+                is Boolean -> statement.bindLong(position, if (value) 1L else 0L)
+                is Double -> statement.bindDouble(position, value)
+                else -> error("Unsupported bind type for column $column: ${value::class}")
+            }
+        }
+        statement.execute()
+    }
+}
+
 internal fun <T> SqlSession.queryList(
     sql: String,
     bind: SqlStatement.() -> Unit = {},

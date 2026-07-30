@@ -561,7 +561,7 @@ internal class SqlHomeData(
         )
     }
 
-    private fun allSimilarPairs(): List<RecordsImportModels.SimilarKanjiPair> =
+    internal fun allSimilarPairs(): List<RecordsImportModels.SimilarKanjiPair> =
         session.queryList(
             """
             SELECT *
