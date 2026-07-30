@@ -3937,6 +3937,60 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
 - Gaps/blockers: none. Goal 182 (port sync publication/history to `:data-sql`)
   is next.
 
+### Goal 182 completion evidence (2026-07-30)
+
+- Started from: `9ff5a90b` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `7a81ec15 data: port sync publication, history, and write-back to
+  shared SQL`; `7fa78605 test: prove sync publication parity and rollback across
+  drivers`.
+- Implemented: driver-neutral `SyncRepository` in `:data-sql`. `SqlSyncPublisher`
+  stages the full provider mirror (source notes/cards + suspended archive),
+  suspended imports, import rule/decision audit, historical card/note/kanji
+  snapshots, dashboard rows + examples, `KanjiInventoryBuilder` inventory,
+  similar-pair and similar-choice rebuilds, and the reading-usage/pool rebuild,
+  then reconciles and finalizes the pending study queue — all inside one
+  transaction. `SqlSyncRepository` orchestrates `publish` (invoking the caller's
+  `SyncQueuePlanner` on a staged snapshot exactly once), `loadStoredState`,
+  `recordFailure`, `updateRemovalMessage`, and the post-commit repaired
+  write-back/handoff. `SqlRepairEvidenceReader` ports the repair-evidence input
+  pipeline shared by the queue-planning snapshot and the write-back proposal;
+  `SqlRepairedWriteBackData` ports the proposal/preview/record. Timeline inserts
+  use `INSERT OR IGNORE` on the `dedupe_key` unique index for parity with the
+  legacy `CONFLICT_IGNORE`. Android production stays on `LocalStore`.
+- Validation: `SyncRepositoryConformanceSuite` (in `:data-api` testFixtures) runs
+  from one fixture against both the legacy Android `SqliteSyncRepository`
+  (Robolectric) and the shared `SqlSyncRepository` (bundled SQLite), pinning
+  empty stored state, an atomic seeded publish that finalizes exactly one
+  successful run, single-planner-invocation, failure/removal history, and the
+  empty-store write-back/handoff surface. `SqlSyncPublicationFaultInjectionTest`
+  proves a planner failure rolls back the staged mirror and pending history
+  (no mirror, no items, no successful run), and that a repeated rich publish
+  (suspended import + similar index + two similar-pair endpoints) reloads
+  suspended imports and similar-choice state. Gates: `:data-sql:check`,
+  `:data-api:check`, `:core:check`, and the full `:app:testDebugUnitTest` all
+  `BUILD SUCCESSFUL`, with `:data-sql`'s 100% class-coverage gate met. Commands
+  run with `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk`.
+- Live gates: deferred to Goal 184, consistent with Goals 180–181. The strict
+  live AnkiDroid gate validates the *runtime* sync/provider path; that path is
+  unchanged here because no production composition switched — `:data-sql`'s
+  `SqlSyncRepository` is exercised only through tests and Android production
+  still publishes through `LocalStore`. The live gate is required at Goal 184
+  when composition flips to the shared SQL sync path.
+- Decisions: the publish transaction mirrors the legacy `saveSuccessfulSync` →
+  `commitPendingSyncStudyItems` chain step-for-step (pending run, mirror,
+  history, rebuilds, then queue commit that flips pending→success), so a
+  queue-build failure cannot expose a new mirror on stale scheduler state. The
+  suite pins concrete outcomes rather than comparing implementations to each
+  other. Similar-choice/repair-queue state stays compatibility-only.
+- Rollback: revert `7fa78605` then `7a81ec15`; both are additive (new
+  `:data-sql` sync repository plus testFixtures suite and tests) and
+  unreferenced by production composition.
+- Gaps/blockers: the Goal 184 composition switch must run the strict live
+  AnkiDroid gate before shipping the shared sync path. Goal 183 (port remaining
+  persistence and reference assets) is next.
+
 Template:
 
 ```md
