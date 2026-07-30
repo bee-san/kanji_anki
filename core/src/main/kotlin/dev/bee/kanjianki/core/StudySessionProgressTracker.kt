@@ -52,6 +52,11 @@ class StudySessionProgressTracker {
         restoreState(synchronized(staged.lock) { staged.stateLocked() })
     }
 
+    fun hasSameStateAs(other: StudySessionProgressTracker): Boolean {
+        val otherState = synchronized(other.lock) { other.stateLocked() }
+        return synchronized(lock) { stateLocked() == otherState }
+    }
+
     private fun stateLocked(): State = State(
         completedCount = completedCount,
         targetCount = targetCount,

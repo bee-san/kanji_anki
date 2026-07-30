@@ -92,6 +92,27 @@ internal class StudySessionTracker(
         return replaced
     }
 
+    fun hasSameStateAs(other: StudySessionTracker): Boolean {
+        val otherState = synchronized(other.lock) { other.stateLocked() }
+        return synchronized(lock) { stateLocked().hasSameStateAs(otherState) }
+    }
+
+    private fun State.hasSameStateAs(other: State): Boolean =
+        progressTracker.hasSameStateAs(other.progressTracker) &&
+            plannedSessionTaskKeys == other.plannedSessionTaskKeys &&
+            completedPlannedSessionTaskKeys == other.completedPlannedSessionTaskKeys &&
+            activeTask.hasSameStateAs(other.activeTask)
+
+    private fun ActiveStudyTask?.hasSameStateAs(other: ActiveStudyTask?): Boolean = when {
+        this == null || other == null -> this == null && other == null
+        else -> taskKey == other.taskKey &&
+            kanji == other.kanji &&
+            taskType == other.taskType &&
+            startedAtMillis == other.startedAtMillis &&
+            activeElapsedMillis == other.activeElapsedMillis &&
+            visibleSinceElapsedMillis == other.visibleSinceElapsedMillis
+    }
+
     private fun advanceRevisionLocked() {
         check(revision < Long.MAX_VALUE) { "Study-session tracker revision overflow" }
         revision++
