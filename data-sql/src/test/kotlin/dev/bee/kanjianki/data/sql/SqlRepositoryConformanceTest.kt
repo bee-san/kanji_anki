@@ -5,10 +5,12 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.data.HomeRepository
 import dev.bee.kanjianki.data.SettingsRepository
 import dev.bee.kanjianki.data.StudyRepository
+import dev.bee.kanjianki.data.SyncRepository
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceFixture
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceHost
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceSuite
 import dev.bee.kanjianki.data.conformance.StudyRepositoryConformanceSuite
+import dev.bee.kanjianki.data.conformance.SyncRepositoryConformanceSuite
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
@@ -57,6 +59,16 @@ class SqlRepositoryConformanceTest {
         }
     }
 
+    @Test
+    fun sqlSyncRepositoryPassesSharedContract() = runBlocking {
+        val host = SqlConformanceHost()
+        try {
+            SyncRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
     private inner class SqlConformanceHost : RepositoryConformanceHost {
         private var database: DedicatedWriterSqlDatabase = freshDatabase()
         private val invalidation = SqlProjectionInvalidation()
@@ -69,6 +81,9 @@ class SqlRepositoryConformanceTest {
 
         override val study: StudyRepository
             get() = SqlStudyRepository(database, invalidation)
+
+        override val sync: SyncRepository
+            get() = SqlSyncRepository(database, invalidation)
 
         override suspend fun reset() {
             database.close()

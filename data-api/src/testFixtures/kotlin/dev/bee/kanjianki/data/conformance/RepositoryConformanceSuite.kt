@@ -17,6 +17,7 @@ import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.data.StoreResult
 import dev.bee.kanjianki.data.StudyRepository
+import dev.bee.kanjianki.data.SyncRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -37,6 +38,8 @@ interface RepositoryConformanceHost {
     val settings: SettingsRepository
 
     val study: StudyRepository
+
+    val sync: SyncRepository
 
     /** Discards all data and any in-memory projection/settings caching. */
     suspend fun reset()
