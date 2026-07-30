@@ -423,6 +423,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             choiceData.inventory,
             meaningChoiceRandom,
             choiceData.wrongPickCounts,
+            home.currentDictionaryLookup(),
         )
     }
 

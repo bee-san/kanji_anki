@@ -257,6 +257,21 @@ class StudyTextCopyTest {
     }
 
     @Test
+    fun meaningKanjiChoiceQuestionCleansInlineJmdictSenseMetadataWhenDictionaryGlossIsUnavailable() {
+        val card = RecordsImportModels.MeaningKanjiChoiceCard(
+            "招",
+            "Invitation 1. [★, priority form] nounsuru transitive invitation",
+            "しょうたい",
+            listOf("丘", "招", "博", "勧"),
+        )
+
+        assertEquals(
+            "Which kanji means Invitation?",
+            StudyTextCopy.meaningKanjiChoiceQuestion(DictionaryLookup.empty(), card, "fallback"),
+        )
+    }
+
+    @Test
     fun meaningKanjiChoiceCopyTranslatesToJapaneseLocale() {
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "静",
@@ -460,7 +475,7 @@ class StudyTextCopyTest {
     }
 
     @Test
-    fun meaningKanjiChoiceCopyUsesTestedCompoundMeaningOverIndividualKanjiGloss() {
+    fun meaningKanjiChoiceCopyUsesKanjidicGlossOverTestedCompoundMeaning() {
         val lookup = DictionaryLookup.fromKanjiEntries(listOf(kanjiEntry("脱", "undress", "removing")))
         val card = RecordsImportModels.MeaningKanjiChoiceCard(
             "脱",
@@ -469,9 +484,9 @@ class StudyTextCopyTest {
             listOf("脱", "弱", "欠", "疲"),
         )
 
-        assertEquals("Which kanji means Loss of strength exhaustion weakness?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "fallback"))
-        assertEquals("Correct. 脱 means Loss of strength exhaustion weakness.", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", true))
-        assertEquals("Answer: 脱 · Loss of strength exhaustion weakness", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", false))
+        assertEquals("Which kanji means Undress, removing?", StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "fallback"))
+        assertEquals("Correct. 脱 means Undress, removing.", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", true))
+        assertEquals("Answer: 脱 · Undress, removing", StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "fallback", false))
     }
 
     @Test

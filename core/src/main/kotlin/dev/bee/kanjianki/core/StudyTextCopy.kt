@@ -774,11 +774,12 @@ object StudyTextCopy {
         prompt: String?,
         maxChars: Int,
     ): String {
-        val testedMeaning = StudyCueFormatter.cleanMeaningText(card?.primaryMeaning ?: prompt)
-        if (testedMeaning.isNotEmpty()) {
-            return cleanLearnerText(testedMeaning, "", maxChars)
-        }
-        return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, prompt, maxChars)
+        // Dictionary-first: meaning_kanji asks for the kanji's KANJIDIC gloss, not
+        // the tested word's JMdict compound gloss (revert of PR #87's preference).
+        // canonicalKanjiMeaning returns the KANJIDIC gloss when the kanji is in the
+        // dictionary and falls back to the word gloss/prompt otherwise. The question
+        // and both result branches share this helper, so they stay consistent.
+        return canonicalKanjiMeaning(dictionaryLookup, card?.targetKanji, card?.primaryMeaning ?: prompt, maxChars)
     }
 
     private fun sessionClueRawText(session: RecordsSchedulerModels.StudySession?): String? {

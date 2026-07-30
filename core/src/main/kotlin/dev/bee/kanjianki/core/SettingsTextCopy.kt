@@ -102,6 +102,12 @@ object SettingsTextCopy {
     fun automaticUpdatesToggleLabel(enabled: Boolean): String = SettingsAutomationTextCopy.automaticUpdatesToggleLabel(enabled)
 
     @JvmStatic
+    fun betaUpdatesToggleLabel(enabled: Boolean): String = SettingsAutomationTextCopy.betaUpdatesToggleLabel(enabled)
+
+    @JvmStatic
+    fun betaUpdatesDescription(): String = SettingsAutomationTextCopy.betaUpdatesDescription()
+
+    @JvmStatic
     fun backToSettingsLabel(): String = SettingsAutomationTextCopy.backToSettingsLabel()
 
     fun sectionOpenDescription(title: String): String = SettingsSectionTextCopy.sectionOpenDescription(title)

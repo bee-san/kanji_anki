@@ -57,6 +57,8 @@ class LegacyDeviceSettingsMigrationTest {
             store.putIntSetting(DeviceSettingKeys.reminderDailyOverrideUsedToday.storageName, 1)
             store.putLongSetting(DeviceSettingKeys.autoSyncNextRunAt.storageName, 42L)
             store.putStringSetting(DeviceSettingKeys.autoUpdateLastResult.storageName, "ready")
+            store.putIntSetting(DeviceSettingKeys.betaUpdatesEnabled.storageName, 1)
+            store.putIntSetting(DeviceSettingKeys.flashcardSwipeGestureEnabled.storageName, 0)
             store.putIntSetting(LocalStoreBase.SETTING_STUDY_AHEAD_MINUTES, 15)
         }
 
@@ -64,6 +66,13 @@ class LegacyDeviceSettingsMigrationTest {
             assertEquals(7, store.reminderSettings().hour)
             assertEquals(42L, store.autoSyncSettings().nextRunAt)
             assertEquals("ready", store.autoUpdateStatus().lastResult)
+            assertTrue(
+                store.deviceSettingsStore().read(DeviceSettingKeys.betaUpdatesEnabled) == true,
+            )
+            assertFalse(
+                store.deviceSettingsStore()
+                    .read(DeviceSettingKeys.flashcardSwipeGestureEnabled) ?: true,
+            )
             assertTrue(
                 store.deviceSettingsStore()
                     .read(DeviceSettingKeys.reminderDailyOverrideUsedToday) == true,

@@ -69,15 +69,15 @@ class AppValueBehaviorTest {
         )
 
         assertEquals(
-            "Which kanji means Loss of strength exhaustion weakness?",
+            "Which kanji means Undress, remove?",
             StudyTextCopy.meaningKanjiChoiceQuestion(lookup, card, "Loss of strength exhaustion weakness")
         )
         assertEquals(
-            "Correct. 脱 means Loss of strength exhaustion weakness.",
+            "Correct. 脱 means Undress, remove.",
             StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", true)
         )
         assertEquals(
-            "Answer: 脱 · Loss of strength exhaustion weakness",
+            "Answer: 脱 · Undress, remove",
             StudyTextCopy.meaningKanjiChoiceResult(lookup, card, "Loss of strength exhaustion weakness", false)
         )
     }

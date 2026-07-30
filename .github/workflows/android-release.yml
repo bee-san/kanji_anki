@@ -248,6 +248,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
           ALLOW_ASSET_OVERWRITE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_asset_overwrite || false }}
+          AUTOMATIC_PRERELEASE: ${{ github.event_name == 'workflow_run' }}
         run: |
           set -euo pipefail
           release_tag='${{ needs.metadata.outputs.release_tag }}'
@@ -266,9 +267,17 @@ jobs:
             fi
             gh release upload "${upload_args[@]}"
           else
-            gh release create "${release_tag}" "${apk_path}" "${sha_path}" \
-              --title "${release_tag}" \
-              --target "${BUILD_SHA}" \
-              --generate-notes \
+            create_args=(
+              "${release_tag}"
+              "${apk_path}"
+              "${sha_path}"
+              --title "${release_tag}"
+              --target "${BUILD_SHA}"
+              --generate-notes
               --repo "${GITHUB_REPOSITORY}"
+            )
+            if [[ "${AUTOMATIC_PRERELEASE}" == "true" ]]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "${create_args[@]}"
           fi

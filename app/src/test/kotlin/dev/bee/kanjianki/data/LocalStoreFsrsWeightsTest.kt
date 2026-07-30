@@ -94,6 +94,26 @@ class LocalStoreFsrsWeightsTest {
     }
 
     @Test
+    fun personalizationIsEnabledByDefault() {
+        assertTrue(store.fsrsPersonalizationEnabled())
+    }
+
+    @Test
+    fun freshInstallAdoptsSuccessfulPersonalizedFit() {
+        val weights = validWeights()
+
+        val adopted = store.commitFsrsFitOutcome(
+            weightsToAdopt = weights,
+            summaryJson = "{\"adopted\":true}",
+            disabledSummaryJson = "{\"adopted\":false}",
+            preserveExistingWeights = false,
+        )
+
+        assertTrue(adopted)
+        assertArrayEquals(weights, store.schedulerFsrsWeights(), 0.0)
+    }
+
+    @Test
     fun toggleOffAndResetClearOnlyPersonalizationState() {
         val weights = validWeights()
         store.saveFsrsPersonalizationEnabled(true)

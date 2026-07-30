@@ -64,7 +64,7 @@ internal abstract class MainActivityGames : MainActivityMissingKanji() {
     fun gamesScreenModel(): GamesScreenModel {
         val data = currentGameData()
         val cards = if (data.hasKanji()) {
-            val available = gameEngine.availableModes(data.rows, data.inventory, data.pairs)
+            val available = gameEngine.availableModes(data.rows, data.inventory, data.pairs, dictionaryLookup = currentDictionaryLookup())
             KanjiGameEngine.GameMode.values().map { mode ->
                 val modeAvailable = available.contains(mode)
                 GamesModeCardModel(
@@ -103,7 +103,7 @@ internal abstract class MainActivityGames : MainActivityMissingKanji() {
             return
         }
         val data = currentGameData()
-        val question = gameEngine.nextQuestion(mode, data.rows, data.inventory, data.pairs, gameRandom)
+        val question = gameEngine.nextQuestion(mode, data.rows, data.inventory, data.pairs, gameRandom, dictionaryLookup = currentDictionaryLookup())
         if (question == null) {
             renderGameUnavailable(mode)
             return

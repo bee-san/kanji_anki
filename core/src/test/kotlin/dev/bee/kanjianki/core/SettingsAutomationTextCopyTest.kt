@@ -41,6 +41,12 @@ class SettingsAutomationTextCopyTest {
             SettingsAutomationTextCopy.autoUpdateInBackgroundLabel(),
         )
         assertEquals("Turn off updates", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
+        assertEquals("Beta builds: Off", SettingsAutomationTextCopy.betaUpdatesToggleLabel(false))
+        assertEquals("Beta builds: On", SettingsAutomationTextCopy.betaUpdatesToggleLabel(true))
+        assertEquals(
+            "Get prerelease builds from GitHub. Beta builds may be unstable.",
+            SettingsAutomationTextCopy.betaUpdatesDescription(),
+        )
         assertEquals("Back to settings", SettingsAutomationTextCopy.backToSettingsLabel())
     }
 
@@ -122,6 +128,12 @@ class SettingsAutomationTextCopyTest {
             assertEquals("バックグラウンドで自動更新", SettingsAutomationTextCopy.autoUpdateInBackgroundLabel())
             assertEquals("更新をオフにする", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(true))
             assertEquals("更新をオンにする", SettingsAutomationTextCopy.automaticUpdatesToggleLabel(false))
+            assertEquals("ベータ版: オフ", SettingsAutomationTextCopy.betaUpdatesToggleLabel(false))
+            assertEquals("ベータ版: オン", SettingsAutomationTextCopy.betaUpdatesToggleLabel(true))
+            assertEquals(
+                "GitHubからプレリリース版を取得します。ベータ版は不安定な場合があります。",
+                SettingsAutomationTextCopy.betaUpdatesDescription(),
+            )
             assertEquals("設定に戻る", SettingsAutomationTextCopy.backToSettingsLabel())
             assertEquals("通知がブロックされています", SettingsAutomationTextCopy.settingsReminderSummary(true, true, "21:05"))
             assertEquals("オフ", SettingsAutomationTextCopy.settingsReminderSummary(false, false, "21:05"))

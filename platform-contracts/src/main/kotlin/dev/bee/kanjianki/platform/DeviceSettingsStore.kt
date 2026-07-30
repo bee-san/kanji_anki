@@ -78,10 +78,12 @@ object DeviceSettingKeys {
     val autoUpdateLastVersion = stringKey("auto_update_last_version")
     val autoUpdatePendingPackage = stringKey("auto_update_pending_apk")
     val autoUpdatePendingMessage = stringKey("auto_update_pending_message")
+    val betaUpdatesEnabled = booleanKey("beta_updates_enabled")
     val updateCheckFailedAt = longKey("update_check_failed_at")
     val updatePermissionPromptShown = booleanKey("update_permission_prompt_shown")
     val updatePermissionPromptLastVersion = stringKey("update_permission_prompt_last_version")
     val debugLogEnabled = booleanKey("debug_log_enabled")
+    val flashcardSwipeGestureEnabled = booleanKey("flashcard_swipe_gesture_enabled")
 
     val providerEndpoint = stringKey("provider_endpoint")
     val providerPermissionReference = stringKey("provider_permission_reference")

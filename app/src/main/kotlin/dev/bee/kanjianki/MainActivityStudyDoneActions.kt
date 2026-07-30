@@ -40,7 +40,8 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 emptyList(),
                 false,
                 true,
-                true
+                true,
+                true,
             ),
             StudyRouteCompletionReason.NO_SESSION,
             expectedRoute,
@@ -205,8 +206,13 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
         showDoneActions: Boolean,
         showBackHome: Boolean,
         backHomePrimary: Boolean,
+        offerStudyMoreNewCards: Boolean = false,
     ): StudyDoneScreenModel {
-        val available = if (showDoneActions) availableStudyMoreNewCards() else 0
+        val available = if (showDoneActions || offerStudyMoreNewCards) {
+            availableStudyMoreNewCards()
+        } else {
+            0
+        }
         return StudyDoneScreenModel(
             StudyTextCopy.practiceLabel(),
             title,

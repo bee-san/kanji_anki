@@ -92,10 +92,12 @@ internal class LegacyDeviceSettingsMigration(
             DeviceSettingKeys.autoUpdateLastVersion,
             DeviceSettingKeys.autoUpdatePendingPackage,
             DeviceSettingKeys.autoUpdatePendingMessage,
+            DeviceSettingKeys.betaUpdatesEnabled,
             DeviceSettingKeys.updateCheckFailedAt,
             DeviceSettingKeys.updatePermissionPromptShown,
             DeviceSettingKeys.updatePermissionPromptLastVersion,
             DeviceSettingKeys.debugLogEnabled,
+            DeviceSettingKeys.flashcardSwipeGestureEnabled,
         )
         val LEGACY_STORAGE_NAMES: List<String> = LEGACY_KEYS.map { it.storageName }
         private val MIGRATION_LOCK = Any()

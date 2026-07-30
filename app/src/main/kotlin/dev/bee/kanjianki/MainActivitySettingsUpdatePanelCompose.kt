@@ -125,6 +125,17 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
                 shape = SettingsUpdatePrimaryButtonShape,
                 onClick = model.onToggleAutomaticUpdates
             )
+            Text(
+                text = model.betaUpdatesDescription,
+                color = SettingsUpdateMuted,
+                fontSize = 15.sp
+            )
+            SettingsUpdateOutlinedButton(
+                label = model.betaUpdatesToggleLabel,
+                minHeight = 54.dp,
+                shape = SettingsUpdatePrimaryButtonShape,
+                onClick = model.onToggleBetaUpdates
+            )
         }
     }
 }

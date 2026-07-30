@@ -45,10 +45,11 @@ class KanjiGameEngine {
         inventory: List<RecordsImportModels.KanjiInventoryItem?>?,
         pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
         recentMissKanji: List<String?>? = null,
+        dictionaryLookup: DictionaryLookup? = null,
     ): List<GameMode> {
         val out = ArrayList<GameMode>()
         for (mode in GameMode.values()) {
-            if (nextQuestion(mode, rows, inventory, pairs, SecureRandom(), recentMissKanji) != null) {
+            if (nextQuestion(mode, rows, inventory, pairs, SecureRandom(), recentMissKanji, dictionaryLookup) != null) {
                 out.add(mode)
             }
         }
@@ -62,6 +63,7 @@ class KanjiGameEngine {
         pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
         random: Random?,
         recentMissKanji: List<String?>? = null,
+        dictionaryLookup: DictionaryLookup? = null,
     ): GameQuestion? {
         val safeMode = mode ?: GameMode.MEANING_POP
         val safeRandom = random ?: SecureRandom()
@@ -69,7 +71,7 @@ class KanjiGameEngine {
         return when (safeMode) {
             GameMode.MEANING_POP -> meaningQuestion(candidates, safeRandom)
             GameMode.READING_RUSH -> readingQuestion(candidates, safeRandom)
-            GameMode.CONFUSABLE_CLASH -> confusableQuestion(candidates, pairs, safeRandom)
+            GameMode.CONFUSABLE_CLASH -> confusableQuestion(candidates, pairs, safeRandom, dictionaryLookup)
             GameMode.MISS_SWEEP -> missSweepQuestion(candidates, recentMissKanji, safeRandom)
         }
     }
@@ -149,6 +151,7 @@ class KanjiGameEngine {
 
     companion object {
         private const val MAX_CHOICES = 4
+        private const val CONFUSABLE_GLOSS_COUNT = 2
 
         private fun meaningQuestion(candidates: List<GameCandidate>, random: Random): GameQuestion? {
             val targets = targets(candidates) { it.hasMeaning() }
@@ -196,6 +199,7 @@ class KanjiGameEngine {
             candidates: List<GameCandidate>,
             pairs: List<RecordsImportModels.SimilarKanjiPair?>?,
             random: Random,
+            dictionaryLookup: DictionaryLookup?,
         ): GameQuestion? {
             val neighbors = neighborMap(pairs)
             val targets = ArrayList<GameCandidate>()
@@ -209,6 +213,11 @@ class KanjiGameEngine {
                 return null
             }
             val target = randomCandidate(targets, random)
+            // Confusable Clash asks "Which kanji means X?" like meaning_kanji, so prefer
+            // the KANJIDIC gloss. Unlike the scheduler rung this is a soft preference, not
+            // a gate: fall back to the word meaning so a game round never vanishes when a
+            // kanji is missing from the dictionary.
+            val displayedMeaning = confusableMeaning(dictionaryLookup, target.kanji, target.meaning)
             val choices = LinkedHashSet<String>()
             choices.add(target.kanji)
             val direct = ArrayList(neighbors.getOrDefault(target.kanji, emptyList()))
@@ -227,12 +236,29 @@ class KanjiGameEngine {
             return GameQuestion(
                 GameMode.CONFUSABLE_CLASH,
                 target.kanji,
-                "Which kanji means ${target.meaning}?",
+                "Which kanji means $displayedMeaning?",
                 "Watch the shape",
                 target.kanji,
                 shuffled,
-                "${target.kanji} = ${target.meaning}",
+                "${target.kanji} = $displayedMeaning",
             )
+        }
+
+        private fun confusableMeaning(
+            dictionaryLookup: DictionaryLookup?,
+            kanji: String,
+            fallbackMeaning: String,
+        ): String {
+            if (dictionaryLookup != null) {
+                val entry = dictionaryLookup.lookupKanji(kanji)
+                if (entry != null) {
+                    val gloss = StudyCueFormatter.displayGlosses(entry.meanings, CONFUSABLE_GLOSS_COUNT)
+                    if (gloss.isNotEmpty()) {
+                        return gloss
+                    }
+                }
+            }
+            return fallbackMeaning
         }
 
         private fun missSweepQuestion(

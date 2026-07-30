@@ -394,6 +394,95 @@ class MainActivityStudyFlashcardGestureTest {
         assertEquals(beforeReviewCount, reviewLogCount(activity))
     }
 
+    @Test
+    fun verticalPullDownDoesNotTranslateTheCard() {
+        val token = "flashcard-token-vertical-pull"
+        val activity = createActivity()
+        revealWordReadingSession(activity, token, "分")
+        assertTrue(activity.flashcardAnswerRevealed)
+        val swipe = StudySwipeFeedbackState()
+        activity.flashcardSwipeFeedback = swipe
+        activity.flashcardSwipeGestureEnabled = true
+
+        val downTime = SystemClock.uptimeMillis()
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_DOWN, 210f, 300f, downTime, downTime))
+        assertTrue(activity.flashcardTouchTracking)
+        // A near-vertical pull to read the answer: tiny horizontal delta, large vertical delta.
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_MOVE, 212f, 480f, downTime, downTime + 16L))
+        assertEquals(0f, swipe.dragOffsetX, 0.001f)
+        // Once the gesture has latched vertical, later sideways drift still must not move the card.
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_MOVE, 330f, 520f, downTime, downTime + 32L))
+        assertEquals(0f, swipe.dragOffsetX, 0.001f)
+    }
+
+    @Test
+    fun horizontalDragTranslatesTheCard() {
+        val token = "flashcard-token-horizontal-drag"
+        val activity = createActivity()
+        revealWordReadingSession(activity, token, "強")
+        val swipe = StudySwipeFeedbackState()
+        activity.flashcardSwipeFeedback = swipe
+        activity.flashcardSwipeGestureEnabled = true
+
+        val downTime = SystemClock.uptimeMillis()
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_DOWN, 210f, 300f, downTime, downTime))
+        // A dominantly horizontal swipe: large horizontal delta, tiny vertical delta.
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_MOVE, 330f, 306f, downTime, downTime + 16L))
+        assertEquals(120f, swipe.dragOffsetX, 0.001f)
+    }
+
+    @Test
+    fun swipeDisabledIgnoresHorizontalSwipeAndDoesNotGrade() {
+        val token = "flashcard-token-swipe-disabled"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        revealWordReadingSession(activity, token, "弱")
+        assertTrue(activity.flashcardAnswerRevealed)
+        // Mirror the disabled study route: no swipe feedback and the gesture flag off.
+        activity.flashcardSwipeFeedback = null
+        activity.flashcardSwipeGestureEnabled = false
+        val beforeReviewCount = reviewLogCount(activity)
+
+        val downTime = SystemClock.uptimeMillis()
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_DOWN, 210f, 520f, downTime, downTime))
+        val handled = activity.handleFlashcardGesture(
+            motionEvent(MotionEvent.ACTION_UP, -80f, 520f, downTime, downTime + 120L),
+        )
+
+        // A big left swipe would normally fail the card; with swipe disabled it never grades.
+        assertFalse(handled)
+        assertEquals(0, reviewIo.pendingCount())
+        assertEquals(beforeReviewCount, reviewLogCount(activity))
+    }
+
+    private fun revealWordReadingSession(
+        activity: MainActivity,
+        token: String,
+        kanji: String,
+    ) {
+        activity.activeSession = RecordsSchedulerModels.StudySession(
+            item = studyItem(kanji, token, RecordsBase.LadderRung.WORD_READING),
+            row = null,
+            token = token,
+            taskType = StudyTaskTypes.WORD_READING,
+            writingRequired = false,
+            prompt = "",
+        )
+        StudySessionActions.activateStudySession(
+            activity.activeSession!!,
+            System.currentTimeMillis(),
+            activity.store::saveStudyItem,
+            activity::registerStudyTaskShown,
+            activity::startActiveStudyTask,
+        )
+        activity.prepareStudyAnswerFeedback(token)
+        activity.studyAnswerPanel = LinearLayout(activity)
+        activity.flashcardHeroPanel = LinearLayout(activity)
+        activity.revealFlashcardAnswer()
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+    }
+
     private fun assertSwipeGradesWhenReleaseLeavesCardBounds(
         tokenSuffix: String,
         releaseX: Float,

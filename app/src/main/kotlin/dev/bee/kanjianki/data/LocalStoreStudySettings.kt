@@ -559,7 +559,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
         val encoded = weightsToAdopt?.let { FsrsPersonalization.encodeWeights(it) }
         var adopted = false
         inTransaction {
-            val enabled = getIntSetting(FsrsPersonalization.ENABLED_SETTING_KEY, 0) == 1
+            val enabled = getIntSetting(
+                FsrsPersonalization.ENABLED_SETTING_KEY,
+                FsrsPersonalization.ENABLED_SETTING_DEFAULT,
+            ) == 1
             if (encoded != null && enabled) {
                 putStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, encoded)
                 markStatsDirty()
@@ -577,7 +580,10 @@ internal class LocalStoreStudySettings(private val store: LocalStoreStudy) {
     }
 
     fun fsrsPersonalizationEnabled(): Boolean =
-        getIntSetting(FsrsPersonalization.ENABLED_SETTING_KEY, 0) == 1
+        getIntSetting(
+            FsrsPersonalization.ENABLED_SETTING_KEY,
+            FsrsPersonalization.ENABLED_SETTING_DEFAULT,
+        ) == 1
 
     fun saveFsrsPersonalizationEnabled(enabled: Boolean) {
         inTransaction {

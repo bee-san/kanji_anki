@@ -88,7 +88,9 @@ internal data class SettingsDeviceState(
     val reminderAntiSpam: SettingsReminderAntiSpamState,
     val autoSync: SettingsAutoSyncState,
     val autoUpdate: SettingsAutoUpdateState,
+    val betaUpdatesEnabled: Boolean,
     val debugLogEnabled: Boolean,
+    val flashcardSwipeGestureEnabled: Boolean,
 )
 
 internal fun DeviceSettingsReader.settingsDeviceState(): SettingsDeviceState {
@@ -136,7 +138,10 @@ internal fun DeviceSettingsReader.settingsDeviceState(): SettingsDeviceState {
             update.pendingApkName(),
             update.pendingMessage(),
         ),
+        betaUpdatesEnabled = read(DeviceSettingKeys.betaUpdatesEnabled) ?: false,
         debugLogEnabled = read(DeviceSettingKeys.debugLogEnabled) ?: false,
+        flashcardSwipeGestureEnabled =
+            read(DeviceSettingKeys.flashcardSwipeGestureEnabled) ?: true,
     )
 }
 
@@ -174,5 +179,17 @@ internal fun DeviceSettingsStore.setAutoUpdateEnabled(enabled: Boolean) {
 internal fun DeviceSettingsStore.setDebugLogEnabled(enabled: Boolean) {
     edit {
         put(DeviceSettingKeys.debugLogEnabled, enabled)
+    }
+}
+
+internal fun DeviceSettingsStore.setBetaUpdatesEnabled(enabled: Boolean) {
+    edit {
+        put(DeviceSettingKeys.betaUpdatesEnabled, enabled)
+    }
+}
+
+internal fun DeviceSettingsStore.setFlashcardSwipeGestureEnabled(enabled: Boolean) {
+    edit {
+        put(DeviceSettingKeys.flashcardSwipeGestureEnabled, enabled)
     }
 }

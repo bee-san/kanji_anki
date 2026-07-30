@@ -17,7 +17,9 @@ class SettingsDeviceStateTest {
         assertFalse(state.autoSync.configured)
         assertTrue(state.autoUpdate.enabled)
         assertEquals(AutoUpdateStatusPolicy.DEFAULT_LAST_RESULT, state.autoUpdate.lastResult)
+        assertFalse(state.betaUpdatesEnabled)
         assertFalse(state.debugLogEnabled)
+        assertTrue(state.flashcardSwipeGestureEnabled)
     }
 
     private object EmptyReader : DeviceSettingsReader {

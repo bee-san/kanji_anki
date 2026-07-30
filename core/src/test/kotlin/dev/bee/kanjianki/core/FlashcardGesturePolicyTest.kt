@@ -65,6 +65,29 @@ class FlashcardGesturePolicyTest {
         )
     }
 
+    @Test
+    fun swipeDisabledNeverReviewsButStillReveals() {
+        // A clean horizontal swipe that would normally pass is ignored when the
+        // swipe gesture is disabled...
+        assertDecision(
+            FlashcardGesturePolicy.release(0f, 0f, 90f, 10f, 8, 72, true, swipeEnabled = false),
+            FlashcardGesturePolicy.Decision.Action.NONE,
+            "",
+        )
+        // ...and a left swipe that would normally fail is also ignored.
+        assertDecision(
+            FlashcardGesturePolicy.release(90f, 0f, 0f, 10f, 8, 72, true, swipeEnabled = false),
+            FlashcardGesturePolicy.Decision.Action.NONE,
+            "",
+        )
+        // A tap still reveals the answer even with swipe disabled.
+        assertDecision(
+            FlashcardGesturePolicy.release(10f, 10f, 13f, 14f, 8, 72, false, swipeEnabled = false),
+            FlashcardGesturePolicy.Decision.Action.REVEAL,
+            "",
+        )
+    }
+
     private fun assertDecision(
         decision: FlashcardGesturePolicy.Decision,
         action: FlashcardGesturePolicy.Decision.Action,

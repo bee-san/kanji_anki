@@ -332,6 +332,12 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
             self.workflow,
         )
 
+    def test_automatic_main_releases_are_prereleases_only(self) -> None:
+        self.assertIn("AUTOMATIC_PRERELEASE: ${{ github.event_name == 'workflow_run' }}", self.workflow)
+        self.assertIn('if [[ "${AUTOMATIC_PRERELEASE}" == "true" ]]; then', self.workflow)
+        self.assertIn("create_args+=(--prerelease)", self.workflow)
+        self.assertNotRegex(self.workflow, r"gh release create[^\n]*--prerelease")
+
     def test_release_path_has_no_emulator_or_cross_workflow_check_polling(self) -> None:
         # The release path must stay fast and self-contained. The AnkiDroid
         # emulator fixture (nightly/dispatch only) and cross-workflow

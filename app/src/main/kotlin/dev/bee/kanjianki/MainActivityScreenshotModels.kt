@@ -119,7 +119,7 @@ internal fun screenshotSettingsScreenModel(activity: MainActivitySettings): Sett
                 title = SettingsTextCopy.settingsStudyBehaviorTitle(),
                 summary = SettingsTextCopy.settingsStudyBehaviorBody(),
                 iconRes = R.drawable.ic_study_24,
-                panelCount = SettingsTextCopy.settingsCategoryPanelCount(9),
+                panelCount = SettingsTextCopy.settingsCategoryPanelCount(10),
                 contentDescription = SettingsTextCopy.sectionOpenDescription(SettingsTextCopy.settingsStudyBehaviorTitle()),
                 onOpen = Runnable {},
             ),
@@ -180,6 +180,10 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
             showAutoUpdateInBackground = false,
             autoUpdateInBackgroundLabel = SettingsTextCopy.autoUpdateInBackgroundLabel(),
             onAutoUpdateInBackground = {},
+            betaUpdatesEnabled = false,
+            betaUpdatesToggleLabel = SettingsTextCopy.betaUpdatesToggleLabel(false),
+            betaUpdatesDescription = SettingsTextCopy.betaUpdatesDescription(),
+            onToggleBetaUpdates = {},
         ),
     )
 }

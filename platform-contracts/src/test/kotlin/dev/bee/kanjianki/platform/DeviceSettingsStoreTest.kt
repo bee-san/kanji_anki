@@ -13,6 +13,11 @@ class DeviceSettingsStoreTest {
         assertEquals(DeviceSettingValueType.INT, DeviceSettingKeys.windowWidth.valueType)
         assertEquals(DeviceSettingValueType.LONG, DeviceSettingKeys.autoSyncNextRunAt.valueType)
         assertEquals(DeviceSettingValueType.STRING, DeviceSettingKeys.providerAuthReference.valueType)
+        assertEquals(DeviceSettingValueType.BOOLEAN, DeviceSettingKeys.betaUpdatesEnabled.valueType)
+        assertEquals(
+            DeviceSettingValueType.BOOLEAN,
+            DeviceSettingKeys.flashcardSwipeGestureEnabled.valueType,
+        )
         assertTrue(DeviceSettingKeys.providerAuthReference.storageName.endsWith("_reference"))
         assertFalse(DeviceSettingKeys.providerAuthReference.storageName.contains("api_key"))
     }

@@ -13,6 +13,9 @@ class StudyCueFormatter private constructor() {
         private val GODAN_PATTERN: Pattern = Pattern.compile("(?i)^(5-dan|godan)\\s+(intransitive|transitive)\\s+")
         private val ADJECTIVE_VERB_PATTERN: Pattern = Pattern.compile("(?i)^(ichidan|suru|na-adjective|i-adjective|no-adjective)\\s+")
         private val TRAILING_SEE_ALSO_PATTERN: Pattern = Pattern.compile("(?i)[\\s\\p{Punct}]*\\bsee also\\b[\\s\\p{Punct}]*$")
+        private val INLINE_NUMBERED_SENSE_PATTERN: Pattern = Pattern.compile(
+            "(?i)^(.{1,80}?)\\s+\\d+\\.\\s+\\[[^\\]]*(?:★|priority|form)[^\\]]*].*$",
+        )
         private val LEADING_METADATA_SEPARATOR_PATTERN: Pattern = Pattern.compile("\\s+")
         private val NON_ALPHA_NUMERIC_PATTERN: Pattern = Pattern.compile("[^a-z0-9-]")
         private val MULTI_WHITESPACE_PATTERN: Pattern = Pattern.compile("\\s+")
@@ -155,6 +158,10 @@ class StudyCueFormatter private constructor() {
                         changed = true
                     }
                 }
+            }
+            val inlineSense = INLINE_NUMBERED_SENSE_PATTERN.matcher(value)
+            if (inlineSense.matches()) {
+                value = inlineSense.group(1).trim()
             }
             value = NUMBERED_PREFIX_PATTERN.matcher(value).replaceAll("")
             value = GODAN_PATTERN.matcher(value).replaceAll("")
