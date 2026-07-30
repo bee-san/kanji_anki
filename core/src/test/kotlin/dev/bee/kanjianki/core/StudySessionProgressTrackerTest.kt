@@ -7,6 +7,18 @@ import org.junit.Test
 
 class StudySessionProgressTrackerTest {
     @Test
+    fun stateEquivalenceComparesTheCompleteProgressState() {
+        val tracker = StudySessionProgressTracker()
+        tracker.setTargetCount(1)
+        tracker.markTaskCompleted("task-a")
+        val same = tracker.copyForStaging()
+
+        assertTrue(tracker.hasSameStateAs(same))
+        same.recordReviewOutcome("裂", BridgeScheduler.RATING_AGAIN, null, null)
+        assertFalse(tracker.hasSameStateAs(same))
+    }
+
+    @Test
     fun progressCountsUniqueSeenAndCompletedTasks() {
         val tracker = StudySessionProgressTracker()
 
