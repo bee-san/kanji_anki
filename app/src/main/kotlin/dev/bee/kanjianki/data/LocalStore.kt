@@ -41,6 +41,27 @@ internal class LocalStore(
     }
 
     /**
+     * Detaches this helper from the database file it has open and drops every cached
+     * projection and settings snapshot.
+     *
+     * Instrumentation deletes `kanji_anki_simple.db` between tests. Before the process
+     * container owned the store, each activity opened its own helper, so the next test
+     * always got a helper that ran `onCreate` against the fresh file. A process-cached
+     * helper instead keeps its connection pool: on real Android the pool reopens the
+     * unlinked path as an *empty* database without rerunning `onCreate`, so every query
+     * fails with `no such table`. Closing here forces the next `getWritableDatabase` to
+     * reopen and recreate the schema.
+     *
+     * `SQLiteOpenHelper.close()` is idempotent and permits reopening, so the container
+     * can keep handing out this same instance.
+     */
+    internal fun resetForTestDatabaseReplacement() {
+        close()
+        clearAllProjectionCachesForTest()
+        settingsStore().invalidate()
+    }
+
+    /**
      * Produce a WAL-safe, transactionally consistent snapshot at [destination] using this
      * helper connection.
      *

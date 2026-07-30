@@ -45,7 +45,7 @@ class BrowseStudyQueueInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.browse_queue_no_anki")
         )
@@ -68,7 +68,7 @@ class BrowseStudyQueueInstrumentedTest {
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 
@@ -210,7 +210,6 @@ class BrowseStudyQueueInstrumentedTest {
     }
 
     private companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
         private const val UI_TIMEOUT_MILLIS = 30_000L
     }
 }

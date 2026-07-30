@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
@@ -148,7 +149,7 @@ class MainActivityInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext()
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.no_anki_for_tests"))
         MainActivityRuntimeOverrides.setCollectionGateway(null)
         MainActivityRuntimeOverrides.setWritingRecognizer(null)
@@ -161,7 +162,7 @@ fun tearDown() {
         MainActivityRuntimeOverrides.setCollectionGateway(null);
         MainActivityRuntimeOverrides.setWritingRecognizer(null);
         MainActivityRuntimeOverrides.setInstallPermission(null);
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         deleteRecursively(File(context.getCacheDir(), "updates"));
     }
 
@@ -1600,7 +1601,7 @@ fun testRevealedRecognitionCardSwipesFromAnswerPanelAdvanceQueueBothDirections()
             }
         }
 
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         seedDashboard(Arrays.asList(
                 dashboardRow("拉", RAMEN_RADICAL_GAP, "ら", IMPORTED_FROM_SUSPENDED_CARDS),
                 dashboardRow("謎", "mystery radical gap", "なぞ", MISSED_IN_MATURE_CARDS),

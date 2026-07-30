@@ -72,7 +72,7 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
     fun seedDueFocusAndActivityFixture() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val now = System.currentTimeMillis()
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         LocalStore(context).use { store ->
             store.saveSuccessfulSync(
                 RecordsSyncModels.CollectionSnapshot(emptyList(), emptyList()),

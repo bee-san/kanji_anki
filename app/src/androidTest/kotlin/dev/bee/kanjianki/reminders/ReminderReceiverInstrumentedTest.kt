@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.MainActivityBase
@@ -33,7 +34,7 @@ class ReminderReceiverInstrumentedTest {
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         ReminderScheduler.cancel(context)
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
     }
 
     @After
@@ -41,7 +42,7 @@ class ReminderReceiverInstrumentedTest {
         ReminderScheduler.cancel(context)
         (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)
             ?.cancel(REMINDER_NOTIFICATION_ID)
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
     }
 
     @Test

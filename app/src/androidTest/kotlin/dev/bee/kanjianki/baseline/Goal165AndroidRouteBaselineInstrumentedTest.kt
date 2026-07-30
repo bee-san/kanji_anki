@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.MainActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.MainActivityRuntimeOverrides
@@ -69,7 +70,7 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
         if (::originalLocale.isInitialized) Locale.setDefault(originalLocale)
         if (::originalTimeZone.isInitialized) TimeZone.setDefault(originalTimeZone)
@@ -184,7 +185,7 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
                 }
                 executed += captureCase.id
             }
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
 
         assertEquals(shardCases.map { it.id }, executed)
@@ -307,7 +308,7 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
     }
 
     private fun prepareDatabase(captureCase: AndroidRouteBaselineCatalog.CaptureCase) {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         LocalStore(context).use { store ->
             store.saveAppThemeChoice(KaniThemeChoice.LIGHT)
             if (captureCase.state == "data") {
@@ -444,7 +445,7 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
     }
 
     private fun resetRuntimeState() {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.goal165_no_anki"),
         )
@@ -458,7 +459,6 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
 
     private companion object {
         private const val TAG = "Goal165UiBaseline"
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
         private const val RUN_ARGUMENT = "goal165RunBaselines"
         private const val RECORD_ARGUMENT = "goal165RecordBaselines"
         private const val FONT_SCALE_ARGUMENT = "goal165FontScale"

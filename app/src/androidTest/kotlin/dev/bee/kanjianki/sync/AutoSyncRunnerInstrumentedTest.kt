@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider
@@ -26,7 +27,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-private const val DATABASE_NAME = "kanji_anki_simple.db"
 
 @RunWith(AndroidJUnit4::class)
 class AutoSyncRunnerInstrumentedTest {
@@ -36,7 +36,7 @@ class AutoSyncRunnerInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         store = LocalStore(context)
         resetProvider()
     }
@@ -47,7 +47,7 @@ class AutoSyncRunnerInstrumentedTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
             resetProvider()
         }
     }

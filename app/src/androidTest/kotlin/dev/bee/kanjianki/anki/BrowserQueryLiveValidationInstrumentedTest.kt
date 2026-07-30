@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
@@ -36,7 +37,7 @@ class BrowserQueryLiveValidationInstrumentedTest {
             arguments.getString("kanjiLiveBrowserQuery") == "true",
         )
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         store = LocalStore(context)
     }
 
@@ -46,7 +47,7 @@ class BrowserQueryLiveValidationInstrumentedTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 

@@ -35,7 +35,7 @@ class MainActivityStudyTypingInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.typing_no_anki")
         )
@@ -56,7 +56,7 @@ class MainActivityStudyTypingInstrumentedTest {
         MainActivityRuntimeOverrides.setInstallPermission(null)
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
     }
 
     @Test

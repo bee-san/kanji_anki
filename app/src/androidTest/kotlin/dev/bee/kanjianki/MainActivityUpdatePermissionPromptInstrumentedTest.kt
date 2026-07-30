@@ -34,7 +34,7 @@ class MainActivityUpdatePermissionPromptInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         clearUpdatesCache()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.update_prompt_no_anki")
@@ -46,7 +46,7 @@ class MainActivityUpdatePermissionPromptInstrumentedTest {
     fun tearDown() {
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         MainActivityRuntimeOverrides.setInstallPermission(null)
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         clearUpdatesCache()
     }
 
@@ -160,7 +160,6 @@ class MainActivityUpdatePermissionPromptInstrumentedTest {
     }
 
     companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
         private const val HOME_TITLE = "Kani"
         private const val PROMPT_TITLE = "Keep Kani up to date"
         private const val UI_TIMEOUT_MILLIS = 10_000L

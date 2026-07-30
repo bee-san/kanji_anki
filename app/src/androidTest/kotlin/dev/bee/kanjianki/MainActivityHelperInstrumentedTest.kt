@@ -1,5 +1,6 @@
 package dev.bee.kanjianki;
 
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsBase;
 import dev.bee.kanjianki.core.RecordsImportModels;
 import dev.bee.kanjianki.core.RecordsSchedulerModels;
@@ -97,7 +98,7 @@ class MainActivityHelperInstrumentedTest {
     @Before
 fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         MainActivityRuntimeOverrides.setAnkiDroidGateway(AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.helper_no_anki"));
         MainActivityRuntimeOverrides.setCollectionGateway(null);
         MainActivityRuntimeOverrides.setWritingRecognizer(null);
@@ -116,7 +117,7 @@ fun tearDown() {
         MainActivityRuntimeOverrides.setInstallPermission(null);
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null);
         MainActivityRuntimeOverrides.setNotificationsAllowed(null);
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         deleteRecursively(File(context.getCacheDir(), "updates"));
     }
 

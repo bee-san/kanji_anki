@@ -36,7 +36,7 @@ class MainActivityGamesInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.games_no_anki")
         )
@@ -51,7 +51,7 @@ class MainActivityGamesInstrumentedTest {
         MainActivityRuntimeOverrides.setCollectionGateway(null)
         MainActivityRuntimeOverrides.setWritingRecognizer(null)
         MainActivityRuntimeOverrides.setWritingRecognizerFactory(null)
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
     }
 
     @Test

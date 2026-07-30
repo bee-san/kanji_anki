@@ -80,6 +80,19 @@ internal abstract class LocalStoreInventory(
         observedDashboardCacheEpoch = publishedEpoch
     }
 
+    /**
+     * Drops every in-memory projection this helper holds. Only for the test seam that
+     * replaces the underlying database file beneath a process-cached store; production
+     * invalidation stays targeted so a single write cannot flush unrelated caches.
+     */
+    internal fun clearAllProjectionCachesForTest() {
+        clearDashboardRowsCache()
+        clearLocallySuspendedCache()
+        clearStudyItemsCache()
+        clearKanjiInventoryAllCache()
+        clearSimilarKanjiNeighborsCache()
+    }
+
     private fun clearLocalDashboardRowsCache() {
         cachedDashboardRows = null
         cachedActiveDashboardRows = null

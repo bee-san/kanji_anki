@@ -22,7 +22,7 @@ class ProgressAnalyticsLiveRouteInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.progress_live_route")
         )
@@ -44,7 +44,7 @@ class ProgressAnalyticsLiveRouteInstrumentedTest {
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
         if (::context.isInitialized) {
-            context.deleteDatabase("kanji_anki_simple.db")
+            KaniTestDatabase.delete(context)
         }
     }
 

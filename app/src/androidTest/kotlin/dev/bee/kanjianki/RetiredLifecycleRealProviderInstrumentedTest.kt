@@ -55,7 +55,7 @@ class RetiredLifecycleRealProviderInstrumentedTest {
     }
 
     private fun weakInitial() {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         preferences.edit().clear().commit()
         LocalStore(context).use { store ->
             assertSuccessfulSync(store)
@@ -295,7 +295,6 @@ class RetiredLifecycleRealProviderInstrumentedTest {
     }
 
     companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
         private const val TARGET_KANJI = "橋"
         private const val RETIRED = "retired"
     }

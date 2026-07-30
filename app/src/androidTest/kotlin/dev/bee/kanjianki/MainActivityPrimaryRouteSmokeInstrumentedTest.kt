@@ -35,7 +35,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase("kanji_anki_simple.db")
+        KaniTestDatabase.delete(context)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.primary_route_no_anki")
         )
@@ -57,7 +57,7 @@ class MainActivityPrimaryRouteSmokeInstrumentedTest {
         MainActivityRuntimeOverrides.setRuntimeNotificationPermission(null)
         MainActivityRuntimeOverrides.setNotificationsAllowed(null)
         if (::context.isInitialized) {
-            context.deleteDatabase("kanji_anki_simple.db")
+            KaniTestDatabase.delete(context)
         }
     }
 

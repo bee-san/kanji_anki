@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
@@ -27,7 +28,7 @@ class AnkiDroidSyncProviderIntegrationInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         store = LocalStore(context)
         resetProvider()
     }
@@ -38,7 +39,7 @@ class AnkiDroidSyncProviderIntegrationInstrumentedTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
             resetProvider()
         }
     }
@@ -333,9 +334,5 @@ class AnkiDroidSyncProviderIntegrationInstrumentedTest {
             true,
             "tag:kani",
         )
-    }
-
-    private companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
     }
 }

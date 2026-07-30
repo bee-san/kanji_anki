@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.platform.AppClock
@@ -24,13 +25,13 @@ class AutoSyncSchedulerInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @After
     fun tearDown() {
         AutoSyncScheduler.cancel(context)
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @Test
@@ -169,9 +170,5 @@ class AutoSyncSchedulerInstrumentedTest {
         override fun getPendingJob(jobId: Int): JobInfo? {
             return null
         }
-    }
-
-    companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
     }
 }

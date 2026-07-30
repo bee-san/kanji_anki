@@ -50,7 +50,7 @@ class BackupAndRestoreInstrumentedTest {
 
     @After
     fun cleanUp() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         BackupRestoreStager.restoreDir(context.filesDir).deleteRecursively()
         File(context.cacheDir, "backup-export").deleteRecursively()
         File(context.cacheDir, "backup-export-test.db.gz").delete()
@@ -85,7 +85,7 @@ class BackupAndRestoreInstrumentedTest {
         composeRule.onNodeWithTag("settings-panel-backup").assertIsDisplayed()
         composeRule.onNodeWithText("Export now").assertIsDisplayed()
 
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         val dbFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
         val preparation = LocalStore(context).use { store ->
             store.writableDatabase.execSQL(
@@ -128,7 +128,7 @@ class BackupAndRestoreInstrumentedTest {
     @Test
     @SdkSuppress(minSdkVersion = 30)
     fun applicationStartupHookAppliesStagedOlderFixtureBeforeActivityOpen() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "fixture.db")
         fixture.parentFile!!.mkdirs()
         // Build a complete current schema, plant a sentinel, then lower user_version so the
@@ -143,7 +143,7 @@ class BackupAndRestoreInstrumentedTest {
         SQLiteDatabase.openDatabase(fixture.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.execSQL("PRAGMA user_version = 28")
         }
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         assertTrue(
             BackupRestoreStager.stage(
                 ValidatedBackup(fixture, "known-fixture.db.gz"),
@@ -182,7 +182,7 @@ class BackupAndRestoreInstrumentedTest {
     @Test
     @SdkSuppress(minSdkVersion = 30)
     fun missingKanjiStateSurvivesSnapshotAndRestoreRoundTrip() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "missing-kanji.db")
         fixture.parentFile!!.mkdirs()
         LocalStore(context).use { store ->
@@ -225,7 +225,7 @@ class BackupAndRestoreInstrumentedTest {
             store.snapshotInto(fixture)
         }
 
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         assertTrue(
             BackupRestoreStager.stage(
                 ValidatedBackup(fixture, "missing-kanji.db.gz"),

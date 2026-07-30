@@ -5,6 +5,7 @@ import android.database.DatabaseUtils
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider
 import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
@@ -32,7 +33,7 @@ class Goal165SyncBaselineInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         resetProvider()
     }
 
@@ -40,7 +41,7 @@ class Goal165SyncBaselineInstrumentedTest {
     fun tearDown() {
         if (::context.isInitialized) {
             resetProvider()
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 
@@ -161,7 +162,6 @@ class Goal165SyncBaselineInstrumentedTest {
         if (value == FIXED_TIME_MILLIS) "T+0" else "T${value - FIXED_TIME_MILLIS}"
 
     private companion object {
-        private const val DATABASE_NAME = "kanji_anki_simple.db"
         private const val FIXED_TIME_MILLIS = 1_700_000_000_000L
         private const val RECORD_ARGUMENT = "goal165RecordSyncBaseline"
     }

@@ -26,6 +26,7 @@ import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
 import dev.bee.kanjianki.BuildConfig
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.updatecore.SigningCertificateInfo
@@ -61,14 +62,10 @@ import kotlin.coroutines.EmptyCoroutineContext
 class UpdateFlowInstrumentedTest {
     private lateinit var context: Context
 
-    private companion object {
-        const val DATABASE_NAME = "kanji_anki_simple.db"
-    }
-
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         clearUpdatesCache()
         UpdateNotifier.cancelPendingUpdate(context)
     }
@@ -76,7 +73,7 @@ class UpdateFlowInstrumentedTest {
     @After
     fun tearDown() {
         UpdateNotifier.cancelPendingUpdate(context)
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         clearUpdatesCache()
     }
 
