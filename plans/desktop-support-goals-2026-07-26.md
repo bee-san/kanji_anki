@@ -3812,6 +3812,83 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   [#592](https://github.com/bee-san/kanji_anki/pull/592) remains intentionally
   unmerged.
 
+### Goal 179 completion evidence (2026-07-30)
+
+- Started from: `e1dc8e98` (Goal 178) on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Implemented: the pure-JVM `:data-sql` module with the driver/transaction
+  contract (`SqlContracts.kt`: `SqlDriver`/`SqlConnection`/`SqlSession`/
+  `SqlStatement`/`SqlRows`/`SqlRow`/`SqlPragmaAccess`/`SqlDatabase` with
+  one-based binds, zero-based columns, explicit null/text/integer/real/blob
+  binding, `IMMEDIATE` writes, `DEFERRED` read snapshots, and
+  `ROLLBACK TO`/`RELEASE` savepoints). `DedicatedWriterSqlDatabase` owns one
+  physical writer connection on one dispatcher/thread with serialized writes,
+  busy timeout, WAL, cancellation, and writer-thread-loss handling; reads use an
+  independent snapshot connection. `SchemaManager(MigrationContext(clock,
+  defaults))` runs the whole upgrade and the final `user_version` bump in one
+  transaction and records `downgraded_from_version`. AndroidX
+  `sqlite-bundled` is the qualified desktop driver, exercised through
+  `BundledTestSqlDriver`.
+- Validation: `SqlDriverContractSuite` runs through the thin
+  `BundledSqlDriverContractTest`; `SchemaManagerBundledTest` (fresh create →
+  `SchemaTransition(0, 34, CREATED)` seeding `stats_source_version = 1`, plus
+  v1/v30/v31/v32/v33 historical upgrades), `SchemaManagerFaultInjectionTest`,
+  `DedicatedWriterSqlDatabaseTest`, `BundledTestSqlDriverTest`, and
+  `SqlContractsTest` all pass under `:data-sql:check` with the module's 100%
+  class-coverage gate.
+- Live gates: not required. `:data-sql` is not yet on any production runtime
+  path; Android stays on `LocalStore`.
+- Decisions: bundled SQLite passes the driver matrix, so no ADR fallback driver
+  was needed. Transaction callbacks stay non-suspending by contract.
+- Rollback: the module is additive and unreferenced by production composition;
+  removing it changes no runtime behavior.
+- Gaps/blockers: none. Goal 180 followed.
+
+### Goal 180 completion evidence (2026-07-30)
+
+- Started from: `8d8c37ce` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `5c3b8465 data: port settings and Home repositories to shared SQL`;
+  `512cd7c4 test: add cross-driver read and settings conformance`.
+- Implemented: ported the portable typed settings surface
+  (`SqlSettingsRepository` covering every `SettingsSaveCommand` family plus
+  `commitFsrsFit`, with defaults, malformed-value fail-open, on-write clamping,
+  and byte-parity `putDouble`/`"%.4f"`), and the Home/browse/detail/examples/
+  local-suspension read projections (`SqlHomeRepository`, `SqlHomeData`,
+  `SqlStudyItemMapper`) with the legacy dashboard sort
+  (`weakness_score DESC, suspended_example_count DESC, kanji ASC`), inventory
+  `search_text` LIKE with `ESCAPE '\'`, the study-queue scopes, and
+  `SqlProjectionInvalidation` for new-card-sort preview versioning. Added
+  `StringListJsonCodec` in `:core` for manual-source decoding. Production
+  Android stays on the `LocalStore` facade.
+- Validation: a shared `RepositoryConformanceSuite` in `:data-api` testFixtures,
+  parameterized by a `RepositoryConformanceHost`, is driven from one fixture by
+  two thin consumers — `SqlRepositoryConformanceTest` (bundled SQLite via
+  `DedicatedWriterSqlDatabase` + `SchemaManager`) and
+  `LocalStoreRepositoryConformanceTest` (Robolectric `@Config(sdk=[35])` over
+  `LocalStore`). Both pass. `SqlHomeReadPathCoverageTest` covers the study-item/
+  streak/manual-source read paths the fixture does not seed. Module gates:
+  `:core:check`, `:data-api:check`, and `:data-sql:check` all `BUILD SUCCESSFUL`
+  with 100% class coverage; `:app:testDebugUnitTest` and
+  `:app:compileDebugAndroidTestJavaWithJavac` `BUILD SUCCESSFUL`. Commands run
+  with `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk`.
+- Live gates: not required. No production runtime composition switched;
+  `:data-sql` is validated only through tests, and Android production still uses
+  `LocalStore`. The live AnkiDroid provider/sync surface is unchanged.
+- Decisions: the conformance suite pins concrete expected literals rather than
+  comparing the two implementations to each other, so a shared misunderstanding
+  cannot pass. The new-card-sort preview-version check asserts a monotonic
+  non-decrease on reads (the legacy read path can lazily bump a process-static
+  cache epoch) and a strict increase only after a suspension write. Ladder
+  round trips compare normalized-to-normalized. `ResetFsrsPersonalization`
+  leaves the enabled flag untouched on both hosts; `FsrsPersonalizationEnabled`
+  default is on (`ENABLED_SETTING_DEFAULT = 1`).
+- Rollback: revert `512cd7c4` then `5c3b8465`; both are additive (new
+  `:data-sql` repositories, testFixtures suite, and tests) and unreferenced by
+  production composition.
+- Gaps/blockers: none. Goal 181 (port Study persistence to `:data-sql`) is next.
+
 Template:
 
 ```md
