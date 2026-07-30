@@ -3889,6 +3889,54 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   production composition.
 - Gaps/blockers: none. Goal 181 (port Study persistence to `:data-sql`) is next.
 
+### Goal 181 completion evidence (2026-07-30)
+
+- Started from: `51e14085` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commits: `6b5b1fbe data: port Study queue reads and token-first review writes`;
+  `d6dabc93 test: conform and fault-inject the Study transaction across drivers`.
+- Implemented: driver-neutral Study persistence in `:data-sql`. `SqlStudyData`
+  provides the queue read (reusing `SqlHomeData` for dashboard/inventory/
+  similar/streak and deriving settings through the shared
+  `SqlSettingsRepository.readSnapshot`), the choice-data read (kanji/reading
+  usage and pool, reading-kanji candidates), and the token/recovery reads.
+  `SqlStudyRepository` owns queue reconciliation (`MidSyncReviewMergePolicy` +
+  `DurableStudyItemRetentionPolicy` + lineage/versioning + a keyed upsert/delete
+  diff), item upserts guarded by revision, and the token-first, revision-CAS
+  review commit: `INSERT OR IGNORE` the review row (a token conflict is the only
+  `DUPLICATE`; any other ignored insert throws a constraint error rather than
+  advancing state), a `scheduler_revision`-predicated `UPDATE` (`STALE` when it
+  matches zero rows), the similar-choice side effect, the timeline event, task
+  timing, choice log, and stats dirtiness — all in one `database.write`. Undo
+  deletes the review row, re-CAS-updates the item, and removes the timeline
+  event. `SqlStudyItemMapper` gained a positional upsert binder over the
+  canonical column order. Android production stays on `LocalStore`.
+- Validation: `StudyRepositoryConformanceSuite` (in `:data-api` testFixtures)
+  runs from one fixture against both the legacy Android `SqliteStudyRepository`
+  (Robolectric `@Config(sdk=[35])`) and the shared `SqlStudyRepository` (bundled
+  SQLite), pinning queue reads, the APPLIED/DUPLICATE/STALE commit dispositions,
+  undo, task-timing idempotency, token/recovery status, choice-data reads, and
+  legacy-repair no-ops. `SqlStudyReviewFaultInjectionTest` injects a failure on
+  the `study_items` CAS update after the `review_log` insert and asserts both
+  roll back (token not consumed, revision unchanged). Gates:
+  `:data-sql:check`, `:data-api:check`, and the full `:app:testDebugUnitTest`
+  all `BUILD SUCCESSFUL`, with `:data-sql`'s 100% class-coverage gate met.
+  Commands run with `ANDROID_HOME=/home/skerraut/android-sdk
+  ANDROID_SDK_ROOT=/home/skerraut/android-sdk`.
+- Live gates: not required. No production composition switched; `:data-sql` is
+  validated only through tests and Android production still uses `LocalStore`.
+- Decisions: the commit boundary matches the legacy `commitReview` exactly —
+  token-first insert, revision CAS, side effects, then stats dirtiness — so the
+  two implementations are behaviourally identical through the typed surface. The
+  suite pins concrete dispositions rather than comparing the implementations to
+  each other. The similar-choice/writing-repair state remains
+  compatibility-only: no path enqueues a new `similar_kanji_repair_queue` row.
+- Rollback: revert `d6dabc93` then `6b5b1fbe`; both are additive (new
+  `:data-sql` Study repository plus testFixtures suite and tests) and
+  unreferenced by production composition.
+- Gaps/blockers: none. Goal 182 (port sync publication/history to `:data-sql`)
+  is next.
+
 Template:
 
 ```md
