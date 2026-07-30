@@ -45,6 +45,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 ":domain:check",
                 ":sync-domain:check",
                 ":data-api:check",
+                ":data-sql:check",
                 ":sync-engine:check",
                 ":application:check",
                 ":writing-core:check",
