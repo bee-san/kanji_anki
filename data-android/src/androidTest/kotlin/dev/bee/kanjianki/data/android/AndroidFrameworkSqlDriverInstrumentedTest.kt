@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.bee.kanjianki.data.sql.SqlConnection
+import dev.bee.kanjianki.data.sql.SqlConnectionMode
 import dev.bee.kanjianki.data.sql.SqlException
 import dev.bee.kanjianki.data.sql.SqlPragma
 import dev.bee.kanjianki.data.sql.SqlTransactionMode
@@ -46,14 +47,14 @@ class AndroidFrameworkSqlDriverInstrumentedTest {
         try {
             val path = directory.resolve("kani.db")
             AndroidFrameworkSqlDriver(path.toString()).use { driver ->
-                driver.openConnection().use { writer ->
-                    driver.openConnection().use { reader ->
-                        writer.pragmas.writeText(SqlPragma.JOURNAL_MODE, "WAL")
-                        reader.pragmas.writeText(SqlPragma.JOURNAL_MODE, "WAL")
-                        writer.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
+                driver.openConnection(SqlConnectionMode.READ_WRITE).use { writer ->
+                    writer.pragmas.writeText(SqlPragma.JOURNAL_MODE, "WAL")
+                    writer.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
+                    writer.execute("CREATE TABLE state(value TEXT NOT NULL)")
+                    writer.execute("INSERT INTO state(value) VALUES ('before')")
+
+                    driver.openConnection(SqlConnectionMode.READ_ONLY).use { reader ->
                         reader.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
-                        writer.execute("CREATE TABLE state(value TEXT NOT NULL)")
-                        writer.execute("INSERT INTO state(value) VALUES ('before')")
 
                         reader.beginTransaction(SqlTransactionMode.DEFERRED)
                         assertEquals("before", scalarText(reader, "SELECT value FROM state"))

@@ -5,7 +5,7 @@ package dev.bee.kanjianki.data.sql
  * for concurrent use unless its adapter explicitly serializes that use.
  */
 interface SqlDriver : AutoCloseable {
-    fun openConnection(): SqlConnection
+    fun openConnection(mode: SqlConnectionMode): SqlConnection
 
     override fun close()
 }
@@ -99,6 +99,11 @@ enum class SqlValueType {
     REAL,
     TEXT,
     BLOB,
+}
+
+enum class SqlConnectionMode {
+    READ_WRITE,
+    READ_ONLY,
 }
 
 enum class SqlTransactionMode {

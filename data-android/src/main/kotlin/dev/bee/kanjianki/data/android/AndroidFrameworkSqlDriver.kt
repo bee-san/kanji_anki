@@ -14,6 +14,7 @@ import androidx.annotation.RequiresApi
 import dev.bee.kanjianki.data.sql.SqlBusyException
 import dev.bee.kanjianki.data.sql.SqlConnection
 import dev.bee.kanjianki.data.sql.SqlConnectionClosedException
+import dev.bee.kanjianki.data.sql.SqlConnectionMode
 import dev.bee.kanjianki.data.sql.SqlConstraintException
 import dev.bee.kanjianki.data.sql.SqlConstraintKind
 import dev.bee.kanjianki.data.sql.SqlDriver
@@ -25,7 +26,6 @@ import dev.bee.kanjianki.data.sql.SqlRows
 import dev.bee.kanjianki.data.sql.SqlStatement
 import dev.bee.kanjianki.data.sql.SqlTransactionMode
 import dev.bee.kanjianki.data.sql.SqlValueType
-import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -35,7 +35,7 @@ class AndroidFrameworkSqlDriver(
 ) : SqlDriver {
     private val closed = AtomicBoolean()
 
-    override fun openConnection(): SqlConnection {
+    override fun openConnection(mode: SqlConnectionMode): SqlConnection {
         if (closed.get()) {
             throw SqlConnectionClosedException("Android SQLite driver is closed")
         }
@@ -44,8 +44,14 @@ class AndroidFrameworkSqlDriver(
                 SQLiteDatabase.openDatabase(
                     path,
                     null,
-                    SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.CREATE_IF_NECESSARY,
+                    when (mode) {
+                        SqlConnectionMode.READ_WRITE ->
+                            SQLiteDatabase.OPEN_READWRITE or
+                                SQLiteDatabase.CREATE_IF_NECESSARY
+                        SqlConnectionMode.READ_ONLY -> SQLiteDatabase.OPEN_READONLY
+                    },
                 ),
+                mode,
             )
         }
     }
@@ -57,9 +63,11 @@ class AndroidFrameworkSqlDriver(
 
 private class AndroidFrameworkSqlConnection(
     private val database: SQLiteDatabase,
+    private val mode: SqlConnectionMode,
 ) : SqlConnection {
     private val closed = AtomicBoolean()
     private val activeCancellations = ConcurrentHashMap.newKeySet<CancellationSignal>()
+    private var transactionControl = TransactionControl.NONE
 
     override val isOpen: Boolean
         get() = !closed.get() && database.isOpen
@@ -68,10 +76,20 @@ private class AndroidFrameworkSqlConnection(
 
     override fun beginTransaction(mode: SqlTransactionMode) {
         checkOpen()
+        if (transactionControl != TransactionControl.NONE) {
+            throw SqlException("Android SQLite connection already has an active transaction")
+        }
         translateAndroidSqlFailure("begin $mode transaction", ::isPrimaryKeyCollision) {
             when (mode) {
-                SqlTransactionMode.IMMEDIATE -> database.beginTransactionNonExclusive()
-                SqlTransactionMode.DEFERRED -> beginDeferredTransaction(database)
+                SqlTransactionMode.IMMEDIATE -> {
+                    requireConnectionMode(SqlConnectionMode.READ_WRITE, mode)
+                    database.beginTransactionNonExclusive()
+                    transactionControl = TransactionControl.FRAMEWORK
+                }
+                SqlTransactionMode.DEFERRED -> {
+                    requireConnectionMode(SqlConnectionMode.READ_ONLY, mode)
+                    transactionControl = beginDeferredTransaction(database)
+                }
             }
         }
     }
@@ -79,15 +97,40 @@ private class AndroidFrameworkSqlConnection(
     override fun commitTransaction() {
         checkOpen()
         translateAndroidSqlFailure("commit transaction", ::isPrimaryKeyCollision) {
-            database.setTransactionSuccessful()
-            database.endTransaction()
+            when (transactionControl) {
+                TransactionControl.FRAMEWORK -> {
+                    database.setTransactionSuccessful()
+                    database.endTransaction()
+                }
+                TransactionControl.QUERY_SQL ->
+                    executeReadOnlyTransactionSql(
+                        database,
+                        "/* kani read transaction */ COMMIT",
+                    )
+                TransactionControl.NONE ->
+                    throw SqlException("Android SQLite connection has no active transaction")
+            }
+            transactionControl = TransactionControl.NONE
         }
     }
 
     override fun rollbackTransaction() {
         checkOpen()
         translateAndroidSqlFailure("rollback transaction", ::isPrimaryKeyCollision) {
-            database.endTransaction()
+            try {
+                when (transactionControl) {
+                    TransactionControl.FRAMEWORK -> database.endTransaction()
+                    TransactionControl.QUERY_SQL ->
+                        executeReadOnlyTransactionSql(
+                            database,
+                            "/* kani read transaction */ ROLLBACK",
+                        )
+                    TransactionControl.NONE ->
+                        throw SqlException("Android SQLite connection has no active transaction")
+                }
+            } finally {
+                transactionControl = TransactionControl.NONE
+            }
         }
     }
 
@@ -190,6 +233,17 @@ private class AndroidFrameworkSqlConnection(
     private fun checkOpen() {
         if (!isOpen) {
             throw SqlConnectionClosedException("Android SQLite connection is closed")
+        }
+    }
+
+    private fun requireConnectionMode(
+        required: SqlConnectionMode,
+        transactionMode: SqlTransactionMode,
+    ) {
+        if (mode != required) {
+            throw SqlException(
+                "$transactionMode transactions require a $required Android SQLite connection",
+            )
         }
     }
 
@@ -463,12 +517,36 @@ private sealed interface AndroidSqlBinding {
     }
 }
 
-private fun beginDeferredTransaction(database: SQLiteDatabase) {
+private enum class TransactionControl {
+    NONE,
+    FRAMEWORK,
+    QUERY_SQL,
+}
+
+private fun beginDeferredTransaction(database: SQLiteDatabase): TransactionControl {
     if (Build.VERSION.SDK_INT >= 35) {
         Api35Transactions.beginReadOnly(database)
-        return
+        return TransactionControl.FRAMEWORK
     }
-    DeferredTransactionReflection.begin(database)
+    // Before API 35, Android rewrites a leading BEGIN into BEGIN EXCLUSIVE.
+    // The comment keeps the public query path on a read-only pooled connection
+    // while SQLite itself still parses the requested deferred transaction.
+    executeReadOnlyTransactionSql(
+        database,
+        "/* kani read transaction */ BEGIN DEFERRED",
+    )
+    return TransactionControl.QUERY_SQL
+}
+
+private fun executeReadOnlyTransactionSql(
+    database: SQLiteDatabase,
+    sql: String,
+) {
+    database.rawQuery(sql, null).use { cursor ->
+        while (cursor.moveToNext()) {
+            // Transaction-control statements return no rows.
+        }
+    }
 }
 
 @RequiresApi(35)
@@ -476,53 +554,6 @@ private object Api35Transactions {
     fun beginReadOnly(database: SQLiteDatabase) {
         database.beginTransactionReadOnly()
     }
-}
-
-private object DeferredTransactionReflection {
-    private val getThreadSession by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        SQLiteDatabase::class.java.getDeclaredMethod("getThreadSession").apply {
-            isAccessible = true
-        }
-    }
-    private val beginTransaction by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        getThreadSession.returnType.getDeclaredMethod(
-            "beginTransaction",
-            Int::class.javaPrimitiveType,
-            android.database.sqlite.SQLiteTransactionListener::class.java,
-            Int::class.javaPrimitiveType,
-            CancellationSignal::class.java,
-        ).apply {
-            isAccessible = true
-        }
-    }
-
-    fun begin(database: SQLiteDatabase) {
-        try {
-            val session = getThreadSession.invoke(database)
-            beginTransaction.invoke(
-                session,
-                DEFERRED_TRANSACTION_MODE,
-                null,
-                READ_ONLY_CONNECTION_FLAGS,
-                null,
-            )
-        } catch (failure: InvocationTargetException) {
-            throw failure.targetException
-        } catch (failure: ReflectiveOperationException) {
-            throw SqlException(
-                "Android API ${Build.VERSION.SDK_INT} cannot provide a deferred SQLite transaction",
-                failure,
-            )
-        } catch (failure: SecurityException) {
-            throw SqlException(
-                "Android API ${Build.VERSION.SDK_INT} blocked deferred SQLite transactions",
-                failure,
-            )
-        }
-    }
-
-    private const val DEFERRED_TRANSACTION_MODE = 0
-    private const val READ_ONLY_CONNECTION_FLAGS = 1
 }
 
 private inline fun <T> translateAndroidSqlFailure(

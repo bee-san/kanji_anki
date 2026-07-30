@@ -44,6 +44,7 @@ class DedicatedWriterSqlDatabaseTest {
         assertEquals(12L, first)
         assertEquals(9L, second)
         assertEquals(1, driver.connections.size)
+        assertEquals(listOf(SqlConnectionMode.READ_WRITE), driver.connectionModes)
         assertSame(callbackThreads[0], callbackThreads[1])
         assertEquals("test-sql-writer", callbackThreads[0].name)
         assertEquals(
@@ -174,6 +175,14 @@ class DedicatedWriterSqlDatabaseTest {
         assertEquals("reader failed", failure.message)
 
         assertEquals(3, driver.connections.size)
+        assertEquals(
+            listOf(
+                SqlConnectionMode.READ_WRITE,
+                SqlConnectionMode.READ_ONLY,
+                SqlConnectionMode.READ_ONLY,
+            ),
+            driver.connectionModes,
+        )
         assertEquals(
             listOf(
                 "pragma:busy_timeout=41",
@@ -423,15 +432,19 @@ class DedicatedWriterSqlDatabaseTest {
         private val onCommit: () -> Unit = {},
     ) : SqlDriver {
         val connections = Collections.synchronizedList(mutableListOf<RecordingConnection>())
+        val connectionModes = Collections.synchronizedList(mutableListOf<SqlConnectionMode>())
         val closeCount = AtomicInteger()
         val connectionClosed = CountDownLatch(1)
 
-        override fun openConnection(): SqlConnection =
+        override fun openConnection(mode: SqlConnectionMode): SqlConnection =
             RecordingConnection(
                 id = connections.size + 1,
                 onCommit = onCommit,
                 onClose = connectionClosed::countDown,
-            ).also(connections::add)
+            ).also {
+                connectionModes += mode
+                connections += it
+            }
 
         override fun close() {
             closeCount.incrementAndGet()

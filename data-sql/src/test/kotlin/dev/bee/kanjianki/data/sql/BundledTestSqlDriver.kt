@@ -17,12 +17,25 @@ internal class BundledTestSqlDriver(
     private val driver = BundledSQLiteDriver()
     private val closed = AtomicBoolean()
 
-    override fun openConnection(): SqlConnection {
+    override fun openConnection(mode: SqlConnectionMode): SqlConnection {
         if (closed.get()) {
             throw SqlConnectionClosedException("Bundled SQLite driver is closed")
         }
         return translateSqlFailure("open SQLite connection") {
-            BundledTestSqlConnection(driver.open(path))
+            val connection = BundledTestSqlConnection(driver.open(path), mode)
+            try {
+                if (mode == SqlConnectionMode.READ_ONLY) {
+                    connection.execute("PRAGMA query_only = ON")
+                }
+                connection
+            } catch (failure: Throwable) {
+                try {
+                    connection.close()
+                } catch (closeFailure: Throwable) {
+                    failure.addSuppressed(closeFailure)
+                }
+                throw failure
+            }
         }
     }
 
@@ -33,6 +46,7 @@ internal class BundledTestSqlDriver(
 
 private class BundledTestSqlConnection(
     private val delegate: AndroidxConnection,
+    private val mode: SqlConnectionMode,
 ) : SqlConnection {
     private val closed = AtomicBoolean()
 
@@ -42,6 +56,16 @@ private class BundledTestSqlConnection(
     override val pragmas: SqlPragmaAccess = BundledPragmaAccess(this)
 
     override fun beginTransaction(mode: SqlTransactionMode) {
+        val requiredMode =
+            when (mode) {
+                SqlTransactionMode.IMMEDIATE -> SqlConnectionMode.READ_WRITE
+                SqlTransactionMode.DEFERRED -> SqlConnectionMode.READ_ONLY
+            }
+        if (this.mode != requiredMode) {
+            throw SqlException(
+                "$mode transactions require a $requiredMode bundled SQLite connection",
+            )
+        }
         execute(
             when (mode) {
                 SqlTransactionMode.IMMEDIATE -> "BEGIN IMMEDIATE"

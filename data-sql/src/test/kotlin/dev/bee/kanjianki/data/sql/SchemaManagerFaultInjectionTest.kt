@@ -59,7 +59,7 @@ class SchemaManagerFaultInjectionTest {
         failureIndex: Int,
     ) {
         BundledTestSqlDriver(path.toString()).use { driver ->
-            driver.openConnection().use { connection ->
+            driver.openConnection(SqlConnectionMode.READ_WRITE).use { connection ->
                 assertEquals(
                     "failure $failureIndex user_version",
                     1L,
@@ -163,9 +163,9 @@ private class FaultInjectingSqlDriver(
     val actions: List<String>
         get() = controller.actions
 
-    override fun openConnection(): SqlConnection =
+    override fun openConnection(mode: SqlConnectionMode): SqlConnection =
         FaultInjectingSqlConnection(
-            delegate = delegate.openConnection(),
+            delegate = delegate.openConnection(mode),
             controller = controller,
         )
 

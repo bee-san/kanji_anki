@@ -191,8 +191,8 @@ class BundledTestSqlDriverTest {
     fun immediateWritersRespectBusyLockAndCommittedRowsAreDurable() {
         val path = temporaryDatabase("locking")
         BundledTestSqlDriver(path.toString()).use { driver ->
-            driver.openConnection().use { first ->
-                driver.openConnection().use { second ->
+            driver.openConnection(SqlConnectionMode.READ_WRITE).use { first ->
+                driver.openConnection(SqlConnectionMode.READ_WRITE).use { second ->
                     first.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
                     second.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
                     first.execute("CREATE TABLE durable(value TEXT NOT NULL)")
@@ -212,9 +212,39 @@ class BundledTestSqlDriverTest {
         }
 
         BundledTestSqlDriver(path.toString()).use { reopened ->
-            reopened.openConnection().use { connection ->
+            reopened.openConnection(SqlConnectionMode.READ_WRITE).use { connection ->
                 assertEquals(2L, scalarLong(connection, "SELECT COUNT(*) FROM durable"))
                 assertEquals("ok", scalarText(connection, "PRAGMA integrity_check"))
+            }
+        }
+    }
+
+    @Test
+    fun readOnlySnapshotDoesNotBlockWalWriterAndRejectsWrites() {
+        val path = temporaryDatabase("read-only")
+        BundledTestSqlDriver(path.toString()).use { driver ->
+            driver.openConnection(SqlConnectionMode.READ_WRITE).use { writer ->
+                writer.pragmas.writeText(SqlPragma.JOURNAL_MODE, "WAL")
+                writer.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
+                writer.execute("CREATE TABLE state(value TEXT NOT NULL)")
+                writer.execute("INSERT INTO state(value) VALUES ('before')")
+
+                driver.openConnection(SqlConnectionMode.READ_ONLY).use { reader ->
+                    reader.pragmas.writeLong(SqlPragma.BUSY_TIMEOUT, 0)
+                    reader.beginTransaction(SqlTransactionMode.DEFERRED)
+                    assertEquals("before", scalarText(reader, "SELECT value FROM state"))
+                    assertThrows(SqlException::class.java) {
+                        reader.execute("UPDATE state SET value='forbidden'")
+                    }
+
+                    writer.beginTransaction(SqlTransactionMode.IMMEDIATE)
+                    writer.execute("UPDATE state SET value='after'")
+                    writer.commitTransaction()
+
+                    assertEquals("before", scalarText(reader, "SELECT value FROM state"))
+                    reader.commitTransaction()
+                    assertEquals("after", scalarText(reader, "SELECT value FROM state"))
+                }
             }
         }
     }
@@ -224,7 +254,7 @@ class BundledTestSqlDriverTest {
         val source = temporaryDatabase("vacuum-source")
         val destination = source.parent.resolve("snapshot.db")
         BundledTestSqlDriver(source.toString()).use { driver ->
-            driver.openConnection().use { connection ->
+            driver.openConnection(SqlConnectionMode.READ_WRITE).use { connection ->
                 connection.execute("CREATE TABLE durable(value TEXT NOT NULL)")
                 connection.execute("INSERT INTO durable(value) VALUES ('snapshot-value')")
                 connection.execute("VACUUM INTO ${quoteSqlString(destination.toString())}")
@@ -233,7 +263,7 @@ class BundledTestSqlDriverTest {
 
         assertTrue(Files.isRegularFile(destination))
         BundledTestSqlDriver(destination.toString()).use { snapshot ->
-            snapshot.openConnection().use { connection ->
+            snapshot.openConnection(SqlConnectionMode.READ_WRITE).use { connection ->
                 assertEquals(
                     "snapshot-value",
                     scalarText(connection, "SELECT value FROM durable"),
@@ -247,7 +277,7 @@ class BundledTestSqlDriverTest {
     fun statementsConnectionsRowsAndDriversRejectUseAfterClose() {
         val path = temporaryDatabase("closure")
         val driver = BundledTestSqlDriver(path.toString())
-        val connection = driver.openConnection()
+        val connection = driver.openConnection(SqlConnectionMode.READ_WRITE)
         val statement = connection.prepare("SELECT 1")
         val rows = statement.query()
         assertTrue(rows.next())
@@ -272,7 +302,7 @@ class BundledTestSqlDriverTest {
         driver.close()
         driver.close()
         assertThrows(SqlConnectionClosedException::class.java) {
-            driver.openConnection()
+            driver.openConnection(SqlConnectionMode.READ_WRITE)
         }
     }
 
@@ -293,7 +323,7 @@ class BundledTestSqlDriverTest {
     ) {
         val path = temporaryDatabase(label)
         BundledTestSqlDriver(path.toString()).use { driver ->
-            driver.openConnection().use(block)
+            driver.openConnection(SqlConnectionMode.READ_WRITE).use(block)
         }
     }
 

@@ -163,7 +163,7 @@ class DedicatedWriterSqlDatabase(
                 var connection: SqlConnection? = null
                 var outcome: Result<T>? = null
                 try {
-                    connection = driver.openConnection()
+                    connection = driver.openConnection(SqlConnectionMode.READ_ONLY)
                     connectionRef.set(connection)
                     if (!continuation.isActive) {
                         connection.interrupt()
@@ -224,7 +224,7 @@ class DedicatedWriterSqlDatabase(
 
     private fun writerConnection(): SqlConnection {
         writerConnection?.let { return it }
-        val opened = driver.openConnection()
+        val opened = driver.openConnection(SqlConnectionMode.READ_WRITE)
         try {
             configureWriter(opened)
         } catch (failure: Throwable) {
