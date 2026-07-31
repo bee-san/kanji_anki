@@ -4038,6 +4038,47 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
      and export receipts, archive/repaired coordination) still needs its shared
      SQL port + conformance. Goal 184 depends on Goal 183 being complete.
 
+### Goal 183 stats-port completion evidence (2026-07-31)
+
+- Started from: `cd827a41` on `desktop/integration`. Supersedes blocker (1)
+  above: the user chose to proceed rather than keep the stats port deferred.
+- Commits: `8555fe2b data: port analytics stats cache and inventory to shared
+  SQL`; `4e13aa04 test: complete analytics repository conformance across
+  drivers`.
+- Implemented: a dependency-free `KaniJson` facility in `:core` (adds `Double`
+  support and an 8 MiB bound over the private integer-only `CompactJson`), so
+  `:data-sql` serializes the format-11 stats cache without Android `org.json`.
+  `SqlStatsData` computes every metric the app's `StudyStatsQueries` did —
+  outcome (weak-improved / mature-support / ladder health / adaptive health),
+  study impact, streak, task timing, review-day and task-type-day summaries,
+  cumulative kanji, wrong-pick counts + confusion meanings, repair evidence, and
+  the ladder-completion forecast — by running read-only SQL through the same
+  `:core` policies and mapping straight to the data-api `StatsSnapshot`.
+  `SqlKanjiImpactReport` ports the before/after impact analysis (including the
+  same-card cross-sync join). `SqlStatsCodec` round-trips the snapshot via
+  `KaniJson`; `SqlStatsRepository` reads/writes `stats_screen_cache` with the
+  legacy freshness rule (source version, cache format 11, time zone, local day).
+- Validation: `StatsRepositoryConformanceSuite` runs from one fixture against
+  both the legacy `SqliteStatsRepository` (Robolectric) and `SqlStatsRepository`
+  (bundled SQLite): empty-store refresh+cache, review-driven metrics, and stale-
+  cache invalidation across a source-version bump. `SqlStatsImpactReportTest`
+  drives the impact report's two-sync same-card path and the single-sync empty
+  branch. `KaniJsonTest` pins the JSON round trip. Gates: `:core:check`,
+  `:data-api:check`, `:data-sql:check` (100% class coverage), and the full
+  `:app:testDebugUnitTest` (`BUILD SUCCESSFUL in 2m 23s`) all pass.
+- Live gates: not required; no production composition switched.
+- Decisions: chose KaniJson-on-`:core` over adding a JSON dependency to
+  `:data-sql`, keeping the module dependency-free. The cache JSON layout is
+  self-consistent within `:data-sql` (not byte-matched to the app's `org.json`
+  cache); the conformance contract is the repository return value, which both
+  hosts match.
+- Rollback: revert `4e13aa04` then `8555fe2b`; both additive and unreferenced by
+  production composition.
+- Gaps/blockers: Goal 183 blockers (2) real licensed binaries + host wiring for
+  `:reference-assets`, and (3) the remaining Kani-owned/compatibility
+  persistence port, are still open. `StatsRepository` is now available in
+  `:data-sql`, closing the analytics part of blocker (1).
+
 Template:
 
 ```md
