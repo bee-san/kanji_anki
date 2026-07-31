@@ -7,6 +7,7 @@ object GitHubReleaseMetadataParser {
     private const val KEY_BROWSER_DOWNLOAD_URL = "browser_download_url"
     private const val KEY_HTML_URL = "html_url"
     private const val KEY_NAME = "name"
+    private const val KEY_PRERELEASE = "prerelease"
     private const val KEY_TAG_NAME = "tag_name"
 
     @JvmStatic
@@ -25,6 +26,16 @@ object GitHubReleaseMetadataParser {
             }
         }
         return GitHubReleaseMetadata(tag, html, assets, body)
+    }
+
+    @JvmStatic
+    fun isPrerelease(json: String): Boolean {
+        val colon = findKeyColon(json, KEY_PRERELEASE)
+        if (colon < 0) {
+            return false
+        }
+        val valueIndex = nextNonWhitespace(json, colon + 1)
+        return valueIndex >= 0 && json.startsWith("true", valueIndex)
     }
 
     @JvmStatic

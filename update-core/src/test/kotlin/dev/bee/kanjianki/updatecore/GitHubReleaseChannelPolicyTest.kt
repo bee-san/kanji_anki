@@ -17,12 +17,12 @@ class GitHubReleaseChannelPolicyTest {
     }
 
     @Test
-    fun betaChannelUsesNewestPublishedReleaseIncludingPrereleases() {
-        assertEquals("/releases?per_page=1", GitHubReleaseChannelPolicy.apiPath(true))
+    fun betaChannelSkipsNewerStableReleaseAndSelectsNewestPrerelease() {
+        assertEquals("/releases?per_page=30", GitHubReleaseChannelPolicy.apiPath(true))
 
         val release = GitHubReleaseChannelPolicy.parseRelease(
             true,
-            """[{"tag_name":"v1.2.4","prerelease":true,"assets":[]},{"tag_name":"v1.2.3","prerelease":false,"assets":[]}]""",
+            """[{"tag_name":"v1.2.5","prerelease":false,"assets":[]},{"tag_name":"v1.2.4","prerelease":true,"assets":[]},{"tag_name":"v1.2.3","prerelease":true,"assets":[]}]""",
         )
 
         assertEquals("v1.2.4", release.tagName())

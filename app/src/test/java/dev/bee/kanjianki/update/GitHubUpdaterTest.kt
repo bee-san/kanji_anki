@@ -92,13 +92,16 @@ class GitHubUpdaterTest {
     }
 
     @Test
-    fun betaUpdatesRequestNewestReleaseFeedAndParseArrayResponse() {
+    fun betaUpdatesRequestPrereleaseFeedAndSkipNewerStableRelease() {
         LocalStore(context).use { it.saveBetaUpdatesEnabled(true) }
-        val client = RecordingReleaseClient("[{\"tag_name\":\"${BuildConfig.VERSION_NAME}\",\"prerelease\":true}]")
+        val client = RecordingReleaseClient(
+            "[{\"tag_name\":\"v99.0.0\",\"prerelease\":false}," +
+                "{\"tag_name\":\"${BuildConfig.VERSION_NAME}\",\"prerelease\":true}]",
+        )
 
         val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
 
-        assertTrue(client.requestedUrls.single().endsWith("/releases?per_page=1"))
+        assertTrue(client.requestedUrls.single().endsWith("/releases?per_page=30"))
         assertEquals(UpdateTextPolicy.alreadyOnVersionMessage(BuildConfig.VERSION_NAME), result.message)
     }
 
