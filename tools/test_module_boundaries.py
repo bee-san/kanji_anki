@@ -79,6 +79,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
     {
         *CURRENT_SHARED_JVM_MODULES,
         "platform-contracts",
+        "presentation-api",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -122,6 +123,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
     "platform-contracts": frozenset(),
+    "presentation-api": frozenset(),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
@@ -1074,6 +1076,34 @@ class ModuleBoundaryTest(unittest.TestCase):
                 'rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml")',
             ),
         )
+
+    def test_presentation_api_is_gated_on_both_targets_locally_and_in_ci(self) -> None:
+        # :presentation-api is the first multiplatform module, so it is the first one
+        # whose two targets can diverge. Android CI runs the Android target and
+        # ciDesktop runs the desktop target with its 100% class coverage gate; a
+        # module gated on only one target could compile for both and be tested for
+        # one, which is exactly the failure the portable contracts exist to prevent.
+        root_build = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+        desktop = delimited_body(root_build, "val desktopCiTasks = listOf", "(", ")")
+        fast = delimited_body(root_build, "val fastCiTasks = listOf", "(", ")")
+        android_ci = (ROOT / ".github/workflows/android-ci.yml").read_text(
+            encoding="utf-8",
+        )
+        android_tasks = (
+            ":presentation-api:testAndroidHostTest",
+            ":presentation-api:compileAndroidDeviceTest",
+            ":presentation-api:lintAnalyzeAndroidHostTest",
+        )
+
+        self.assertEqual(1, desktop.count('":presentation-api:check"'))
+        for task in android_tasks:
+            with self.subTest(task=task):
+                self.assertEqual(1, fast.count(f'"{task}"'))
+                self.assertIn(task, android_ci)
+        # The Android gate must stay desktop-free: the desktop target's tests and
+        # coverage gate reach it only through `:presentation-api:check` in ciDesktop.
+        self.assertNotIn(":presentation-api:desktopTest", fast)
+        self.assertNotIn(":presentation-api:check", fast)
 
     def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:
         study_adapter = (

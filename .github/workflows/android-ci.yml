@@ -143,6 +143,12 @@ jobs:
               writing-core/build/test-results/**
               dictionary-core/build/test-results/**
               update-core/build/test-results/**
+          - id: presentation-api
+            label: Portable presentation contracts (Android target)
+            tasks: ':presentation-api:testAndroidHostTest :presentation-api:compileAndroidDeviceTest :presentation-api:lintAnalyzeAndroidHostTest'
+            reports: |
+              presentation-api/build/reports/**
+              presentation-api/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'

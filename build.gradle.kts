@@ -284,6 +284,7 @@ val desktopCiTasks = listOf(
     ":dictionary-core:check",
     ":update-core:check",
     ":platform-contracts:check",
+    ":presentation-api:check",
     ":desktop-app:check",
     "testDesktopCiScripts",
     "testDesktopTooling",
@@ -375,6 +376,14 @@ val fastCiTasks = listOf(
     ":platform-contracts:test",
     ":platform-contracts:jacocoTestReport",
     ":platform-contracts:jacocoTestCoverageVerification",
+    // :presentation-api is multiplatform, so the Android fast gate runs its Android
+    // target: the common tests compiled for Android, the device-test source set's
+    // compile, and Android Lint. The desktop target's tests and its 100% class
+    // coverage gate belong to ciDesktop; running them here would make the Android
+    // gate depend on desktop tasks, which `test_desktop_ci_gates.py` forbids.
+    ":presentation-api:testAndroidHostTest",
+    ":presentation-api:compileAndroidDeviceTest",
+    ":presentation-api:lintAnalyzeAndroidHostTest",
     ":platform-android:testDebugUnitTest",
     ":platform-android:jacocoDebugUnitTestReport",
     ":platform-android:compileDebugAndroidTestKotlin",
