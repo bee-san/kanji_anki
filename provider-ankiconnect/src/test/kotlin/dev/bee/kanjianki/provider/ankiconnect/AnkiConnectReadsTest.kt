@@ -83,7 +83,8 @@ class AnkiConnectReadsTest {
     fun parsesCardsInfo() {
         val body = """
             {"result":[{"cardId":1498938915662,"note":1502298033753,"deckName":"Kiku",
-            "modelName":"Kiku","queue":2,"due":5,"interval":30,"reps":4,"lapses":1}],"error":null}
+            "modelName":"Kiku","ord":0,"queue":2,"type":2,"due":5,"interval":30,
+            "reps":4,"lapses":1}],"error":null}
         """.trimIndent().replace("\n", "")
         val cards = AnkiConnectReads.cardsInfo(result(body))
         assertEquals(
@@ -93,7 +94,9 @@ class AnkiConnectReadsTest {
                     noteId = 1502298033753L,
                     deckName = "Kiku",
                     modelName = "Kiku",
+                    ord = 0,
                     queue = 2,
+                    type = 2,
                     due = 5,
                     interval = 30,
                     reps = 4,
@@ -102,6 +105,44 @@ class AnkiConnectReadsTest {
             ),
             cards,
         )
+    }
+
+    @Test
+    fun defaultsAMissingOrdinalToTheFrontTemplate() {
+        // Some AnkiConnect versions omit `ord`; absent must read as the front template.
+        val body = """
+            {"result":[{"cardId":1,"note":2,"deckName":"D","modelName":"M",
+            "queue":2,"type":2,"due":5,"interval":30,"reps":4,"lapses":1}],"error":null}
+        """.trimIndent().replace("\n", "")
+        assertEquals(0L, AnkiConnectReads.cardsInfo(result(body))!!.single().ord)
+    }
+
+    @Test
+    fun isolatingParsersSkipMalformedRowsInsteadOfFailingTheBatch() {
+        val notes = AnkiConnectReads.notesInfoIsolating(
+            result(
+                """{"result":[{"noteId":1,"modelName":"M","tags":[],"fields":{}},""" +
+                    """{"noteId":2,"tags":[],"fields":{}}],"error":null}""",
+            ),
+        )!!
+        assertEquals(listOf(1L), notes.rows.map { it.noteId })
+        assertEquals(1, notes.skipped)
+
+        val cards = AnkiConnectReads.cardsInfoIsolating(
+            result(
+                """{"result":[{"cardId":1,"note":2,"deckName":"D","modelName":"M","queue":2,""" +
+                    """"type":2,"due":5,"interval":30,"reps":4,"lapses":1},{"cardId":9}],"error":null}""",
+            ),
+        )!!
+        assertEquals(listOf(1L), cards.rows.map { it.cardId })
+        assertEquals(1, cards.skipped)
+        assertEquals(1, cards.rows.size)
+    }
+
+    @Test
+    fun isolatingParsersStillRejectANonArrayResult() {
+        assertNull(AnkiConnectReads.notesInfoIsolating(result("""{"result":"nope","error":null}""")))
+        assertNull(AnkiConnectReads.cardsInfoIsolating(result("""{"result":7,"error":null}""")))
     }
 
     @Test

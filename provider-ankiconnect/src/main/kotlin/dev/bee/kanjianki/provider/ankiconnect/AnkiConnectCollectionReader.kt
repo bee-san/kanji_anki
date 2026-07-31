@@ -1,0 +1,388 @@
+package dev.bee.kanjianki.provider.ankiconnect
+
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.syncapi.CollectionCancellation
+import dev.bee.kanjianki.syncapi.CollectionCapability
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionFailureKind
+import dev.bee.kanjianki.syncapi.CollectionProgress
+import dev.bee.kanjianki.syncapi.CollectionProgressListener
+import dev.bee.kanjianki.syncapi.CollectionProviderKind
+import dev.bee.kanjianki.syncapi.CollectionSourceIdentity
+import dev.bee.kanjianki.syncapi.NoteTypeDescriptor
+import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
+import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
+
+/**
+ * Reads an Anki collection over AnkiConnect into the provider-neutral
+ * [RecordsSyncModels.CollectionSnapshot], so downstream sync/analysis code is
+ * identical to the AnkiDroid path.
+ *
+ * Parity rules this reader is responsible for:
+ *
+ * - **Query identity.** The configured-model query and the optional browser
+ *   query both come from [ProviderNotePolicy], the same helper AnkiDroid uses,
+ *   so a given settings object selects the same notes on both providers.
+ * - **Deterministic ordering.** Notes come back in the provider's `findNotes`
+ *   order and cards are grouped by their owning note in that same note order,
+ *   matching `AnkiDroidCardReader`'s per-note grouping. Two reads of an
+ *   unchanged collection produce identical snapshots.
+ * - **No fabrication.** AnkiConnect exposes no FSRS memory state, so
+ *   stability/difficulty/retrievability stay null and the
+ *   [CollectionCapability.FSRS_MEMORY_STATE] capability is not advertised.
+ *   Seeding must fall back to interval/lapses evidence rather than inventing a
+ *   memory state.
+ * - **Bounded work.** ID responses are capped and detail reads are batched and
+ *   byte-adaptive via [AnkiConnectReadPlanner].
+ * - **Malformed-row isolation.** One unparseable note or card is skipped and
+ *   counted, not allowed to abort the whole read.
+ * - **Cancellation.** Checked before every network round trip, so a cancelled
+ *   sync stops within one batch instead of draining the collection.
+ */
+class AnkiConnectCollectionReader(
+    private val transport: AnkiConnectTransport,
+    private val keyProvider: () -> String? = { null },
+) {
+    /** Counts of rows the provider returned but Kani could not use. */
+    data class SkippedRows(val notes: Int, val cards: Int) {
+        val total: Int get() = notes + cards
+    }
+
+    /** A completed read plus the diagnostics the caller may want to surface. */
+    data class ReadResult(
+        val snapshot: RecordsSyncModels.CollectionSnapshot,
+        val skipped: SkippedRows,
+    )
+
+    /** Lists note types with their fields, for the settings model picker. */
+    @Throws(CollectionFailure::class)
+    fun noteTypes(): List<NoteTypeDescriptor> {
+        val key = keyProvider()
+        val models = AnkiConnectReads.namesAndIds(
+            resultOf(AnkiConnectRequests.modelNamesAndIds(key)),
+        ) ?: throw protocolFailure("modelNamesAndIds")
+        return models.map { (name, modelId) ->
+            val fields = AnkiConnectReads.fieldNames(
+                resultOf(AnkiConnectRequests.modelFieldNames(name, key)),
+            ) ?: throw protocolFailure("modelFieldNames")
+            NoteTypeDescriptor(modelId, name, fields)
+        }
+    }
+
+    /**
+     * Reads the configured model's notes and their cards into a snapshot.
+     * @throws CollectionFailure on transport, protocol, or cancellation failure.
+     */
+    @Throws(CollectionFailure::class)
+    fun read(
+        settings: RecordsSyncModels.Settings,
+        progress: CollectionProgressListener = CollectionProgressListener.NONE,
+        cancellation: CollectionCancellation = CollectionCancellation.NONE,
+    ): ReadResult {
+        throwIfCancelled(cancellation)
+        val key = keyProvider()
+
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.FINDING_NOTE_TYPE))
+        val modelId = resolveModelId(settings.modelName, key)
+
+        throwIfCancelled(cancellation)
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.READING_NOTES))
+        val noteIds = findIds(ProviderNotePolicy.modelSearch(settings.modelName), key, cancellation)
+        val browserQueryNoteIds = browserQueryNoteIds(settings, key, cancellation)
+
+        // Browser-query notes may live outside the configured model; merge them in
+        // while preserving the configured-model order first, exactly as the
+        // AnkiDroid gateway merges its extra browser-query notes.
+        val orderedNoteIds = LinkedHashSet(noteIds).also { it.addAll(browserQueryNoteIds) }.toList()
+        AnkiConnectReadPlanner.requireWithinIdCap(orderedNoteIds.size)
+
+        val notes = readNotes(orderedNoteIds, modelId, settings, progress, cancellation, key)
+
+        throwIfCancelled(cancellation)
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS))
+        val cards = readCards(notes.rows.map { it.noteId }, settings, progress, cancellation, key)
+
+        val markedCards = cards.rows.map { card ->
+            if (card.noteId in browserQueryNoteIds) card.withBrowserQueryMatched(true) else card
+        }
+        return ReadResult(
+            snapshot = RecordsSyncModels.CollectionSnapshot(notes.rows.map { it.note }, markedCards),
+            skipped = SkippedRows(notes.skipped, cards.skipped),
+        )
+    }
+
+    /** Wraps [read] with the capability set and source identity for sync. */
+    @Throws(CollectionFailure::class)
+    fun readProviderCollection(
+        settings: RecordsSyncModels.Settings,
+        progress: CollectionProgressListener = CollectionProgressListener.NONE,
+        cancellation: CollectionCancellation = CollectionCancellation.NONE,
+    ): ProviderCollectionSnapshot {
+        val result = read(settings, progress, cancellation)
+        throwIfCancelled(cancellation)
+        val snapshot = result.snapshot
+        return ProviderCollectionSnapshot(
+            snapshot = snapshot,
+            // Deliberately no FSRS_MEMORY_STATE: AnkiConnect exposes no memory state.
+            capabilities = setOf(
+                CollectionCapability.READ_COLLECTION,
+                CollectionCapability.LIST_NOTE_TYPES,
+                CollectionCapability.SOURCE_IDENTITY,
+            ),
+            sourceIdentity = CollectionSourceIdentity.create(
+                providerKind = CollectionProviderKind.ANKI_CONNECT,
+                // The endpoint is the stable source key for a desktop collection;
+                // the identity type digests it and never persists it raw.
+                sourceKey = transport.endpointUrl(),
+                stableNoteIds = snapshot.notes.map(RecordsSyncModels.Note::noteId),
+                stableCardIds = snapshot.cards.map(RecordsSyncModels.Card::cardId),
+            ),
+        )
+    }
+
+    private class ParsedNote(val noteId: Long, val note: RecordsSyncModels.Note)
+
+    private class Batched<T>(val rows: List<T>, val skipped: Int)
+
+    private fun resolveModelId(modelName: String, key: String?): Long {
+        val models = AnkiConnectReads.namesAndIds(
+            resultOf(AnkiConnectRequests.modelNamesAndIds(key)),
+        ) ?: throw protocolFailure("modelNamesAndIds")
+        return models[modelName] ?: throw CollectionFailure(
+            CollectionFailureKind.INVALID_CONFIGURATION,
+            "Anki has no note type named \"$modelName\".",
+        )
+    }
+
+    private fun browserQueryNoteIds(
+        settings: RecordsSyncModels.Settings,
+        key: String?,
+        cancellation: CollectionCancellation,
+    ): Set<Long> {
+        if (!settings.browserQueryImportEnabled()) return emptySet()
+        val search = ProviderNotePolicy.browserQuerySearch(settings.normalizedBrowserQuery())
+        return LinkedHashSet(findIds(search, key, cancellation))
+    }
+
+    private fun findIds(
+        query: String,
+        key: String?,
+        cancellation: CollectionCancellation,
+    ): List<Long> {
+        throwIfCancelled(cancellation)
+        val ids = AnkiConnectReads.ids(resultOf(AnkiConnectRequests.findNotes(query, key)))
+            ?: throw protocolFailure("findNotes")
+        AnkiConnectReadPlanner.requireWithinIdCap(ids.size)
+        return ids
+    }
+
+    private fun readNotes(
+        noteIds: List<Long>,
+        configuredModelId: Long,
+        settings: RecordsSyncModels.Settings,
+        progress: CollectionProgressListener,
+        cancellation: CollectionCancellation,
+        key: String?,
+    ): Batched<ParsedNote> = batched(
+        ids = noteIds,
+        stage = CollectionProgress.Stage.READING_NOTES,
+        progress = progress,
+        cancellation = cancellation,
+    ) { batch ->
+        val measured = measuredResultOf(AnkiConnectRequests.notesInfo(batch, key))
+        val parsed = AnkiConnectReads.notesInfoIsolating(measured.result)
+            ?: throw protocolFailure("notesInfo")
+        val rows = parsed.rows.map { info ->
+            ParsedNote(
+                noteId = info.noteId,
+                note = RecordsSyncModels.Note(
+                    info.noteId,
+                    // Only the configured model's own notes carry its id; a
+                    // browser-query note from another model must not claim it.
+                    if (info.modelName == settings.modelName) configuredModelId else 0L,
+                    info.modelName,
+                    ProviderNotePolicy.selectRequiredFields(
+                        info.fields.keys.toList(),
+                        info.fields.values.toList(),
+                        settings.requiredFields(),
+                    ),
+                    info.tags,
+                ),
+            )
+        }
+        Fetched(rows, parsed.skipped, measured.encodedBytes)
+    }
+
+    private fun readCards(
+        noteIds: List<Long>,
+        settings: RecordsSyncModels.Settings,
+        progress: CollectionProgressListener,
+        cancellation: CollectionCancellation,
+        key: String?,
+    ): Batched<RecordsSyncModels.Card> {
+        if (noteIds.isEmpty()) return Batched(emptyList(), 0)
+        throwIfCancelled(cancellation)
+        // findCards over the owning notes keeps card discovery in one bounded
+        // query instead of one request per note.
+        val query = noteIds.joinToString(" OR ") { "nid:$it" }
+        val cardIds = AnkiConnectReads.ids(resultOf(AnkiConnectRequests.findCards(query, key)))
+            ?: throw protocolFailure("findCards")
+        AnkiConnectReadPlanner.requireWithinIdCap(cardIds.size)
+
+        val detail = batched(
+            ids = cardIds,
+            stage = CollectionProgress.Stage.SCANNING_CARDS,
+            progress = progress,
+            cancellation = cancellation,
+        ) { batch ->
+            val measured = measuredResultOf(AnkiConnectRequests.cardsInfo(batch, key))
+            val parsed = AnkiConnectReads.cardsInfoIsolating(measured.result)
+                ?: throw protocolFailure("cardsInfo")
+            val rows = parsed.rows
+                .filter { card ->
+                    // Only the configured model is ordinal-restricted; a
+                    // browser-query note from another model keeps every card.
+                    card.modelName != settings.modelName ||
+                        AnkiConnectCardNormalization.isAcceptedConfiguredOrd(card.ord)
+                }
+                .map(::toSnapshotCard)
+            Fetched(rows, parsed.skipped, measured.encodedBytes)
+        }
+
+        // Group by the owning note in note order for a deterministic snapshot,
+        // matching AnkiDroidCardReader's per-note grouping.
+        val byNote = detail.rows.groupBy(RecordsSyncModels.Card::noteId)
+        val ordered = ArrayList<RecordsSyncModels.Card>(detail.rows.size)
+        for (noteId in noteIds) {
+            ordered.addAll(byNote[noteId].orEmpty())
+        }
+        return Batched(ordered, detail.skipped)
+    }
+
+    private fun toSnapshotCard(card: AnkiConnectReads.CardInfo): RecordsSyncModels.Card {
+        val suspended = AnkiConnectCardNormalization.isSuspended(card.queue)
+        return RecordsSyncModels.Card(
+            card.cardId,
+            card.noteId,
+            card.ord.toInt(),
+            // AnkiConnect reports a deck name, not a numeric deck id; the
+            // snapshot's deckId/deckName both carry it, as AnkiDroid does with
+            // its deck id.
+            card.deckName,
+            card.deckName,
+            AnkiConnectCardNormalization.signed(card.queue),
+            AnkiConnectCardNormalization.signed(card.type),
+            AnkiConnectCardNormalization.signed(card.due),
+            AnkiConnectCardNormalization.intervalDays(card.interval),
+            AnkiConnectCardNormalization.counter(card.reps),
+            AnkiConnectCardNormalization.counter(card.lapses),
+            suspended,
+            // No FSRS memory state over AnkiConnect: never fabricated.
+            null,
+            null,
+            null,
+        )
+    }
+
+    /**
+     * Walks [ids] in bounded detail batches, adapting the next batch size from the
+     * observed encoded size of the last one and checking cancellation before every
+     * round trip. Progress is reported per batch with a known total.
+     */
+    private fun <I, R> batched(
+        ids: List<I>,
+        stage: CollectionProgress.Stage,
+        progress: CollectionProgressListener,
+        cancellation: CollectionCancellation,
+        fetch: (List<I>) -> Fetched<R>,
+    ): Batched<R> {
+        val rows = ArrayList<R>(ids.size)
+        var skipped = 0
+        var completed = 0
+        var batchSize = AnkiConnectReadPlanner.DEFAULT_START_BATCH
+        var offset = 0
+        while (offset < ids.size) {
+            throwIfCancelled(cancellation)
+            val batch = ids.subList(offset, minOf(offset + batchSize, ids.size))
+            val fetched = fetch(batch)
+            rows.addAll(fetched.rows)
+            skipped += fetched.skipped
+            offset += batch.size
+            completed += batch.size
+            progress.onProgress(CollectionProgress(stage, completed, ids.size))
+            batchSize = AnkiConnectReadPlanner.adaptBatchSize(batch.size, fetched.observedBytes)
+        }
+        return Batched(rows, skipped)
+    }
+
+    /** One batch's parsed rows plus the encoded size that drives adaptation. */
+    private class Fetched<R>(
+        val rows: List<R>,
+        val skipped: Int,
+        val observedBytes: Long,
+    )
+
+    private fun protocolFailure(action: String): CollectionFailure = CollectionFailure(
+        CollectionFailureKind.TRANSIENT,
+        "AnkiConnect returned an unexpected $action response.",
+    )
+
+    private fun throwIfCancelled(cancellation: CollectionCancellation) {
+        if (cancellation.isCancelled()) throw CollectionFailure.cancelled()
+    }
+
+    private fun resultOf(request: AnkiConnectEnvelope.Request): AnkiConnectJson.Json =
+        measuredResultOf(request).result
+
+    /** A success result plus the raw body size, used to adapt the batch size. */
+    private class Measured(val result: AnkiConnectJson.Json, val encodedBytes: Long)
+
+    private fun measuredResultOf(request: AnkiConnectEnvelope.Request): Measured =
+        when (val exchange = transport.post(request)) {
+            is AnkiConnectTransport.Exchange.Body -> when (
+                val response = AnkiConnectEnvelope.parse(exchange.text)
+            ) {
+                is AnkiConnectEnvelope.Response.Ok ->
+                    Measured(response.result, exchange.text.length.toLong())
+                is AnkiConnectEnvelope.Response.Failed -> throw failureFor(response.message)
+                AnkiConnectEnvelope.Response.ProtocolError -> throw protocolFailure(request.action)
+            }
+            is AnkiConnectTransport.Exchange.Failure -> throw transportFailure(exchange)
+        }
+
+    private fun failureFor(message: String): CollectionFailure {
+        val lowered = message.lowercase()
+        // AnkiConnect reports a missing/incorrect API key as a plain error string.
+        val kind = if (lowered.contains("api key") || lowered.contains("authentication")) {
+            CollectionFailureKind.AUTH_REQUIRED
+        } else {
+            CollectionFailureKind.TRANSIENT
+        }
+        return CollectionFailure(kind, "AnkiConnect rejected the request: $message")
+    }
+
+    private fun transportFailure(
+        failure: AnkiConnectTransport.Exchange.Failure,
+    ): CollectionFailure = when (failure.reason) {
+        AnkiConnectTransport.Reason.CANCELLED -> CollectionFailure.cancelled()
+        AnkiConnectTransport.Reason.NON_LOOPBACK_RESOLUTION ->
+            CollectionFailure(
+                CollectionFailureKind.INVALID_CONFIGURATION,
+                "AnkiConnect endpoint did not resolve to loopback.",
+            )
+        AnkiConnectTransport.Reason.TIMEOUT,
+        AnkiConnectTransport.Reason.CONNECTION_FAILED,
+        ->
+            CollectionFailure(
+                CollectionFailureKind.NOT_AVAILABLE,
+                "Anki is not reachable: ${failure.detail}",
+            )
+        AnkiConnectTransport.Reason.HTTP_ERROR_STATUS,
+        AnkiConnectTransport.Reason.RESPONSE_TOO_LARGE,
+        ->
+            CollectionFailure(
+                CollectionFailureKind.TRANSIENT,
+                "AnkiConnect request failed: ${failure.detail}",
+            )
+    }
+}

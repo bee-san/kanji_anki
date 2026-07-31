@@ -19,4 +19,32 @@ object AnkiConnectCardNormalization {
      * (Kani's front template). Returns whether the card should be kept.
      */
     fun isAcceptedConfiguredOrd(templateOrd: Long): Boolean = templateOrd == 0L
+
+    /**
+     * Converts Anki's raw `ivl` to the whole days the snapshot's `intervalDays`
+     * expects. Anki stores a negative `ivl` as *seconds* for sub-day learning
+     * cards; AnkiDroid's provider column is already days, so Kani floors the
+     * sub-day case to 0 rather than letting a negative seconds value read as a
+     * negative day count (which would make a learning card look mature-adjacent
+     * or corrupt maturity arithmetic).
+     */
+    fun intervalDays(rawInterval: Long): Int {
+        if (rawInterval <= 0L) return 0
+        return rawInterval.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    /**
+     * Clamps an unbounded provider counter into the snapshot's `Int` field
+     * without wrapping. Negative counters are not meaningful, so they floor at 0.
+     */
+    fun counter(rawValue: Long): Int =
+        rawValue.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+
+    /**
+     * Clamps a signed provider value into the snapshot's `Int` field without
+     * wrapping. Unlike [counter], negatives are preserved: `queue` uses them for
+     * suspended/buried and `due` is relative in some queues.
+     */
+    fun signed(rawValue: Long): Int =
+        rawValue.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
 }

@@ -30,12 +30,25 @@ object AnkiConnectReads {
         val noteId: Long,
         val deckName: String,
         val modelName: String,
+        /** Template ordinal; Kani only accepts 0 on the configured model. */
+        val ord: Long,
         val queue: Long,
+        val type: Long,
         val due: Long,
+        /**
+         * Anki's raw `ivl`: positive values are days, negative values are
+         * seconds for sub-day learning cards. Normalization is the caller's job.
+         */
         val interval: Long,
         val reps: Long,
         val lapses: Long,
     )
+
+    /**
+     * A batch parse that isolated malformed rows instead of failing the batch:
+     * one bad note or card must not abort a whole collection read.
+     */
+    data class Isolated<T>(val rows: List<T>, val skipped: Int)
 
     /** Parses `modelNamesAndIds` / `deckNamesAndIds`: an object of name→id. */
     fun namesAndIds(result: Json): Map<String, Long>? {
@@ -96,6 +109,29 @@ object AnkiConnectReads {
         return NoteInfo(noteId, modelName, tags, fields)
     }
 
+    /**
+     * Parses `notesInfo`, dropping malformed rows instead of failing the batch.
+     * A non-array result is still a protocol error and returns null.
+     */
+    fun notesInfoIsolating(result: Json): Isolated<NoteInfo>? = isolating(result, ::noteInfo)
+
+    /**
+     * Parses `cardsInfo`, dropping malformed rows instead of failing the batch.
+     * A non-array result is still a protocol error and returns null.
+     */
+    fun cardsInfoIsolating(result: Json): Isolated<CardInfo>? = isolating(result, ::cardInfo)
+
+    private fun <T> isolating(result: Json, parse: (Json) -> T?): Isolated<T>? {
+        val arr = result as? Json.Arr ?: return null
+        val rows = ArrayList<T>(arr.items.size)
+        var skipped = 0
+        for (item in arr.items) {
+            val parsed = parse(item)
+            if (parsed == null) skipped++ else rows.add(parsed)
+        }
+        return Isolated(rows, skipped)
+    }
+
     private fun cardInfo(item: Json): CardInfo? {
         val obj = item as? Json.Obj ?: return null
         return CardInfo(
@@ -103,7 +139,10 @@ object AnkiConnectReads {
             noteId = longField(obj, "note") ?: return null,
             deckName = stringField(obj, "deckName") ?: return null,
             modelName = stringField(obj, "modelName") ?: return null,
+            // AnkiConnect omits `ord` on some versions; absent means the front template.
+            ord = longField(obj, "ord") ?: 0L,
             queue = longField(obj, "queue") ?: return null,
+            type = longField(obj, "type") ?: return null,
             due = longField(obj, "due") ?: return null,
             interval = longField(obj, "interval") ?: return null,
             reps = longField(obj, "reps") ?: return null,

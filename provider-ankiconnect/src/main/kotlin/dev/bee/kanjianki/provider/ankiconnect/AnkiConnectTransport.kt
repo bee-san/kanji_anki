@@ -41,6 +41,13 @@ class AnkiConnectTransport(
         CANCELLED,
     }
 
+    /**
+     * The validated endpoint URL. Used as the source-identity key for the
+     * collection behind this transport; [dev.bee.kanjianki.syncapi.CollectionSourceIdentity]
+     * digests it and never persists or logs it raw.
+     */
+    fun endpointUrl(): String = endpoint.uri.toString()
+
     /** POSTs an already-built [AnkiConnectEnvelope.Request] and returns the raw body. */
     fun post(request: AnkiConnectEnvelope.Request): Exchange {
         val resolution = try {
