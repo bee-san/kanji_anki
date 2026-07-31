@@ -16,6 +16,15 @@ object AnkiConnectRequests {
     fun deckNamesAndIds(apiKey: String? = null): AnkiConnectEnvelope.Request =
         AnkiConnectEnvelope.request("deckNamesAndIds", apiKey = apiKey)
 
+    /**
+     * Asks which profile Anki currently has open. This is a read, but it is a
+     * read Kani makes for identity rather than content: the loopback endpoint is
+     * the same for every profile on the machine, so the profile name is what
+     * distinguishes one collection source from another.
+     */
+    fun getActiveProfile(apiKey: String? = null): AnkiConnectEnvelope.Request =
+        AnkiConnectEnvelope.request("getActiveProfile", apiKey = apiKey)
+
     fun modelFieldNames(modelName: String, apiKey: String? = null): AnkiConnectEnvelope.Request =
         AnkiConnectEnvelope.request(
             "modelFieldNames",

@@ -22,6 +22,11 @@ class AnkiConnectRequestsTest {
         assertFalse(decode(models).entries.containsKey("key"))
 
         assertEquals("deckNamesAndIds", AnkiConnectRequests.deckNamesAndIds().action)
+
+        val profile = AnkiConnectRequests.getActiveProfile(apiKey = "k")
+        assertEquals("getActiveProfile", profile.action)
+        assertFalse(decode(profile).entries.containsKey("params"))
+        assertEquals(Json.Str("k"), decode(profile).entries["key"])
     }
 
     @Test
@@ -85,6 +90,7 @@ class AnkiConnectRequestsTest {
         val actions = listOf(
             AnkiConnectRequests.modelNamesAndIds(),
             AnkiConnectRequests.deckNamesAndIds(),
+            AnkiConnectRequests.getActiveProfile(),
             AnkiConnectRequests.modelFieldNames("M"),
             AnkiConnectRequests.modelFieldNamesMulti(listOf("M")),
             AnkiConnectRequests.findNotes("q"),

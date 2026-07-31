@@ -193,7 +193,7 @@ class AnkiConnectCollectionReader(
      * per-binding salt, so neither component is persisted or logged in the clear.
      */
     private fun sourceKey(key: String?): String {
-        val result = resultOf(AnkiConnectEnvelope.request("getActiveProfile", apiKey = key))
+        val result = resultOf(AnkiConnectRequests.getActiveProfile(key))
         val profile = when (result) {
             is AnkiConnectJson.Json.Str -> result.value
             AnkiConnectJson.Json.Null -> ""
