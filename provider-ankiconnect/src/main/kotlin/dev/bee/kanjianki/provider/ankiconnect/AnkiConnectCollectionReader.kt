@@ -149,13 +149,22 @@ class AnkiConnectCollectionReader(
         )
     }
 
-    /** Wraps [read] with the capability set and source identity for sync. */
+    /**
+     * Wraps [read] with the capability set and source identity for sync.
+     *
+     * The active profile is resolved **before** any detail read, because the
+     * profile is half the source key: the binding gate has to be able to reject a
+     * profile switch before Kani spends a full collection read on — or worse,
+     * mirrors — the wrong collection.
+     */
     @Throws(CollectionFailure::class)
     fun readProviderCollection(
         settings: RecordsSyncModels.Settings,
         progress: CollectionProgressListener = CollectionProgressListener.NONE,
         cancellation: CollectionCancellation = CollectionCancellation.NONE,
     ): ProviderCollectionSnapshot {
+        throwIfCancelled(cancellation)
+        val sourceKey = sourceKey(keyProvider())
         val result = read(settings, progress, cancellation)
         throwIfCancelled(cancellation)
         val snapshot = result.snapshot
@@ -169,13 +178,34 @@ class AnkiConnectCollectionReader(
             ),
             sourceIdentity = CollectionSourceIdentity.create(
                 providerKind = CollectionProviderKind.ANKI_CONNECT,
-                // The endpoint is the stable source key for a desktop collection;
-                // the identity type digests it and never persists it raw.
-                sourceKey = transport.endpointUrl(),
+                sourceKey = sourceKey,
                 stableNoteIds = snapshot.notes.map(RecordsSyncModels.Note::noteId),
                 stableCardIds = snapshot.cards.map(RecordsSyncModels.Card::cardId),
             ),
         )
+    }
+
+    /**
+     * The endpoint paired with the active profile name. The endpoint alone cannot
+     * identify a source: every profile on the machine answers on the same
+     * loopback port, so an endpoint-only key would validate unchanged across a
+     * profile switch. `CollectionSourceIdentity` digests the composed key under a
+     * per-binding salt, so neither component is persisted or logged in the clear.
+     */
+    private fun sourceKey(key: String?): String {
+        val result = resultOf(AnkiConnectEnvelope.request("getActiveProfile", apiKey = key))
+        val profile = when (result) {
+            is AnkiConnectJson.Json.Str -> result.value
+            AnkiConnectJson.Json.Null -> ""
+            else -> throw protocolFailure("getActiveProfile")
+        }
+        if (profile.isBlank()) {
+            throw CollectionFailure(
+                CollectionFailureKind.INVALID_CONFIGURATION,
+                "Anki has no collection open, so Kani cannot identify the source profile.",
+            )
+        }
+        return AnkiConnectSourceKey.of(transport.endpointUrl(), profile)
     }
 
     private class ParsedNote(val noteId: Long, val note: RecordsSyncModels.Note)

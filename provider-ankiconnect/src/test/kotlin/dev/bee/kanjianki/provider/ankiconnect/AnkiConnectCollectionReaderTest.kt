@@ -8,6 +8,11 @@ import dev.bee.kanjianki.syncapi.CollectionFailure
 import dev.bee.kanjianki.syncapi.CollectionFailureKind
 import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
+import dev.bee.kanjianki.syncapi.SourceBindingAction
+import dev.bee.kanjianki.syncapi.SourceBindingDecisionKind
+import dev.bee.kanjianki.syncapi.SourceBindingPolicy
+import dev.bee.kanjianki.syncapi.SourceBindingReason
+import dev.bee.kanjianki.syncapi.SourceBindingRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -28,6 +33,7 @@ class AnkiConnectCollectionReaderTest {
         notesInfo: ((List<Long>) -> String)? = null,
     ): ScriptedAnkiConnectExchange {
         val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult("getActiveProfile", """"User 1"""")
         exchange.onResult("modelNamesAndIds", """{"$model":1607392319495}""")
         exchange.onResult("findNotes", noteIds.joinToString(",", "[", "]"))
         exchange.onResult("findCards") { body ->
@@ -201,8 +207,104 @@ class AnkiConnectCollectionReaderTest {
         )
         assertEquals(1, evidence.noteIdSampleSize)
         assertEquals(1, evidence.cardIdSampleSize)
-        // toString must stay redacted: no endpoint, no raw ids.
+        // toString must stay redacted: no endpoint, no profile name, no raw ids.
         assertFalse(identity.toString().contains("127.0.0.1"))
+        assertFalse(identity.toString().contains("User 1"))
+    }
+
+    /**
+     * A profile switch must change the source key. Every Anki profile on a machine
+     * answers on the same loopback port, so an endpoint-only key would validate
+     * unchanged and Kani would mirror a different collection into the same
+     * database. Compared through the binding policy because the raw key is
+     * deliberately unreachable.
+     */
+    @Test
+    fun aProfileSwitchChangesTheSourceKeyAndBlocksValidation() {
+        fun identityFor(profile: String) = AnkiConnectCollectionReader(
+            scriptedCollection(listOf(3L)).also {
+                it.onResult("getActiveProfile", """"$profile"""")
+                it.onResult("cardsInfo") { body ->
+                    requestedIds(body, "cards").joinToString(",", "[", "]") { cardId ->
+                        ScriptedAnkiConnectExchange.cardRow(cardId, 3L, model)
+                    }
+                }
+            }.transport(),
+        ).readProviderCollection(settings).sourceIdentity!!
+
+        val firstBind = SourceBindingPolicy.evaluate(
+            SourceBindingRequest(
+                persisted = null,
+                candidate = identityFor("User 1"),
+                databaseIsEmpty = true,
+                action = SourceBindingAction.FIRST_BIND,
+                replacementSalt = "salt-for-the-first-bind",
+                nowMillis = 1_000L,
+            ),
+        )
+        val bound = firstBind.bindingToPersist!!
+
+        // Same profile revalidates.
+        assertEquals(
+            SourceBindingReason.VALIDATED,
+            SourceBindingPolicy.evaluate(
+                SourceBindingRequest(
+                    persisted = bound,
+                    candidate = identityFor("User 1"),
+                    databaseIsEmpty = false,
+                    nowMillis = 2_000L,
+                ),
+            ).reason,
+        )
+
+        // A different profile on the same endpoint must not silently replace it.
+        val switched = SourceBindingPolicy.evaluate(
+            SourceBindingRequest(
+                persisted = bound,
+                candidate = identityFor("User 2"),
+                databaseIsEmpty = false,
+                nowMillis = 3_000L,
+            ),
+        )
+        assertEquals(SourceBindingReason.SOURCE_KEY_CHANGED, switched.reason)
+        assertEquals(SourceBindingDecisionKind.REBIND_REQUIRED, switched.kind)
+        assertFalse(switched.allowsCollectionAccess)
+    }
+
+    @Test
+    fun refusesToIdentifyTheSourceWhenNoProfileIsOpen() {
+        val exchange = scriptedCollection(listOf(3L))
+        exchange.onResult("getActiveProfile", "null")
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport()).readProviderCollection(settings)
+        }
+        assertEquals(CollectionFailureKind.INVALID_CONFIGURATION, failure.kind)
+        // The profile probe precedes every detail read, so nothing was fetched.
+        assertTrue(exchange.bodiesFor("notesInfo").isEmpty())
+    }
+
+    @Test
+    fun failsAsTransientWhenTheActiveProfileResponseIsMalformed() {
+        val exchange = scriptedCollection(listOf(3L))
+        exchange.onResult("getActiveProfile", "42")
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport()).readProviderCollection(settings)
+        }
+        assertEquals(CollectionFailureKind.TRANSIENT, failure.kind)
+    }
+
+    @Test
+    fun cancellationBeforeTheProfileProbeSendsNothing() {
+        val exchange = scriptedCollection(listOf(3L))
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport())
+                .readProviderCollection(settings, CollectionProgressListener.NONE) { true }
+        }
+        assertEquals(CollectionFailureKind.CANCELLED, failure.kind)
+        assertTrue(exchange.received.isEmpty())
     }
 
     @Test
