@@ -26,6 +26,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
+import dev.bee.kanjianki.core.MissingKanjiInventoryState
+import dev.bee.kanjianki.core.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiScanStatus
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

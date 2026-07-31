@@ -403,4 +403,47 @@ class RepositoryPayloadsTest {
                 900L,
             )
     }
+
+    @Test
+    fun missingKanjiCommandsRetainPortableValues() {
+        val inventory = dev.bee.kanjianki.core.AnkiKanjiInventory(
+            literals = linkedSetOf("裂"),
+            notesScanned = 10,
+            fieldsScanned = 20,
+            skippedNotes = 1,
+            modelCount = 2,
+            malformedRowWarning = null,
+        )
+        val publish = PublishMissingKanjiInventoryCommand(inventory, 100L, 200L, "authority=x;spec=1")
+        assertEquals(inventory, publish.inventory)
+        assertEquals(200L, publish.completedAtMillis)
+
+        val record = RecordMissingKanjiScanCommand(
+            status = dev.bee.kanjianki.core.MissingKanjiScanStatus.FAILED,
+            startedAtMillis = 100L,
+            completedAtMillis = 200L,
+            notesScanned = 0,
+            fieldsScanned = 0,
+            uniqueKanjiCount = 0,
+            skippedNotes = 0,
+            modelCount = 0,
+            providerFingerprint = "authority=x;spec=1",
+            failureCode = "provider_unavailable",
+        )
+        assertEquals(dev.bee.kanjianki.core.MissingKanjiScanStatus.FAILED, record.status)
+        assertEquals("provider_unavailable", record.failureCode)
+
+        val candidate = dev.bee.kanjianki.core.MissingKanjiCandidate("裂", listOf("split"))
+        val add = AddManualKanjiSourcesCommand(listOf(candidate), 300L)
+        assertEquals(listOf(candidate), add.candidates)
+        assertEquals(300L, add.nowMillis)
+
+        val remove = RemoveManualKanjiSourcesCommand(listOf("裂"), 400L)
+        assertEquals(listOf("裂"), remove.literals)
+        assertEquals(400L, remove.nowMillis)
+
+        val deactivate = DeactivateManualKanjiSourcesCommand(listOf("烈"), 500L)
+        assertEquals(listOf("烈"), deactivate.literals)
+        assertEquals(500L, deactivate.nowMillis)
+    }
 }

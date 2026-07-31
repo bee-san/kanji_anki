@@ -4,11 +4,13 @@ import dev.bee.kanjianki.core.KanjiInventoryBuilder
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.data.HomeRepository
 import dev.bee.kanjianki.data.SettingsRepository
+import dev.bee.kanjianki.data.MissingKanjiRepository
 import dev.bee.kanjianki.data.StatsRepository
 import dev.bee.kanjianki.data.StudyRepository
 import dev.bee.kanjianki.data.SyncRepository
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceFixture
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceHost
+import dev.bee.kanjianki.data.conformance.MissingKanjiRepositoryConformanceSuite
 import dev.bee.kanjianki.data.conformance.RepositoryConformanceSuite
 import dev.bee.kanjianki.data.conformance.StatsRepositoryConformanceSuite
 import dev.bee.kanjianki.data.conformance.StudyRepositoryConformanceSuite
@@ -81,6 +83,16 @@ class SqlRepositoryConformanceTest {
         }
     }
 
+    @Test
+    fun sqlMissingKanjiRepositoryPassesSharedContract() = runBlocking {
+        val host = SqlConformanceHost()
+        try {
+            MissingKanjiRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
     private inner class SqlConformanceHost : RepositoryConformanceHost {
         private var database: DedicatedWriterSqlDatabase = freshDatabase()
         private val invalidation = SqlProjectionInvalidation()
@@ -99,6 +111,9 @@ class SqlRepositoryConformanceTest {
 
         override val stats: StatsRepository
             get() = SqlStatsRepository(database) { FIXED_CLOCK }
+
+        override val missingKanji: MissingKanjiRepository
+            get() = SqlMissingKanjiRepository(database) { FIXED_CLOCK }
 
         override suspend fun reset() {
             database.close()
