@@ -4321,6 +4321,211 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   live read-only handshake against a real Anki. Goals 188–191 (reads, writes,
   equivalence) build on this transport.
 
+### Goal 187 remainder completion evidence (2026-07-31)
+
+- Started from: `7aaba4e5` on `desktop/integration` (pushes to
+  `origin/desktop/support`). Completes everything Goal 187 left open except the
+  live handshake.
+- Commits (in order):
+  - `4dd096a5 provider: add AnkiConnect API-key lifecycle over the SecretStore port`
+  - `3ea8ba87 provider: add typed AnkiConnect read requests and result parsers`
+  - `34a01817 test: add AnkiConnect failure matrix over a fake loopback server`
+- Implemented:
+  - `AnkiConnectKeyStore` — the API-key lifecycle over the `SecretStore`
+    platform port. A key is persisted only where a tested vault adapter exists;
+    otherwise it is held for the process session only. There is no plaintext
+    fallback, and the store never logs or returns a key in a diagnostic.
+  - `AnkiConnectRequests` / `AnkiConnectReads` — typed builders and parsers for
+    the planned read surface (`modelNamesAndIds`, `modelFieldNames`,
+    `deckNamesAndIds`, `getActiveProfile`, `findNotes`, `notesInfo`,
+    `findCards`, `cardsInfo`, plus the bounded `modelFieldNamesMulti` group).
+    Every builder routes through `AnkiConnectEnvelope.request`, so the
+    allowlist, the pinned `version: 6`, and the present-only key are structural
+    rather than per-call discipline.
+  - `FakeAnkiConnectServer` — a real in-process loopback `HttpServer` with a
+    per-action script and transport-level fault injection, driving the full
+    failure matrix: malformed JSON, oversize body, HTTP error status, HTTP-200
+    protocol error, unauthorized key, wrong version, missing action, and retry.
+- Validation: `:provider-ankiconnect:check` (100% class coverage) and
+  `ciDesktop` pass. `AnkiConnectFailureMatrixTest` 8 tests,
+  `AnkiConnectKeyStoreTest` 6, `AnkiConnectRequestsTest` 7,
+  `AnkiConnectReadsTest` 11.
+- Live gates: still outstanding. This machine has no Anki Desktop installed
+  (`which anki` finds nothing, no `~/.local/share/Anki2`) and nothing answers on
+  `127.0.0.1:8765`, so the read-only handshake run cannot be performed here.
+- Decisions: confirmed — no plaintext key persistence, and the outbound
+  allowlist is enforced at the single envelope choke point rather than per call
+  site.
+- Rollback: revert the three commits above (newest first); all additive to
+  `:provider-ankiconnect`, which is not yet wired into `:desktop-app`.
+- Gaps/blockers: the live read-only handshake against a running Anki
+  Desktop/AnkiConnect. Needs Anki installed on the target host; it is the same
+  external dependency that blocks Goals 188 and 191's live runs.
+
+### Goal 188 completion evidence (2026-07-31)
+
+- Started from: `34a01817`. Delivers the provider-neutral snapshot from
+  AnkiConnect.
+- Commits (in order):
+  - `27b6696c anki-connect: add bounded read planner and card normalization`
+  - `501c61df anki-connect: implement model note and card reads`
+  - `8a331a06 sync: normalize missing FSRS memory without fabrication`
+  - `bb91b2d0 fix(ankiconnect): intersect browser-query notes with the configured model`
+  - `19b3eb2a anki-connect: fetch note-type fields through bounded multi groups`
+  - `23faebb5 feat(ankiconnect): bind the source identity to the active Anki profile`
+  - `8556a21e refactor(ankiconnect): route the profile probe through AnkiConnectRequests`
+  - `02d762dc feat(ankiconnect): expose the reader as a CollectionGateway under the shared contract`
+  - `801f7409 test(sync-engine): pin the capability-present/absent admission goldens`
+  - `7b705bfc refactor(core): share Anki field normalization across both providers`
+- Implemented:
+  - `AnkiConnectReadPlanner` — the bounding layer: `MAX_MULTI_ACTIONS = 25`,
+    detail batches starting at 100 and adapting down by encoded byte size
+    (`TARGET_BATCH_BYTES`) within `MIN_BATCH`/`MAX_BATCH`, and the explicit
+    `MAX_ID_COUNT = 250_000` cap that fails with `OversizeIdResponseException`
+    rather than trying to process an unbounded ID array.
+  - `AnkiConnectCollectionReader` / `AnkiConnectGateway` — model discovery,
+    configured-note population, browser-query population, note and card detail
+    reads, deck/template/suspension/interval/repetition/lapse/tag mapping, and
+    cancellation plus progress checks before metadata, before every batch, and
+    around every row transformation. Browser-query matches are intersected with
+    the configured model before merging, and configured cards whose template
+    ord is not `0` stay rejected.
+  - Suspension follows Android's `queue < 0`, deliberately *not* AnkiConnect's
+    narrower `areSuspended`. `FSRS_MEMORY_STATE` is emitted as nullable and the
+    capability is not declared for stock AnkiConnect, so admission sees absence
+    rather than a fabricated value.
+  - `AnkiConnectSourceKey` binds the open Kani database to the active Anki
+    profile, so a profile change blocks sync instead of silently replacing the
+    source.
+  - `7b705bfc` moved field normalization into `:core` so both providers share
+    one implementation rather than two that can drift.
+- Validation: `:provider-ankiconnect:check` and `ciDesktop` pass at 100% class
+  coverage. `AnkiConnectCollectionReaderTest` 42 tests, `AnkiConnectGatewayTest`
+  22, `AnkiConnectReadPlannerTest` 10, `AnkiConnectCardNormalizationTest` 3,
+  plus the capability-present/absent admission goldens in `:sync-engine`.
+- Live gates: the read-only configured-sync snapshot against a running Linux
+  Anki session is outstanding for the same reason as Goal 187's handshake — no
+  Anki Desktop on this host.
+- Decisions: confirmed — capability absence is reported, never synthesized; the
+  Android suspension rule wins over the provider's narrower one.
+- Rollback: revert the ten commits above (newest first). `7b705bfc` also touches
+  `:core`; reverting it restores the per-provider normalizers.
+- Gaps/blockers: live read-only snapshot only.
+
+### Goal 189 completion evidence (2026-07-31)
+
+- Started from: `7b705bfc`.
+- Commits (in order):
+  - `48847d81 feat(anki-connect): implement collection inventory scanning`
+  - `f187a3a8 feat(anki-connect): add browser handoff and bounded media reads`
+  - `9f78e810 test(anki-connect): prove inventory isolation and media safety`
+- Implemented:
+  - `AnkiConnectInventoryGateway` — collection-wide scanning for Missing Kanji
+    analysis, kept separate from configured-model sync and from historical
+    snapshots. The full note-ID discovery is bounded by the planner's ID cap and
+    is *not* claimed to be streaming; only the detail passes are batched.
+    Results report `notesRead`, `skippedNotes`, `modelCount`, and `queryMode`,
+    so malformed-row isolation stays visible against the warning threshold.
+    Cancellation and progress are checked per batch.
+  - `AnkiConnectBrowseHandoff` — `guiBrowse` with the exact query Kani would
+    show the user, so what Anki's browser displays is what Kani claimed. The
+    returned card ids are deliberately discarded: the point is the handoff.
+  - `AnkiConnectMediaReader` — bounded `retrieveMediaFile` with filename
+    validation, a byte cap accounting for base64's 4/3 expansion, cache limits,
+    and no arbitrary path writes.
+- Validation: `:provider-ankiconnect:check` and `ciDesktop` pass at 100% class
+  coverage. `AnkiConnectInventoryGatewayTest` 16 tests,
+  `AnkiConnectMediaReaderTest` 14, `AnkiConnectBrowseHandoffTest` 9. The
+  isolation tests assert no raw note text or media byte reaches a log or
+  persistent inventory row.
+- Live gates: not required for the deterministic surface; the live inventory run
+  is folded into Goal 191's fixture.
+- Decisions: confirmed — inventory never persists raw note text, and ID
+  discovery is honestly described as bounded rather than streaming.
+- Rollback: revert the three commits above (newest first).
+- Gaps/blockers: none for the deterministic surface.
+
+### Goal 190 completion evidence (2026-07-31)
+
+- Started from: `9f78e810`. Delivers the whole desktop write surface.
+- Commits (in order):
+  - `aa078c2e anki-connect: add isolated archive and repaired tag writes`
+  - `d3273c43 anki-connect: add idempotent Missing Kanji creation`
+  - `5fcd385e test: enforce the desktop provider write surface`
+- Implemented:
+  - `AnkiConnectTagWriter` — `kani_archived`/`kani_repaired` writes as one-note
+    `addTags` actions inside bounded `multi` batches, with every nested envelope
+    inspected so one failure cannot hide another. Failures are isolated per note
+    and reported for a later retry; the writer never throws for a provider
+    problem, so a sync cannot fail because a tag did not land. Legacy
+    `kanji_anki_archived` stays recognized on the read side.
+  - `AnkiConnectMissingKanjiWriter` — Missing Kanji deck/model discovery, shape
+    validation, `createDeck`, `createModel`, `addNotes` in batches of at most
+    100, and stable `SourceId` reconciliation. Five properties are load-bearing
+    and documented in the class KDoc:
+    - **Reconciliation is the source of truth, not the write's own answer.**
+      `addNotes` is not treated as batch-atomic: mixed ids, `null` entries, a
+      wrong-length array, a non-array result, a protocol error, a timeout, a
+      cancellation, and a dropped connection all lead to the same thing — re-read
+      the intended batch by `SourceId` before recording a receipt or retrying.
+    - **A collision is never rewritten.** An existing model of Kani's name is
+      reused only when field order, CSS, and the single template's name and both
+      formats all match exactly; otherwise `MODEL_COLLISION`.
+    - **Unprovable means refused.** `getDeckConfig` is the only standard-action
+      way to tell an ordinary deck from a filtered one (`deckNamesAndIds`
+      reports no `dyn` flag), so a deck that cannot be proven ordinary fails
+      closed to CSV rather than being assumed compatible. This is why two read
+      actions are as required as the writes.
+    - **`destination_key` binds to the source, not just the endpoint.** It is
+      `ankiconnect:<sha256(endpoint|profile)>:<modelId>`, so after a restore or
+      rebind a local receipt cannot suppress a write the new collection does not
+      have. The digest also keeps the endpoint and profile name out of stored
+      state.
+    - **CSV stays fully usable** for unsupported capability, collision, auth
+      loss, and any unfinished write.
+  - `AnkiConnectWriteSurfaceTest` — the write surface enforced three ways, each
+    catching what the others miss: positively at the allowlist (every action
+    literal in the module's main sources is scanned out and must be allowlisted,
+    and the reverse — an allowlisted action nobody sends is unreviewed surface);
+    negatively by name (~50 real scheduling/note-rewrite/deck-options/
+    collection-wide actions asserted absent from the allowlist and refused by
+    both the envelope builder and `multi` nesting); and behaviorally, by running
+    a full export, a full tag write, a refused export, and a full inventory scan
+    against a collection with real review history and asserting every
+    pre-existing card, deck options group, and note field is unchanged. New
+    entries are allowed, because additive is the point.
+  - `FakeAnkiCollection` — a stateful in-process Anki. It exists because a
+    scripted exchange cannot express what the writer is built around: that a
+    write changes what a later read returns. It also *really implements* the
+    denied actions (moving queue, due, interval, reps, deck, config id, note
+    fields), because a fake that errored on them would let the behavioral
+    assertion pass for the wrong reason;
+    `theSnapshotDetectsASchedulingWrite` proves each one is detectable and
+    `theFakeImplementsTheDeniedActionsItClaimsTo` stops the two lists drifting.
+- Validation: `:provider-ankiconnect:check` (100% class coverage) and
+  `ciDesktop` pass; `python3 tools/test_module_boundaries.py` 22 tests OK.
+  `AnkiConnectMissingKanjiWriterTest` 50 tests,
+  `AnkiConnectTagWriterTest` 18, `AnkiConnectWriteSurfaceTest` 14. Module total
+  302 tests, 0 failures. First write, retry, partial failure, cancellation,
+  collision, auth loss, mixed-ID/null `addNotes`, and zero-duplicate
+  reconciliation all pass; the tag-write tests assert a sync survives every
+  write failure.
+- Notable defect found and fixed during the work: the post-write reconciliation
+  honored cancellation, so cancelling mid-run discarded the only record of notes
+  Anki had already committed and the next run would have created them again.
+  Reconciliation is now unconditional; cancellation is honored *before* the next
+  batch instead, matching the tag writer's shape.
+- Live gates: no write action was issued against any real profile. Per the plan's
+  live-gate rule, Goal 190's write tests run only against a throwaway
+  copied/sanitized profile, and none exists on this host — see Goal 191.
+- Decisions: confirmed — the desktop write surface is note tags plus additive
+  notes in Kani's own deck and note type, and nothing else; `getDeckConfig` is
+  accepted as a required read because it is the fail-closed filtered-deck proof.
+- Rollback: revert the three commits above (newest first); all additive to
+  `:provider-ankiconnect`, which is not yet wired into `:desktop-app`.
+- Gaps/blockers: none for the deterministic surface. The live write qualification
+  is Goal 191 and needs Anki Desktop plus a throwaway profile on the host.
+
 Template:
 
 ```md
