@@ -181,7 +181,15 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "writing-core",
         },
     ),
-    "desktop-app": frozenset(),
+    "desktop-app": frozenset(
+        {
+            "application",
+            "data-desktop",
+            "feature-shell",
+            "platform-desktop",
+            "provider-ankiconnect",
+        },
+    ),
 }
 FINAL_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
