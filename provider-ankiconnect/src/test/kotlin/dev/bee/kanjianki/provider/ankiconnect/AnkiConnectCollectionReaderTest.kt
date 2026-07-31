@@ -127,6 +127,60 @@ class AnkiConnectCollectionReaderTest {
         assertNotNull(provider.sourceIdentity)
     }
 
+    /**
+     * End-to-end no-fabrication check: an AnkiConnect snapshot carries no FSRS
+     * memory, and admission still seeds a real review interval from the card's
+     * interval evidence rather than an invented memory state.
+     */
+    @Test
+    fun fsrsFreeSnapshotStillSeedsFromIntervalEvidence() {
+        val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult("modelNamesAndIds", """{"$model":42}""")
+        exchange.onResult("findNotes", "[1]")
+        exchange.onResult("notesInfo") {
+            "[${ScriptedAnkiConnectExchange.noteRow(
+                1,
+                model,
+                listOf(
+                    settings.expressionField to "裂ける",
+                    settings.readingField to "さける",
+                    settings.meaningField to "to split",
+                ),
+            )}]"
+        }
+        exchange.onResult("findCards", "[10]")
+        exchange.onResult("cardsInfo") {
+            // Mature (interval 40 >= matureDays 21), active, never suspended.
+            "[${ScriptedAnkiConnectExchange.cardRow(10, 1, model, queue = 2, interval = 40, lapses = 0)}]"
+        }
+
+        val snapshot = AnkiConnectCollectionReader(exchange.transport()).read(settings).snapshot
+        val card = snapshot.cards.single()
+        assertNull(card.fsrsStability)
+        assertTrue(card.mature(settings.matureDays))
+
+        val row = dev.bee.kanjianki.core.RecordsImportModels.DashboardRow(
+            "裂", 900, "to split", "さける", "search", 10, "reason", "reason text",
+            1, 0, 1,
+            listOf(
+                dev.bee.kanjianki.core.RecordsImportModels.Example(
+                    dev.bee.kanjianki.core.RecordsBase.SOURCE_ACTIVE,
+                    card.cardId, card.noteId, "裂ける", "さける", "to split", "",
+                    card.mature(settings.matureDays), card.lapses, card.intervalDays, card.reps,
+                    card.fsrsStability, card.fsrsDifficulty, card.fsrsRetrievability,
+                ),
+            ),
+        )
+        val seed = dev.bee.kanjianki.core.AdmissionEvidencePolicy.seedFor(
+            row,
+            dev.bee.kanjianki.core.RecordsBase.StudyLadderSettings.defaults(),
+            settings,
+        )
+        assertTrue(seed.isReviewSeed())
+        // Stability came from the card's interval, not from a fabricated memory.
+        assertEquals(40.0, seed.stability, 0.001)
+    }
+
     @Test
     fun bindsSourceIdentityToTheEndpointWithoutLeakingIt() {
         val exchange = scriptedCollection(listOf(3L))
