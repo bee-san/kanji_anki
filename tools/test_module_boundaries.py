@@ -80,6 +80,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         *CURRENT_SHARED_JVM_MODULES,
         "platform-contracts",
         "presentation-api",
+        "ui-common",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -124,6 +125,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "update-core": frozenset(),
     "platform-contracts": frozenset(),
     "presentation-api": frozenset(),
+    "ui-common": frozenset({"presentation-api"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
@@ -380,7 +382,19 @@ PROJECT_DEPENDENCY = re.compile(
 TYPE_SAFE_PROJECT_ACCESSOR = re.compile(r"\bprojects\.[A-Za-z0-9_.]+")
 ANDROID_IMPORT = re.compile(r"^import\s+(android|androidx)\.", re.MULTILINE)
 COMMON_PLATFORM_IMPORT = re.compile(
-    r"^import\s+(android|androidx|java\.awt|javax\.swing)\.",
+    r"^import\s+(?:"
+    # The Android framework and the desktop toolkits are never portable.
+    r"android\.|java\.awt\.|javax\.swing\."
+    # Every other androidx artifact is Android-only. Compose Multiplatform
+    # publishes its common API under `androidx.compose`, so that is the one
+    # allowed exception — shared UI has to be able to name a Composable.
+    r"|androidx\.(?!compose\.)"
+    # A handful of `androidx.compose` members are Android-only even so: resource
+    # lookup goes through compose-resources instead, view interop has no desktop
+    # meaning, and these three locals are backed by Android platform types.
+    r"|androidx\.compose\.ui\.(?:res|viewinterop)\."
+    r"|androidx\.compose\.ui\.platform\.Local(?:Context|Configuration|View)\b"
+    r")",
     re.MULTILINE,
 )
 ANKIDROID_IMPLEMENTATION_IMPORT = re.compile(
@@ -734,13 +748,29 @@ class ModuleBoundaryTest(unittest.TestCase):
     ) -> None:
         for forbidden_import in (
             "import android.content.Context",
+            "import androidx.activity.ComponentActivity",
+            "import androidx.work.WorkManager",
+            "import androidx.compose.ui.res.painterResource",
+            "import androidx.compose.ui.viewinterop.AndroidView",
             "import androidx.compose.ui.platform.LocalContext",
+            "import androidx.compose.ui.platform.LocalConfiguration",
+            "import androidx.compose.ui.platform.LocalView",
             "import java.awt.Desktop",
             "import javax.swing.JFrame",
         ):
             with self.subTest(forbidden_import=forbidden_import):
                 self.assertIsNotNone(COMMON_PLATFORM_IMPORT.search(forbidden_import))
-        self.assertIsNone(COMMON_PLATFORM_IMPORT.search("import kotlinx.coroutines.flow.Flow"))
+        # Compose Multiplatform's own common API, and anything not platform-bound
+        # at all, must stay allowed or shared UI could not be written here.
+        for allowed_import in (
+            "import kotlinx.coroutines.flow.Flow",
+            "import androidx.compose.runtime.Composable",
+            "import androidx.compose.material3.MaterialTheme",
+            "import androidx.compose.ui.graphics.Color",
+            "import androidx.compose.ui.platform.LocalDensity",
+        ):
+            with self.subTest(allowed_import=allowed_import):
+                self.assertIsNone(COMMON_PLATFORM_IMPORT.search(allowed_import))
 
         violations = []
         presentation_modules = sorted(
@@ -1077,33 +1107,64 @@ class ModuleBoundaryTest(unittest.TestCase):
             ),
         )
 
-    def test_presentation_api_is_gated_on_both_targets_locally_and_in_ci(self) -> None:
-        # :presentation-api is the first multiplatform module, so it is the first one
-        # whose two targets can diverge. Android CI runs the Android target and
-        # ciDesktop runs the desktop target with its 100% class coverage gate; a
-        # module gated on only one target could compile for both and be tested for
-        # one, which is exactly the failure the portable contracts exist to prevent.
+    def test_multiplatform_modules_are_gated_on_both_targets_locally_and_in_ci(
+        self,
+    ) -> None:
+        # A multiplatform module is the only kind whose two targets can diverge.
+        # Android CI runs the Android target and ciDesktop runs the desktop target
+        # with its 100% class coverage gate; a module gated on only one target could
+        # compile for both and be tested for one, which is exactly the failure the
+        # portable contracts exist to prevent.
         root_build = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
         desktop = delimited_body(root_build, "val desktopCiTasks = listOf", "(", ")")
         fast = delimited_body(root_build, "val fastCiTasks = listOf", "(", ")")
         android_ci = (ROOT / ".github/workflows/android-ci.yml").read_text(
             encoding="utf-8",
         )
-        android_tasks = (
-            ":presentation-api:testAndroidHostTest",
-            ":presentation-api:compileAndroidDeviceTest",
-            ":presentation-api:lintAnalyzeAndroidHostTest",
-        )
 
-        self.assertEqual(1, desktop.count('":presentation-api:check"'))
-        for task in android_tasks:
-            with self.subTest(task=task):
-                self.assertEqual(1, fast.count(f'"{task}"'))
-                self.assertIn(task, android_ci)
-        # The Android gate must stay desktop-free: the desktop target's tests and
-        # coverage gate reach it only through `:presentation-api:check` in ciDesktop.
-        self.assertNotIn(":presentation-api:desktopTest", fast)
-        self.assertNotIn(":presentation-api:check", fast)
+        for module in ("presentation-api", "ui-common"):
+            with self.subTest(module=module):
+                self.assertEqual(1, desktop.count(f'":{module}:check"'))
+                for suffix in (
+                    "testAndroidHostTest",
+                    "compileAndroidDeviceTest",
+                    "lintAnalyzeAndroidHostTest",
+                ):
+                    task = f":{module}:{suffix}"
+                    self.assertEqual(1, fast.count(f'"{task}"'), task)
+                    self.assertIn(task, android_ci)
+                # The Android gate must stay desktop-free: the desktop target's tests
+                # and coverage gate reach it only through `check` in ciDesktop.
+                self.assertNotIn(f":{module}:desktopTest", fast)
+                self.assertNotIn(f":{module}:check", fast)
+
+    def test_portable_theme_ids_match_the_stored_core_theme_choices(self) -> None:
+        # :ui-common cannot depend on :core (a JVM module), so KaniThemeId restates
+        # the storage keys KaniThemeChoice persists. That duplication is the price of
+        # the module boundary; the drift it invites is not. If the two lists ever
+        # disagree, a theme the user picked on one host silently reads back as
+        # Girlypop on the other, so pin them to each other here.
+        def storage_keys(path: str, enum_name: str) -> list[tuple[str, str]]:
+            body = delimited_body(
+                (ROOT / path).read_text(encoding="utf-8"),
+                f"enum class {enum_name}",
+                "{",
+                "}",
+            )
+            return re.findall(r"\n\s{4}([A-Z][A-Z_0-9]*)\(\"([a-z][a-z_]*)\"\)", body)
+
+        self.assertEqual(
+            storage_keys(
+                "core/src/main/kotlin/dev/bee/kanjianki/core/KaniThemeChoice.kt",
+                "KaniThemeChoice",
+            ),
+            storage_keys(
+                "ui-common/src/commonMain/kotlin/dev/bee/kanjianki/ui/KaniThemeId.kt",
+                "KaniThemeId",
+            ),
+            "KaniThemeId and KaniThemeChoice must declare the same themes in the "
+            "same order with the same storage keys",
+        )
 
     def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:
         study_adapter = (

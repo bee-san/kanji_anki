@@ -21,4 +21,12 @@ class AndroidHostFixtureTest {
             context.getString(R.string.android_foundation_label),
         )
     }
+
+    @Test
+    fun hostTestSurfaceCanComposeSharedUi() {
+        // Proves the convention supplies ui-test-manifest's ComponentActivity to
+        // the Android host tests. Without it Robolectric fails to resolve a host
+        // activity for the composition, which compiling cannot catch.
+        assertEquals("Kani shared UI foundation", renderedFoundationLabel())
+    }
 }

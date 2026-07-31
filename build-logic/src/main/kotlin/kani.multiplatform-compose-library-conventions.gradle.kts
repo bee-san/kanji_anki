@@ -77,12 +77,24 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            // `runComposeUiTest` renders and asserts on semantics with no window
+            // and no emulator, so a shared composable is provable in commonTest
+            // rather than only in each host's own test source set.
+            implementation(libs.findLibrary("compose-multiplatform-ui-test").get())
         }
         getByName("androidHostTest").dependencies {
             implementation(kotlin("test-junit"))
             implementation(libs.findLibrary("robolectric").get())
             implementation(libs.findLibrary("androidx-test-core").get())
             implementation(libs.findLibrary("androidx-test-ext-junit").get())
+            // `runComposeUiTest` launches a ComponentActivity to host the
+            // composition. On Android that activity is declared by
+            // ui-test-manifest, which is otherwise absent here: without it every
+            // shared render test fails under Robolectric with "Unable to resolve
+            // activity for Intent ... ComponentActivity". The BOM comes along
+            // because ui-test-manifest is BOM-versioned.
+            implementation(project.dependencies.platform(libs.findLibrary("compose-bom").get()))
+            implementation(libs.findLibrary("compose-ui-test-manifest").get())
         }
         getByName("androidDeviceTest").dependencies {
             implementation(kotlin("test"))
@@ -92,6 +104,13 @@ kotlin {
         }
         getByName("desktopTest").dependencies {
             implementation(kotlin("test-junit"))
+            // `runComposeUiTest` composes into a real Skia surface, so the desktop
+            // test JVM needs Skiko's native library for the host it runs on.
+            // `commonMain` deliberately depends on the platform-agnostic Compose
+            // artifacts, which carry `skiko-awt` but no native runtime; without this
+            // every rendering test dies in a static initializer with
+            // "Cannot find libskiko-<host>.so, proper native dependency missing".
+            implementation(compose.desktop.currentOs)
         }
     }
 }

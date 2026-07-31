@@ -149,6 +149,12 @@ jobs:
             reports: |
               presentation-api/build/reports/**
               presentation-api/build/test-results/**
+          - id: ui-common
+            label: Shared Compose UI (Android target)
+            tasks: ':ui-common:testAndroidHostTest :ui-common:compileAndroidDeviceTest :ui-common:lintAnalyzeAndroidHostTest'
+            reports: |
+              ui-common/build/reports/**
+              ui-common/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
