@@ -4118,6 +4118,41 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   production to shared SQL) can then proceed, gated by the strict live AnkiDroid
   emulator run.
 
+### Goal 185 partial completion evidence (2026-07-31)
+
+- Started from: `07edd72a` on `desktop/integration`. Extracted the backup/
+  restore core ahead of the Goal 184 production switch (the shared primitives
+  are needed by both the Android switch and the Goal 186 desktop host).
+- Commits: `deb161f7 backup: extract portable backup core (marker state machine
+  + space budget)`; `29362597 backup: exclude legacy device settings from
+  portable restores`; plus `SqlSourceBindingStore` (`b1e4f84c`) as a Goal 184
+  prerequisite.
+- Implemented (commits 1–2 of Goal 185): the pure-JVM `:backup-core` module.
+  `RestoreMarkerCodec` holds the restore-marker content codec and the
+  MISSING/LEGACY/SAFETY_READY/INVALID classification state machine (I/O
+  injected); `BackupRestoreStager.markerState` now delegates to it, behaviour
+  unchanged. `BackupSpaceBudget` holds the 512 MiB decompressed cap and 64 MiB
+  free-space reserve arithmetic plus the post-write storage-exhaustion recheck.
+  `PortableBackupSanitizer` holds the device-local exclusion boundary, backed by
+  the new single-source-of-truth
+  `DeviceSettingKeys.portableExclusionStorageNames` allowlist (reminders,
+  auto-sync, auto-update, debug, gesture, and host-only desktop keys). The gzip
+  stream, tiered retention, and validation facts→result policy were already pure
+  in `:core` (`DatabaseBackupPolicy`, `BackupRestorePolicy`).
+- Validation: `:backup-core:check` and `:platform-contracts:check` pass at 100%
+  class coverage; the existing `:app` backup suite
+  (`BackupRestoreStagerTest`/`BackupRestoreValidatorTest`/…) and
+  `LegacyDeviceSettingsMigrationTest` still pass, confirming the marker
+  delegation and allowlist addition are behaviour-neutral.
+- Live gates: not required; additive extraction, no runtime behaviour change.
+- Rollback: revert `29362597` then `deb161f7`; the app retains its own marker
+  logic path only if the delegation is reverted (both are behaviour-identical).
+- Gaps/blockers: Goal 185 commit 3 (cross-platform backup **compatibility
+  fixtures** + cross-platform restore instrumentation) genuinely needs the
+  Goal 186 desktop host (`:data-desktop`), which does not exist yet — a real
+  ordering dependency. Goals 186+ (desktop profile storage, UI, packaging,
+  release) build on the desktop host and are the bulk of the remaining roadmap.
+
 Template:
 
 ```md
