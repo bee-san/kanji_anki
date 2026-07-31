@@ -1,6 +1,8 @@
 # Desktop support resume checkpoint (2026-07-30)
 
-> **Status:** Active. Supersedes `desktop-support-resume-2026-07-29.md`.
+> **Status:** Superseded by `desktop-support-resume-2026-07-31.md` (Goals
+> 185–186 progress recorded there). Kept for its Goal 179 CI-triage detail.
+> Supersedes `desktop-support-resume-2026-07-29.md`.
 > Written when the prior Codex session (`019fae69-0ea4-70a2-9933-94b0c74343b9`)
 > died on context overflow mid-Goal-180, not on a task failure.
 
