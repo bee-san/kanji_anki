@@ -707,9 +707,20 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         // A terminal loader does not need to publish staged tracker internals when the
         // still-current canonical route already proves completion. Retrying that CAS
         // race can livelock because each retry can lose to another tracker revision.
+        val trackerStateEquivalent = currentRoute != null &&
+            study.studySessionTracker.hasSameStateAs(candidate.tracker)
         val terminalRaceAccepted = acceptCurrentTerminalOnTrackerRace &&
             currentRoute?.canComplete == true &&
-            study.studySessionTracker.hasSameStateAs(candidate.tracker)
+            trackerStateEquivalent
+        if (currentRoute != null && AppDebugLog.isCapturing()) {
+            AppDebugLog.log(
+                studyTrackerRaceLog(
+                    route = currentRoute,
+                    trackerStateEquivalent = trackerStateEquivalent,
+                    terminalRaceAccepted = terminalRaceAccepted,
+                ),
+            )
+        }
         if (acceptedRoute != null || terminalRaceAccepted) {
             if (publishTracker && candidate.recoveredTargetReconciliationPending) {
                 study.recoveredStudyRunNeedsTargetReconciliation = false
@@ -781,6 +792,15 @@ private data class ContinuedRecoveryInspection(
     val marker: StoredPendingStudyRecovery? = null,
     val render: (() -> Unit)? = null,
 )
+
+internal fun studyTrackerRaceLog(
+    route: StudyRouteSnapshot,
+    trackerStateEquivalent: Boolean,
+    terminalRaceAccepted: Boolean,
+): String = "study-route tracker-publication " +
+    "event=${if (terminalRaceAccepted) "accepted-terminal-race" else "retry"} " +
+    "phase=${route.phase.name} route_version=${route.version.value} " +
+    "can_complete=${route.canComplete} tracker_state_equivalent=$trackerStateEquivalent"
 
 internal fun recoveredStudyRunTarget(currentTarget: Int, completed: Int, selectableRemaining: Int): Int =
     maxOf(currentTarget, completed + selectableRemaining)
