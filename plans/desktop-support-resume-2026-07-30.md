@@ -65,16 +65,43 @@ Stats, MissingKanji) are now in `:data-sql`; no repository operation remains
   hosts must be wired to load through `:reference-assets`. Blocked on the user
   supplying binaries + licensing.
 
-**Goal 184 (switch Android production to shared SQL) — NOT started; blocked.**
-Depends on Goal 183 being complete (the asset binaries above) and its "Done
-when" mandates the **strict real-collection AnkiDroid gate** (the user's
-~7,000-note desktop collection copied to a throwaway emulator). The
-`:data-android` `AndroidFrameworkSqlDriver` connection adapter already exists
-(Goal 179). The switch itself — wiring DI/`MainActivity` to build `Sql*`
-repositories over `AndroidFrameworkSqlDriver` on `kanji_anki_simple.db`,
-removing the `LocalStore` inheritance facade from production, keeping it as a
-test-only oracle — must not ship without that live gate passing (CLAUDE.md
-release rule).
+**Goal 184 (switch Android production to shared SQL) — prerequisites built;
+the flip itself is blocked by an architectural constraint + the live gate.**
+
+Prerequisite done: `SqlSourceBindingStore` (commit `b1e4f84c`) ports the last
+settings-table writer that was LocalStore-only. `:data-android`'s
+`AndroidFrameworkSqlDriver` (Goal 179) already exists.
+
+Why the flip can't be a partial repo-by-repo switch (verified in code):
+"Do not dual-write in production" (roadmap line 1601) requires ONE owner per
+table. `AndroidKaniContainer` exposes `localStore` directly to ~26 files, and
+several still WRITE tables the shared repos also write:
+- `FsrsFitWorker.commitFsrsFitOutcome` → `settings` (FSRS weights) — same table
+  as `SqlSettingsRepository`.
+- `MainActivityStartup.saveAppThemeChoice` → `settings`.
+- `MainActivityMissingKanji.publishInventory` → `settings` + `study_items`.
+- backup/restore (`DatabaseBackupWorker`, `StagedRestoreApplier`) → whole DB.
+So flipping the five repos to a separate `SqlDatabase` while these keep writing
+via `LocalStore` on the same file = dual-write of `settings`/`study_items` +
+two connection pools/WAL owners. Forbidden.
+
+To flip safely, ALL writers of every shared table must move to the shared layer
+first: FSRS-fit, theme choice, missing-kanji publish, backup/restore, plus the
+sync/auto-sync composition and widget reads. That spans work the roadmap
+schedules later (backup core is Goal 185). Then:
+1. `AndroidKaniContainer` owns one shared `SqlDatabase`
+   (`DedicatedWriterSqlDatabase(AndroidFrameworkSqlDriver("<path>/kanji_anki_simple.db"))`
+   + `SchemaManager.initialize`), constructs every repository from `:data-sql`,
+   and keeps `LocalStore` only as a test-only oracle.
+2. Validate: fresh install, every migration corpus fixture, downgrade, WAL,
+   backup/restore instrumentation, process recreation, `ciFast ciQuality`, and
+   the **strict real-collection AnkiDroid gate** (user's ~7,000-note collection
+   on a throwaway emulator). Do NOT ship the switch without it (CLAUDE.md).
+
+Needs from the user: (a) Goal 183's licensed asset binaries; (b) go-ahead +
+collection setup to run the live gate; (c) confirmation to undertake the
+multi-goal writer-porting the safe flip requires (or a decision to reorder so
+backup/FSRS/theme port before the flip).
 
 NOTE: `:data-android:jacocoDebugUnitTestCoverageVerification` fails at 0.82 in a
 plain JVM `check` (its framework driver needs `androidTest`); this is
