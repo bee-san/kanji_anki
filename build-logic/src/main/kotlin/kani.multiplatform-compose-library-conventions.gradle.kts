@@ -115,13 +115,24 @@ val desktopMainClasses = kotlin.targets
     .getByName("main")
     .output
     .classesDirs
-val generatedResourceExcludes = listOf(
+/**
+ * Classes the compiler writes that no source line can reach.
+ *
+ * `*Res` is the generated compose-resource accessor. `*$DefaultImpls` is the
+ * Java-interop bridge kotlinc emits for an interface with a default member: every
+ * Kotlin implementation gets its own copy of the accessor, so the bridge is only
+ * ever called from Java, which this project does not do. Neither is coverable, and
+ * leaving them in would push the 100% CLASS gate below into demanding tests that
+ * cannot be written.
+ */
+val uncoverableGeneratedExcludes = listOf(
     "**/generated/resources/**",
     "**/*Res.class",
     "**/*Res\$*.class",
+    "**/*\$DefaultImpls.class",
 )
 val desktopCoverageClasses = desktopMainClasses.asFileTree.matching {
-    generatedResourceExcludes.forEach(::exclude)
+    uncoverableGeneratedExcludes.forEach(::exclude)
 }
 
 val jacocoDesktopTestReport = tasks.register<JacocoReport>("jacocoDesktopTestReport") {

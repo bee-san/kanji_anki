@@ -236,6 +236,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertTrue(sharedConvention.contains("jvmToolchain(javaVersion)"))
         assertEquals(2, Regex("""enableCoverage\s*=\s*true""").findAll(sharedConvention).count())
         assertTrue(sharedConvention.contains("testCoverage {"))
+        assertCoverageExcludesOnlyUncoverableGeneratedClasses(sharedConvention)
         assertTrue(sharedConvention.contains("isPreserveFileTimestamps = false"))
         assertTrue(sharedConvention.contains("isReproducibleFileOrder = true"))
         assertFalse(sharedConvention.contains("androidTarget("))
@@ -298,6 +299,41 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
 
             fun warningAsError(value: String): Int = value!!.length
             """.trimIndent() + "\n",
+        )
+    }
+
+    /**
+     * The 100% CLASS gate is only meaningful if what it skips is genuinely
+     * unreachable. Each excluded pattern is compiler output — generated compose
+     * resource accessors and the `$DefaultImpls` Java-interop bridge kotlinc emits
+     * for interfaces with default members. An exclusion that matched real source
+     * would silently shrink the gate, so the set is pinned exactly.
+     */
+    private fun assertCoverageExcludesOnlyUncoverableGeneratedClasses(sharedConvention: String) {
+        val excludes = Regex("""val uncoverableGeneratedExcludes = listOf\(([^)]*)\)""")
+            .find(sharedConvention)
+            ?.groupValues
+            ?.get(1)
+            .orEmpty()
+        val patterns = Regex(""""([^"]+)"""")
+            .findAll(excludes)
+            .map { match -> match.groupValues[1] }
+            .toList()
+
+        // Read from the convention's raw source, so `$` appears with its Kotlin
+        // escape rather than as the compiled value.
+        assertEquals(
+            listOf(
+                "**/generated/resources/**",
+                "**/*Res.class",
+                "**/*Res\\\$*.class",
+                "**/*\\\$DefaultImpls.class",
+            ),
+            patterns,
+        )
+        assertTrue(
+            "coverage verification must use the pinned exclusion set",
+            sharedConvention.contains("uncoverableGeneratedExcludes.forEach(::exclude)"),
         )
     }
 
