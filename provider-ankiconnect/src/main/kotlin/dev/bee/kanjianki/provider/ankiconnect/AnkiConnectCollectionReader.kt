@@ -1,5 +1,7 @@
 package dev.bee.kanjianki.provider.ankiconnect
 
+import dev.bee.kanjianki.core.AnkiKanjiInventory
+import dev.bee.kanjianki.core.AnkiKanjiInventoryCollector
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
@@ -52,7 +54,27 @@ class AnkiConnectCollectionReader(
     data class ReadResult(
         val snapshot: RecordsSyncModels.CollectionSnapshot,
         val skipped: SkippedRows,
-    )
+    ) {
+        /**
+         * Non-null when malformed rows reached the shared malformed-row warning
+         * threshold ([AnkiKanjiInventoryCollector.warningThreshold]) — the same
+         * 1%-of-rows (min 1, max 100) rule the inventory scan uses, so isolated
+         * damage is tolerated quietly but widespread damage is surfaced. Reusing
+         * the inventory's warning type means the existing user-facing copy applies
+         * to this provider unchanged.
+         */
+        val malformedRowWarning: AnkiKanjiInventory.MalformedRowWarning?
+            get() {
+                if (skipped.total <= 0) return null
+                val rowsSeen = snapshot.notes.size + snapshot.cards.size + skipped.total
+                val threshold = AnkiKanjiInventoryCollector.warningThreshold(rowsSeen)
+                return if (skipped.total >= threshold) {
+                    AnkiKanjiInventory.MalformedRowWarning(skipped.total, threshold)
+                } else {
+                    null
+                }
+            }
+    }
 
     /** Lists note types with their fields, for the settings model picker. */
     @Throws(CollectionFailure::class)
@@ -88,19 +110,22 @@ class AnkiConnectCollectionReader(
         throwIfCancelled(cancellation)
         progress.onProgress(CollectionProgress(CollectionProgress.Stage.READING_NOTES))
         val noteIds = findIds(ProviderNotePolicy.modelSearch(settings.modelName), key, cancellation)
-        val browserQueryNoteIds = browserQueryNoteIds(settings, key, cancellation)
+        val rawBrowserQueryNoteIds = browserQueryNoteIds(settings, key, cancellation)
 
-        // Browser-query notes may live outside the configured model; merge them in
-        // while preserving the configured-model order first, exactly as the
-        // AnkiDroid gateway merges its extra browser-query notes.
-        val orderedNoteIds = LinkedHashSet(noteIds).also { it.addAll(browserQueryNoteIds) }.toList()
-        AnkiConnectReadPlanner.requireWithinIdCap(orderedNoteIds.size)
+        // Intersect raw browser-query matches with the configured model before
+        // merging: a user's browser query is arbitrary and may match notes of any
+        // note type, but Kani only syncs the configured model. AnkiDroid enforces
+        // this by skipping cursor rows whose model id differs; the intersection is
+        // the equivalent over an id-based provider.
+        val configuredNoteIds = LinkedHashSet(noteIds)
+        val browserQueryNoteIds = rawBrowserQueryNoteIds.filterTo(LinkedHashSet()) { it in configuredNoteIds }
 
-        val notes = readNotes(orderedNoteIds, modelId, settings, progress, cancellation, key)
+        AnkiConnectReadPlanner.requireWithinIdCap(configuredNoteIds.size)
+        val notes = readNotes(configuredNoteIds.toList(), modelId, settings, progress, cancellation, key)
 
         throwIfCancelled(cancellation)
         progress.onProgress(CollectionProgress(CollectionProgress.Stage.SCANNING_CARDS))
-        val cards = readCards(notes.rows.map { it.noteId }, settings, progress, cancellation, key)
+        val cards = readCards(notes.rows.map { it.noteId }, progress, cancellation, key)
 
         val markedCards = cards.rows.map { card ->
             if (card.noteId in browserQueryNoteIds) card.withBrowserQueryMatched(true) else card
@@ -197,9 +222,10 @@ class AnkiConnectCollectionReader(
                 noteId = info.noteId,
                 note = RecordsSyncModels.Note(
                     info.noteId,
-                    // Only the configured model's own notes carry its id; a
-                    // browser-query note from another model must not claim it.
-                    if (info.modelName == settings.modelName) configuredModelId else 0L,
+                    // Every note read here came from the configured-model query
+                    // (browser-query ids are intersected with it first), so the
+                    // configured model id always applies.
+                    configuredModelId,
                     info.modelName,
                     ProviderNotePolicy.selectRequiredFields(
                         info.fields.keys.toList(),
@@ -215,7 +241,6 @@ class AnkiConnectCollectionReader(
 
     private fun readCards(
         noteIds: List<Long>,
-        settings: RecordsSyncModels.Settings,
         progress: CollectionProgressListener,
         cancellation: CollectionCancellation,
         key: String?,
@@ -239,12 +264,9 @@ class AnkiConnectCollectionReader(
             val parsed = AnkiConnectReads.cardsInfoIsolating(measured.result)
                 ?: throw protocolFailure("cardsInfo")
             val rows = parsed.rows
-                .filter { card ->
-                    // Only the configured model is ordinal-restricted; a
-                    // browser-query note from another model keeps every card.
-                    card.modelName != settings.modelName ||
-                        AnkiConnectCardNormalization.isAcceptedConfiguredOrd(card.ord)
-                }
+                // Every card here belongs to a configured-model note, so Kani's
+                // front-template restriction applies to all of them.
+                .filter { card -> AnkiConnectCardNormalization.isAcceptedConfiguredOrd(card.ord) }
                 .map(::toSnapshotCard)
             Fetched(rows, parsed.skipped, measured.encodedBytes)
         }

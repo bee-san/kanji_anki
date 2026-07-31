@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.provider.ankiconnect
 
+import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
@@ -255,14 +256,15 @@ class AnkiConnectCollectionReaderTest {
         val exchange = ScriptedAnkiConnectExchange()
         exchange.onResult("modelNamesAndIds", """{"$model":42}""")
         exchange.onResult("findNotes") { body ->
-            // The configured-model query returns note 1; the browser query adds 2.
-            if (body.contains("tag:leech")) "[2]" else "[1]"
+            // The configured model holds notes 1 and 2; the browser query matches
+            // note 2 (in the model) and note 99 (a different note type).
+            if (body.contains("tag:leech")) "[2,99]" else "[1,2]"
         }
         exchange.onResult("notesInfo") { body ->
             requestedIds(body, "notes").joinToString(",", "[", "]") { noteId ->
                 ScriptedAnkiConnectExchange.noteRow(
                     noteId,
-                    if (noteId == 1L) model else "Other",
+                    model,
                     listOf(settings.expressionField to "note$noteId"),
                 )
             }
@@ -270,26 +272,50 @@ class AnkiConnectCollectionReaderTest {
         exchange.onResult("findCards", "[10,20]")
         exchange.onResult("cardsInfo") { body ->
             requestedIds(body, "cards").joinToString(",", "[", "]") { cardId ->
-                ScriptedAnkiConnectExchange.cardRow(
-                    cardId,
-                    cardId / 10,
-                    if (cardId == 10L) model else "Other",
-                )
+                ScriptedAnkiConnectExchange.cardRow(cardId, cardId / 10, model)
             }
         }
 
         val result = AnkiConnectCollectionReader(exchange.transport()).read(browserSettings)
 
+        // Note 99 is dropped: a browser query may match any note type, but Kani
+        // only syncs the configured model.
         assertEquals(listOf(1L, 2L), result.snapshot.notes.map { it.noteId })
-        // Only the configured model's notes carry its model id.
-        assertEquals(42L, result.snapshot.notes[0].modelId)
-        assertEquals(0L, result.snapshot.notes[1].modelId)
+        assertTrue(result.snapshot.notes.all { it.modelId == 42L })
+        assertTrue(exchange.bodiesFor("notesInfo").none { it.contains("99") })
+        // Only the browser-query-matched note's card is marked.
         val marked = result.snapshot.cards.associate { it.cardId to it.browserQueryMatched }
         assertEquals(mapOf(10L to false, 20L to true), marked)
     }
 
     @Test
-    fun dropsNonZeroOrdinalsOnTheConfiguredModelButKeepsOtherModels() {
+    fun reportsAMalformedRowWarningOnlyAboveTheSharedThreshold() {
+        // 1 skipped row out of 2 seen clears the 1%-of-rows (min 1) threshold.
+        val noisy = ScriptedAnkiConnectExchange()
+        noisy.onResult("modelNamesAndIds", """{"$model":42}""")
+        noisy.onResult("findNotes", "[1,2]")
+        noisy.onResult("notesInfo") {
+            """[${ScriptedAnkiConnectExchange.noteRow(1, model, listOf(settings.expressionField to "ok"))},""" +
+                """{"noteId":2,"tags":[],"fields":{}}]"""
+        }
+        noisy.onResult("findCards", "[]")
+        val noisyResult = AnkiConnectCollectionReader(noisy.transport()).read(settings)
+        assertEquals(1, noisyResult.skipped.notes)
+        assertEquals(
+            AnkiKanjiInventory.MalformedRowWarning(skippedNotes = 1, warningThreshold = 1),
+            noisyResult.malformedRowWarning,
+        )
+
+        // A clean read never warns.
+        val clean = scriptedCollection(listOf(1L))
+        clean.onResult("cardsInfo", "[]")
+        val cleanResult = AnkiConnectCollectionReader(clean.transport()).read(settings)
+        assertEquals(0, cleanResult.skipped.total)
+        assertNull(cleanResult.malformedRowWarning)
+    }
+
+    @Test
+    fun keepsOnlyTheFrontTemplateCardOfEachConfiguredNote() {
         val exchange = ScriptedAnkiConnectExchange()
         exchange.onResult("modelNamesAndIds", """{"$model":42}""")
         exchange.onResult("findNotes", "[1]")
@@ -301,13 +327,15 @@ class AnkiConnectCollectionReaderTest {
             listOf(
                 ScriptedAnkiConnectExchange.cardRow(10, 1, model, ord = 0),
                 ScriptedAnkiConnectExchange.cardRow(11, 1, model, ord = 1),
-                ScriptedAnkiConnectExchange.cardRow(12, 1, "Other", ord = 3),
+                ScriptedAnkiConnectExchange.cardRow(12, 1, model, ord = 3),
             ).joinToString(",", "[", "]")
         }
 
         val result = AnkiConnectCollectionReader(exchange.transport()).read(settings)
 
-        assertEquals(listOf(10L, 12L), result.snapshot.cards.map { it.cardId })
+        // Every card read belongs to a configured-model note, so the front-template
+        // restriction applies to all of them; reverse/extra templates are dropped.
+        assertEquals(listOf(10L), result.snapshot.cards.map { it.cardId })
     }
 
     @Test
