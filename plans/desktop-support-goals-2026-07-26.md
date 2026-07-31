@@ -4147,10 +4147,40 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
 - Live gates: not required; additive extraction, no runtime behaviour change.
 - Rollback: revert `29362597` then `deb161f7`; the app retains its own marker
   logic path only if the delegation is reverted (both are behaviour-identical).
-- Gaps/blockers: Goal 185 commit 3 (cross-platform backup **compatibility
-  fixtures** + cross-platform restore instrumentation) genuinely needs the
-  Goal 186 desktop host (`:data-desktop`). That host now exists (see below);
-  the cross-platform fixtures remain, plus the instrumented restore.
+- Gaps/blockers: Goal 185 commit 3 is now delivered — see the continuation
+  entry immediately below. The one remaining Goal 185 item is the *Android-side*
+  cross-platform restore instrumentation on API 30 + a current API, which needs
+  the live emulator gate.
+
+### Goal 185 commit 3 completion evidence (2026-07-31)
+
+- Started from: `0e8c8f9b` on `desktop/support` (after the `:data-desktop`
+  host matured). Delivers the cross-platform backup format compatibility proof.
+- Commits: `09ab35b1 backup: add portable backup metadata and cross-platform
+  compatibility proof` (builds on `0e8c8f9b backup: add cross-platform restore
+  planner and desktop device-local reset finalizer`).
+- Implemented:
+  - `PortableBackupMetadata` (`:backup-core`) — the backward-compatible
+    portable metadata carried in the backup's own `settings` table (origin
+    platform, format version, schema version) under reserved keys, with
+    legacy-backup → UNKNOWN fall-open and a mapping to
+    `CrossPlatformRestorePlanner.Host`.
+  - `DesktopPortableBackupStamper` (`:data-desktop`) — stamps `origin=desktop`
+    + version rows before a desktop export and reads them back on restore.
+  - `CrossPlatformBackupCompatibilityTest` — end-to-end on real bundled SQLite:
+    a stamped desktop backup restores as a same-host clean restore (no reset,
+    no revalidation, portable setting preserved), and a legacy unstamped backup
+    carrying a foreign device-local key takes the UNKNOWN-origin path (key
+    reset, provider revalidation required).
+- Validation: `:backup-core:check` and `:data-desktop:check` pass at 100% class
+  coverage. The desktop↔Android *format* compatibility is proven through the
+  shared pure `PortableBackupMetadata`/`CrossPlatformRestorePlanner` (both
+  covered in `:backup-core`) plus the desktop round-trip above.
+- Live gates: not required for the shared/desktop surface. The Android-side
+  instrumented cross-platform restore (API 30 + current API) remains, gated on
+  the live emulator run.
+- Rollback: revert `09ab35b1`; additive, not wired into `:desktop-app`.
+- Gaps/blockers: Android instrumented cross-platform restore only.
 
 ### Goal 186 partial completion evidence (2026-07-31)
 
