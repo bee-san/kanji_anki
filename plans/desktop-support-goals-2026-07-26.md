@@ -4552,7 +4552,7 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   - `aefcdc90 fix(ankiconnect): decode fractional JSON instead of failing the response`
   - `8193b644 test: seed a sanitized Kiku collection into the Anki Desktop fixture`
   - `a333d967 test: qualify the desktop provider against real Anki Desktop`
-  - `<runbook commit> docs: record the desktop provider qualification runbook`
+  - `77c19681 docs: record the desktop provider qualification runbook`
 - Implemented:
   - `ci/scripts/run_anki_desktop_fixture.sh` — the pinned Linux fixture: verified
     Anki 26.05 + AnkiConnect `4064fa142785975255457abd6a496015f5b71f38`
