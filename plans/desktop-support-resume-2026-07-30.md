@@ -52,21 +52,33 @@ All work through Goal 182 is pushed to `origin/desktop/support`, plus the Goal
   now have `:data-sql` implementations** with cross-driver conformance suites in
   `:data-api` testFixtures.
 
-**Remaining for Goal 183 (not yet done):**
-1. **Missing Kanji persistence** (`app/.../MissingKanjiStore.kt`, 952 lines:
-   scans, inventory publish, preferences, manual sources, export receipts). It
-   is app-internal with NO data-api repository contract and is called directly
-   by `MainActivityMissingKanji`. Porting it is a goal-sized unit: design a
-   `MissingKanjiRepository` interface in `:data-api`, implement in `:data-sql`
-   and `:app`, migrate the UI caller, add conformance. Its JSON needs are
-   already covered by `:core` `StringListJsonCodec`/`KaniJson`, so it is NOT
-   blocked — just large.
-2. **Real licensed reference-asset binaries** (dictionary/rank/stroke/font) must
-   replace the placeholder hashes, and both hosts must be wired to load through
-   `:reference-assets`. Blocked on the user supplying binaries + licensing.
+**Missing Kanji persistence — DONE** (commits `5a8036c0`, `8e97803e`): DTOs
+promoted to `:core`, `MissingKanjiRepository` contract in `:data-api`,
+`SqlMissingKanjiRepository` + `SqliteMissingKanjiRepository`, cross-driver
+conformance suite. All six repository surfaces (Home, Settings, Study, Sync,
+Stats, MissingKanji) are now in `:data-sql`; no repository operation remains
+`LocalStore`-only.
 
-Goal 184 (switch Android production to shared SQL) depends on Goal 183 being
-complete AND requires the strict live AnkiDroid emulator gate.
+**Remaining for Goal 183 (the ONLY open item):**
+- **Real licensed reference-asset binaries** (dictionary/rank/stroke/font) must
+  replace the placeholder hashes in `ReferenceAssetManifest.bundled()`, and both
+  hosts must be wired to load through `:reference-assets`. Blocked on the user
+  supplying binaries + licensing.
+
+**Goal 184 (switch Android production to shared SQL) — NOT started; blocked.**
+Depends on Goal 183 being complete (the asset binaries above) and its "Done
+when" mandates the **strict real-collection AnkiDroid gate** (the user's
+~7,000-note desktop collection copied to a throwaway emulator). The
+`:data-android` `AndroidFrameworkSqlDriver` connection adapter already exists
+(Goal 179). The switch itself — wiring DI/`MainActivity` to build `Sql*`
+repositories over `AndroidFrameworkSqlDriver` on `kanji_anki_simple.db`,
+removing the `LocalStore` inheritance facade from production, keeping it as a
+test-only oracle — must not ship without that live gate passing (CLAUDE.md
+release rule).
+
+NOTE: `:data-android:jacocoDebugUnitTestCoverageVerification` fails at 0.82 in a
+plain JVM `check` (its framework driver needs `androidTest`); this is
+pre-existing and unrelated to this session (module untouched since `26965ba2`).
 
 ## Workspace
 
