@@ -4149,9 +4149,42 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   logic path only if the delegation is reverted (both are behaviour-identical).
 - Gaps/blockers: Goal 185 commit 3 (cross-platform backup **compatibility
   fixtures** + cross-platform restore instrumentation) genuinely needs the
-  Goal 186 desktop host (`:data-desktop`), which does not exist yet — a real
-  ordering dependency. Goals 186+ (desktop profile storage, UI, packaging,
-  release) build on the desktop host and are the bulk of the remaining roadmap.
+  Goal 186 desktop host (`:data-desktop`). That host now exists (see below);
+  the cross-platform fixtures remain, plus the instrumented restore.
+
+### Goal 186 partial completion evidence (2026-07-31)
+
+- Started from: `7e78da93` on `desktop/integration`. Establishes the desktop
+  data host foundation.
+- Commits: `ad4fb71a data: add desktop storage layout and profile registry`;
+  `0d92a4b4 data: add desktop bundled SQLite driver and database factory`.
+- Implemented: the `:data-desktop` module. `DesktopStorageLayout` resolves the
+  per-OS data/config/cache directories (Windows `LOCALAPPDATA`/`APPDATA`, macOS
+  `Library/{Application Support,Preferences,Caches}`, Linux XDG with `~/.local`
+  fallbacks) and the profile UUID directory / database / lock / backups paths,
+  with traversal-safe profile-id validation. `DesktopProfileRegistry` is the
+  opaque, selection/display-only registry that lives outside the portable
+  database (add/select/remove + `KaniJson` codec with malformed fall-open and
+  invalid-id rejection). `BundledSqlDriver` is the production desktop SQLite
+  driver (the Goal 179-qualified `androidx sqlite-bundled`, adapted from the
+  proven `:data-sql` bundled test driver with identical failure translation).
+  `DesktopDatabaseFactory.open` composes it with `DedicatedWriterSqlDatabase`
+  (WAL/busy-timeout/serialized writes) and `SchemaManager`.
+- Validation: `:data-desktop:check` passes at 100% class coverage. An
+  end-to-end test opens a fresh profile DB on the bundled driver, asserts the
+  `CREATED` v34 transition, drives a real `SqlSettingsRepository` round trip,
+  and confirms reopening is `UNCHANGED`.
+- Live gates: not required; unit-tested on the bundled driver.
+- Rollback: revert `0d92a4b4` then `ad4fb71a`; `:data-desktop` is additive and
+  not yet wired into `:desktop-app`.
+- Gaps/blockers: the remaining Goal 186 items are platform I/O and product
+  wiring — exclusive profile-lock acquisition, private-directory permission
+  hardening (`0700`/`0600` + Windows ACLs), symlink/world-writable/network-share
+  refusal preflight, picker import staging, and the cross-platform restore
+  state application (reset device-local keys via `PortableBackupSanitizer`, mark
+  provider projections stale, require revalidation). Those need real
+  filesystem/OS behaviour to validate. Goals 187+ (desktop UI parity, provider
+  bridge, packaging, signing, release) build on this host.
 
 Template:
 
