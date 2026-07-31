@@ -196,7 +196,16 @@ One Kani database is bound to one Anki source identity:
 
 - A shared `SourceBindingPolicy` evaluates candidates from every provider
   before mirror publication or writes; this is not an AnkiConnect-only check.
-- The AnkiConnect adapter calls `getActiveProfile` before sync.
+- The AnkiConnect adapter identifies the loaded profile before sync. Implemented
+  (Goal 187) as `getMediaDirPath`, not the `getActiveProfile` this plan
+  originally named: `getActiveProfile` is not an AnkiConnect action at all, and
+  `getProfiles` lists every profile on the machine regardless of which is open,
+  so neither can answer "which collection am I bound to". `getMediaDirPath`
+  returns the *loaded* profile's media directory and fails when no collection is
+  open, which makes it both the identity probe and the availability check. The
+  mistake was only findable against a real host: the original probe reported
+  every real Anki as unavailable while passing against a mock that implemented
+  the name.
 - The AnkiDroid adapter includes provider kind and selected provider authority
   in its candidate, then performs a read-only stable-ID overlap probe. Provider
   authority alone is never sufficient evidence after a cross-platform restore
@@ -1749,9 +1758,11 @@ available without reading collection data.
   attached.
 - Add typed JSON envelopes/DTOs. Kotlin serialization may be added here for
   protocol safety; the navigation contract still does not require it.
-- Implement `requestPermission`, `version`, `apiReflect`, `getActiveProfile`,
-  connection status, configuration validation, API-key authentication, and
-  actionable failure mapping.
+- Implement `requestPermission`, `version`, `apiReflect`, the loaded-profile
+  identity probe, connection status, configuration validation, API-key
+  authentication, and actionable failure mapping. The identity probe shipped as
+  `getMediaDirPath`; `getActiveProfile`, named earlier in this plan, is not an
+  AnkiConnect action.
 - Make the initial `requestPermission` call without a key. Handle only pinned,
   fixture-backed permission/key response variants; prompt or consult the
   secret store only after this result. Once authentication is established,
@@ -1761,7 +1772,7 @@ available without reading collection data.
 - Call `apiReflect` with `scopes: ["actions"]`; classify exact required versus
   optional actions and enforce a positive outbound action allowlist. The
   planned surface includes `requestPermission`, `version`, `apiReflect`,
-  `getActiveProfile`, `modelNamesAndIds`, `modelFieldNames`, `modelTemplates`,
+  `getMediaDirPath`, `modelNamesAndIds`, `modelFieldNames`, `modelTemplates`,
   `modelFieldsOnTemplates`, `deckNamesAndIds`, `findNotes`, `notesInfo`,
   `findCards`, `cardsInfo`, `multi`, `retrieveMediaFile`, `guiBrowse`,
   `addTags`, `createDeck`, `createModel`, and `addNotes`.
@@ -4292,8 +4303,10 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
     optional tiers) with `apiReflect` required-gap / available-optional
     analysis and a `requireAllowed` guard.
   - `AnkiConnectJson` — a bounded dependency-free JSON codec (objects/arrays/
-    strings/whole-numbers/bool/null, `MAX_DEPTH`, integer-only numbers,
-    malformed→null).
+    strings/numbers/bool/null, `MAX_DEPTH`, malformed→null). Shipped
+    integer-only; corrected in Goal 191 to decode fractions as a distinct
+    `Json.Frac`, because real Anki's `getDeckConfig` carries fractional values
+    and rejecting them made the whole response a protocol error.
   - `AnkiConnectEnvelope` — API v6 single/`multi` request builders (pin
     version 6, attach key only when present, allowlist-check every nested
     action) and fail-closed `{result,error}` response parsing with per-nested
@@ -4304,8 +4317,10 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
     JDK `HttpClient` adapter with redirects disabled, no proxy, connect/request
     deadlines, and a hard response-body byte cap.
   - `AnkiConnectHandshake` — the keyless-first capability probe
-    (`requestPermission` → `version` → `apiReflect` → `getActiveProfile`)
-    mapping to an actionable `Status`; reads no collection data.
+    (`requestPermission` → `version` → `apiReflect` → `getMediaDirPath`)
+    mapping to an actionable `Status`; reads no collection data. The final step
+    shipped as `getActiveProfile` and was corrected during the first live run:
+    that action does not exist, so every real Anki reported unavailable.
 - Validation: `:provider-ankiconnect:check` and `ciDesktop` pass at 100% class
   coverage. `JdkHttpExchange` is exercised against a real in-process loopback
   `HttpServer` (200/error-status/oversize-cap/dead-endpoint); every other class
@@ -4337,7 +4352,7 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
     fallback, and the store never logs or returns a key in a diagnostic.
   - `AnkiConnectRequests` / `AnkiConnectReads` — typed builders and parsers for
     the planned read surface (`modelNamesAndIds`, `modelFieldNames`,
-    `deckNamesAndIds`, `getActiveProfile`, `findNotes`, `notesInfo`,
+    `deckNamesAndIds`, `getMediaDirPath`, `findNotes`, `notesInfo`,
     `findCards`, `cardsInfo`, plus the bounded `modelFieldNamesMulti` group).
     Every builder routes through `AnkiConnectEnvelope.request`, so the
     allowlist, the pinned `version: 6`, and the present-only key are structural
@@ -4525,6 +4540,90 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   `:provider-ankiconnect`, which is not yet wired into `:desktop-app`.
 - Gaps/blockers: none for the deterministic surface. The live write qualification
   is Goal 191 and needs Anki Desktop plus a throwaway profile on the host.
+
+### Goal 191 completion evidence (2026-07-31)
+
+- Started from: `f3ba9b56` on `desktop/integration` (pushes to
+  `origin/desktop/support`).
+- Commits (in order):
+  - `29430df5 test: add the pinned live Anki Desktop fixture`
+  - `8290d1c0 fix: probe the profile identity with an action Anki actually has`
+  - `90e0c3e6 test: add cross-provider normalized snapshot conformance`
+  - `aefcdc90 fix(ankiconnect): decode fractional JSON instead of failing the response`
+  - `8193b644 test: seed a sanitized Kiku collection into the Anki Desktop fixture`
+  - `a333d967 test: qualify the desktop provider against real Anki Desktop`
+  - `<runbook commit> docs: record the desktop provider qualification runbook`
+- Implemented:
+  - `ci/scripts/run_anki_desktop_fixture.sh` — the pinned Linux fixture: verified
+    Anki 26.05 + AnkiConnect `4064fa142785975255457abd6a496015f5b71f38`
+    downloads, a seeded `KaniFixture` profile with the first-run language dialog
+    suppressed, AnkiConnect installed into the fixture's own add-on directory,
+    and Anki launched under `xvfb-run` against the fixture's own base directory.
+    Refuses to bind port 8765.
+  - `ci/scripts/seed_anki_desktop_kiku_collection.py` — the sanitized 8-note Kiku
+    collection, seeded *through AnkiConnect* rather than by authoring a `.anki2`,
+    because Anki 26.05's schema is backend-migrated and a hand-pinned schema is a
+    maintenance trap. Idempotent and converging. Covers mature/suspended/buried/
+    learning/new/browser-tagged states.
+  - `ProviderCardPolicy` in `:sync-domain` + `CrossProviderSnapshotSpec` in
+    `sync-api` test fixtures — the shared normalization and the one conformance
+    contract both providers are held to, rather than a provider-local test each.
+  - `LiveAnkiDesktopQualificationTest` — 17 opt-in live tests over the whole
+    surface: handshake/capabilities, configured read, progress, cancellation,
+    provider snapshot, inventory, browser-query merge, archive + repaired tag
+    writes, Missing Kanji create/retry, browser handoff, and source-key binding.
+  - `docs/desktop-provider-qualification-runbook.md` — the repeatable procedure
+    and the sanitized evidence.
+- Validation: `./gradlew ciFast` BUILD SUCCESSFUL;
+  `python3 tools/test_module_boundaries.py` 22 tests OK;
+  `python3 tools/test_source_hygiene.py` 6 tests OK;
+  `ci/tests/test_seed_anki_desktop_kiku_collection.py` 23 tests OK.
+- Live gates: Anki Desktop `26.05`, AnkiConnect
+  `4064fa142785975255457abd6a496015f5b71f38`, API version 6, port `18765`,
+  throwaway profile `KaniFixture`. `OK (17 tests)`, 0 failures, 0 skipped, on two
+  consecutive runs; 3.2 s wall clock. Required actions 12/12 present, optional
+  10/10. Gateway capabilities `READ_COLLECTION`, `LIST_NOTE_TYPES`,
+  `NOTE_TAG_WRITE`; writer capability `MISSING_KANJI_WRITE`;
+  `FSRS_MEMORY_STATE` never advertised. Read 8 notes / 8 cards, 0 skipped, no
+  malformed-row warning, 2 suspended (`queue < 0`: 1 suspended + 1 buried), 3
+  mature active, 0 negative intervals. Archive tag write tagged 2 notes, deleted
+  0, idempotent on re-run. Missing Kanji export created 1 note then reported it
+  already present on retry with 0 duplicates and a stable `destination_key`.
+  Evidence is aggregate and sanitized; no field, deck, or model content from any
+  personal collection was recorded, and no write action was issued against the
+  operator's profile.
+- Two defects found that no mock could find, both now fixed and pinned:
+  1. The profile-identity probe called `getActiveProfile`, which is not an
+     AnkiConnect action. Every real Anki reported unavailable while the mock
+     passed. `getMediaDirPath` is the correct probe — it reports the *loaded*
+     profile, which `getProfiles` cannot.
+  2. `AnkiConnectJson` rejected fractional numbers, so real Anki's
+     `getDeckConfig` (`"delays": [1.0, 10.0]`, `"ease4": 1.3`) decoded to `null`,
+     surfaced as a protocol error, and `ensureDeck` correctly read that as an
+     unprovable deck and reported `DECK_COLLISION`. **The Missing Kanji export
+     could not complete against any real Anki.** Fractions now decode to a
+     distinct `Json.Frac`, so nothing reading an id or counter can be handed one.
+  Both share a shape worth remembering: a mock written from the same
+  understanding as the code under test agrees with it, including where that
+  understanding is wrong.
+- Decisions: confirmed — shared cross-provider normalization lives in
+  `:sync-domain` (transitively visible to both providers) and the conformance
+  spec in `sync-api`'s test fixtures, not duplicated per provider. Confirmed —
+  the live suite is opt-in per Gradle invocation rather than via daemon system
+  properties, so a reused daemon cannot silently re-enable a writing suite.
+  Recorded — AnkiConnect refuses a negative `ivl` outright, so the legacy
+  negative-seconds encoding is not reachable through this fixture and
+  `ProviderCardPolicy`'s interval floor stays covered only by the AnkiDroid
+  synthetic-cursor test.
+- Rollback: revert the commits above (newest first). The fixture, seeder, suite,
+  and runbook are additive; the two fixes are in `:provider-ankiconnect`, which
+  is not yet wired into `:desktop-app`.
+- Gaps/blockers: two items of Goal 191 are **not** done. The stricter local
+  copied-user-profile gate at the 7,000-note threshold has not been run on this
+  branch (the fixture is a conformance gate, not a scale gate). The
+  Windows/macOS throwaway-profile smoke is defined in the runbook but not
+  executed; it is due before Goal 207 and Linux success is not evidence for
+  either.
 
 Template:
 

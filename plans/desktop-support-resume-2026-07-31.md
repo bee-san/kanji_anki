@@ -9,9 +9,11 @@
 - Worktree: `/local/home/skerraut/work/kani-desktop-integration`
 - Push target: `origin/desktop/support` (HEAD in sync; latest push `3b8c9ebe`)
 - **Do not use `/local/home/skerraut/kanji_anki`.** It is stale.
-- Android SDK on this machine: `/tmp/android-sdk` (root `CLAUDE.md` path). The
-  pure-JVM `:data-desktop`/`:backup-core`/`:core`/`:data-sql` checks do not need
-  the Android SDK, but setting `ANDROID_HOME`/`ANDROID_SDK_ROOT` is harmless.
+- Android SDK on this machine: `/home/skerraut/android-sdk`. Root `CLAUDE.md`
+  names `/tmp/android-sdk`, which is not what this worktree uses — set
+  `ANDROID_HOME=ANDROID_SDK_ROOT=/home/skerraut/android-sdk`. The pure-JVM
+  `:data-desktop`/`:backup-core`/`:core`/`:data-sql` checks do not need the
+  Android SDK at all.
 
 ## Done and pushed since the 2026-07-30 checkpoint
 
@@ -77,13 +79,17 @@ Anki/AnkiConnect session (needs Anki desktop open).
 ```
 
 Remaining for Goal 188: assemble the reads into the provider-neutral snapshot
-shape. NOTE the boundary constraint — `:provider-ankiconnect` may only depend on
-`{platform-contracts, sync-api}`, and `RecordsSyncModels.CollectionSnapshot`
-lives in `:core`. Mapping raw `NoteInfo`/`CardInfo` into the `:core`/`sync-api`
-snapshot must therefore happen in a module that legitimately depends on `:core`
-(likely a desktop gateway in `:data-desktop` or the desktop composition root),
-not inside `:provider-ankiconnect`. Decide that placement before Goal 188
-commit 1 ("implement model note and card reads") to avoid a boundary violation.
+shape.
+
+**Resolved, and the concern recorded here was wrong.** This section previously
+claimed the snapshot mapping could not happen inside `:provider-ankiconnect`
+because `RecordsSyncModels.CollectionSnapshot` lives in `:core`. It can:
+`:sync-api` depends on `:sync-domain`, which depends on `:core`, so `:core`'s
+types are transitively visible to `:provider-ankiconnect` through its allowed
+`{platform-contracts, sync-api}` dependencies. The mapping now lives in
+`AnkiConnectCollectionReader`, and shared cross-provider normalization lives in
+`ProviderCardPolicy` in `:sync-domain` — where both providers can reach it.
+`tools/test_module_boundaries.py` passes.
 
 Also updated the fast/desktop CI gates and `tools/test_module_boundaries.py` /
 `tools/test_desktop_ci_gates.py` for every new module; `ciFast` and `ciDesktop`

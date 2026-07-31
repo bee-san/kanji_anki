@@ -264,9 +264,18 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(seeder.manifest(), json.loads(result.stdout))
 
     def test_a_seeding_failure_is_reported_as_a_nonzero_exit(self) -> None:
+        import contextlib
+        import io
+
+        stderr = io.StringIO()
         with mock.patch.object(seeder, "seed", side_effect=seeder.AnkiConnectError("nope")):
             with mock.patch.object(sys, "argv", ["seed", "--endpoint", "http://127.0.0.1:18765"]):
-                self.assertEqual(1, seeder.main())
+                # Captured so the expected diagnostic does not look like a real
+                # failure in the gate's output.
+                with contextlib.redirect_stderr(stderr):
+                    self.assertEqual(1, seeder.main())
+
+        self.assertIn("nope", stderr.getvalue())
 
 
 class SeedFlowTest(unittest.TestCase):
