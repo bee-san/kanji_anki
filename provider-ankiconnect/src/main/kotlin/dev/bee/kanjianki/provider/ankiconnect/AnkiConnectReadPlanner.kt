@@ -25,8 +25,28 @@ object AnkiConnectReadPlanner {
     /** Target encoded bytes per detail batch used to adapt the size downward. */
     const val TARGET_BATCH_BYTES = 1_000_000L
 
+    /**
+     * Hard ceiling on nested actions in one `multi` request. `multi` collapses N
+     * round trips into one, but the whole batch shares a single response body and
+     * a single deadline, so an unbounded batch would defeat the response byte cap
+     * and make one slow action time out the rest.
+     */
+    const val MAX_MULTI_ACTIONS = 25
+
     class OversizeIdResponseException(val count: Int, val cap: Int) :
         RuntimeException("AnkiConnect returned $count ids, exceeding the $cap cap")
+
+    /**
+     * Splits [actions] into `multi` groups of at most [MAX_MULTI_ACTIONS].
+     * An empty input yields no groups.
+     */
+    fun <T> multiGroups(
+        actions: List<T>,
+        groupSize: Int = MAX_MULTI_ACTIONS,
+    ): List<List<T>> {
+        if (actions.isEmpty()) return emptyList()
+        return actions.chunked(groupSize.coerceIn(1, MAX_MULTI_ACTIONS))
+    }
 
     /**
      * Validates an ID-array size against [MAX_ID_COUNT].

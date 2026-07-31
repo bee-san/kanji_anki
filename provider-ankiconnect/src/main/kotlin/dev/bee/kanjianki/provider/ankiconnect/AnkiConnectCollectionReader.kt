@@ -76,18 +76,31 @@ class AnkiConnectCollectionReader(
             }
     }
 
-    /** Lists note types with their fields, for the settings model picker. */
+    /**
+     * Lists note types with their fields, for the settings model picker. Field
+     * names are fetched through bounded `multi` groups rather than one round trip
+     * per model, because a large collection can hold dozens of note types.
+     */
     @Throws(CollectionFailure::class)
     fun noteTypes(): List<NoteTypeDescriptor> {
         val key = keyProvider()
         val models = AnkiConnectReads.namesAndIds(
             resultOf(AnkiConnectRequests.modelNamesAndIds(key)),
         ) ?: throw protocolFailure("modelNamesAndIds")
+        val names = models.keys.toList()
+        val fieldsByName = LinkedHashMap<String, List<String>>(names.size)
+        for (group in AnkiConnectReadPlanner.multiGroups(names)) {
+            val responses = multiResponsesOf(
+                AnkiConnectRequests.modelFieldNamesMulti(group, key),
+                expected = group.size,
+            )
+            group.forEachIndexed { index, name ->
+                fieldsByName[name] = AnkiConnectReads.fieldNames(responses[index])
+                    ?: throw protocolFailure("modelFieldNames")
+            }
+        }
         return models.map { (name, modelId) ->
-            val fields = AnkiConnectReads.fieldNames(
-                resultOf(AnkiConnectRequests.modelFieldNames(name, key)),
-            ) ?: throw protocolFailure("modelFieldNames")
-            NoteTypeDescriptor(modelId, name, fields)
+            NoteTypeDescriptor(modelId, name, fieldsByName.getValue(name))
         }
     }
 
@@ -355,6 +368,31 @@ class AnkiConnectCollectionReader(
 
     private fun resultOf(request: AnkiConnectEnvelope.Request): AnkiConnectJson.Json =
         measuredResultOf(request).result
+
+    /**
+     * Sends a `multi` request and returns one success result per nested action.
+     * Every nested envelope is validated: a nested error or a wrong response
+     * count fails the whole group rather than silently shifting results onto the
+     * wrong action.
+     */
+    private fun multiResponsesOf(
+        request: AnkiConnectEnvelope.Request,
+        expected: Int,
+    ): List<AnkiConnectJson.Json> {
+        val body = when (val exchange = transport.post(request)) {
+            is AnkiConnectTransport.Exchange.Body -> exchange.text
+            is AnkiConnectTransport.Exchange.Failure -> throw transportFailure(exchange)
+        }
+        val nested = AnkiConnectEnvelope.parseMulti(body)
+        if (nested.size != expected) throw protocolFailure(request.action)
+        return nested.map { response ->
+            when (response) {
+                is AnkiConnectEnvelope.Response.Ok -> response.result
+                is AnkiConnectEnvelope.Response.Failed -> throw failureFor(response.message)
+                AnkiConnectEnvelope.Response.ProtocolError -> throw protocolFailure(request.action)
+            }
+        }
+    }
 
     /** A success result plus the raw body size, used to adapt the batch size. */
     private class Measured(val result: AnkiConnectJson.Json, val encodedBytes: Long)

@@ -654,6 +654,68 @@ class AnkiConnectCollectionReaderTest {
         assertEquals(listOf(42L, 7L), types.map { it.modelId })
         assertEquals(listOf("Expression", "MainDefinition"), types[0].fields)
         assertEquals(listOf("Front", "Back"), types[1].fields)
+        // Field names come back through one bounded `multi` group, not one round
+        // trip per model.
+        assertEquals(listOf("modelNamesAndIds", "multi"), exchange.actions())
+    }
+
+    @Test
+    fun listsNoteTypesInBoundedMultiGroups() {
+        val names = (1..AnkiConnectReadPlanner.MAX_MULTI_ACTIONS + 3).map { "Model$it" }
+        val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult(
+            "modelNamesAndIds",
+            names.withIndex().joinToString(",", "{", "}") { (index, name) ->
+                """"$name":${index + 1}"""
+            },
+        )
+        exchange.onResult("modelFieldNames", """["Front"]""")
+
+        val types = AnkiConnectCollectionReader(exchange.transport()).noteTypes()
+
+        assertEquals(names, types.map { it.name })
+        // Two groups: MAX_MULTI_ACTIONS then the remaining 3.
+        assertEquals(2, exchange.bodiesFor("multi").size)
+    }
+
+    @Test
+    fun noteTypeListingFailsAsTransientWhenMultiReturnsTheWrongResultCount() {
+        val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult("modelNamesAndIds", """{"$model":42,"Basic":7}""")
+        // One nested result for two requested actions: results must never be
+        // silently shifted onto the wrong model.
+        exchange.onResult("multi", """[{"result":["Front"],"error":null}]""")
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport()).noteTypes()
+        }
+        assertEquals(CollectionFailureKind.TRANSIENT, failure.kind)
+    }
+
+    @Test
+    fun noteTypeListingSurfacesANestedMultiError() {
+        val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult("modelNamesAndIds", """{"$model":42}""")
+        exchange.onError("modelFieldNames", "valid api key must be provided")
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport()).noteTypes()
+        }
+        assertEquals(CollectionFailureKind.AUTH_REQUIRED, failure.kind)
+    }
+
+    @Test
+    fun noteTypeListingFailsAsNotAvailableWhenTheMultiRequestCannotBeSent() {
+        val exchange = ScriptedAnkiConnectExchange()
+        exchange.onResult("modelNamesAndIds", """{"$model":42}""")
+        exchange.onRaw("multi") {
+            AnkiConnectTransport.HttpExchange.Result.ConnectionFailed("connection refused")
+        }
+
+        val failure = assertThrows(CollectionFailure::class.java) {
+            AnkiConnectCollectionReader(exchange.transport()).noteTypes()
+        }
+        assertEquals(CollectionFailureKind.NOT_AVAILABLE, failure.kind)
     }
 
     @Test

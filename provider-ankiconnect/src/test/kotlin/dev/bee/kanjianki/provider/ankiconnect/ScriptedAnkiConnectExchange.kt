@@ -67,11 +67,47 @@ class ScriptedAnkiConnectExchange : AnkiConnectTransport.HttpExchange {
         received += body
         val action = actionOf(body)
         val handler = handlers[action]
-            ?: return AnkiConnectTransport.HttpExchange.Result.Ok(
-                200,
-                """{"result":null,"error":"unscripted action $action"}""",
-            )
+            ?: if (action == "multi") {
+                return dispatchMulti(body)
+            } else {
+                return AnkiConnectTransport.HttpExchange.Result.Ok(
+                    200,
+                    """{"result":null,"error":"unscripted action $action"}""",
+                )
+            }
         return handler(body)
+    }
+
+    /**
+     * Answers an unscripted `multi` by dispatching each nested action to its own
+     * registered handler, so a test scripts `modelFieldNames` once whether the
+     * reader sends it singly or inside a `multi` group. Scripting `"multi"`
+     * explicitly still overrides this.
+     */
+    private fun dispatchMulti(body: String): AnkiConnectTransport.HttpExchange.Result {
+        val nested = nestedActions(body)
+        val results = nested.map { nestedBody ->
+            val nestedAction = actionOf(nestedBody)
+            val handler = handlers[nestedAction]
+                ?: return@map """{"result":null,"error":"unscripted action $nestedAction"}"""
+            when (val result = handler(nestedBody)) {
+                is AnkiConnectTransport.HttpExchange.Result.Ok -> result.body
+                else -> """{"result":null,"error":"nested transport failure"}"""
+            }
+        }
+        return AnkiConnectTransport.HttpExchange.Result.Ok(
+            200,
+            """{"result":[${results.joinToString(",")}],"error":null}""",
+        )
+    }
+
+    /** The nested action envelopes of a `multi` body, re-encoded individually. */
+    private fun nestedActions(body: String): List<String> {
+        val params = (AnkiConnectJson.decode(body) as? AnkiConnectJson.Json.Obj)
+            ?.entries?.get("params") as? AnkiConnectJson.Json.Obj
+            ?: return emptyList()
+        val actions = params.entries["actions"] as? AnkiConnectJson.Json.Arr ?: return emptyList()
+        return actions.items.map(AnkiConnectJson::encode)
     }
 
     private fun actionOf(body: String): String? =

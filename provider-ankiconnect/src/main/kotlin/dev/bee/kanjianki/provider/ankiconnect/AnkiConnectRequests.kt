@@ -51,6 +51,30 @@ object AnkiConnectRequests {
             apiKey,
         )
 
+    /**
+     * One bounded `multi` request that asks for several models' field names in a
+     * single round trip. The group must already be sized by
+     * [AnkiConnectReadPlanner.multiGroups]: `multi` shares one response body and
+     * one deadline across every nested action.
+     */
+    fun modelFieldNamesMulti(
+        modelNames: List<String>,
+        apiKey: String? = null,
+    ): AnkiConnectEnvelope.Request {
+        require(modelNames.isNotEmpty()) { "multi request needs at least one action" }
+        require(modelNames.size <= AnkiConnectReadPlanner.MAX_MULTI_ACTIONS) {
+            "multi request exceeds the ${AnkiConnectReadPlanner.MAX_MULTI_ACTIONS}-action cap"
+        }
+        return AnkiConnectEnvelope.multiRequest(
+            modelNames.map { name ->
+                "modelFieldNames" to AnkiConnectJson.obj(
+                    "modelName" to AnkiConnectJson.str(name),
+                )
+            },
+            apiKey,
+        )
+    }
+
     private fun idArray(ids: List<Long>): Json.Arr =
         AnkiConnectJson.arr(ids.map(AnkiConnectJson::num))
 }

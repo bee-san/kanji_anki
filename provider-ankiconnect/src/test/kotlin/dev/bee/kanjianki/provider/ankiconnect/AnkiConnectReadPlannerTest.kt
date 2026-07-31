@@ -71,4 +71,27 @@ class AnkiConnectReadPlannerTest {
             AnkiConnectReadPlanner.adaptBatchSize(lastBatchSize = 50, lastBatchBytes = 0),
         )
     }
+
+    @Test
+    fun multiGroupsAreBoundedAndCoverEveryAction() {
+        val actions = (1..AnkiConnectReadPlanner.MAX_MULTI_ACTIONS + 4).toList()
+        val groups = AnkiConnectReadPlanner.multiGroups(actions)
+
+        assertEquals(2, groups.size)
+        assertTrue(groups.all { it.size <= AnkiConnectReadPlanner.MAX_MULTI_ACTIONS })
+        assertEquals(actions, groups.flatten())
+    }
+
+    @Test
+    fun multiGroupsClampAnOutOfRangeGroupSizeAndSkipEmptyInput() {
+        assertEquals(
+            AnkiConnectReadPlanner.MAX_MULTI_ACTIONS,
+            AnkiConnectReadPlanner.multiGroups(
+                (1..AnkiConnectReadPlanner.MAX_MULTI_ACTIONS).toList(),
+                groupSize = 10_000,
+            ).single().size,
+        )
+        assertEquals(1, AnkiConnectReadPlanner.multiGroups(listOf(1, 2), groupSize = 0).first().size)
+        assertTrue(AnkiConnectReadPlanner.multiGroups(emptyList<Int>()).isEmpty())
+    }
 }

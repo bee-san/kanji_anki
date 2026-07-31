@@ -3,6 +3,7 @@ package dev.bee.kanjianki.provider.ankiconnect
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectJson.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -52,11 +53,40 @@ class AnkiConnectRequestsTest {
     }
 
     @Test
+    fun modelFieldNamesMultiNestsOneActionPerModelAndRepeatsTheKey() {
+        val request = AnkiConnectRequests.modelFieldNamesMulti(listOf("Kiku", "Basic"), apiKey = "s3cret")
+
+        assertEquals("multi", request.action)
+        val nested = (params(request).entries["actions"] as Json.Arr).items
+            .map { it as Json.Obj }
+        assertEquals(listOf("modelFieldNames", "modelFieldNames"), nested.map { action(it) })
+        assertEquals(
+            listOf("Kiku", "Basic"),
+            nested.map { ((it.entries["params"] as Json.Obj).entries["modelName"] as Json.Str).value },
+        )
+        // The key is repeated in every nested action, as AnkiConnect v6 requires.
+        assertTrue(nested.all { (it.entries["key"] as Json.Str).value == "s3cret" })
+    }
+
+    @Test
+    fun modelFieldNamesMultiRejectsAnEmptyOrOversizeGroup() {
+        assertThrows(IllegalArgumentException::class.java) {
+            AnkiConnectRequests.modelFieldNamesMulti(emptyList())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            AnkiConnectRequests.modelFieldNamesMulti(
+                (0..AnkiConnectReadPlanner.MAX_MULTI_ACTIONS).map { "M$it" },
+            )
+        }
+    }
+
+    @Test
     fun everyReadActionIsOnTheAllowlist() {
         val actions = listOf(
             AnkiConnectRequests.modelNamesAndIds(),
             AnkiConnectRequests.deckNamesAndIds(),
             AnkiConnectRequests.modelFieldNames("M"),
+            AnkiConnectRequests.modelFieldNamesMulti(listOf("M")),
             AnkiConnectRequests.findNotes("q"),
             AnkiConnectRequests.findCards("q"),
             AnkiConnectRequests.notesInfo(listOf(1L)),
@@ -64,4 +94,6 @@ class AnkiConnectRequestsTest {
         )
         actions.forEach { assertTrue(AnkiConnectActions.isAllowed(it.action)) }
     }
+
+    private fun action(nested: Json.Obj): String = (nested.entries["action"] as Json.Str).value
 }
