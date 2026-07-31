@@ -52,7 +52,7 @@ Backup/restore is proven round-trip: populated v34 DB → gzip snapshot → rest
 swaps the live DB while preserving a pre-restore safety backup; the finalizer
 drops a foreign host's device-local `settings` rows and keeps portable ones.
 
-### Goal 187 (AnkiConnect transport) — security core + protocol layer started
+### Goal 187 (AnkiConnect transport) — DONE except the live handshake
 
 New `:provider-ankiconnect` module (pure JVM, deps `{platform-contracts,
 sync-api}`, 100% class coverage), wired into `ciDesktop` + boundary contracts:
@@ -60,14 +60,30 @@ sync-api}`, 100% class coverage), wired into `ciDesktop` + boundary contracts:
 ```text
 86c61571 AnkiConnectEndpoint (loopback-only fail-closed URL validation) + AnkiConnectActions (outbound allowlist)
 5143b80a AnkiConnectJson (bounded dependency-free codec) + AnkiConnectEnvelope (v6 request/response, multi, redaction)
+d2b54507 AnkiConnectTransport + JdkHttpExchange (bounded loopback HTTP, redirects off, deadlines, byte cap)
+7aaba4e5 AnkiConnectHandshake (keyless-first requestPermission -> version -> apiReflect -> getActiveProfile)
+4dd096a5 AnkiConnectKeyStore (API-key lifecycle over SecretStore, never plaintext/DB)
+3ea8ba87 AnkiConnectRequests + AnkiConnectReads (typed read requests + fail-closed result parsers)
+34a01817 FakeAnkiConnectServer + AnkiConnectFailureMatrixTest (malformed/oversize/protocol/auth/version/missing over a real loopback socket)
 ```
 
-Remaining for Goal 187: the bounded JDK `HttpClient` transport (redirects
-disabled, post-resolution loopback enforcement, connect/request deadlines,
-bounded bodies, cancellation, redacted diagnostics), the `requestPermission`/
-`version`/`apiReflect`/`getActiveProfile` handshake + `SecretStore` wiring, the
-in-process fake server test matrix, and the read-only live handshake against a
-local Anki session.
+Only outstanding Goal 187 item: the read-only live handshake against a running
+Anki/AnkiConnect session (needs Anki desktop open).
+
+### Goal 188 (collection reads / normalization) — core started
+
+```text
+27b6696c AnkiConnectReadPlanner (250k id cap, clamped/adaptive detail batches) + AnkiConnectCardNormalization (queue<0 suspension, ord==0)
+```
+
+Remaining for Goal 188: assemble the reads into the provider-neutral snapshot
+shape. NOTE the boundary constraint — `:provider-ankiconnect` may only depend on
+`{platform-contracts, sync-api}`, and `RecordsSyncModels.CollectionSnapshot`
+lives in `:core`. Mapping raw `NoteInfo`/`CardInfo` into the `:core`/`sync-api`
+snapshot must therefore happen in a module that legitimately depends on `:core`
+(likely a desktop gateway in `:data-desktop` or the desktop composition root),
+not inside `:provider-ankiconnect`. Decide that placement before Goal 188
+commit 1 ("implement model note and card reads") to avoid a boundary violation.
 
 Also updated the fast/desktop CI gates and `tools/test_module_boundaries.py` /
 `tools/test_desktop_ci_gates.py` for every new module; `ciFast` and `ciDesktop`
