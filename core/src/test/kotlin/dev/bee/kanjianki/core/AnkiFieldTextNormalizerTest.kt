@@ -1,6 +1,5 @@
-package dev.bee.kanjianki.anki
+package dev.bee.kanjianki.core
 
-import dev.bee.kanjianki.core.TextUtil
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

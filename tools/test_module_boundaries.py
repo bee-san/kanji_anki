@@ -394,7 +394,10 @@ ANKIDROID_PRODUCTION_FILES = frozenset(
         "AnkiDroidCollectionInventoryGateway.kt",
         "AnkiDroidGateway.kt",
         "AnkiDroidRepairedTagging.kt",
-        "AnkiFieldTextNormalizer.kt",
+        # AnkiFieldTextNormalizer deliberately does NOT live here: both providers
+        # must apply the same sound-marker/HTML rule or an inventory scanned over
+        # AnkiConnect and one scanned over AnkiDroid would disagree about which
+        # kanji a collection contains. It lives in :core.
         "AnkiKanjiInventoryReader.kt",
         "AnkiMissingKanjiWriter.kt",
     },
@@ -786,6 +789,42 @@ class ModuleBoundaryTest(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertRegex(card_reader, r"\binternal class AnkiDroidCardReader\b")
+
+    def test_anki_field_normalization_is_shared_not_copied_per_provider(
+        self,
+    ) -> None:
+        """Both providers must extract kanji from field text by the same rule.
+
+        A second hand-copied sound-marker/HTML rule would diverge silently: an
+        inventory scanned over AnkiConnect and one scanned over AnkiDroid's
+        provider would then disagree about which kanji a collection contains,
+        and Missing Kanji would propose notes the user already has.
+        """
+        shared = (
+            ROOT
+            / "core/src/main/kotlin/dev/bee/kanjianki/core"
+            / "AnkiFieldTextNormalizer.kt"
+        )
+        self.assertTrue(shared.is_file(), f"{shared} must hold the one rule")
+        self.assertRegex(
+            shared.read_text(encoding="utf-8"),
+            r"package dev\.bee\.kanjianki\.core\b",
+        )
+
+        copies = []
+        for module in sorted(EXPECTED_CURRENT_MODULES - {"core"}):
+            source_root = ROOT / module / "src"
+            if not source_root.exists():
+                continue
+            copies.extend(
+                path.relative_to(ROOT).as_posix()
+                for path in source_root.rglob("AnkiFieldTextNormalizer.kt")
+            )
+        self.assertEqual(
+            [],
+            copies,
+            "field normalization must not be copied outside :core",
+        )
 
     def test_shared_feature_and_desktop_sources_cannot_import_ankidroid_types(
         self,

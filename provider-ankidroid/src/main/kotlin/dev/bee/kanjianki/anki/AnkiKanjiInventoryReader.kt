@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.anki
 
+import dev.bee.kanjianki.core.AnkiFieldTextNormalizer
 import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.AnkiKanjiInventoryCollector
 import dev.bee.kanjianki.core.AnkiKanjiInventoryProgress

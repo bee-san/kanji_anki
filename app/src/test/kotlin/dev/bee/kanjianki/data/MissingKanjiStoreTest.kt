@@ -3,7 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.anki.AnkiFieldTextNormalizer
+import dev.bee.kanjianki.core.AnkiFieldTextNormalizer
 import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.AnkiKanjiInventoryCollector
 import dev.bee.kanjianki.core.MissingKanjiCandidate
