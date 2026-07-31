@@ -8,8 +8,17 @@ package dev.bee.kanjianki.provider.ankiconnect
  * matrix against the real loopback server.
  */
 class ScriptedAnkiConnectExchange : AnkiConnectTransport.HttpExchange {
-    /** Every request body received, in order. */
+    /** Every top-level request body received, in order. */
     val received = mutableListOf<String>()
+
+    /**
+     * Every nested action envelope dispatched inside an unscripted `multi`, in
+     * order. Kept separate from [received] because the two answer different
+     * questions: [received] is what went over the wire (so a test can count round
+     * trips), while this is what was *asked for* (so a test can assert an action
+     * that only ever rides inside a batch, like `addTags`).
+     */
+    val nested = mutableListOf<String>()
 
     private val handlers = HashMap<String, (String) -> AnkiConnectTransport.HttpExchange.Result>()
 
@@ -44,8 +53,16 @@ class ScriptedAnkiConnectExchange : AnkiConnectTransport.HttpExchange {
     /** The action names seen so far, in request order. */
     fun actions(): List<String> = received.mapNotNull(::actionOf)
 
-    /** Request bodies for [action], in order. */
+    /** Top-level request bodies for [action], in order. */
     fun bodiesFor(action: String): List<String> = received.filter { actionOf(it) == action }
+
+    /**
+     * Bodies for [action] wherever they appeared — top level or nested inside a
+     * `multi`. Use this for an action the caller may batch; use [bodiesFor] when
+     * the assertion is about round trips.
+     */
+    fun anyBodiesFor(action: String): List<String> =
+        (received + nested).filter { actionOf(it) == action }
 
     fun transport(): AnkiConnectTransport =
         AnkiConnectTransport(
@@ -85,8 +102,9 @@ class ScriptedAnkiConnectExchange : AnkiConnectTransport.HttpExchange {
      * explicitly still overrides this.
      */
     private fun dispatchMulti(body: String): AnkiConnectTransport.HttpExchange.Result {
-        val nested = nestedActions(body)
-        val results = nested.map { nestedBody ->
+        val nestedBodies = nestedActions(body)
+        nested += nestedBodies
+        val results = nestedBodies.map { nestedBody ->
             val nestedAction = actionOf(nestedBody)
             val handler = handlers[nestedAction]
                 ?: return@map """{"result":null,"error":"unscripted action $nestedAction"}"""

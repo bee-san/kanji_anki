@@ -88,6 +88,33 @@ object AnkiConnectRequests {
         )
 
     /**
+     * Adds [tag] to one note. Kani only ever writes its own tags, and always one
+     * note per action, so a partial failure inside a `multi` batch is attributable
+     * to a specific note — see [AnkiConnectTagWriter].
+     */
+    fun addTags(noteId: Long, tag: String, apiKey: String? = null): AnkiConnectEnvelope.Request =
+        AnkiConnectEnvelope.request("addTags", addTagsParams(noteId, tag), apiKey)
+
+    /**
+     * One bounded `multi` of one-note `addTags` actions, in [noteIds] order. The
+     * response array is read position-for-position against that order.
+     */
+    fun addTagsMulti(
+        noteIds: List<Long>,
+        tag: String,
+        apiKey: String? = null,
+    ): AnkiConnectEnvelope.Request {
+        require(noteIds.isNotEmpty()) { "multi request needs at least one action" }
+        require(noteIds.size <= AnkiConnectReadPlanner.MAX_MULTI_ACTIONS) {
+            "multi request exceeds the ${AnkiConnectReadPlanner.MAX_MULTI_ACTIONS}-action cap"
+        }
+        return AnkiConnectEnvelope.multiRequest(
+            noteIds.map { noteId -> "addTags" to addTagsParams(noteId, tag) },
+            apiKey,
+        )
+    }
+
+    /**
      * One bounded `multi` request that asks for several models' field names in a
      * single round trip. The group must already be sized by
      * [AnkiConnectReadPlanner.multiGroups]: `multi` shares one response body and
@@ -110,6 +137,11 @@ object AnkiConnectRequests {
             apiKey,
         )
     }
+
+    private fun addTagsParams(noteId: Long, tag: String): Json.Obj = AnkiConnectJson.obj(
+        "notes" to idArray(listOf(noteId)),
+        "tags" to AnkiConnectJson.str(tag),
+    )
 
     private fun idArray(ids: List<Long>): Json.Arr =
         AnkiConnectJson.arr(ids.map(AnkiConnectJson::num))

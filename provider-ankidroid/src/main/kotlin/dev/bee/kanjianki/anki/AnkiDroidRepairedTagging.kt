@@ -6,6 +6,7 @@ import android.database.Cursor
 import android.net.Uri
 import dev.bee.kanjianki.syncapi.RepairedTagSummary
 import android.util.Log
+import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy
 import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 import java.util.regex.Pattern
 
@@ -32,7 +33,11 @@ internal class AnkiDroidRepairedTagging(
             requested,
             tagged,
             failed,
-            message(tagged.size, failed.size),
+            ProviderNotePolicy.repairedTagMessage(
+                tagged.size,
+                failed.size,
+                ProviderArchiveCleanupPolicy.ANKIDROID_PROVIDER_NAME,
+            ),
         )
     }
 
@@ -70,12 +75,6 @@ internal class AnkiDroidRepairedTagging(
         .split(value)
         .map(String::trim)
         .filter(String::isNotEmpty)
-
-    private fun message(tagged: Int, failed: Int): String = when {
-        tagged > 0 && failed == 0 -> "Tagged $tagged repaired ${if (tagged == 1) "note" else "notes"} in AnkiDroid."
-        tagged > 0 -> "Tagged $tagged repaired ${if (tagged == 1) "note" else "notes"}; $failed will retry next sync."
-        else -> "Repaired-note tagging failed and will retry on the next sync."
-    }
 
     companion object {
         private const val TAG = "AnkiRepairedTagging"

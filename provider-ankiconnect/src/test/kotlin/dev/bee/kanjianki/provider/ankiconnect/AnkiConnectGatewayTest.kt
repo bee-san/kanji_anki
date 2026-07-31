@@ -1,11 +1,13 @@
 package dev.bee.kanjianki.provider.ankiconnect
 
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
 import dev.bee.kanjianki.syncapi.CollectionFailure
 import dev.bee.kanjianki.syncapi.CollectionFailureKind
+import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.testing.CollectionGatewayContractKit
 import org.junit.Assert.assertEquals
@@ -109,13 +111,12 @@ class AnkiConnectGatewayTest {
     }
 
     /**
-     * `status()` advertises read capabilities only. AnkiConnect reports `addTags`
-     * and `addNotes` as available, so it would be easy to advertise the write
-     * capabilities off the handshake; the writes do not exist yet (Goal 190) and a
-     * declared-but-absent write is worse than an undeclared one.
+     * The tag-write capability is advertised off what *this* Anki reported, not off
+     * "AnkiConnect generally supports `addTags`". Missing Kanji stays unadvertised
+     * here because that flow is a separate writer with its own gate.
      */
     @Test
-    fun advertisesReadCapabilitiesOnlyWhileWritesAreUnimplemented() {
+    fun advertisesTagWriteOnlyWhenThisAnkiReportedTheAction() {
         val exchange = readyExchange()
         exchange.onResult(
             "apiReflect",
@@ -129,12 +130,29 @@ class AnkiConnectGatewayTest {
 
         assertTrue(status.isReady())
         assertEquals(
-            setOf(CollectionCapability.READ_COLLECTION, CollectionCapability.LIST_NOTE_TYPES),
+            setOf(
+                CollectionCapability.READ_COLLECTION,
+                CollectionCapability.LIST_NOTE_TYPES,
+                CollectionCapability.NOTE_TAG_WRITE,
+            ),
             status.capabilities,
         )
-        assertFalse(status.supports(CollectionCapability.NOTE_TAG_WRITE))
         assertFalse(status.supports(CollectionCapability.MISSING_KANJI_WRITE))
         assertFalse(status.supports(CollectionCapability.COLLECTION_INVENTORY))
+    }
+
+    /**
+     * An AnkiConnect that withholds `addTags` gets the read capabilities alone. A
+     * declared-but-absent write is worse than an undeclared one: the caller would
+     * offer the user archive/repaired write-back that could never succeed.
+     */
+    @Test
+    fun withholdsTagWriteWhenTheActionIsUnavailable() {
+        val status = gateway(readyExchange()).status()
+
+        assertTrue(status.isReady())
+        assertEquals(AnkiConnectGateway.READ_CAPABILITIES, status.capabilities)
+        assertFalse(status.supports(CollectionCapability.NOTE_TAG_WRITE))
     }
 
     @Test
@@ -222,36 +240,216 @@ class AnkiConnectGatewayTest {
     }
 
     /**
-     * Archiving is an `addTags` write Kani cannot perform over AnkiConnect yet, so
-     * the summary must report zero tagged notes and say so, never a silent success.
+     * A snapshot whose single note is fully suspended, so it is eligible for the
+     * `kani_archived` tag. [suspendedQueue] lets a test make it ineligible again.
+     */
+    private fun suspendedExchange(suspendedQueue: Long = -1L): ScriptedAnkiConnectExchange =
+        readyExchange {
+            onResult(
+                "cardsInfo",
+                """[${
+                    ScriptedAnkiConnectExchange.cardRow(110L, 11L, model, queue = suspendedQueue)
+                }]""",
+            )
+            onResult("addTags", "null")
+        }
+
+    /**
+     * Archiving tags the fully-suspended note in Anki, so a later sync skips it.
+     * The tag written is Kani's own `kani_archived`, and it goes out as a one-note
+     * `addTags` action.
      */
     @Test
-    fun archivingReportsThatTheWriteIsUnavailableInsteadOfClaimingSuccess() {
-        val snapshot = gateway(readyExchange()).readCollection(settings)
+    fun archivingTagsFullySuspendedNotes() {
+        val exchange = suspendedExchange()
+        val gateway = gateway(exchange)
+        val snapshot = gateway.readCollection(settings)
 
-        val summary = gateway(readyExchange()).removeArchivedSuspendedCards(snapshot)
+        val summary = gateway.removeArchivedSuspendedCards(snapshot)
 
         assertEquals(1, summary.sourceCards)
-        assertEquals(0, summary.taggedNotes)
+        assertEquals(1, summary.taggedNotes)
+        // Kani never deletes a note; archiving is a tag write only.
         assertEquals(0, summary.deletedNotes)
-        assertTrue(summary.message.contains("cannot tag"))
+        assertTrue(summary.message, summary.message.contains("tagged in Anki"))
+        val sent = exchange.anyBodiesFor("addTags").single()
+        assertTrue(sent, sent.contains("kani_archived"))
+        assertEquals(listOf(11L), requestedNoteIds(sent))
     }
 
     /**
-     * The default `tagRepairedNotes` is the interface's no-op. Pinning it here
-     * means adding a real implementation has to change a test, rather than
-     * silently changing what callers observe.
+     * A collection with nothing suspended must not send a write at all. Anki is the
+     * user's data; "no work" has to mean "no request", not "an empty request".
      */
     @Test
-    fun repairedTaggingIsANoOpUntilWritesExist() {
-        val summary = gateway(readyExchange()).tagRepairedNotes(
+    fun archivingSendsNoWriteWhenNothingIsSuspended() {
+        val exchange = suspendedExchange(suspendedQueue = 2L)
+        val gateway = gateway(exchange)
+
+        val summary = gateway.removeArchivedSuspendedCards(gateway.readCollection(settings))
+
+        assertEquals(0, summary.sourceCards)
+        assertEquals(0, summary.taggedNotes)
+        assertTrue(exchange.received.none { it.contains("addTags") })
+    }
+
+    /**
+     * The sync is already committed by the time archiving runs, so a refused write
+     * is reported, never thrown — and the copy has to say the local archive kept
+     * the leftovers, because that is what actually happened.
+     */
+    @Test
+    fun aRefusedArchiveWriteIsReportedRatherThanThrown() {
+        val exchange = suspendedExchange()
+        exchange.onError("addTags", "collection is not open")
+        val gateway = gateway(exchange)
+        val snapshot = gateway.readCollection(settings)
+
+        val summary = gateway.removeArchivedSuspendedCards(snapshot)
+
+        assertEquals(1, summary.sourceCards)
+        assertEquals(0, summary.taggedNotes)
+        assertTrue(summary.message, summary.message.contains("local archive"))
+    }
+
+    /** Repaired tagging writes `kani_repaired` and reports the notes it reached. */
+    @Test
+    fun repairedTaggingTagsTheRequestedNotes() {
+        val exchange = readyExchange { onResult("addTags", "null") }
+
+        val summary = gateway(exchange).tagRepairedNotes(
+            setOf(11L, 12L),
+            CollectionProgressListener.NONE,
+        )
+
+        assertEquals(setOf(11L, 12L), summary.taggedNoteIds)
+        assertEquals(setOf(11L, 12L), summary.requestedNoteIds)
+        assertTrue(summary.failedNoteIds.isEmpty())
+        assertTrue(summary.message, summary.message.contains("Tagged 2 repaired notes in Anki"))
+        val sent = exchange.anyBodiesFor("addTags")
+        assertEquals(2, sent.size)
+        assertTrue(sent.all { it.contains("kani_repaired") })
+    }
+
+    /** No requested notes means no request and the shared no-op summary. */
+    @Test
+    fun repairedTaggingWithNoNotesSendsNothing() {
+        val exchange = readyExchange { onResult("addTags", "null") }
+
+        val summary = gateway(exchange).tagRepairedNotes(emptySet(), CollectionProgressListener.NONE)
+
+        assertTrue(summary.requestedNoteIds.isEmpty())
+        assertTrue(exchange.received.isEmpty())
+    }
+
+    /**
+     * An unreachable Anki fails the repaired write without failing the caller, and
+     * the copy promises the retry the caller will actually perform.
+     */
+    @Test
+    fun anUnreachableAnkiFailsTheRepairedWriteWithoutThrowing() {
+        val exchange = readyExchange()
+        // The write leaves as a `multi`, so the transport loss has to be scripted
+        // there; failing the nested action instead would exercise a different path.
+        exchange.onRaw("multi") {
+            AnkiConnectTransport.HttpExchange.Result.ConnectionFailed("refused")
+        }
+
+        val summary = gateway(exchange).tagRepairedNotes(
             setOf(11L),
             CollectionProgressListener.NONE,
         )
 
+        assertEquals(setOf(11L), summary.failedNoteIds)
         assertTrue(summary.taggedNoteIds.isEmpty())
-        assertTrue(summary.requestedNoteIds.isEmpty())
-        assertTrue(summary.failedNoteIds.isEmpty())
+        assertTrue(summary.message, summary.message.contains("retry"))
+    }
+
+    /**
+     * A partially-failed repaired write reports exactly which notes to retry, and
+     * says so — the caller retries the failures on the next sync, and the user is
+     * told a number that matches what actually happened.
+     */
+    @Test
+    fun aPartiallyFailedRepairedWriteNamesTheNotesToRetry() {
+        val exchange = readyExchange()
+        exchange.onRaw("addTags") { body ->
+            val failed = requestedNoteIds(body) == listOf(12L)
+            AnkiConnectTransport.HttpExchange.Result.Ok(
+                200,
+                if (failed) {
+                    """{"result":null,"error":"note was not found: 12"}"""
+                } else {
+                    """{"result":null,"error":null}"""
+                },
+            )
+        }
+
+        val summary = gateway(exchange).tagRepairedNotes(
+            setOf(11L, 12L),
+            CollectionProgressListener.NONE,
+        )
+
+        assertEquals(setOf(11L), summary.taggedNoteIds)
+        assertEquals(setOf(12L), summary.failedNoteIds)
+        assertTrue(summary.message, summary.message.contains("1 will retry next sync"))
+    }
+
+    /** Both write paths report their stage, so the sync UI can name the step. */
+    @Test
+    fun bothWritePathsReportTheirProgressStage() {
+        val stages = mutableListOf<CollectionProgress.Stage>()
+        val listener = CollectionProgressListener { stages += it.stage }
+        val exchange = suspendedExchange()
+        val gateway = gateway(exchange)
+        val snapshot = gateway.readCollection(settings)
+
+        gateway.removeArchivedSuspendedCards(snapshot, listener)
+        gateway.tagRepairedNotes(setOf(11L), listener)
+
+        assertTrue(stages.toString(), CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS in stages)
+        assertTrue(stages.toString(), CollectionProgress.Stage.TAGGING_REPAIRED in stages)
+    }
+
+    /**
+     * The archive selection honors what the user chose to import: a suspended card
+     * the user did not select leaves its note ineligible, exactly as on AnkiDroid,
+     * because the shared policy makes that call for both providers.
+     */
+    @Test
+    fun archivingRespectsTheUsersSuspendedImportSelection() {
+        val exchange = suspendedExchange()
+        val gateway = gateway(exchange)
+        val snapshot = gateway.readCollection(settings)
+
+        val summary = gateway.removeArchivedSuspendedCards(
+            snapshot,
+            listOf(
+                RecordsImportModels.SuspendedImport(
+                    "橋",
+                    1,
+                    true,
+                    1,
+                    // A different card than the snapshot's 110: the suspended card
+                    // Kani read was not among the ones the user chose to import.
+                    listOf(
+                        RecordsImportModels.SuspendedSource(
+                            "橋",
+                            999L,
+                            11L,
+                            "橋",
+                            "はし",
+                            "bridge",
+                            "橋を渡る。",
+                        ),
+                    ),
+                ),
+            ),
+            CollectionProgressListener.NONE,
+        )
+
+        assertEquals(0, summary.taggedNotes)
+        assertTrue(exchange.received.none { it.contains("addTags") })
     }
 
     /** The diagnostics accessor surfaces the reader's malformed-row warning. */
@@ -303,5 +501,14 @@ class AnkiConnectGatewayTest {
         // requestPermission is deliberately keyless; every read carries the key.
         assertTrue(exchange.bodiesFor("notesInfo").all { it.contains("s3cret") })
         assertTrue(exchange.bodiesFor("cardsInfo").all { it.contains("s3cret") })
+    }
+
+    /** The note ids an `addTags` request body named. */
+    private fun requestedNoteIds(body: String): List<Long> {
+        val params = (AnkiConnectJson.decode(body) as? AnkiConnectJson.Json.Obj)
+            ?.entries?.get("params") as? AnkiConnectJson.Json.Obj
+            ?: return emptyList()
+        val notes = params.entries["notes"] as? AnkiConnectJson.Json.Arr ?: return emptyList()
+        return notes.items.mapNotNull { (it as? AnkiConnectJson.Json.Num)?.value }
     }
 }

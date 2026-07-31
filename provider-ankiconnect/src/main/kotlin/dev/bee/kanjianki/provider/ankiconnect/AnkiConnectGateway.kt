@@ -1,15 +1,20 @@
 package dev.bee.kanjianki.provider.ankiconnect
 
+import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncapi.ArchiveTagSummary
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
 import dev.bee.kanjianki.syncapi.CollectionFailure
 import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionProgress
 import dev.bee.kanjianki.syncapi.CollectionProgressListener
 import dev.bee.kanjianki.syncapi.CollectionSourceStatus
 import dev.bee.kanjianki.syncapi.NoteTypeDescriptor
 import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
+import dev.bee.kanjianki.syncapi.RepairedTagSummary
+import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy
+import dev.bee.kanjianki.syncdomain.ProviderNotePolicy
 
 /**
  * The [CollectionGateway] AnkiConnect implementation: the seam where the desktop
@@ -27,14 +32,13 @@ import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
  *   (`AUTH_REQUIRED` vs `INVALID_CONFIGURATION`). That translation is
  *   [AnkiConnectStatusMapping]'s, shared with the inventory gateway so the two
  *   cannot classify the same Anki differently.
- * - **Capabilities are only what this class can actually do today.** Stock
- *   AnkiConnect advertises `addTags`/`addNotes`, so it would be easy to declare
- *   [CollectionCapability.NOTE_TAG_WRITE] and
- *   [CollectionCapability.MISSING_KANJI_WRITE] from the handshake's optional
- *   action set. Those write paths are not implemented yet (Goal 190), and
- *   [removeArchivedSuspendedCards] here is a no-op, so declaring them would
- *   promise a write that silently does nothing. Read capabilities only, until
- *   the writes exist.
+ * - **Capabilities are only what this class can actually do today, against
+ *   *this* Anki.** [CollectionCapability.NOTE_TAG_WRITE] is advertised only when
+ *   the handshake's `apiReflect` actually reported `addTags`; an AnkiConnect
+ *   build or configuration that withholds it gets the read capabilities alone,
+ *   because a declared-but-absent write is worse than an undeclared one.
+ *   [CollectionCapability.MISSING_KANJI_WRITE] stays unadvertised here: that flow
+ *   is the Missing Kanji writer's, gated on its own capability check.
  */
 class AnkiConnectGateway(
     private val transport: AnkiConnectTransport,
@@ -42,6 +46,7 @@ class AnkiConnectGateway(
 ) : CollectionGateway {
     private val handshake = AnkiConnectHandshake(transport)
     private val reader = AnkiConnectCollectionReader(transport, keyProvider)
+    private val tagWriter = AnkiConnectTagWriter(transport, keyProvider)
 
     /**
      * Runs the full handshake and reports what Kani may do with this Anki.
@@ -52,7 +57,7 @@ class AnkiConnectGateway(
     override fun status(): CollectionSourceStatus {
         val result = handshake.run(keyProvider())
         val capabilities = if (result is AnkiConnectHandshake.Status.Ready) {
-            READ_CAPABILITIES
+            capabilitiesFor(result)
         } else {
             emptySet()
         }
@@ -84,19 +89,104 @@ class AnkiConnectGateway(
         cancellation: CollectionCancellation,
     ): ProviderCollectionSnapshot = reader.readProviderCollection(settings, progress, cancellation)
 
+    override fun removeArchivedSuspendedCards(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+    ): ArchiveTagSummary =
+        removeArchivedSuspendedCards(snapshot, null, CollectionProgressListener.NONE)
+
+    override fun removeArchivedSuspendedCards(
+        snapshot: RecordsSyncModels.CollectionSnapshot,
+        progress: CollectionProgressListener,
+    ): ArchiveTagSummary = removeArchivedSuspendedCards(snapshot, null, progress)
+
     /**
-     * Not yet supported. Archiving imported suspended notes is a `addTags` write,
-     * which Goal 190 gates behind the same additive-write review as the Missing
-     * Kanji flow, so this reports zero work rather than pretending to tag.
+     * Tags fully-suspended imported notes `kani_archived` so later syncs skip them.
+     *
+     * Which notes qualify is [ProviderArchiveCleanupPolicy]'s decision, not this
+     * class's — the same policy AnkiDroid uses, so a collection archived on one
+     * host and the same collection archived on the other tag the same notes. Only
+     * the transport differs.
+     *
+     * A tag failure is reported, never thrown: the caller has already committed
+     * the sync, and the local archive keeps whatever the provider would not take.
      */
     override fun removeArchivedSuspendedCards(
         snapshot: RecordsSyncModels.CollectionSnapshot,
-    ): ArchiveTagSummary = ArchiveTagSummary(
-        snapshot.cards.size,
-        0,
-        0,
-        "Kani cannot tag notes over AnkiConnect yet, so nothing was archived.",
-    )
+        selectedSuspendedImports: List<RecordsImportModels.SuspendedImport>?,
+        progress: CollectionProgressListener,
+    ): ArchiveTagSummary {
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.ARCHIVING_IMPORTED_CARDS))
+        val cleanup = ProviderArchiveCleanupPolicy.plan(
+            snapshot.cards.map { card ->
+                ProviderArchiveCleanupPolicy.Card(card.cardId, card.noteId, card.suspended)
+            },
+            selectedSuspendedCardIds(selectedSuspendedImports),
+        )
+        if (!cleanup.hasSuspendedCards()) {
+            return ArchiveTagSummary(0, 0, 0, "No suspended cards needed provider cleanup.")
+        }
+        val outcome = tagWriter.addTag(ProviderNotePolicy.ARCHIVED_TAG, cleanup.notesToTag)
+        return ArchiveTagSummary(
+            cleanup.sourceCards,
+            // Kani never deletes a note; archiving is a tag write only.
+            0,
+            outcome.tagged.size,
+            ProviderArchiveCleanupPolicy.removalMessage(
+                outcome.tagged.size,
+                // A partially-suspended note was never eligible, so it counts
+                // against the write the same way AnkiDroid counts it.
+                outcome.failed.size + cleanup.alreadyFailedCards,
+                PROVIDER_NAME,
+            ),
+        )
+    }
+
+    /**
+     * Tags repaired notes `kani_repaired`, so the user can find them in Anki and
+     * unsuspend the cards themselves.
+     *
+     * This gateway performs the write it is asked for; it does not decide whether
+     * to ask. Repaired tagging is manual-confirm-only, and that confirmation lives
+     * in the sync runner that calls this — the automatic post-sync runner is not
+     * authorized to reach this method.
+     */
+    override fun tagRepairedNotes(
+        noteIds: Set<Long>,
+        progress: CollectionProgressListener,
+    ): RepairedTagSummary {
+        progress.onProgress(CollectionProgress(CollectionProgress.Stage.TAGGING_REPAIRED))
+        if (noteIds.isEmpty()) return RepairedTagSummary.noOp()
+        val outcome = tagWriter.addTag(ProviderNotePolicy.REPAIRED_TAG, noteIds)
+        if (outcome.requested == 0) return RepairedTagSummary.noOp()
+        return RepairedTagSummary(
+            outcome.tagged + outcome.failed,
+            outcome.tagged,
+            outcome.failed,
+            ProviderNotePolicy.repairedTagMessage(
+                outcome.tagged.size,
+                outcome.failed.size,
+                PROVIDER_NAME,
+            ),
+        )
+    }
+
+    /**
+     * The suspended card ids the user actually selected for import, or null when
+     * every suspended card counts. Mirrors `AnkiDroidArchiveCleanup`'s flattening
+     * so the policy sees the same input shape from both providers.
+     */
+    private fun selectedSuspendedCardIds(
+        imports: List<RecordsImportModels.SuspendedImport>?,
+    ): Set<Long>? {
+        if (imports == null) return null
+        return ProviderArchiveCleanupPolicy.selectedSuspendedCardIds(
+            imports.flatMap { imported ->
+                imported.sources.map { source ->
+                    ProviderArchiveCleanupPolicy.SelectedSource(source.cardId, source.suspended)
+                }
+            },
+        )
+    }
 
     /**
      * The reader's malformed-row diagnostic for the most recent read shape, for
@@ -111,8 +201,11 @@ class AnkiConnectGateway(
     ): AnkiConnectCollectionReader.ReadResult = reader.read(settings, progress, cancellation)
 
     companion object {
+        /** The provider name user-facing write copy names. */
+        const val PROVIDER_NAME: String = "Anki"
+
         /**
-         * What an AnkiConnect Kani can talk to is able to do. Notably absent:
+         * What any ready AnkiConnect can do. Notably absent:
          * [CollectionCapability.FSRS_MEMORY_STATE], because AnkiConnect exposes no
          * memory state at all — see [AnkiConnectCollectionReader].
          */
@@ -121,5 +214,20 @@ class AnkiConnectGateway(
             CollectionCapability.READ_COLLECTION,
             CollectionCapability.LIST_NOTE_TYPES,
         )
+
+        /** The AnkiConnect action Kani's tag writes need. */
+        const val TAG_WRITE_ACTION: String = "addTags"
+
+        /**
+         * Read capabilities plus tag write, if and only if this Anki reported the
+         * action that makes the tag write possible.
+         */
+        private fun capabilitiesFor(
+            ready: AnkiConnectHandshake.Status.Ready,
+        ): Set<CollectionCapability> = if (TAG_WRITE_ACTION in ready.availableOptionalActions) {
+            READ_CAPABILITIES + CollectionCapability.NOTE_TAG_WRITE
+        } else {
+            READ_CAPABILITIES
+        }
     }
 }
