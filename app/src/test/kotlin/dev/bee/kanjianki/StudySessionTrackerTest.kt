@@ -40,6 +40,29 @@ class StudySessionTrackerTest {
     }
 
     @Test
+    fun stateEquivalenceIgnoresRevisionButDetectsMeaningfulChanges() {
+        val tracker = StudySessionTracker()
+        val completedKey = "session:kanji_meaning:裂:token"
+        tracker.setTargetCount(1)
+        tracker.markTaskCompleted(completedKey)
+        val staged = tracker.copyForStaging()
+
+        tracker.registerTaskShown(completedKey)
+
+        assertTrue("duplicate publication changes revision only", tracker.hasSameStateAs(staged))
+        staged.setTargetCount(2)
+        assertFalse("target reconciliation is meaningful state", tracker.hasSameStateAs(staged))
+
+        val active = StudySessionTracker()
+        active.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+        val sameActive = active.copyForStaging()
+        assertTrue("identical active-task fields are equivalent", active.hasSameStateAs(sameActive))
+        val differentActive = StudySessionTracker()
+        differentActive.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 11L, false)
+        assertFalse("active-task timing is meaningful state", active.hasSameStateAs(differentActive))
+    }
+
+    @Test
     fun stagedCommitCannotClobberCanonicalMutationWaitingToPublish() {
         val blockFirstPublication = AtomicBoolean(false)
         val mutationCommitted = CountDownLatch(1)
