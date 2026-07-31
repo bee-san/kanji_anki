@@ -24,7 +24,14 @@ interface ReadingMediaSource {
     fun read(name: String, maximumBytes: Int): ByteArray?
 }
 
-private fun isSafeMediaName(name: String): Boolean =
+/**
+ * The one media-name rule. Public because a [ReadingMediaSource] has to be able
+ * to *reject* a name without constructing [ReadingMediaMetadata] first — that
+ * constructor throws, and a media lookup for an unusable name is a null result,
+ * not a crash. Every implementation must screen with this same predicate so a
+ * traversal attempt cannot be safe on one host and unsafe on another.
+ */
+fun isSafeMediaName(name: String): Boolean =
     name.isNotBlank() &&
         name != "." &&
         name != ".." &&

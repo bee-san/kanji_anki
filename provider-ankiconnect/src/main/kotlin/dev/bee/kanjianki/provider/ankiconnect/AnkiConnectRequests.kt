@@ -61,6 +61,33 @@ object AnkiConnectRequests {
         )
 
     /**
+     * Opens Anki's card browser on [query]. This is a UI handoff, not a read: it
+     * returns the matched card ids but Kani ignores them, because the point is
+     * that the *user* looks at their own collection in Anki's own browser. The
+     * query must be the exact search Kani would show the user, so what they see
+     * is what Kani claimed.
+     */
+    fun guiBrowse(query: String, apiKey: String? = null): AnkiConnectEnvelope.Request =
+        AnkiConnectEnvelope.request(
+            "guiBrowse",
+            AnkiConnectJson.obj("query" to AnkiConnectJson.str(query)),
+            apiKey,
+        )
+
+    /**
+     * Fetches one media file from the collection's media directory by name.
+     * AnkiConnect answers with base64, so a large file costs roughly 4/3 its size
+     * on the wire and again in memory — the caller must bound both the name and
+     * the size before asking ([AnkiConnectMediaReader]).
+     */
+    fun retrieveMediaFile(filename: String, apiKey: String? = null): AnkiConnectEnvelope.Request =
+        AnkiConnectEnvelope.request(
+            "retrieveMediaFile",
+            AnkiConnectJson.obj("filename" to AnkiConnectJson.str(filename)),
+            apiKey,
+        )
+
+    /**
      * One bounded `multi` request that asks for several models' field names in a
      * single round trip. The group must already be sized by
      * [AnkiConnectReadPlanner.multiGroups]: `multi` shares one response body and
