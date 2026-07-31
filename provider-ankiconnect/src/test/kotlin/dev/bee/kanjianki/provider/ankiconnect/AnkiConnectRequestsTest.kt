@@ -23,8 +23,8 @@ class AnkiConnectRequestsTest {
 
         assertEquals("deckNamesAndIds", AnkiConnectRequests.deckNamesAndIds().action)
 
-        val profile = AnkiConnectRequests.getActiveProfile(apiKey = "k")
-        assertEquals("getActiveProfile", profile.action)
+        val profile = AnkiConnectRequests.getMediaDirPath(apiKey = "k")
+        assertEquals("getMediaDirPath", profile.action)
         assertFalse(decode(profile).entries.containsKey("params"))
         assertEquals(Json.Str("k"), decode(profile).entries["key"])
     }
@@ -90,7 +90,7 @@ class AnkiConnectRequestsTest {
         val actions = listOf(
             AnkiConnectRequests.modelNamesAndIds(),
             AnkiConnectRequests.deckNamesAndIds(),
-            AnkiConnectRequests.getActiveProfile(),
+            AnkiConnectRequests.getMediaDirPath(),
             AnkiConnectRequests.modelFieldNames("M"),
             AnkiConnectRequests.modelFieldNamesMulti(listOf("M")),
             AnkiConnectRequests.findNotes("q"),

@@ -10,12 +10,25 @@ package dev.bee.kanjianki.provider.ankiconnect
  * flow. Every action Kani supports is enumerated here exactly once.
  */
 object AnkiConnectActions {
-    /** Actions that must be present for Kani to operate at all. */
+    /**
+     * Actions that must be present for Kani to operate at all.
+     *
+     * `getMediaDirPath` is here as the profile-identity probe. It is not an
+     * obvious choice, so it is worth recording why it is the right one:
+     * AnkiConnect has no action that names the loaded profile. `getProfiles`
+     * lists every profile on the machine regardless of which is open, so it
+     * cannot answer "which collection am I bound to". `getMediaDirPath` returns
+     * the *loaded* profile's media directory, which both names the profile and
+     * fails when no collection is open, because AnkiConnect resolves it through
+     * the open collection. Verified against a real pinned host by
+     * `ci/scripts/run_anki_desktop_fixture.sh`: launching the fixture on a
+     * second profile moves the answer with it.
+     */
     val required: Set<String> = linkedSetOf(
         "requestPermission",
         "version",
         "apiReflect",
-        "getActiveProfile",
+        "getMediaDirPath",
         "modelNamesAndIds",
         "modelFieldNames",
         "deckNamesAndIds",

@@ -15,7 +15,7 @@ import org.junit.Test
 class AnkiConnectStatusMappingTest {
     private val ready = AnkiConnectHandshake.Status.Ready(
         version = 6L,
-        activeProfile = "User 1",
+        profileIdentity = "User 1",
         availableOptionalActions = setOf("guiBrowse"),
     )
 

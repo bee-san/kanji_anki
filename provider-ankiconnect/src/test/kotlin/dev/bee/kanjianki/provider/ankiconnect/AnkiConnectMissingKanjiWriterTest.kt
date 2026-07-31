@@ -593,7 +593,7 @@ class AnkiConnectMissingKanjiWriterTest {
     @Test
     fun noOpenCollectionIsNotAWritableDestination() {
         val anki = FakeAnkiCollection()
-        anki.activeProfile = ""
+        anki.profileIdentity = ""
 
         val result = writer(anki).export(candidates("橋"), deck)
 
@@ -701,7 +701,7 @@ class AnkiConnectMissingKanjiWriterTest {
         val firstKey = writer(first).export(candidates("橋"), deck).destinationKey
 
         val second = FakeAnkiCollection()
-        second.activeProfile = "Someone Else"
+        second.profileIdentity = "Someone Else"
         val secondKey = writer(second).export(candidates("橋"), deck).destinationKey
 
         assertTrue(firstKey!!.startsWith("ankiconnect:"))
@@ -727,7 +727,7 @@ class AnkiConnectMissingKanjiWriterTest {
     @Test
     fun theDestinationKeyDoesNotLeakTheEndpointOrProfileName() {
         val anki = FakeAnkiCollection()
-        anki.activeProfile = "Autumn's Japanese"
+        anki.profileIdentity = "Autumn's Japanese"
 
         val key = writer(anki).export(candidates("橋"), deck).destinationKey
 
@@ -796,7 +796,7 @@ class AnkiConnectMissingKanjiWriterTest {
         writer(anki).export(candidates("橋"), deck)
 
         val expected = AnkiConnectMissingKanjiWriter.REQUIRED_WRITE_ACTIONS +
-            setOf("requestPermission", "version", "apiReflect", "getActiveProfile") +
+            setOf("requestPermission", "version", "apiReflect", "getMediaDirPath") +
             setOf("modelNamesAndIds", "modelFieldNames", "deckNamesAndIds", "findNotes", "notesInfo")
         val unexpected = anki.log.toSet() - expected
         assertEquals(emptySet<String>(), unexpected)

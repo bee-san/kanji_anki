@@ -186,18 +186,18 @@ class AnkiConnectCollectionReader(
     }
 
     /**
-     * The endpoint paired with the active profile name. The endpoint alone cannot
-     * identify a source: every profile on the machine answers on the same
+     * The endpoint paired with the loaded profile's identity. The endpoint alone
+     * cannot identify a source: every profile on the machine answers on the same
      * loopback port, so an endpoint-only key would validate unchanged across a
      * profile switch. `CollectionSourceIdentity` digests the composed key under a
      * per-binding salt, so neither component is persisted or logged in the clear.
      */
     private fun sourceKey(key: String?): String {
-        val result = resultOf(AnkiConnectRequests.getActiveProfile(key))
+        val result = resultOf(AnkiConnectRequests.getMediaDirPath(key))
         val profile = when (result) {
             is AnkiConnectJson.Json.Str -> result.value
             AnkiConnectJson.Json.Null -> ""
-            else -> throw protocolFailure("getActiveProfile")
+            else -> throw protocolFailure("getMediaDirPath")
         }
         if (profile.isBlank()) {
             throw CollectionFailure(

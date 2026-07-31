@@ -103,7 +103,7 @@ class AnkiConnectFailureMatrixTest {
                 .on("requestPermission", grantedPermission())
                 .on("version", Reply.Body("""{"result":6,"error":null}"""))
                 .on("apiReflect", Reply.Body("""{"result":{"scopes":["actions"],"actions":[$items]},"error":null}"""))
-                .on("getActiveProfile", Reply.Body("""{"result":"User 1","error":null}"""))
+                .on("getMediaDirPath", Reply.Body("""{"result":"User 1","error":null}"""))
             val status = AnkiConnectHandshake(server.transport()).run()
             assertEquals(Status.Ready(6, "User 1", AnkiConnectActions.optional), status)
         }

@@ -134,7 +134,7 @@ class AnkiConnectMissingKanjiWriter(
         if (missingWriteActions(ready).isNotEmpty()) {
             return state.result(MissingKanjiWriteFailureKind.UNSUPPORTED_CAPABILITY)
         }
-        val profile = ready.activeProfile?.takeIf(String::isNotBlank)
+        val profile = ready.profileIdentity?.takeIf(String::isNotBlank)
             ?: return state.result(MissingKanjiWriteFailureKind.NOT_AVAILABLE)
 
         progress.onProgress(state.progress())

@@ -40,7 +40,7 @@ class AnkiConnectGatewayTest {
                 AnkiConnectActions.required.joinToString(",", "[", "]") { """"$it"""" }
             }}""",
         )
-        exchange.onResult("getActiveProfile", """"User 1"""")
+        exchange.onResult("getMediaDirPath", """"User 1"""")
         exchange.onResult("modelNamesAndIds", """{"$model":42}""")
         exchange.onResult("modelFieldNames", """["Expression","Reading","Meaning","Sentence"]""")
         exchange.onResult("findNotes", "[11]")
@@ -174,7 +174,7 @@ class AnkiConnectGatewayTest {
      */
     @Test
     fun noOpenCollectionIsInvalidConfiguration() {
-        val exchange = readyExchange { onResult("getActiveProfile", "null") }
+        val exchange = readyExchange { onResult("getMediaDirPath", "null") }
 
         val status = gateway(exchange).status()
 

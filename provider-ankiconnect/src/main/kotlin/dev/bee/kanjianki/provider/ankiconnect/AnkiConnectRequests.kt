@@ -37,13 +37,16 @@ object AnkiConnectRequests {
         AnkiConnectEnvelope.request("deckNamesAndIds", apiKey = apiKey)
 
     /**
-     * Asks which profile Anki currently has open. This is a read, but it is a
+     * Asks for the open collection's media directory. This is a read, but it is a
      * read Kani makes for identity rather than content: the loopback endpoint is
-     * the same for every profile on the machine, so the profile name is what
-     * distinguishes one collection source from another.
+     * the same for every profile on the machine, so something else has to
+     * distinguish one collection source from another, and this path is under the
+     * loaded profile's directory. AnkiConnect offers no action that names the
+     * loaded profile — see [AnkiConnectActions.required] — and it raises here when
+     * no collection is open, which makes this the availability check too.
      */
-    fun getActiveProfile(apiKey: String? = null): AnkiConnectEnvelope.Request =
-        AnkiConnectEnvelope.request("getActiveProfile", apiKey = apiKey)
+    fun getMediaDirPath(apiKey: String? = null): AnkiConnectEnvelope.Request =
+        AnkiConnectEnvelope.request("getMediaDirPath", apiKey = apiKey)
 
     fun modelFieldNames(modelName: String, apiKey: String? = null): AnkiConnectEnvelope.Request =
         AnkiConnectEnvelope.request(

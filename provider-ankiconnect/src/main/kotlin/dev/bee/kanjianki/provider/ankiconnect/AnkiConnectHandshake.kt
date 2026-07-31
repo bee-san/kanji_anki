@@ -14,7 +14,19 @@ import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectJson.Json
  *  2. `version` confirms the wire protocol.
  *  3. `apiReflect` (scopes `["actions"]`) reports the supported actions, which
  *     are classified against [AnkiConnectActions] into required-gap / optional.
- *  4. `getActiveProfile` confirms a collection is open.
+ *  4. `getMediaDirPath` confirms a collection is open and identifies which
+ *     profile it belongs to.
+ *
+ * Step 4 asks an odd-looking question, and the reason is worth stating plainly:
+ * AnkiConnect has no action that reports the loaded profile. Kani previously
+ * probed `getActiveProfile`, which does not exist in any AnkiConnect — the real
+ * server answers `unsupported action` — so this handshake reported every real
+ * Anki as [Status.Unavailable] while passing against a mock that had been taught
+ * to answer it. `getMediaDirPath` returns the open collection's media directory,
+ * which serves both purposes at once: it fails when no collection is open, and
+ * the path is under the loaded profile's directory, so it identifies the
+ * profile. `getProfiles` would not do, because it lists every profile on the
+ * machine whether or not it is open.
  *
  * The client itself performs no I/O beyond calling the injected [transport];
  * every step is fail-closed and maps to an actionable [Status].
@@ -24,10 +36,20 @@ class AnkiConnectHandshake(
 ) {
     /** The overall handshake outcome. */
     sealed interface Status {
-        /** Fully ready: permission granted, version ok, no required-action gap. */
+        /**
+         * Fully ready: permission granted, version ok, no required-action gap.
+         *
+         * [profileIdentity] is the loaded profile's media directory path, and is
+         * to be treated as opaque. It is used *as* the profile identity rather
+         * than as a path, because it is a stronger one than a profile name: two
+         * Anki base directories can both hold a profile called `User 1`, and
+         * those are different collections. It may contain the operator's home
+         * directory, so it is only ever fed to [AnkiConnectSourceKey], which
+         * digests it under a per-binding salt.
+         */
         data class Ready(
             val version: Long,
-            val activeProfile: String?,
+            val profileIdentity: String?,
             val availableOptionalActions: Set<String>,
         ) : Status
 
@@ -64,15 +86,27 @@ class AnkiConnectHandshake(
         val missing = AnkiConnectActions.missingRequired(reported)
         if (missing.isNotEmpty()) return Status.MissingRequiredActions(missing)
 
-        val profile = activeProfile(apiKey)
-        if (profile == null) return Status.Unavailable("getActiveProfile failed")
-        if (profile.isBlank()) return Status.NoActiveProfile
+        return when (val profile = profileIdentity(apiKey)) {
+            is Probe.Found -> Status.Ready(
+                version = version,
+                profileIdentity = profile.identity,
+                availableOptionalActions = AnkiConnectActions.availableOptional(reported),
+            )
+            Probe.NoCollection -> Status.NoActiveProfile
+            Probe.Failed -> Status.Unavailable("profile identity probe failed")
+        }
+    }
 
-        return Status.Ready(
-            version = version,
-            activeProfile = profile,
-            availableOptionalActions = AnkiConnectActions.availableOptional(reported),
-        )
+    /**
+     * The outcome of the profile-identity probe. The three cases are kept apart
+     * because they mean different things to the user: [NoCollection] is fixed by
+     * opening a collection in Anki, while [Failed] is a transport or protocol
+     * problem that opening a collection will not help.
+     */
+    private sealed interface Probe {
+        data class Found(val identity: String) : Probe
+        data object NoCollection : Probe
+        data object Failed : Probe
     }
 
     /** The keyless permission probe. true = granted, false = prompt, null = failure. */
@@ -103,13 +137,29 @@ class AnkiConnectHandshake(
         return actions.items.mapNotNull { (it as? Json.Str)?.value }
     }
 
-    private fun activeProfile(apiKey: String?): String? {
-        val result = call(AnkiConnectEnvelope.request("getActiveProfile", apiKey = apiKey)) ?: return null
-        // AnkiConnect returns the profile name string, or null when none is open.
-        return when (result) {
-            is Json.Str -> result.value
-            Json.Null -> ""
-            else -> null
+    /**
+     * Probes the loaded profile via `getMediaDirPath`.
+     *
+     * AnkiConnect resolves the media directory through the open collection and
+     * *raises* when there is none — the failure arrives as an error envelope, not
+     * as a null result. That error is therefore read as [Probe.NoCollection]
+     * rather than as a protocol fault; a request that never got an envelope at
+     * all is what counts as [Probe.Failed].
+     */
+    private fun profileIdentity(apiKey: String?): Probe {
+        val request = AnkiConnectEnvelope.request("getMediaDirPath", apiKey = apiKey)
+        val body = when (val exchange = transport.post(request)) {
+            is AnkiConnectTransport.Exchange.Body -> exchange.text
+            is AnkiConnectTransport.Exchange.Failure -> return Probe.Failed
+        }
+        return when (val response = AnkiConnectEnvelope.parse(body)) {
+            is Response.Ok -> when (val result = response.result) {
+                is Json.Str -> if (result.value.isBlank()) Probe.NoCollection else Probe.Found(result.value)
+                Json.Null -> Probe.NoCollection
+                else -> Probe.Failed
+            }
+            is Response.Failed -> Probe.NoCollection
+            Response.ProtocolError -> Probe.Failed
         }
     }
 

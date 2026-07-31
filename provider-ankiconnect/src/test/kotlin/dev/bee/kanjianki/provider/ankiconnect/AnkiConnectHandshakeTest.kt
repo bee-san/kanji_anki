@@ -52,13 +52,13 @@ class AnkiConnectHandshakeTest {
             "requestPermission" to ok("""{"result":{"permission":"granted"},"error":null}"""),
             "version" to ok("""{"result":6,"error":null}"""),
             "apiReflect" to ok(reflectBody(AnkiConnectActions.allowlist)),
-            "getActiveProfile" to ok("""{"result":"User 1","error":null}"""),
+            "getMediaDirPath" to ok("""{"result":"$MEDIA_DIR","error":null}"""),
         )
         val status = handshake.run()
         assertTrue(status is Status.Ready)
         status as Status.Ready
         assertEquals(6, status.version)
-        assertEquals("User 1", status.activeProfile)
+        assertEquals(MEDIA_DIR, status.profileIdentity)
         assertEquals(AnkiConnectActions.optional, status.availableOptionalActions)
         // The permission probe was sent without a key.
         val firstBody = AnkiConnectJson.decode(exchange.sentBodies.first()) as AnkiConnectJson.Json.Obj
@@ -101,7 +101,7 @@ class AnkiConnectHandshakeTest {
             "requestPermission" to ok("""{"result":{"permission":"granted"},"error":null}"""),
             "version" to ok("""{"result":6,"error":null}"""),
             "apiReflect" to ok(reflectBody(AnkiConnectActions.allowlist)),
-            "getActiveProfile" to ok("""{"result":null,"error":null}"""),
+            "getMediaDirPath" to ok("""{"result":null,"error":null}"""),
         )
         assertEquals(Status.NoActiveProfile, handshake.run())
     }
@@ -136,10 +136,60 @@ class AnkiConnectHandshakeTest {
         val (h2, _) = handshake(*(base + ("apiReflect" to ok("""{"result":{},"error":null}"""))).toList().toTypedArray())
         assertTrue(h2.run() is Status.Unavailable)
 
-        // getActiveProfile error envelope
+        // getMediaDirPath answers a non-string, which is not a path.
         base["apiReflect"] = ok(reflectBody(AnkiConnectActions.allowlist))
-        val (h3, _) = handshake(*(base + ("getActiveProfile" to ok("""{"result":7,"error":null}"""))).toList().toTypedArray())
+        val (h3, _) = handshake(*(base + ("getMediaDirPath" to ok("""{"result":7,"error":null}"""))).toList().toTypedArray())
         assertTrue(h3.run() is Status.Unavailable)
+    }
+
+    /**
+     * The behavior a real AnkiConnect actually shows with no collection open:
+     * `getMediaDirPath` resolves through the open collection, so it *raises*
+     * rather than answering null. An error envelope here therefore means "open a
+     * collection", not "this server is broken" — and only the first tells the user
+     * something they can act on.
+     */
+    @Test
+    fun reportsNoActiveProfileWhenTheMediaDirectoryRaises() {
+        val (handshake, _) = handshake(
+            "requestPermission" to ok("""{"result":{"permission":"granted"},"error":null}"""),
+            "version" to ok("""{"result":6,"error":null}"""),
+            "apiReflect" to ok(reflectBody(AnkiConnectActions.allowlist)),
+            "getMediaDirPath" to ok("""{"result":null,"error":"collection is not available"}"""),
+        )
+
+        assertEquals(Status.NoActiveProfile, handshake.run())
+    }
+
+    /** A transport failure is not a closed collection; opening one would not help. */
+    @Test
+    fun reportsUnavailableWhenTheProfileProbeCannotBeSent() {
+        val (handshake, _) = handshake(
+            "requestPermission" to ok("""{"result":{"permission":"granted"},"error":null}"""),
+            "version" to ok("""{"result":6,"error":null}"""),
+            "apiReflect" to ok(reflectBody(AnkiConnectActions.allowlist)),
+            "getMediaDirPath" to AnkiConnectTransport.HttpExchange.Result.Timeout,
+        )
+
+        assertTrue(handshake.run() is Status.Unavailable)
+    }
+
+    /**
+     * Pins the defect the live fixture found. Kani required `getActiveProfile`,
+     * which no AnkiConnect implements, so a real host reporting its true action
+     * list was classified as too old to use. The required set must contain only
+     * actions the pinned server really has; `getMediaDirPath` is the one that
+     * answers the profile-identity question.
+     */
+    @Test
+    fun doesNotRequireAnActionRealAnkiConnectDoesNotHave() {
+        assertTrue("getActiveProfile" !in AnkiConnectActions.allowlist)
+        assertTrue("getMediaDirPath" in AnkiConnectActions.required)
+    }
+
+    private companion object {
+        /** Shaped like a real answer: the media directory under a profile. */
+        const val MEDIA_DIR = "/home/user/.local/share/Anki2/User 1/collection.media"
     }
 
     @Test
@@ -148,7 +198,7 @@ class AnkiConnectHandshakeTest {
             "requestPermission" to ok("""{"result":{"permission":"granted"},"error":null}"""),
             "version" to ok("""{"result":6,"error":null}"""),
             "apiReflect" to ok(reflectBody(AnkiConnectActions.allowlist)),
-            "getActiveProfile" to ok("""{"result":"User 1","error":null}"""),
+            "getMediaDirPath" to ok("""{"result":"$MEDIA_DIR","error":null}"""),
         )
         handshake.run(apiKey = "topsecret")
         // The version request (second sent) carries the key.

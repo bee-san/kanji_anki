@@ -31,7 +31,7 @@ class AnkiConnectInventoryGatewayTest {
                 AnkiConnectActions.required.joinToString(",", "[", "]") { """"$it"""" }
             }}""",
         )
-        exchange.onResult("getActiveProfile", """"User 1"""")
+        exchange.onResult("getMediaDirPath", """"User 1"""")
         exchange.onResult("modelNamesAndIds", """{"Kiku":42,"Basic":7}""")
         exchange.onResult("findNotes", "[11,12]")
         exchange.onResult(
@@ -253,7 +253,7 @@ class AnkiConnectInventoryGatewayTest {
      */
     @Test
     fun aNonReadyHandshakeCarriesNoCapabilities() {
-        val exchange = readyExchange { onResult("getActiveProfile", "null") }
+        val exchange = readyExchange { onResult("getMediaDirPath", "null") }
 
         val status = gateway(exchange).status()
 

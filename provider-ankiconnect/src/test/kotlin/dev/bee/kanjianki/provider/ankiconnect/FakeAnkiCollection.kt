@@ -101,8 +101,13 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
     /** The optional actions `apiReflect` reports. Defaults to all of them. */
     var availableActions: Set<String> = AnkiConnectActions.optional
 
-    /** The profile `getActiveProfile` reports; blank means no collection open. */
-    var activeProfile: String = "User 1"
+    /**
+     * The media directory `getMediaDirPath` reports, which is how Kani identifies
+     * the loaded profile. Blank means no collection is open, and the real server
+     * *raises* in that case rather than returning null, because it resolves the
+     * path through the open collection — see the dispatch below.
+     */
+    var profileIdentity: String = "/home/user/.local/share/Anki2/User 1/collection.media"
 
     /** Decides what happens to the note at each `addNotes` position. */
     var addOutcome: (Int) -> AddOutcome = { AddOutcome.CREATED }
@@ -300,7 +305,11 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
                         .joinToString(",", "[", "]") { quote(it) }
                 }}""",
             )
-            "getActiveProfile" -> ok(if (activeProfile.isBlank()) "null" else quote(activeProfile))
+            // Matches the pinned server: the media directory is resolved through
+            // the open collection, so with none open the action raises rather than
+            // answering null.
+            "getMediaDirPath" ->
+                if (profileIdentity.isBlank()) error("collection is not available") else ok(quote(profileIdentity))
             "modelNamesAndIds" -> ok(
                 models.entries.joinToString(",", "{", "}") { "${quote(it.key)}:${it.value.id}" },
             )

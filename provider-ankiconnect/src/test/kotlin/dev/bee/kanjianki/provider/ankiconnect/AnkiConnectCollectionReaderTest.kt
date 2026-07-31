@@ -33,7 +33,7 @@ class AnkiConnectCollectionReaderTest {
         notesInfo: ((List<Long>) -> String)? = null,
     ): ScriptedAnkiConnectExchange {
         val exchange = ScriptedAnkiConnectExchange()
-        exchange.onResult("getActiveProfile", """"User 1"""")
+        exchange.onResult("getMediaDirPath", """"User 1"""")
         exchange.onResult("modelNamesAndIds", """{"$model":1607392319495}""")
         exchange.onResult("findNotes", noteIds.joinToString(",", "[", "]"))
         exchange.onResult("findCards") { body ->
@@ -223,7 +223,7 @@ class AnkiConnectCollectionReaderTest {
     fun aProfileSwitchChangesTheSourceKeyAndBlocksValidation() {
         fun identityFor(profile: String) = AnkiConnectCollectionReader(
             scriptedCollection(listOf(3L)).also {
-                it.onResult("getActiveProfile", """"$profile"""")
+                it.onResult("getMediaDirPath", """"$profile"""")
                 it.onResult("cardsInfo") { body ->
                     requestedIds(body, "cards").joinToString(",", "[", "]") { cardId ->
                         ScriptedAnkiConnectExchange.cardRow(cardId, 3L, model)
@@ -274,7 +274,7 @@ class AnkiConnectCollectionReaderTest {
     @Test
     fun refusesToIdentifyTheSourceWhenNoProfileIsOpen() {
         val exchange = scriptedCollection(listOf(3L))
-        exchange.onResult("getActiveProfile", "null")
+        exchange.onResult("getMediaDirPath", "null")
 
         val failure = assertThrows(CollectionFailure::class.java) {
             AnkiConnectCollectionReader(exchange.transport()).readProviderCollection(settings)
@@ -287,7 +287,7 @@ class AnkiConnectCollectionReaderTest {
     @Test
     fun failsAsTransientWhenTheActiveProfileResponseIsMalformed() {
         val exchange = scriptedCollection(listOf(3L))
-        exchange.onResult("getActiveProfile", "42")
+        exchange.onResult("getMediaDirPath", "42")
 
         val failure = assertThrows(CollectionFailure::class.java) {
             AnkiConnectCollectionReader(exchange.transport()).readProviderCollection(settings)
