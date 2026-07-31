@@ -34,6 +34,7 @@ on:
       - 'sync-api/**'
       - 'sync-engine/**'
       - 'ui-common/**'
+      - 'feature-shell/**'
       - 'widget/**'
       - 'build-logic/**'
       - 'ci/scripts/**'
@@ -84,6 +85,7 @@ on:
       - 'sync-api/**'
       - 'sync-engine/**'
       - 'ui-common/**'
+      - 'feature-shell/**'
       - 'widget/**'
       - 'build-logic/**'
       - 'ci/scripts/**'
@@ -155,6 +157,12 @@ jobs:
             reports: |
               ui-common/build/reports/**
               ui-common/build/test-results/**
+          - id: feature-shell
+            label: Shared product shell (Android target)
+            tasks: ':feature-shell:testAndroidHostTest :feature-shell:compileAndroidDeviceTest :feature-shell:lintAnalyzeAndroidHostTest'
+            reports: |
+              feature-shell/build/reports/**
+              feature-shell/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'

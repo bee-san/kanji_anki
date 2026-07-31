@@ -58,6 +58,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 ":platform-contracts:check",
                 ":presentation-api:check",
                 ":ui-common:check",
+                ":feature-shell:check",
                 ":desktop-app:check",
                 "testDesktopCiScripts",
                 "testDesktopTooling",

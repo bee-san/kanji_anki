@@ -81,6 +81,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "platform-contracts",
         "presentation-api",
         "ui-common",
+        "feature-shell",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -126,6 +127,9 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "platform-contracts": frozenset(),
     "presentation-api": frozenset(),
     "ui-common": frozenset({"presentation-api"}),
+    # The leaf feature modules do not exist yet, so the shell currently hosts no
+    # feature. Its final edges to them are in FINAL_PROJECT_DEPENDENCIES.
+    "feature-shell": frozenset({"presentation-api", "ui-common"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
@@ -1122,7 +1126,7 @@ class ModuleBoundaryTest(unittest.TestCase):
             encoding="utf-8",
         )
 
-        for module in ("presentation-api", "ui-common"):
+        for module in ("presentation-api", "ui-common", "feature-shell"):
             with self.subTest(module=module):
                 self.assertEqual(1, desktop.count(f'":{module}:check"'))
                 for suffix in (
