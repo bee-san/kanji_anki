@@ -4177,14 +4177,72 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
 - Live gates: not required; unit-tested on the bundled driver.
 - Rollback: revert `0d92a4b4` then `ad4fb71a`; `:data-desktop` is additive and
   not yet wired into `:desktop-app`.
-- Gaps/blockers: the remaining Goal 186 items are platform I/O and product
-  wiring — exclusive profile-lock acquisition, private-directory permission
-  hardening (`0700`/`0600` + Windows ACLs), symlink/world-writable/network-share
-  refusal preflight, picker import staging, and the cross-platform restore
-  state application (reset device-local keys via `PortableBackupSanitizer`, mark
-  provider projections stale, require revalidation). Those need real
-  filesystem/OS behaviour to validate. Goals 187+ (desktop UI parity, provider
-  bridge, packaging, signing, release) build on this host.
+- Gaps/blockers (at that checkpoint): profile-lock acquisition, permission
+  hardening, refusal preflight, picker staging, cross-platform restore state.
+  These are addressed by the follow-on commits below.
+
+### Goal 186 continuation evidence (2026-07-31)
+
+- Started from: `0d92a4b4` on `desktop/support`. Completes the desktop profile
+  storage, backup, and restore surface begun above.
+- Commits (in order):
+  - `05450be5 data: add desktop profile safety preflight policy`
+  - `c5438b85 data: add exclusive desktop profile lock`
+  - `fe8e9adc data: harden desktop profile directory and file permissions`
+  - `60263186 data: add desktop profile open orchestrator (preflight, provision, lock, open)`
+  - `6decd3d3 data: add desktop WAL-safe backup snapshotter (VACUUM INTO + gzip)`
+  - `78b47e9e data: add desktop tiered backup manager with retention pruning`
+  - `e21fc5ea data: add desktop backup restore validator (bounded gzip + read-only checks)`
+  - `7ffa2a5f data: add desktop atomic staged-restore applier (safety backup, marker, atomic replace)`
+  - `0e8c8f9b backup: add cross-platform restore planner and desktop device-local reset finalizer`
+- Implemented (all in `:data-desktop`, plus one pure planner in `:backup-core`):
+  - `DesktopProfilePreflightPolicy` — pure allow/refuse over probed filesystem
+    facts (non-directory, symlink, world-writable, network-share, no atomic
+    move, no exclusive lock), with stable refusal messages.
+  - `DesktopProfileLock` — real non-blocking exclusive `FileLock` on the
+    profile `.lock`; a second holder is rejected, not queued.
+  - `DesktopProfileProvisioner` — creates the private profile tree owner-only
+    (`0700` dirs / `0600` files) on POSIX, re-tightening a loosened directory;
+    a documented no-op on non-POSIX (Windows relies on the per-user data root).
+  - `DesktopProfileOpener` — the single entry point: probe → preflight →
+    provision → lock → open, with a `RealFilesystemProbe` (NOFOLLOW stat,
+    POSIX world-writable check, network-fs-type detection) and refusal/
+    lock-unavailable/IO-failure outcomes.
+  - `DesktopBackupSnapshotter` — WAL-safe `VACUUM INTO` on a dedicated
+    connection, gzip, atomic publish; every scratch file cleaned on failure.
+  - `DesktopBackupManager` — timestamped backups under `backups/` with the
+    shared `DatabaseBackupPolicy` 7-daily/4-weekly retention pruning.
+  - `DesktopBackupRestoreValidator` — bounded streamed gzip decompression
+    (reuses `:backup-core` `BackupSpaceBudget` cap/reserve), SQLite-magic
+    check, read-only `PRAGMA user_version`/`quick_check`/settings-table facts
+    fed to `:core` `BackupRestorePolicy`.
+  - `DesktopStagedRestoreApplier` — `stage`/`apply` mirroring the Android
+    sequence on `java.nio`: pre-restore safety backup → durable
+    `RestoreMarkerCodec` SAFETY_READY marker → atomic replace → sidecar
+    cleanup → marker delete, with marker-only resume and marker-bearing
+    `BLOCK_STARTUP`.
+  - `CrossPlatformRestorePlanner` (`:backup-core`) + `DesktopCrossPlatformRestoreFinalizer`
+    — plan the device-local key reset (`PortableBackupSanitizer`) and provider
+    revalidation requirement for a restore, then delete the device-local
+    `settings` rows from the restored database so the destination falls back to
+    its own defaults.
+- Validation: `:data-desktop:check` and `:backup-core:check` pass at 100% class
+  coverage. Backup/restore is proven end-to-end on real bundled SQLite: a
+  populated v34 database snapshots to gzip and round-trips back to the same
+  setting value; `stage`→`apply` swaps the live database for a foreign one
+  while preserving a pre-restore safety backup; the finalizer drops a foreign
+  host's device-local rows and keeps portable ones.
+- Live gates: not required; the whole surface is unit-tested on the bundled
+  driver and `java.nio`.
+- Rollback: revert the nine commits above (newest first); all are additive to
+  `:data-desktop`/`:backup-core` and not yet wired into `:desktop-app`.
+- Gaps/blockers: what remains for Goal 186 is product wiring, not core logic —
+  calling `DesktopProfileOpener`/`DesktopStagedRestoreApplier` from the desktop
+  app startup, exposing export/import through the desktop file picker, and
+  Windows ACL hardening (the POSIX path is covered; Windows currently relies on
+  the per-user data root). Goal 185 commit 3 (cross-platform compatibility
+  fixtures) can now build on this host. Goals 187+ (desktop UI parity, provider
+  bridge, packaging, signing, release) remain.
 
 Template:
 
