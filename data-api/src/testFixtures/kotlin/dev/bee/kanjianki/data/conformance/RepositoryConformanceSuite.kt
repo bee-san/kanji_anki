@@ -15,6 +15,7 @@ import dev.bee.kanjianki.data.SetLocalSuspensionCommand
 import dev.bee.kanjianki.data.SettingsRepository
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
+import dev.bee.kanjianki.data.StatsRepository
 import dev.bee.kanjianki.data.StoreResult
 import dev.bee.kanjianki.data.StudyRepository
 import dev.bee.kanjianki.data.SyncRepository
@@ -40,6 +41,8 @@ interface RepositoryConformanceHost {
     val study: StudyRepository
 
     val sync: SyncRepository
+
+    val stats: StatsRepository
 
     /** Discards all data and any in-memory projection/settings caching. */
     suspend fun reset()
