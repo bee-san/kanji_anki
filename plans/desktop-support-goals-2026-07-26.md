@@ -4079,6 +4079,45 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   persistence port, are still open. `StatsRepository` is now available in
   `:data-sql`, closing the analytics part of blocker (1).
 
+### Goal 183 Missing-Kanji-port completion evidence (2026-07-31)
+
+- Started from: `2ea9b147` on `desktop/integration`. Closes blocker (3): the
+  last Kani-owned persistence surface without a shared-SQL implementation.
+- Commits: `5a8036c0 data: port Missing Kanji persistence to shared SQL`;
+  `8e97803e test: add cross-driver Missing Kanji repository conformance`.
+- Implemented: promoted the Missing Kanji DTOs (`MissingKanjiScanRecord`/
+  `MissingKanjiScanStatus`, `MissingKanjiInventoryState`,
+  `StoredAnkiKanjiInventory`, `MissingKanjiPreferences`, `ManualKanjiSource`,
+  `ManualKanjiSourceWriteResult`/`RemovalResult`, `MissingKanjiExportReceipt`)
+  from the app store into `:core` so one type set backs the new
+  `MissingKanjiRepository` contract in `:data-api` and both implementations.
+  `SqlMissingKanjiRepository` ports the aggregate-only surface — atomic scan
+  publication + inventory swap with scan-history pruning, frequency-range
+  preferences, manual dictionary source add/remove/deactivate through
+  `ManualKanjiAdmissionPolicy`, and export receipts — using the dependency-free
+  `StringListJsonCodec`. `SqliteMissingKanjiRepository` delegates to the
+  existing `LocalStore` `MissingKanjiStore`; the `MainActivityMissingKanji` UI
+  is unchanged (production stays on `LocalStore` until Goal 184).
+- Validation: `MissingKanjiRepositoryConformanceSuite` runs from one fixture
+  against both hosts (empty state, inventory publish + failed-scan staleness,
+  preferences round trip, manual-source lifecycle, export receipts). Gates:
+  `:core:check`, `:data-api:check`, `:data-sql:check` (100% class coverage), and
+  the full `:app:testDebugUnitTest` (`BUILD SUCCESSFUL in 2m 10s`, existing
+  `MissingKanjiStoreTest`/`LocalStoreDowngradeTest` still green) all pass.
+- Live gates: not required; no production composition switched.
+- Decisions: kept the UI on `MissingKanjiStore` and had `:app`'s repository
+  delegate to it, matching the 180–182 pattern of parallel `:data-sql`
+  implementation without switching production before Goal 184.
+- Rollback: revert `8e97803e` then `5a8036c0` (DTO promotion is additive; the
+  app store keeps working via the `:core` types).
+- Gaps/blockers: **all five original repository contracts plus Missing Kanji are
+  now implemented in `:data-sql` with cross-driver conformance**, so no
+  repository operation remains `LocalStore`-only. Goal 183's ONE remaining item
+  is the real licensed `:reference-assets` binaries + host wiring (blocker 2),
+  which needs the user to supply assets/licensing. Goal 184 (switch Android
+  production to shared SQL) can then proceed, gated by the strict live AnkiDroid
+  emulator run.
+
 Template:
 
 ```md
