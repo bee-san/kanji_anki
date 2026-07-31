@@ -1,11 +1,16 @@
 package dev.bee.kanjianki
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.SettingsTextCopy
 import org.junit.Rule
@@ -26,8 +31,9 @@ class MainActivitySettingsUpdatePageComposeTest {
         var betaClicked = false
 
         composeRule.setContent {
-            SettingsUpdatePage(
-                model = SettingsUpdatePageModel(
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                SettingsUpdatePage(
+                    model = SettingsUpdatePageModel(
                     title = SettingsTextCopy.updatePageTitle(),
                     onHome = { homeClicked = true },
                     onBack = { backClicked = true },
@@ -36,6 +42,8 @@ class MainActivitySettingsUpdatePageComposeTest {
                         title = SettingsTextCopy.automaticUpdatesTitle(),
                         statusLine = SettingsTextCopy.autoUpdatePanelStatus(true),
                         statusColor = MainActivityUiSupport.TEAL,
+                        installedVersionLine = SettingsTextCopy.installedVersionLine("v0.4.33"),
+                        latestVersionLine = SettingsTextCopy.latestVersionLine("v0.4.34"),
                         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine("Today at 09:15"),
                         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine("APK verified. Android installer started."),
                         installPermissionLine = SettingsTextCopy.installPermissionLine(true),
@@ -57,7 +65,8 @@ class MainActivitySettingsUpdatePageComposeTest {
                         onToggleBetaUpdates = { betaClicked = true },
                     )
                 )
-            )
+                )
+            }
         }
 
         composeRule.onNodeWithText(HomeTextCopy.homeLabel()).assertIsDisplayed()
@@ -65,6 +74,8 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.updatePageTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesTitle()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdatePanelStatus(true)).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.installedVersionLine("v0.4.33")).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.latestVersionLine("v0.4.34")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateLastCheckLine("Today at 09:15")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateLastResultLine("APK verified. Android installer started.")).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installPermissionLine(true)).assertIsDisplayed()
@@ -72,17 +83,17 @@ class MainActivitySettingsUpdatePageComposeTest {
         composeRule.onNodeWithText(SettingsTextCopy.pendingUpdateFallback(true)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesDescription()).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).assertIsDisplayed()
-        composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesDescription()).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).assertDoesNotExist()
 
-        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).performClick()
-        composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).performClick()
+        composeRule.onNodeWithText(HomeTextCopy.homeLabel()).performScrollTo().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.backToSettingsLabel()).performScrollTo().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.installVerifiedUpdateLabel()).performScrollTo().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.automaticUpdatesToggleLabel(true)).performScrollTo().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.betaUpdatesToggleLabel(false)).performScrollTo().performClick()
+        composeRule.onNodeWithText(SettingsTextCopy.checkForUpdateLabel()).performScrollTo().performClick()
 
         composeRule.runOnIdle {
             assertTrue(homeClicked)
@@ -105,6 +116,8 @@ class MainActivitySettingsUpdatePageComposeTest {
                         title = SettingsTextCopy.appUpdatesTitle(),
                         statusLine = SettingsTextCopy.autoUpdatePanelStatus(false),
                         statusColor = MainActivityUiSupport.MUTED,
+                        installedVersionLine = SettingsTextCopy.installedVersionLine("v0.4.33"),
+                        latestVersionLine = SettingsTextCopy.latestVersionLine(null),
                         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine("not yet"),
                         lastResultLine = SettingsTextCopy.autoUpdateLastResultLine("No result yet."),
                         installPermissionLine = SettingsTextCopy.installPermissionLine(false),
@@ -132,6 +145,8 @@ class MainActivitySettingsUpdatePageComposeTest {
         }
 
         composeRule.onNodeWithText(SettingsTextCopy.appUpdatesTitle()).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.installedVersionLine("v0.4.33")).assertIsDisplayed()
+        composeRule.onNodeWithText(SettingsTextCopy.latestVersionLine(null)).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.setupAppInstallsLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).assertIsDisplayed()
         composeRule.onNodeWithText(SettingsTextCopy.autoUpdateInBackgroundLabel()).performClick()

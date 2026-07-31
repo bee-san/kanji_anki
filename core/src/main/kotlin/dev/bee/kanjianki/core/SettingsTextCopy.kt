@@ -72,6 +72,12 @@ object SettingsTextCopy {
     fun autoUpdatePanelStatus(enabled: Boolean): String = SettingsAutomationTextCopy.autoUpdatePanelStatus(enabled)
 
     @JvmStatic
+    fun installedVersionLine(version: String?): String = SettingsAutomationTextCopy.installedVersionLine(version)
+
+    @JvmStatic
+    fun latestVersionLine(version: String?): String = SettingsAutomationTextCopy.latestVersionLine(version)
+
+    @JvmStatic
     fun autoUpdateLastCheckLine(lastCheckText: String?): String = SettingsAutomationTextCopy.autoUpdateLastCheckLine(lastCheckText)
 
     @JvmStatic
