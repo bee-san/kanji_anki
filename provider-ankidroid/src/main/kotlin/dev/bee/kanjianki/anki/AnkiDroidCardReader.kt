@@ -222,15 +222,27 @@ internal class AnkiDroidCardReader(
         return cards
     }
 
-    private fun cardFromCursor(
+    /**
+     * Builds one snapshot card from the current cursor row.
+     *
+     * Visible to the module's instrumented tests (rather than private) so
+     * `AnkiDroidCrossProviderConformanceInstrumentedTest` can drive the real
+     * normalization over a real cursor. That test guards a defect this method had:
+     * reading the scheduling columns raw let Anki's negative seconds-encoded `ivl`
+     * reach the snapshot as a negative day count.
+     */
+    internal fun cardFromCursor(
         cardCursor: Cursor,
         noteId: Long,
         suspendedNoteIds: Set<Long>,
     ): RecordsSyncModels.Card {
         val ord = intValue(cardCursor, COLUMN_ORD, 0)
         val suspendedFromSearch = suspendedNoteIds.contains(noteId)
-        val queue = intValue(cardCursor, COLUMN_QUEUE, if (suspendedFromSearch) -1 else 0)
-        val suspended = suspendedFromSearch || queue < 0
+        val queue = longValue(cardCursor, COLUMN_QUEUE, if (suspendedFromSearch) -1L else 0L)
+        // The `is:suspended` search is authoritative when it answered, because a
+        // card can be suspended while this cursor's queue column is absent from the
+        // degraded projection. Otherwise fall back to the queue rule.
+        val suspended = suspendedFromSearch || ProviderCardPolicy.isSuspendedQueue(queue)
         val fsrs = fsrsMemoryState(cardCursor)
         val deckId = value(cardCursor, COLUMN_DECK_ID)
         return RecordsSyncModels.Card(
@@ -243,12 +255,17 @@ internal class AnkiDroidCardReader(
             ord,
             deckId,
             deckId,
-            queue,
+            // Normalized through the shared ProviderCardPolicy, the same helper the
+            // AnkiConnect reader uses. Reading these columns raw let a sub-day
+            // interval — which Anki encodes as a negative `ivl` meaning seconds —
+            // reach the snapshot as a negative day count on Android while desktop
+            // floored it to 0.
+            ProviderCardPolicy.signed(queue),
             intValue(cardCursor, COLUMN_TYPE, if (suspended) 3 else 0),
-            intValue(cardCursor, COLUMN_DUE, 0),
-            intValue(cardCursor, COLUMN_INTERVAL, 0),
-            intValue(cardCursor, COLUMN_REPS, 0),
-            intValue(cardCursor, COLUMN_LAPSES, 0),
+            ProviderCardPolicy.signed(longValue(cardCursor, COLUMN_DUE, 0L)),
+            ProviderCardPolicy.intervalDays(longValue(cardCursor, COLUMN_INTERVAL, 0L)),
+            ProviderCardPolicy.counter(longValue(cardCursor, COLUMN_REPS, 0L)),
+            ProviderCardPolicy.counter(longValue(cardCursor, COLUMN_LAPSES, 0L)),
             suspended,
             fsrs.stability,
             fsrs.difficulty,

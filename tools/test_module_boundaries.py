@@ -405,6 +405,7 @@ ANKIDROID_PRODUCTION_FILES = frozenset(
 ANKIDROID_CONTRACT_TEST_FILES = frozenset(
     {
         "anki/AnkiDroidCollectionInventoryGatewayInstrumentedTest.kt",
+        "anki/AnkiDroidCrossProviderConformanceInstrumentedTest.kt",
         "anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
         "anki/AnkiMissingKanjiWriterInstrumentedTest.kt",
         "anki/RealAnkiDroidLiveProviderInstrumentedTest.kt",

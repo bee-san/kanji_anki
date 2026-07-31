@@ -1,50 +1,39 @@
 package dev.bee.kanjianki.provider.ankiconnect
 
+import dev.bee.kanjianki.syncdomain.ProviderCardPolicy
+
 /**
- * Provider-neutral normalization of AnkiConnect card fields, matching the
- * Android (AnkiDroid) semantics exactly so a card produces the same
- * provider-neutral snapshot regardless of which provider read it.
+ * AnkiConnect's view of card-field normalization.
  *
- * The one deliberate deviation from AnkiConnect's own helpers: suspension is
- * `queue < 0` (any negative queue), not AnkiConnect `areSuspended`'s narrower
- * `queue == -1`. Android normalizes on `queue < 0`, and Kani preserves that so
- * user-buried/other negative-queue states are treated consistently.
+ * Every rule here delegates to [ProviderCardPolicy], which AnkiDroid's reader also
+ * uses. The rules used to live in this file as AnkiConnect's own copy, and that is
+ * exactly the arrangement that let the two providers drift: AnkiConnect floored
+ * sub-day intervals and clamped counters while AnkiDroid passed the raw cursor
+ * values straight through, so the same collection produced different maturity
+ * evidence depending on which door Kani read it through.
+ *
+ * This object is kept — rather than calling the policy directly from the reader —
+ * so the provider still names the normalization it applies, and so
+ * `CrossProviderSnapshotSpec` has a per-provider entry point to hold to the shared
+ * rules. Do not reintroduce a local implementation of any of these.
  */
 object AnkiConnectCardNormalization {
     /** True when the card is suspended under Kani's `queue < 0` rule. */
-    fun isSuspended(queue: Long): Boolean = queue < 0L
+    fun isSuspended(queue: Long): Boolean = ProviderCardPolicy.isSuspendedQueue(queue)
 
     /**
      * A configured-model card is only accepted when its template ordinal is 0
      * (Kani's front template). Returns whether the card should be kept.
      */
-    fun isAcceptedConfiguredOrd(templateOrd: Long): Boolean = templateOrd == 0L
+    fun isAcceptedConfiguredOrd(templateOrd: Long): Boolean =
+        ProviderCardPolicy.isAcceptedTemplateOrd(templateOrd)
 
-    /**
-     * Converts Anki's raw `ivl` to the whole days the snapshot's `intervalDays`
-     * expects. Anki stores a negative `ivl` as *seconds* for sub-day learning
-     * cards; AnkiDroid's provider column is already days, so Kani floors the
-     * sub-day case to 0 rather than letting a negative seconds value read as a
-     * negative day count (which would make a learning card look mature-adjacent
-     * or corrupt maturity arithmetic).
-     */
-    fun intervalDays(rawInterval: Long): Int {
-        if (rawInterval <= 0L) return 0
-        return rawInterval.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-    }
+    /** Anki's raw `ivl` as the whole days the snapshot expects. */
+    fun intervalDays(rawInterval: Long): Int = ProviderCardPolicy.intervalDays(rawInterval)
 
-    /**
-     * Clamps an unbounded provider counter into the snapshot's `Int` field
-     * without wrapping. Negative counters are not meaningful, so they floor at 0.
-     */
-    fun counter(rawValue: Long): Int =
-        rawValue.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+    /** An unbounded provider counter, floored at 0 and saturating at `Int.MAX_VALUE`. */
+    fun counter(rawValue: Long): Int = ProviderCardPolicy.counter(rawValue)
 
-    /**
-     * Clamps a signed provider value into the snapshot's `Int` field without
-     * wrapping. Unlike [counter], negatives are preserved: `queue` uses them for
-     * suspended/buried and `due` is relative in some queues.
-     */
-    fun signed(rawValue: Long): Int =
-        rawValue.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+    /** A signed provider value, saturating at both `Int` bounds. */
+    fun signed(rawValue: Long): Int = ProviderCardPolicy.signed(rawValue)
 }
