@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.ManualKanjiSource
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
 import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy

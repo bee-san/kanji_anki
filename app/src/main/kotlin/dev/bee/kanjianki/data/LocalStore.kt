@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data
 
+import dev.bee.kanjianki.core.ManualKanjiSource
 import android.content.Context
 import android.os.Build
 import java.io.File

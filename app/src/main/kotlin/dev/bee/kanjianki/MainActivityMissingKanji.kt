@@ -13,10 +13,10 @@ import dev.bee.kanjianki.core.MissingKanjiExportPlanner
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.core.MissingKanjiTextCopy
 import dev.bee.kanjianki.core.StudyLadderRules
-import dev.bee.kanjianki.data.MissingKanjiExportReceipt
-import dev.bee.kanjianki.data.MissingKanjiInventoryState
-import dev.bee.kanjianki.data.MissingKanjiPreferences
-import dev.bee.kanjianki.data.MissingKanjiScanStatus
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
+import dev.bee.kanjianki.core.MissingKanjiInventoryState
+import dev.bee.kanjianki.core.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiScanStatus
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
