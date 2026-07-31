@@ -35,25 +35,38 @@ legacy Android `LocalStore` repositories (Robolectric) and the shared
 (`SqlStudyReviewFaultInjectionTest`, `SqlSyncPublicationFaultInjectionTest`)
 prove transaction atomicity/rollback.
 
-### Goal 183 — BLOCKED on two decisions (needs the user)
+### Goal 183 — substantially done; two pieces remain
 
-Goal 183 = "port remaining persistence + reference assets". Two blockers:
+All work through Goal 182 is pushed to `origin/desktop/support`, plus the Goal
+183 pieces below. User decisions taken 2026-07-31: proceed with the stats port
+(dependency-free), and build `:reference-assets` infra with placeholder assets.
 
-1. **Stats port JSON dependency.** All three `StatsRepository` methods route
-   through `StatsCacheCodec` (format-11 cache serialization), which depends on
-   Android's `org.json`. `:data-sql` is deliberately dependency-free (only
-   `kotlinx-coroutines-core` + project modules). Porting stats requires either
-   adding a JSON lib to `:data-sql` or rewriting the format-11 codec on
-   `:core`'s dependency-free `CompactJson` (a persisted-format-contract change).
-   Decision needed before proceeding.
-2. **`:reference-assets` module.** Commits 2–3 require checked-in **binary**
-   dictionary SQLite/Jiten-rank/KanjiVG-stroke/study-font assets, each with an
-   expected hash, format/cache version, and **license/attribution record**.
-   These binaries and their licensing cannot be fabricated; they must be
-   sourced/decided by the user.
+**Done for Goal 183:**
+- `:reference-assets` module (manifest + streaming SHA-256 verifier +
+  extract/upgrade/reuse cache policy + platform-neutral loader), placeholder
+  hashes, 100% class coverage. Commit `b5131e34`.
+- Stats/analytics repository ported to `:data-sql` via a new dependency-free
+  `KaniJson` in `:core` (Double support). `SqlStatsData` + `SqlKanjiImpactReport`
+  + `SqlStatsCodec` + `SqlStatsRepository`. Commits `8555fe2b`, `4e13aa04`.
+- **All five data-api repository contracts (Home, Settings, Study, Sync, Stats)
+  now have `:data-sql` implementations** with cross-driver conformance suites in
+  `:data-api` testFixtures.
 
-Everything else in Goal 183 (the pure analytics/inventory/mnemonic/manual-source
-SQL reads) is portable once decision (1) is made.
+**Remaining for Goal 183 (not yet done):**
+1. **Missing Kanji persistence** (`app/.../MissingKanjiStore.kt`, 952 lines:
+   scans, inventory publish, preferences, manual sources, export receipts). It
+   is app-internal with NO data-api repository contract and is called directly
+   by `MainActivityMissingKanji`. Porting it is a goal-sized unit: design a
+   `MissingKanjiRepository` interface in `:data-api`, implement in `:data-sql`
+   and `:app`, migrate the UI caller, add conformance. Its JSON needs are
+   already covered by `:core` `StringListJsonCodec`/`KaniJson`, so it is NOT
+   blocked — just large.
+2. **Real licensed reference-asset binaries** (dictionary/rank/stroke/font) must
+   replace the placeholder hashes, and both hosts must be wired to load through
+   `:reference-assets`. Blocked on the user supplying binaries + licensing.
+
+Goal 184 (switch Android production to shared SQL) depends on Goal 183 being
+complete AND requires the strict live AnkiDroid emulator gate.
 
 ## Workspace
 
