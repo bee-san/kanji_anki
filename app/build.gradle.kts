@@ -240,6 +240,7 @@ dependencies {
 
     implementation(project(":application"))
     implementation(project(":automation-android"))
+    implementation(project(":backup-core"))
     implementation(project(":core"))
     implementation(project(":data-api"))
     implementation(project(":dictionary-core"))
