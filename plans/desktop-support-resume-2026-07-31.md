@@ -52,6 +52,27 @@ Backup/restore is proven round-trip: populated v34 DB → gzip snapshot → rest
 swaps the live DB while preserving a pre-restore safety backup; the finalizer
 drops a foreign host's device-local `settings` rows and keeps portable ones.
 
+### Goal 187 (AnkiConnect transport) — security core + protocol layer started
+
+New `:provider-ankiconnect` module (pure JVM, deps `{platform-contracts,
+sync-api}`, 100% class coverage), wired into `ciDesktop` + boundary contracts:
+
+```text
+86c61571 AnkiConnectEndpoint (loopback-only fail-closed URL validation) + AnkiConnectActions (outbound allowlist)
+5143b80a AnkiConnectJson (bounded dependency-free codec) + AnkiConnectEnvelope (v6 request/response, multi, redaction)
+```
+
+Remaining for Goal 187: the bounded JDK `HttpClient` transport (redirects
+disabled, post-resolution loopback enforcement, connect/request deadlines,
+bounded bodies, cancellation, redacted diagnostics), the `requestPermission`/
+`version`/`apiReflect`/`getActiveProfile` handshake + `SecretStore` wiring, the
+in-process fake server test matrix, and the read-only live handshake against a
+local Anki session.
+
+Also updated the fast/desktop CI gates and `tools/test_module_boundaries.py` /
+`tools/test_desktop_ci_gates.py` for every new module; `ciFast` and `ciDesktop`
+both pass with SDK `ANDROID_HOME=/home/skerraut/android-sdk`.
+
 ## What remains
 
 - **Goal 186 tail (product wiring, not core logic):** call
@@ -61,8 +82,9 @@ drops a foreign host's device-local `settings` rows and keeps portable ones.
   (Goal 200) or a thin host harness to validate.
 - **Goal 185 commit 3:** cross-platform compatibility fixtures + instrumented
   restore, now buildable on `:data-desktop`.
-- **Goals 187–205:** AnkiConnect transport/reads/writes/equivalence (187–191),
-  shared presentation + Android host (192–199), desktop composition root (200),
+- **Goal 187 tail + Goals 188–205:** AnkiConnect transport HTTP client +
+  handshake (rest of 187), reads/writes/equivalence (188–191), shared
+  presentation + Android host (192–199), desktop composition root (200),
   reminders/tray (201), update handoff (202), Study keybindings (203), native
   distributions (204), CI + live integration coverage (205).
 
