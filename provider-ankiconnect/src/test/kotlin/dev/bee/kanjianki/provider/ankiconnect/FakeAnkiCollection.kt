@@ -56,15 +56,41 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
     private class NoteRow(
         val id: Long,
         val modelName: String,
-        val fields: Map<String, String>,
+        fields: Map<String, String>,
+        val tags: MutableSet<String> = linkedSetOf(MissingKanjiExportPlanner.TAG),
+    ) {
+        val fields: MutableMap<String, String> = LinkedHashMap(fields)
+    }
+
+    /**
+     * One card's scheduling state, plus the note fields and tags a write could
+     * disturb. Kani must never change any of it; [FakeAnkiCollection] keeps it so
+     * that claim can be checked rather than assumed — see [schedulingSnapshot].
+     */
+    private class CardRow(
+        val id: Long,
+        val noteId: Long,
+        var queue: Long = 2L,
+        var due: Long = 500L,
+        var interval: Long = 21L,
+        var factor: Long = 2_500L,
+        var reps: Long = 7L,
+        var lapses: Long = 1L,
+        var deckName: String = "Default",
     )
 
     private val models = LinkedHashMap<String, ModelDef>()
     private val decks = LinkedHashMap<String, Long>()
     private val filteredDecks = HashSet<String>()
+    private val deckConfigIds = LinkedHashMap<String, Long>()
     private val notes = ArrayList<NoteRow>()
+    private val cards = ArrayList<CardRow>()
     private val overrides = HashMap<String, Reply>()
     private var nextId = 1_000L
+
+    /** How many times a full-collection `sync` was requested. Must stay zero. */
+    var syncCount = 0
+        private set
 
     /** Every action received, in order. */
     val log = mutableListOf<String>()
@@ -90,6 +116,7 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
 
     init {
         decks["Default"] = 1L
+        deckConfigIds["Default"] = 1L
     }
 
     /** Scripts [action], overriding the fake's own behavior. */
@@ -127,6 +154,7 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
 
     fun withDeck(name: String, id: Long = 2L, filtered: Boolean = false): FakeAnkiCollection {
         decks[name] = id
+        deckConfigIds[name] = 1L
         if (filtered) filteredDecks.add(name) else filteredDecks.remove(name)
         return this
     }
@@ -152,6 +180,53 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
         return this
     }
 
+    /**
+     * Adds a card with review history on [noteId], so a test can prove a write left
+     * its scheduling state alone. [queue] is settable because a suspended card and an
+     * active one are disturbed by different actions.
+     */
+    fun withCard(cardId: Long, noteId: Long, queue: Long = 2L): FakeAnkiCollection {
+        cards.add(CardRow(cardId, noteId, queue = queue))
+        return this
+    }
+
+    /**
+     * Everything about the collection Kani promises never to change, keyed so a
+     * before/after comparison can distinguish two very different things: a *changed*
+     * or *vanished* entry, which is a broken promise, from a *new* entry, which is
+     * the additive write working as intended.
+     *
+     * Covers card queue, due, interval, ease, reps, lapses, and deck placement; each
+     * deck's options group id; and every note's fields.
+     */
+    fun schedulingSnapshot(): Map<String, String> {
+        val snapshot = LinkedHashMap<String, String>()
+        for (card in cards.sortedBy(CardRow::id)) {
+            snapshot["card:${card.id}"] = listOf(
+                card.noteId,
+                card.queue,
+                card.due,
+                card.interval,
+                card.factor,
+                card.reps,
+                card.lapses,
+                card.deckName,
+            ).joinToString("|")
+        }
+        for ((name, id) in deckConfigIds.entries.sortedBy { it.key }) {
+            snapshot["config:$name"] = id.toString()
+        }
+        for (note in notes.sortedBy(NoteRow::id)) {
+            snapshot["note:${note.id}"] =
+                note.fields.entries.sortedBy { it.key }.joinToString(";")
+        }
+        return snapshot
+    }
+
+    /** The tags on [noteId], or an empty set when no such note exists. */
+    fun tagsOf(noteId: Long): Set<String> =
+        notes.firstOrNull { it.id == noteId }?.tags?.toSet().orEmpty()
+
     /** The `SourceId` of every note currently in Kani's model, in insertion order. */
     fun exportedSourceIds(): List<String> = notes
         .filter { it.modelName == MissingKanjiExportPlanner.MODEL_NAME }
@@ -168,6 +243,18 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
 
     /** How many times [action] was received. */
     fun countOf(action: String): Int = log.count { it == action }
+
+    /**
+     * Applies [action] to the collection without going through
+     * [AnkiConnectEnvelope], whose allowlist would refuse it. This is the only way
+     * to reach a denied action, and it exists for exactly one caller:
+     * [AnkiConnectWriteSurfaceTest] proves the denied actions really would move
+     * state that Kani's own flows leave alone, so that "nothing moved" is evidence
+     * rather than an artifact of a fake that ignores them.
+     */
+    fun applyUnchecked(action: String) {
+        dispatch(action, null)
+    }
 
     fun transport(): AnkiConnectTransport =
         AnkiConnectTransport(
@@ -240,8 +327,108 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
             "addNotes" -> addNotes(params)
             "findNotes" -> findNotes(params)
             "notesInfo" -> notesInfo(params)
+            "addTags" -> addTags(params)
+            "findCards" -> ok(cards.map(CardRow::id).joinToString(",", "[", "]"))
+            "cardsInfo" -> cardsInfo(params)
+            "multi" -> multi(params)
+            in SCHEDULING_ACTIONS -> applyScheduling(action, params)
             else -> error("unsupported action $action")
         }
+
+    /**
+     * Adds tags to notes, the one existing-note write Kani's normal sync surface
+     * makes. Note fields are untouched: the whole point of the tag-only surface is
+     * that Kani adds a label and changes nothing else.
+     */
+    private fun addTags(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
+        val ids = (params?.entries?.get("notes") as? Json.Arr)?.items.orEmpty()
+            .mapNotNull { (it as? Json.Num)?.value }
+        val tags = stringParam(params, "tags").orEmpty().split(" ").filter(String::isNotBlank)
+        for (id in ids) {
+            val row = notes.firstOrNull { it.id == id } ?: return error("Note was not found: $id")
+            row.tags.addAll(tags)
+        }
+        return ok("null")
+    }
+
+    private fun cardsInfo(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
+        val ids = (params?.entries?.get("cards") as? Json.Arr)?.items.orEmpty()
+            .mapNotNull { (it as? Json.Num)?.value }
+        val rows = ids.mapNotNull { id -> cards.firstOrNull { it.id == id } }.map { card ->
+            ScriptedAnkiConnectExchange.cardRow(
+                cardId = card.id,
+                noteId = card.noteId,
+                modelName = notes.firstOrNull { it.id == card.noteId }?.modelName.orEmpty(),
+                deckName = card.deckName,
+                queue = card.queue,
+                due = card.due,
+                interval = card.interval,
+                reps = card.reps,
+                lapses = card.lapses,
+            )
+        }
+        return ok(rows.joinToString(",", "[", "]"))
+    }
+
+    private fun multi(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
+        val actions = (params?.entries?.get("actions") as? Json.Arr)?.items.orEmpty()
+            .mapNotNull { it as? Json.Obj }
+        val bodies = actions.map { nested ->
+            val nestedAction = (nested.entries["action"] as? Json.Str)?.value.orEmpty()
+            log += nestedAction
+            when (val reply = overrides[nestedAction]) {
+                is Reply.Result -> """{"result":${reply.json},"error":null}"""
+                is Reply.Error -> """{"result":null,"error":${quote(reply.message)}}"""
+                is Reply.Wire -> """{"result":null,"error":"nested transport failure"}"""
+                null -> when (val result = dispatch(nestedAction, nested.entries["params"] as? Json.Obj)) {
+                    is AnkiConnectTransport.HttpExchange.Result.Ok -> result.body
+                    else -> """{"result":null,"error":"nested transport failure"}"""
+                }
+            }
+        }
+        return ok(bodies.joinToString(",", "[", "]"))
+    }
+
+    /**
+     * The actions Kani must never send, implemented for real. A fake that simply
+     * errored on them would prove nothing: the deny-list test asserts the
+     * collection's scheduling state is byte-identical after a full run, and that
+     * assertion is only meaningful if a scheduling write *would* have changed it.
+     */
+    @Suppress("kotlin:S3776")
+    private fun applyScheduling(
+        action: String,
+        params: Json.Obj?,
+    ): AnkiConnectTransport.HttpExchange.Result {
+        val cardIds = (params?.entries?.get("cards") as? Json.Arr)?.items.orEmpty()
+            .mapNotNull { (it as? Json.Num)?.value }
+        val targeted = cards.filter { it.id in cardIds }.ifEmpty { cards }
+        when (action) {
+            "suspend" -> targeted.forEach { it.queue = -1L }
+            "unsuspend" -> targeted.forEach { it.queue = 2L }
+            "setDueDate" -> targeted.forEach { it.due = 0L }
+            "forgetCards" -> targeted.forEach {
+                it.queue = 0L
+                it.interval = 0L
+                it.reps = 0L
+            }
+            "relearnCards" -> targeted.forEach { it.queue = 1L }
+            "answerCards", "guiAnswerCard" -> targeted.forEach {
+                it.reps += 1L
+                it.interval *= 2L
+            }
+            "changeDeck" -> targeted.forEach { it.deckName = "Somewhere Else" }
+            "saveDeckConfig", "setDeckConfigId" -> deckConfigIds.keys.forEach {
+                deckConfigIds[it] = 99L
+            }
+            "updateNoteFields" -> notes.forEach { note ->
+                note.fields.keys.toList().forEach { key -> note.fields[key] = "clobbered" }
+            }
+            "sync" -> syncCount += 1
+            else -> return error("unsupported action $action")
+        }
+        return ok("null")
+    }
 
     private fun deckConfig(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
         val name = stringParam(params, "deck") ?: return error("deck was not found")
@@ -261,6 +448,7 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
         for (segment in name.split("::")) {
             prefix = if (prefix == null) segment else "$prefix::$segment"
             decks.putIfAbsent(prefix, ++nextId)
+            deckConfigIds.putIfAbsent(prefix, 1L)
         }
         return ok(decks.getValue(name).toString())
     }
@@ -316,9 +504,15 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
 
     private fun findNotes(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
         val query = stringParam(params, "query").orEmpty()
-        val modelName = query.removePrefix("note:\"").removeSuffix("\"")
-        val matched = notes.filter { it.modelName == modelName }.map(NoteRow::id)
-        return ok(matched.joinToString(",", "[", "]"))
+        val matched = if (query.startsWith("note:")) {
+            val modelName = query.removePrefix("note:\"").removeSuffix("\"")
+            notes.filter { it.modelName == modelName }
+        } else {
+            // Any other query is treated as collection-wide, which is what the only
+            // other search Kani sends (`deck:*`) means.
+            notes
+        }
+        return ok(matched.map(NoteRow::id).joinToString(",", "[", "]"))
     }
 
     private fun notesInfo(params: Json.Obj?): AnkiConnectTransport.HttpExchange.Result {
@@ -350,4 +544,29 @@ class FakeAnkiCollection : AnkiConnectTransport.HttpExchange {
         AnkiConnectTransport.HttpExchange.Result.Ok(200, body)
 
     private fun quote(value: String): String = AnkiConnectJson.encode(AnkiConnectJson.str(value))
+
+    companion object {
+        /**
+         * Real AnkiConnect actions that change scheduling, note content, deck
+         * options, or the collection as a whole. Kani may never send any of them —
+         * [AnkiConnectWriteSurfaceTest] is where that is enforced. They are listed
+         * here rather than there because this fake implements them: an action the
+         * deny-list names but the fake ignores would make the test pass for the
+         * wrong reason.
+         */
+        val SCHEDULING_ACTIONS: Set<String> = linkedSetOf(
+            "suspend",
+            "unsuspend",
+            "setDueDate",
+            "forgetCards",
+            "relearnCards",
+            "answerCards",
+            "guiAnswerCard",
+            "changeDeck",
+            "saveDeckConfig",
+            "setDeckConfigId",
+            "updateNoteFields",
+            "sync",
+        )
+    }
 }
