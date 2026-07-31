@@ -98,6 +98,65 @@ object DeviceSettingKeys {
     val hostProfilePath = stringKey("host_profile_path")
     val hostBackupPath = stringKey("host_backup_path")
 
+    /**
+     * The versioned allowlist of device-local settings storage names that must
+     * never be published into a portable backup and must be reset on the
+     * destination during a cross-platform restore. Covers the legacy
+     * SQLite-stored keys (reminders, auto-sync, auto-update, debug, gesture)
+     * plus the host-only desktop keys (provider references, window geometry,
+     * tray/login, host paths). The migration-complete marker is intentionally
+     * excluded — it is device migration bookkeeping, not portable state.
+     */
+    val portableExclusionStorageNames: Set<String> = linkedSetOf(
+        reminderEnabled.storageName,
+        reminderHour.storageName,
+        reminderMinute.storageName,
+        reminderQuietStartMinute.storageName,
+        reminderQuietEndMinute.storageName,
+        reminderMaxPerDay.storageName,
+        reviewReminderDayStart.storageName,
+        reviewReminderCount.storageName,
+        reminderLastPostedAt.storageName,
+        reminderLastPostedSignature.storageName,
+        reminderStateDayStart.storageName,
+        reminderDueShownToday.storageName,
+        reminderStreakShownToday.storageName,
+        reminderSyncShownToday.storageName,
+        reminderDismissedFamiliesToday.storageName,
+        reminderDailyOverrideUsedToday.storageName,
+        autoSyncConfigured.storageName,
+        autoSyncEnabled.storageName,
+        autoSyncHour.storageName,
+        autoSyncMinute.storageName,
+        autoSyncLastAttemptAt.storageName,
+        autoSyncLastSuccessAt.storageName,
+        autoSyncNextRunAt.storageName,
+        autoUpdateEnabled.storageName,
+        autoUpdateLastCheckAt.storageName,
+        autoUpdateLastResult.storageName,
+        autoUpdateLastVersion.storageName,
+        autoUpdatePendingPackage.storageName,
+        autoUpdatePendingMessage.storageName,
+        betaUpdatesEnabled.storageName,
+        updateCheckFailedAt.storageName,
+        updatePermissionPromptShown.storageName,
+        updatePermissionPromptLastVersion.storageName,
+        debugLogEnabled.storageName,
+        flashcardSwipeGestureEnabled.storageName,
+        providerEndpoint.storageName,
+        providerPermissionReference.storageName,
+        providerAuthReference.storageName,
+        windowX.storageName,
+        windowY.storageName,
+        windowWidth.storageName,
+        windowHeight.storageName,
+        windowMaximized.storageName,
+        trayEnabled.storageName,
+        runAtLogin.storageName,
+        hostProfilePath.storageName,
+        hostBackupPath.storageName,
+    )
+
     private fun booleanKey(name: String) =
         DeviceSettingKey<Boolean>(name, DeviceSettingValueType.BOOLEAN)
 
