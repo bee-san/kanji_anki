@@ -21,6 +21,33 @@ import java.nio.file.attribute.PosixFilePermission
  * the database fails, the lock is released.
  */
 object DesktopProfileOpener {
+    /**
+     * The outcome of the preflight/provision/lock half of opening a profile.
+     *
+     * This half is separable because a desktop host has work to do between
+     * holding the lock and opening the database: a staged restore replaces the
+     * database file, so it must run after the lock excludes a second process and
+     * before any connection is opened. [open] is that sequence with nothing in
+     * between; [lock] plus [openLocked] is the same sequence with a seam.
+     */
+    sealed interface LockResult {
+        /** The profile directory is provisioned and exclusively held. */
+        data class Locked(
+            val profileDir: Path,
+            val lock: DesktopProfileLock,
+            val hardened: Boolean,
+        ) : LockResult, AutoCloseable {
+            /** Releases the lock. Opening the database transfers ownership. */
+            override fun close() = lock.close()
+        }
+
+        data class Refused(val reason: DesktopProfilePreflightPolicy.Refusal) : LockResult
+
+        data object LockUnavailable : LockResult
+
+        data class IoFailure(val cause: IOException) : LockResult
+    }
+
     sealed interface Result {
         data class Opened(
             val database: dev.bee.kanjianki.data.sql.SqlDatabase,
@@ -53,32 +80,64 @@ object DesktopProfileOpener {
         profileDir: Path,
         migrationContext: MigrationContext = MigrationContext.system(),
         probe: FilesystemProbe = RealFilesystemProbe,
-    ): Result {
+    ): Result = when (val locked = lock(profileDir, probe)) {
+        is LockResult.Locked -> openLocked(locked, migrationContext)
+        is LockResult.Refused -> Result.Refused(locked.reason)
+        LockResult.LockUnavailable -> Result.LockUnavailable
+        is LockResult.IoFailure -> Result.IoFailure(locked.cause)
+    }
+
+    /**
+     * Runs preflight, provisions the directory, and acquires the exclusive lock
+     * without opening the database.
+     *
+     * Split out of [open] so a host can apply a staged restore in the one window
+     * where it is safe: after the lock rules out a second Kani process, and
+     * before any connection exists to be invalidated by replacing the file
+     * underneath it.
+     */
+    fun lock(
+        profileDir: Path,
+        probe: FilesystemProbe = RealFilesystemProbe,
+    ): LockResult {
         val decision = DesktopProfilePreflightPolicy.evaluate(probe.factsFor(profileDir))
         if (decision is DesktopProfilePreflightPolicy.Decision.Refuse) {
-            return Result.Refused(decision.reason)
+            return LockResult.Refused(decision.reason)
         }
 
         val hardened = try {
             DesktopProfileProvisioner.provisionDirectory(profileDir).hardened
         } catch (failure: IOException) {
-            return Result.IoFailure(failure)
+            return LockResult.IoFailure(failure)
         }
 
         val lockPath = profileDir.resolve(DesktopStorageLayout.LOCK_FILE_NAME)
-        val lock = when (val outcome = DesktopProfileLock.tryAcquire(lockPath)) {
-            is DesktopProfileLock.Result.Acquired -> outcome.lock
-            DesktopProfileLock.Result.AlreadyHeld -> return Result.LockUnavailable
-            is DesktopProfileLock.Result.Unavailable -> return Result.IoFailure(outcome.cause)
+        return when (val outcome = DesktopProfileLock.tryAcquire(lockPath)) {
+            is DesktopProfileLock.Result.Acquired ->
+                LockResult.Locked(profileDir, outcome.lock, hardened)
+            DesktopProfileLock.Result.AlreadyHeld -> LockResult.LockUnavailable
+            is DesktopProfileLock.Result.Unavailable -> LockResult.IoFailure(outcome.cause)
         }
+    }
 
-        val databasePath = profileDir.resolve(DesktopStorageLayout.DATABASE_FILE_NAME)
+    /**
+     * Opens the migrated database of an already-[lock]ed profile.
+     *
+     * Takes ownership of [locked]'s lock: the returned [Result.Opened] releases
+     * it on close, and a failure here releases it before propagating, so the
+     * caller never has to decide whether the lock survived.
+     */
+    suspend fun openLocked(
+        locked: LockResult.Locked,
+        migrationContext: MigrationContext = MigrationContext.system(),
+    ): Result.Opened {
+        val databasePath = locked.profileDir.resolve(DesktopStorageLayout.DATABASE_FILE_NAME)
         return try {
             val opened = DesktopDatabaseFactory.open(databasePath.toString(), migrationContext)
             DesktopProfileProvisioner.hardenFile(databasePath)
-            Result.Opened(opened.database, opened.transition, lock, hardened)
+            Result.Opened(opened.database, opened.transition, locked.lock, locked.hardened)
         } catch (failure: Throwable) {
-            lock.close()
+            locked.lock.close()
             throw failure
         }
     }

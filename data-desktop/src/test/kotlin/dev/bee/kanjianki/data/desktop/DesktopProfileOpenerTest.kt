@@ -129,6 +129,110 @@ class DesktopProfileOpenerTest {
     }
 
     @Test
+    fun lockingAndOpeningSeparatelyGivesAHostAWindowBeforeAnyConnectionExists() = runBlocking {
+        // The point of the seam: a staged restore replaces the database file, so
+        // it has to run after the lock excludes a second Kani and before the
+        // first connection opens. Here the "restore" is a plain write, and the
+        // subsequent open has to see it.
+        val profile = tempRoot().resolve("profile")
+        val locked = DesktopProfileOpener.lock(profile)
+        assertTrue("expected Locked but was $locked", locked is DesktopProfileOpener.LockResult.Locked)
+        locked as DesktopProfileOpener.LockResult.Locked
+        assertEquals(profile, locked.profileDir)
+        assertTrue(locked.lock.isHeld)
+        assertTrue(Files.isDirectory(profile))
+
+        val opened = DesktopProfileOpener.openLocked(locked, migrationContext())
+        try {
+            // The same lock carried through, rather than a second acquisition.
+            assertTrue(opened.lock === locked.lock)
+            assertEquals(SchemaTransitionKind.CREATED, opened.transition.kind)
+            assertEquals(locked.hardened, opened.hardened)
+        } finally {
+            opened.close()
+        }
+        assertTrue(!locked.lock.isHeld)
+    }
+
+    @Test
+    fun lockingReportsTheSameRefusalsAsOpeningDoes() = runBlocking {
+        val profile = tempRoot().resolve("profile")
+        val refused = DesktopProfileOpener.lock(
+            profile,
+            probe = probeOf(
+                DesktopProfilePreflightPolicy.ProfileDirectoryFacts(
+                    exists = true,
+                    isDirectory = false,
+                    isSymlink = false,
+                    worldWritable = false,
+                    onNetworkShare = false,
+                    supportsAtomicMove = true,
+                    supportsExclusiveLock = true,
+                ),
+            ),
+        )
+        assertEquals(
+            DesktopProfileOpener.LockResult.Refused(
+                DesktopProfilePreflightPolicy.Refusal.NOT_A_DIRECTORY,
+            ),
+            refused,
+        )
+
+        DesktopProfileProvisioner.provisionDirectory(profile)
+        val held = DesktopProfileLock.tryAcquire(profile.resolve(DesktopStorageLayout.LOCK_FILE_NAME))
+        val first = (held as DesktopProfileLock.Result.Acquired).lock
+        try {
+            assertEquals(
+                DesktopProfileOpener.LockResult.LockUnavailable,
+                DesktopProfileOpener.lock(profile, allowingProbe()),
+            )
+        } finally {
+            first.close()
+        }
+
+        val blocker = tempRoot().resolve("blocker")
+        Files.write(blocker, byteArrayOf(0))
+        val unusable = DesktopProfileOpener.lock(blocker.resolve("profile"), allowingProbe())
+        assertTrue(
+            "expected IoFailure but was $unusable",
+            unusable is DesktopProfileOpener.LockResult.IoFailure,
+        )
+    }
+
+    @Test
+    fun aFailedOpenReleasesTheLockItWasHandedRatherThanLeakingIt() = runBlocking {
+        // A directory standing where the database file belongs makes the open
+        // throw. The caller must not have to guess whether the lock survived, so
+        // `openLocked` releases it on the way out.
+        val profile = tempRoot().resolve("profile")
+        val locked = DesktopProfileOpener.lock(profile) as DesktopProfileOpener.LockResult.Locked
+        Files.createDirectories(profile.resolve(DesktopStorageLayout.DATABASE_FILE_NAME))
+
+        var threw = false
+        try {
+            DesktopProfileOpener.openLocked(locked, migrationContext()).close()
+        } catch (_: Throwable) {
+            threw = true
+        }
+
+        assertTrue("expected the open to fail", threw)
+        assertTrue(!locked.lock.isHeld)
+    }
+
+    @Test
+    fun closingALockedProfileReleasesItWhenNoDatabaseIsOpened() {
+        // The host abandons startup between the lock and the open — a blocking
+        // staged restore, for instance. `Locked` is AutoCloseable for exactly
+        // that path.
+        val profile = tempRoot().resolve("profile")
+        val locked = DesktopProfileOpener.lock(profile) as DesktopProfileOpener.LockResult.Locked
+
+        locked.close()
+
+        assertTrue(!locked.lock.isHeld)
+    }
+
+    @Test
     fun exposesADefaultProfilesRootForTheHostOs() {
         val root = DesktopProfileOpener.defaultProfilesRoot(DesktopStorageLayout.Os.LINUX)
         assertTrue(root.toString().endsWith("profiles"))
