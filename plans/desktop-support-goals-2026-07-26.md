@@ -4274,6 +4274,53 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   fixtures) can now build on this host. Goals 187+ (desktop UI parity, provider
   bridge, packaging, signing, release) remain.
 
+### Goal 187 partial completion evidence (2026-07-31)
+
+- Started from: `92c50036` on `desktop/support`. Adds the AnkiConnect transport
+  security core and protocol layer (the safe-availability determination path).
+- Commits (in order):
+  - `86c61571 provider: add AnkiConnect loopback endpoint validation + outbound action allowlist`
+  - `5143b80a provider: add AnkiConnect JSON codec and v6 request/response envelopes`
+  - `d2b54507 provider: add bounded loopback AnkiConnect HTTP transport`
+  - `7aaba4e5 provider: add AnkiConnect capability handshake`
+- Implemented: the new pure-JVM `:provider-ankiconnect` module (deps
+  `{platform-contracts, sync-api}`, 100% class coverage).
+  - `AnkiConnectEndpoint` — fail-closed literal URL validation (http(s) +
+    loopback host only; rejects userinfo/path/query/fragment/missing-port) plus
+    a post-resolution loopback check.
+  - `AnkiConnectActions` — the positive outbound action allowlist (required vs
+    optional tiers) with `apiReflect` required-gap / available-optional
+    analysis and a `requireAllowed` guard.
+  - `AnkiConnectJson` — a bounded dependency-free JSON codec (objects/arrays/
+    strings/whole-numbers/bool/null, `MAX_DEPTH`, integer-only numbers,
+    malformed→null).
+  - `AnkiConnectEnvelope` — API v6 single/`multi` request builders (pin
+    version 6, attach key only when present, allowlist-check every nested
+    action) and fail-closed `{result,error}` response parsing with per-nested
+    `multi` validation.
+  - `AnkiConnectTransport` + `JdkHttpExchange` — the bounded loopback transport:
+    post-resolution loopback re-check (never touches the socket off-loopback),
+    status/oversize/timeout/cancel mapping, redacted failure detail; production
+    JDK `HttpClient` adapter with redirects disabled, no proxy, connect/request
+    deadlines, and a hard response-body byte cap.
+  - `AnkiConnectHandshake` — the keyless-first capability probe
+    (`requestPermission` → `version` → `apiReflect` → `getActiveProfile`)
+    mapping to an actionable `Status`; reads no collection data.
+- Validation: `:provider-ankiconnect:check` and `ciDesktop` pass at 100% class
+  coverage. `JdkHttpExchange` is exercised against a real in-process loopback
+  `HttpServer` (200/error-status/oversize-cap/dead-endpoint); every other class
+  is driven through injected fakes.
+- Live gates: the read-only handshake run against a local Anki/AnkiConnect
+  session is still outstanding (needs a running Anki desktop).
+- Rollback: revert the four commits above (newest first); the module is
+  additive and not yet wired into `:desktop-app`.
+- Gaps/blockers: rest of Goal 187 is the higher-level typed action DTOs
+  (`modelNamesAndIds`, `findNotes`/`notesInfo`, `findCards`/`cardsInfo`, media,
+  etc.), the `SecretStore` key lifecycle wiring, the full fake-server failure
+  matrix (unauthorized key, wrong version, missing action, retry), and the
+  live read-only handshake against a real Anki. Goals 188–191 (reads, writes,
+  equivalence) build on this transport.
+
 Template:
 
 ```md
