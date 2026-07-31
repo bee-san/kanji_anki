@@ -26,10 +26,22 @@ object AnkiConnectActions {
         "multi",
     )
 
-    /** Actions used when available but not required for the core read path. */
+    /**
+     * Actions used when available but not required for the core read path.
+     *
+     * `modelStyling` and `getDeckConfig` are reads, and they are here for one
+     * reason: they are the only allowlisted way to *prove* an existing
+     * `Kani Missing Kanji` model and `Kani::Missing Kanji` deck are the ones Kani
+     * would have created. Without them the additive writer cannot distinguish its
+     * own destination from a same-named model or a filtered deck the user built,
+     * and it must fall back to CSV rather than write into something it cannot
+     * identify — see [AnkiConnectMissingKanjiWriter].
+     */
     val optional: Set<String> = linkedSetOf(
         "modelTemplates",
+        "modelStyling",
         "modelFieldsOnTemplates",
+        "getDeckConfig",
         "retrieveMediaFile",
         "guiBrowse",
         "addTags",
