@@ -275,6 +275,7 @@ val desktopCiTasks = listOf(
     ":data-api:check",
     ":data-sql:check",
     ":data-desktop:check",
+    ":provider-ankiconnect:check",
     ":reference-assets:check",
     ":backup-core:check",
     ":sync-engine:check",
