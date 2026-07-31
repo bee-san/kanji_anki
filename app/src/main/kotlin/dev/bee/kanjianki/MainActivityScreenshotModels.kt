@@ -165,6 +165,8 @@ internal fun screenshotUpdatePageModel(activity: MainActivitySettings): Settings
             title = SettingsTextCopy.automaticUpdatesTitle(),
             statusLine = "Static screenshot fixture",
             statusColor = Color(0xFF00AEB5).toArgb(),
+            installedVersionLine = SettingsTextCopy.installedVersionLine(BuildConfig.VERSION_NAME),
+            latestVersionLine = SettingsTextCopy.latestVersionLine(null),
             lastCheckLine = "Last check: never",
             lastResultLine = "Last result: no update run",
             installPermissionLine = "Install permission: not needed in screenshots",

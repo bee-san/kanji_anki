@@ -5,6 +5,7 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.core.SettingsTextCopy
@@ -60,6 +62,21 @@ internal fun SettingsUpdatePanel(model: SettingsUpdatePanelModel) {
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = model.installedVersionLine,
+                    modifier = Modifier.weight(1f),
+                    color = SettingsUpdateMuted,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = model.latestVersionLine,
+                    modifier = Modifier.weight(1f),
+                    color = SettingsUpdateMuted,
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.End
+                )
+            }
             Text(
                 text = model.lastCheckLine,
                 color = SettingsUpdateMuted,

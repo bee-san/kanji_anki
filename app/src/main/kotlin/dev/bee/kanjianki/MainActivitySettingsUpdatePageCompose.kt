@@ -30,6 +30,8 @@ internal fun settingsUpdatePanelModel(
         title = title,
         statusLine = SettingsTextCopy.autoUpdatePanelStatus(status.enabled),
         statusColor = if (status.enabled) MainActivityUiSupport.TEAL else MainActivityUiSupport.MUTED,
+        installedVersionLine = SettingsTextCopy.installedVersionLine(BuildConfig.VERSION_NAME),
+        latestVersionLine = SettingsTextCopy.latestVersionLine(status.lastVersion),
         lastCheckLine = SettingsTextCopy.autoUpdateLastCheckLine(
             DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis)
         ),
