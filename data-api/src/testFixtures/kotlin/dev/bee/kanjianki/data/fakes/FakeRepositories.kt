@@ -1,11 +1,25 @@
 package dev.bee.kanjianki.data.fakes
 
+import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
+import dev.bee.kanjianki.core.ManualKanjiSource
+import dev.bee.kanjianki.core.ManualKanjiSourceRemovalResult
+import dev.bee.kanjianki.core.ManualKanjiSourceWriteResult
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
+import dev.bee.kanjianki.core.MissingKanjiInventoryState
+import dev.bee.kanjianki.core.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiScanRecord
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.data.AddManualKanjiSourcesCommand
 import dev.bee.kanjianki.data.CommitFsrsFitCommand
+import dev.bee.kanjianki.data.DeactivateManualKanjiSourcesCommand
+import dev.bee.kanjianki.data.MissingKanjiRepository
+import dev.bee.kanjianki.data.PublishMissingKanjiInventoryCommand
+import dev.bee.kanjianki.data.RecordMissingKanjiScanCommand
+import dev.bee.kanjianki.data.RemoveManualKanjiSourcesCommand
 import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
 import dev.bee.kanjianki.data.HomeGameDataSnapshot
@@ -327,6 +341,94 @@ class FakeSyncRepository : SyncRepository {
     override suspend fun loadRepairedHandoff(): StoreResult<List<String>> = handoffResult
 
     override suspend fun dismissRepairedHandoff(): StoreResult<Unit> = dismissResult
+}
+
+class FakeMissingKanjiRepository : MissingKanjiRepository {
+    var publishHandler: suspend (PublishMissingKanjiInventoryCommand) -> StoreResult<MissingKanjiScanRecord> =
+        unconfigured1("publishInventory")
+    var unsuccessfulScanHandler: suspend (RecordMissingKanjiScanCommand) -> StoreResult<MissingKanjiScanRecord> =
+        unconfigured1("recordUnsuccessfulScan")
+    var inventoryStateHandler: suspend () -> StoreResult<MissingKanjiInventoryState> =
+        unconfigured0("inventoryState")
+    var loadPreferencesHandler: suspend () -> StoreResult<MissingKanjiPreferences> =
+        unconfigured0("loadPreferences")
+    var savePreferencesHandler: suspend (MissingKanjiPreferences) -> StoreResult<Unit> =
+        { StoreResult.ok(Unit) }
+    var addSourcesHandler: suspend (AddManualKanjiSourcesCommand) -> StoreResult<ManualKanjiSourceWriteResult> =
+        unconfigured1("addManualSources")
+    var manualSourcesHandler: suspend (Boolean) -> StoreResult<List<ManualKanjiSource>> =
+        { StoreResult.ok(emptyList()) }
+    var admittedSourcesHandler: suspend () -> StoreResult<List<ManualKanjiSource>> =
+        { StoreResult.ok(emptyList()) }
+    var manualSourceHandler: suspend (String) -> StoreResult<ManualKanjiSource?> =
+        { StoreResult.ok(null) }
+    var removableLiteralsHandler: suspend () -> StoreResult<Set<String>> =
+        { StoreResult.ok(emptySet()) }
+    var removeSourcesHandler: suspend (RemoveManualKanjiSourcesCommand) -> StoreResult<ManualKanjiSourceRemovalResult> =
+        unconfigured1("removeUnreviewedManualSources")
+    var deactivateSourcesHandler: suspend (DeactivateManualKanjiSourcesCommand) -> StoreResult<Int> =
+        { StoreResult.ok(0) }
+    var recordReceiptsHandler: suspend (Collection<MissingKanjiExportReceipt>) -> StoreResult<Int> =
+        { StoreResult.ok(0) }
+    var exportReceiptsHandler: suspend (String) -> StoreResult<Map<String, MissingKanjiExportReceipt>> =
+        { StoreResult.ok(emptyMap()) }
+
+    val publishCommands = mutableListOf<PublishMissingKanjiInventoryCommand>()
+    val savedPreferences = mutableListOf<MissingKanjiPreferences>()
+
+    override suspend fun publishInventory(
+        command: PublishMissingKanjiInventoryCommand,
+    ): StoreResult<MissingKanjiScanRecord> {
+        publishCommands += command
+        return publishHandler(command)
+    }
+
+    override suspend fun recordUnsuccessfulScan(
+        command: RecordMissingKanjiScanCommand,
+    ): StoreResult<MissingKanjiScanRecord> = unsuccessfulScanHandler(command)
+
+    override suspend fun inventoryState(): StoreResult<MissingKanjiInventoryState> =
+        inventoryStateHandler()
+
+    override suspend fun loadPreferences(): StoreResult<MissingKanjiPreferences> =
+        loadPreferencesHandler()
+
+    override suspend fun savePreferences(preferences: MissingKanjiPreferences): StoreResult<Unit> {
+        savedPreferences += preferences
+        return savePreferencesHandler(preferences)
+    }
+
+    override suspend fun addManualSources(
+        command: AddManualKanjiSourcesCommand,
+    ): StoreResult<ManualKanjiSourceWriteResult> = addSourcesHandler(command)
+
+    override suspend fun manualSources(activeOnly: Boolean): StoreResult<List<ManualKanjiSource>> =
+        manualSourcesHandler(activeOnly)
+
+    override suspend fun admittedManualSources(): StoreResult<List<ManualKanjiSource>> =
+        admittedSourcesHandler()
+
+    override suspend fun manualSource(literal: String): StoreResult<ManualKanjiSource?> =
+        manualSourceHandler(literal)
+
+    override suspend fun removableManualSourceLiterals(): StoreResult<Set<String>> =
+        removableLiteralsHandler()
+
+    override suspend fun removeUnreviewedManualSources(
+        command: RemoveManualKanjiSourcesCommand,
+    ): StoreResult<ManualKanjiSourceRemovalResult> = removeSourcesHandler(command)
+
+    override suspend fun deactivateManualSources(
+        command: DeactivateManualKanjiSourcesCommand,
+    ): StoreResult<Int> = deactivateSourcesHandler(command)
+
+    override suspend fun recordExportReceipts(
+        receipts: Collection<MissingKanjiExportReceipt>,
+    ): StoreResult<Int> = recordReceiptsHandler(receipts)
+
+    override suspend fun exportReceipts(
+        destinationKey: String,
+    ): StoreResult<Map<String, MissingKanjiExportReceipt>> = exportReceiptsHandler(destinationKey)
 }
 
 private fun <T> unconfigured0(name: String): suspend () -> StoreResult<T> = {

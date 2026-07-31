@@ -81,6 +81,9 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "platform-contracts",
         "data-api",
         "data-sql",
+        "data-desktop",
+        "reference-assets",
+        "backup-core",
         "sync-api",
         "sync-engine",
         "application",
@@ -122,6 +125,9 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
     ),
+    "data-desktop": frozenset({"backup-core", "core", "data-api", "data-sql"}),
+    "reference-assets": frozenset(),
+    "backup-core": frozenset({"platform-contracts"}),
     "sync-api": frozenset({"core", "sync-domain"}),
     "application": frozenset({"data-api", "platform-contracts", "sync-engine"}),
     "sync-engine": frozenset(
@@ -145,6 +151,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
         {
             "application",
             "automation-android",
+            "backup-core",
             "core",
             "data-api",
             "dictionary-core",
@@ -224,7 +231,7 @@ FINAL_PROJECT_DEPENDENCIES = {
             "widget",
         },
     ),
-    "data-desktop": frozenset({"backup-core", "data-sql"}),
+    "data-desktop": frozenset({"backup-core", "core", "data-api", "data-sql"}),
     "provider-ankiconnect": frozenset({"platform-contracts", "sync-api"}),
     "platform-desktop": frozenset({"platform-contracts"}),
     "desktop-app": frozenset(
@@ -332,6 +339,7 @@ EDGE_RATIONALES = {
     ("widget", "platform-contracts"): "Widgets consume committed app event contracts.",
     ("widget", "presentation-api"): "Widgets consume portable display snapshots.",
     ("app", "application"): "Android assembles shared application use cases.",
+    ("app", "backup-core"): "Android backup delegates to the portable backup core.",
     ("app", "automation-android"): "Android installs automation components.",
     ("app", "data-android"): "Android installs its data driver.",
     ("app", "feature-shell"): "Android hosts the shared product shell.",
@@ -339,6 +347,8 @@ EDGE_RATIONALES = {
     ("app", "provider-ankidroid"): "Android installs its collection provider.",
     ("app", "widget"): "Android installs widget components.",
     ("data-desktop", "backup-core"): "Desktop data implements portable backup.",
+    ("data-desktop", "core"): "Desktop data consumes canonical backup/restore policy.",
+    ("data-desktop", "data-api"): "Desktop data validates against repository contracts.",
     ("data-desktop", "data-sql"): "Desktop data supplies the shared SQL driver.",
     ("provider-ankiconnect", "sync-api"): "AnkiConnect implements provider contracts.",
     (
@@ -431,6 +441,7 @@ REPOSITORY_CONTRACTS = {
     "StatsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
     "SettingsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
     "SyncRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
+    "MissingKanjiRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/MissingKanjiRepository.kt",
 }
 REPOSITORY_MODEL_FILES = (
     "data-api/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",

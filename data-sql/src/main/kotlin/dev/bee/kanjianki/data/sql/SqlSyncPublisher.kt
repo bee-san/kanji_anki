@@ -926,7 +926,7 @@ internal class SqlSyncPublisher(
 
     private fun studyTimelineKey(item: RecordsStudyModels.StudyItem): String {
         val signature = item.answerSignature
-        return if (signature.isEmpty()) item.kanji else item.kanji + " " + signature
+        return if (signature.isEmpty()) item.kanji else item.kanji + "\u0000" + signature
     }
 
     fun upsertStudyItem(item: RecordsStudyModels.StudyItem) {

@@ -731,7 +731,7 @@ class SqlStudyRepository(
         const val STATUS_PENDING = "pending"
         const val MAX_STUDY_TASK_ELAPSED_MS = 15L * 60L * 1000L
 
-        fun familyKey(kanji: String, answerSignature: String): String = "$kanji $answerSignature"
+        fun familyKey(kanji: String, answerSignature: String): String = "$kanji\u0000$answerSignature"
 
         fun bindNullableText(statement: SqlStatement, index: Int, value: String?) {
             if (value == null) statement.bindNull(index) else statement.bindText(index, value)

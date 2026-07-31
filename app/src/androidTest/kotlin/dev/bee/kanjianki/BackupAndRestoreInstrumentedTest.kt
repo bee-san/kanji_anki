@@ -26,8 +26,8 @@ import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
-import dev.bee.kanjianki.data.MissingKanjiExportReceipt
-import dev.bee.kanjianki.data.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
+import dev.bee.kanjianki.core.MissingKanjiPreferences
 import dev.bee.kanjianki.testing.DeviceRisk
 import java.io.File
 import java.io.FileOutputStream
