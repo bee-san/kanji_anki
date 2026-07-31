@@ -3991,6 +3991,53 @@ from a plan, mock-only success, or a nearly exhausted execution budget.
   AnkiDroid gate before shipping the shared sync path. Goal 183 (port remaining
   persistence and reference assets) is next.
 
+### Goal 183 partial completion evidence (2026-07-31)
+
+- Started from: `92343983` on `desktop/integration` in
+  `/local/home/skerraut/work/kani-desktop-integration`.
+- Commit: `b5131e34 assets: add cross-platform reference asset manifest, loader,
+  and cache upgrades`.
+- Implemented (reference-assets half, commits 2–3): the pure-JVM
+  `:reference-assets` module. `ReferenceAssetManifest.bundled()` is a
+  code-defined manifest with one entry per kind (dictionary database, Jiten
+  frequency ranks, KanjiVG stroke guides, study font), each carrying an expected
+  SHA-256, format/cache version, extraction target, and license/attribution
+  record. `ReferenceAssetVerifier` streams SHA-256 without buffering the whole
+  asset; `ReferenceAssetCachePolicy` decides EXTRACT/UPGRADE/REUSE from the
+  cached format version and recorded hash; `ReferenceAssetLoader` orchestrates
+  verify-then-install behind the platform-neutral `PackagedAssetSource` /
+  `ReferenceAssetCache` seams so Android (`AssetManager`) and the desktop
+  installed image share one contract. Asset hashes are the all-zero placeholder
+  until the licensed binaries are sourced (user decision): a placeholder accepts
+  any non-empty content while a real 64-hex hash is enforced exactly.
+- Validation: `:reference-assets:check` `BUILD SUCCESSFUL` with the module's
+  100% class-coverage gate. Tests cover corrupt/missing/old-format-version cache
+  recovery, a hash mismatch rejecting a real asset, an isolated missing packaged
+  file, Unicode file names, concurrent loads across 8 threads, ~8 MiB streamed
+  hashing, and mid-extraction cancellation leaving no partial cache entry, plus
+  the known SHA-256("abc") vector.
+- Decisions (from the user, 2026-07-31): (1) **stats port deferred** — all three
+  `StatsRepository` methods route through the format-11 `StatsCacheCodec`, which
+  depends on Android `org.json`; `:data-sql` is deliberately dependency-free, so
+  porting stats needs a JSON-dependency decision and is postponed. (2) **build
+  reference-asset infra with placeholder assets now**; real licensed binaries
+  and their attribution records will be supplied later.
+- Live gates: not required. `:reference-assets` is additive and not yet wired
+  into either host's production asset load.
+- Rollback: revert `b5131e34`; the module is additive and unreferenced.
+- Gaps/blockers (Goal 183 NOT fully complete):
+  1. **Stats/analytics repository port** (commit 1: stats cache format 11,
+     progress analytics inputs) is deferred pending the `:data-sql` JSON
+     decision. Until then, `StatsRepository` remains implemented only in the
+     `LocalStore` chain, so Goal 183's "Done when" (no repository operation
+     remains `LocalStore`-only) is unmet.
+  2. **Real licensed binaries** must replace the placeholder hashes, and the
+     Android/desktop hosts must be wired to load through `:reference-assets`.
+  3. The remaining Kani-owned/compatibility persistence (source inventory,
+     similar/reading pools, mnemonic notes, manual sources, Missing Kanji scans
+     and export receipts, archive/repaired coordination) still needs its shared
+     SQL port + conformance. Goal 184 depends on Goal 183 being complete.
+
 Template:
 
 ```md
