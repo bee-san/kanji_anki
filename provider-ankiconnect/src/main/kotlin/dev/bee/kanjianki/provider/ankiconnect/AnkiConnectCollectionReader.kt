@@ -387,10 +387,8 @@ class AnkiConnectCollectionReader(
         val observedBytes: Long,
     )
 
-    private fun protocolFailure(action: String): CollectionFailure = CollectionFailure(
-        CollectionFailureKind.TRANSIENT,
-        "AnkiConnect returned an unexpected $action response.",
-    )
+    private fun protocolFailure(action: String): CollectionFailure =
+        AnkiConnectStatusMapping.protocolFailure(action)
 
     private fun throwIfCancelled(cancellation: CollectionCancellation) {
         if (cancellation.isCancelled()) throw CollectionFailure.cancelled()
@@ -411,14 +409,14 @@ class AnkiConnectCollectionReader(
     ): List<AnkiConnectJson.Json> {
         val body = when (val exchange = transport.post(request)) {
             is AnkiConnectTransport.Exchange.Body -> exchange.text
-            is AnkiConnectTransport.Exchange.Failure -> throw transportFailure(exchange)
+            is AnkiConnectTransport.Exchange.Failure -> throw AnkiConnectStatusMapping.transportFailure(exchange)
         }
         val nested = AnkiConnectEnvelope.parseMulti(body)
         if (nested.size != expected) throw protocolFailure(request.action)
         return nested.map { response ->
             when (response) {
                 is AnkiConnectEnvelope.Response.Ok -> response.result
-                is AnkiConnectEnvelope.Response.Failed -> throw failureFor(response.message)
+                is AnkiConnectEnvelope.Response.Failed -> throw AnkiConnectStatusMapping.failureFor(response.message)
                 AnkiConnectEnvelope.Response.ProtocolError -> throw protocolFailure(request.action)
             }
         }
@@ -434,45 +432,9 @@ class AnkiConnectCollectionReader(
             ) {
                 is AnkiConnectEnvelope.Response.Ok ->
                     Measured(response.result, exchange.text.length.toLong())
-                is AnkiConnectEnvelope.Response.Failed -> throw failureFor(response.message)
+                is AnkiConnectEnvelope.Response.Failed -> throw AnkiConnectStatusMapping.failureFor(response.message)
                 AnkiConnectEnvelope.Response.ProtocolError -> throw protocolFailure(request.action)
             }
-            is AnkiConnectTransport.Exchange.Failure -> throw transportFailure(exchange)
+            is AnkiConnectTransport.Exchange.Failure -> throw AnkiConnectStatusMapping.transportFailure(exchange)
         }
-
-    private fun failureFor(message: String): CollectionFailure {
-        val lowered = message.lowercase()
-        // AnkiConnect reports a missing/incorrect API key as a plain error string.
-        val kind = if (lowered.contains("api key") || lowered.contains("authentication")) {
-            CollectionFailureKind.AUTH_REQUIRED
-        } else {
-            CollectionFailureKind.TRANSIENT
-        }
-        return CollectionFailure(kind, "AnkiConnect rejected the request: $message")
-    }
-
-    private fun transportFailure(
-        failure: AnkiConnectTransport.Exchange.Failure,
-    ): CollectionFailure = when (failure.reason) {
-        AnkiConnectTransport.Reason.CANCELLED -> CollectionFailure.cancelled()
-        AnkiConnectTransport.Reason.NON_LOOPBACK_RESOLUTION ->
-            CollectionFailure(
-                CollectionFailureKind.INVALID_CONFIGURATION,
-                "AnkiConnect endpoint did not resolve to loopback.",
-            )
-        AnkiConnectTransport.Reason.TIMEOUT,
-        AnkiConnectTransport.Reason.CONNECTION_FAILED,
-        ->
-            CollectionFailure(
-                CollectionFailureKind.NOT_AVAILABLE,
-                "Anki is not reachable: ${failure.detail}",
-            )
-        AnkiConnectTransport.Reason.HTTP_ERROR_STATUS,
-        AnkiConnectTransport.Reason.RESPONSE_TOO_LARGE,
-        ->
-            CollectionFailure(
-                CollectionFailureKind.TRANSIENT,
-                "AnkiConnect request failed: ${failure.detail}",
-            )
-    }
 }

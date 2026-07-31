@@ -2,7 +2,6 @@ package dev.bee.kanjianki.provider.ankiconnect
 
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.syncapi.ArchiveTagSummary
-import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.syncapi.CollectionCancellation
 import dev.bee.kanjianki.syncapi.CollectionCapability
 import dev.bee.kanjianki.syncapi.CollectionFailure
@@ -25,7 +24,9 @@ import dev.bee.kanjianki.syncapi.ProviderCollectionSnapshot
  *   that has not granted permission, speaks a different wire version, lacks a
  *   required action, or has no collection open is *not* `READY`, and each of
  *   those maps to the availability the caller can actually act on
- *   (`AUTH_REQUIRED` vs `INVALID_CONFIGURATION`).
+ *   (`AUTH_REQUIRED` vs `INVALID_CONFIGURATION`). That translation is
+ *   [AnkiConnectStatusMapping]'s, shared with the inventory gateway so the two
+ *   cannot classify the same Anki differently.
  * - **Capabilities are only what this class can actually do today.** Stock
  *   AnkiConnect advertises `addTags`/`addNotes`, so it would be easy to declare
  *   [CollectionCapability.NOTE_TAG_WRITE] and
@@ -48,40 +49,18 @@ class AnkiConnectGateway(
      * This is four round trips over loopback, so it is a deliberate check rather
      * than something to poll; callers hold the result for the duration of a sync.
      */
-    override fun status(): CollectionSourceStatus = when (val result = handshake.run(keyProvider())) {
-        is AnkiConnectHandshake.Status.Ready ->
-            CollectionSourceStatus(
-                CollectionAvailability.READY,
-                READ_CAPABILITIES,
-                "Connected to Anki (API v${result.version}).",
-            )
-        AnkiConnectHandshake.Status.PermissionRequired ->
-            unavailable(
-                CollectionAvailability.AUTH_REQUIRED,
-                "Anki has not granted Kani access yet. Accept the AnkiConnect prompt in Anki.",
-            )
-        AnkiConnectHandshake.Status.NoActiveProfile ->
-            unavailable(
-                CollectionAvailability.INVALID_CONFIGURATION,
-                "Anki is running but no collection is open.",
-            )
-        is AnkiConnectHandshake.Status.UnsupportedVersion ->
-            unavailable(
-                CollectionAvailability.INVALID_CONFIGURATION,
-                "Anki reported AnkiConnect API v${result.reported}; Kani needs " +
-                    "v${AnkiConnectEnvelope.API_VERSION}.",
-            )
-        is AnkiConnectHandshake.Status.MissingRequiredActions ->
-            unavailable(
-                CollectionAvailability.INVALID_CONFIGURATION,
-                "This AnkiConnect is missing actions Kani needs: " +
-                    result.actions.sorted().joinToString(", "),
-            )
-        is AnkiConnectHandshake.Status.Unavailable ->
-            unavailable(
-                CollectionAvailability.NOT_AVAILABLE,
-                "Anki is not reachable (${result.detail}).",
-            )
+    override fun status(): CollectionSourceStatus {
+        val result = handshake.run(keyProvider())
+        val capabilities = if (result is AnkiConnectHandshake.Status.Ready) {
+            READ_CAPABILITIES
+        } else {
+            emptySet()
+        }
+        return CollectionSourceStatus(
+            AnkiConnectStatusMapping.availabilityFor(result),
+            capabilities,
+            AnkiConnectStatusMapping.messageFor(result),
+        )
     }
 
     @Throws(CollectionFailure::class)
@@ -130,11 +109,6 @@ class AnkiConnectGateway(
         progress: CollectionProgressListener = CollectionProgressListener.NONE,
         cancellation: CollectionCancellation = CollectionCancellation.NONE,
     ): AnkiConnectCollectionReader.ReadResult = reader.read(settings, progress, cancellation)
-
-    private fun unavailable(
-        availability: CollectionAvailability,
-        message: String,
-    ): CollectionSourceStatus = CollectionSourceStatus(availability, emptySet(), message)
 
     companion object {
         /**
