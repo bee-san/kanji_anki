@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.presentation.KaniLaunchCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -183,21 +184,83 @@ class MainActivityStartupTest {
     @Test
     fun launcherShortcutActionsUseOnlyAllowlistedDestinations() {
         assertEquals(
-            LauncherShortcutDestination.STUDY,
-            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_STUDY),
+            KaniLaunchCodec.Target.STUDY,
+            launcherShortcutTarget(MainActivityBase.ACTION_OPEN_STUDY),
         )
         assertEquals(
-            LauncherShortcutDestination.BROWSE,
-            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_BROWSE),
+            KaniLaunchCodec.Target.BROWSE,
+            launcherShortcutTarget(MainActivityBase.ACTION_OPEN_BROWSE),
         )
         assertEquals(
-            LauncherShortcutDestination.GAMES,
-            launcherShortcutDestination(MainActivityBase.ACTION_OPEN_GAMES),
+            KaniLaunchCodec.Target.GAMES,
+            launcherShortcutTarget(MainActivityBase.ACTION_OPEN_GAMES),
         )
-        assertNull(launcherShortcutDestination(null))
-        assertNull(launcherShortcutDestination(Intent.ACTION_MAIN))
-        assertNull(launcherShortcutDestination(Intent.ACTION_VIEW))
-        assertNull(launcherShortcutDestination("dev.bee.kanjianki.action.OPEN_SETTINGS"))
+        assertNull(launcherShortcutTarget(null))
+        assertNull(launcherShortcutTarget(Intent.ACTION_MAIN))
+        assertNull(launcherShortcutTarget(Intent.ACTION_VIEW))
+        assertNull(launcherShortcutTarget("dev.bee.kanjianki.action.OPEN_SETTINGS"))
+    }
+
+    @Test
+    fun everyProductionLaunchExtraMapsOntoASharedCodecTarget() {
+        // The seam this pins: each widget/notification extra names a target the
+        // shared codec understands, so the desktop host inherits the same
+        // precedence instead of re-deriving it. The behavioral consequences are
+        // covered by the resume/render tests above; this is the mapping itself.
+        val cases = mapOf(
+            MainActivityBase.EXTRA_OPEN_STUDY to KaniLaunchCodec.Target.STUDY,
+            MainActivityBase.EXTRA_OPEN_UPDATE to KaniLaunchCodec.Target.UPDATE,
+            MainActivityBase.EXTRA_OPEN_STATS to KaniLaunchCodec.Target.STATS,
+            MainActivityBase.EXTRA_OPEN_HOME to KaniLaunchCodec.Target.HOME,
+        )
+        for ((extra, target) in cases) {
+            assertEquals(
+                extra,
+                target,
+                KaniLaunchCodec.resolve(
+                    MainActivityStartup.launchTargetsPresentIn(
+                        Intent().putExtra(extra, true),
+                    ),
+                ),
+            )
+        }
+        assertEquals(
+            KaniLaunchCodec.Target.KANJI_DETAIL,
+            KaniLaunchCodec.resolve(
+                MainActivityStartup.launchTargetsPresentIn(
+                    Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学"),
+                ),
+            ),
+        )
+        // A false extra is not a request. Widgets build these with putExtra(_, true),
+        // so reading presence instead of value would make every widget tap a Home
+        // launch.
+        assertNull(
+            KaniLaunchCodec.resolve(
+                MainActivityStartup.launchTargetsPresentIn(
+                    Intent().putExtra(MainActivityBase.EXTRA_OPEN_STATS, false),
+                ),
+            ),
+        )
+        assertNull(KaniLaunchCodec.resolve(MainActivityStartup.launchTargetsPresentIn(null)))
+        assertNull(KaniLaunchCodec.resolve(MainActivityStartup.launchTargetsPresentIn(Intent())))
+    }
+
+    @Test
+    fun anUnusableFocusKanjiStillCountsAsAWidgetRequest() {
+        // hasExtra, not a parsed glyph: a malformed kanji must fall back to Home
+        // with study resume suppressed, not resume study as an ordinary launch
+        // would. Reading the target is what makes the fallback agree with the
+        // happy path.
+        val target = KaniLaunchCodec.resolve(
+            MainActivityStartup.launchTargetsPresentIn(
+                Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学習"),
+            ),
+        )
+
+        assertEquals(KaniLaunchCodec.Target.KANJI_DETAIL, target)
+        assertTrue(requireNotNull(target).suppressesStudyResume)
+        assertNull(focusKanjiDetailFromIntent(Intent().putExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL, "学習")))
     }
 
     @Test

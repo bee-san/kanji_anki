@@ -27,6 +27,35 @@ object ShellReducer {
     }
 
     /**
+     * The state the app starts in, given how it was asked to open.
+     *
+     * One function so both hosts agree on the launch stack. A deep-linked
+     * destination is *not* pushed onto the ordinary launch stack: it replaces it,
+     * because the user did not walk Home -> Stats, they tapped a widget. Back from
+     * there then falls through to `current.parent` — already how [back] behaves for
+     * a one-entry stack — which is why a widget-launched Detail can still go back
+     * without the launch faking a history the user never had.
+     *
+     * A `null` [request] means an ordinary launch, which is [restored] if the host
+     * has restorable state and Home otherwise.
+     *
+     * When both are present the request wins. Android's startup appears to order
+     * these the other way — it checks its recreated route before reading the open
+     * extras — but the two never actually meet there: the extras are consumed off
+     * the intent on first delivery, so a recreation finds none. Here they can meet,
+     * on a desktop host whose session file outlives the process and whose tray can
+     * ask for a screen. An explicit ask is newer information than a saved session,
+     * so it takes precedence.
+     */
+    fun launch(
+        request: KaniLaunchRequest?,
+        restored: KaniDestination? = null,
+    ): ShellState {
+        val destination = request?.destination ?: restored ?: KaniDestination.Home
+        return ShellState(backStack = listOf(destination))
+    }
+
+    /**
      * Gates an action on a capability, queueing an explanation when it is absent.
      *
      * Returns the action to dispatch onward, or `null` when the shell absorbed it

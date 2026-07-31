@@ -167,6 +167,11 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "dictionary-core",
             "platform-contracts",
             "platform-android",
+            # Launch-intent decoding only: the Android host maps its own widget,
+            # notification, and shortcut intents onto KaniLaunchCodec's targets so
+            # the deep-link precedence has a single owner across both hosts.
+            # Rendering is still MainActivityBase's until Goal 200.
+            "presentation-api",
             "provider-ankidroid",
             "sync-api",
             "sync-engine",

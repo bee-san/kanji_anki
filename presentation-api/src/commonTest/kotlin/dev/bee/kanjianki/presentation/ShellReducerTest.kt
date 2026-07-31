@@ -205,6 +205,77 @@ class ShellReducerTest {
     }
 
     @Test
+    fun anOrdinaryLaunchStartsAtHomeAndARestoredOneWhereItLeftOff() {
+        assertEquals(
+            listOf(KaniDestination.Home),
+            ShellReducer.launch(request = null).backStack,
+        )
+        assertEquals(
+            listOf<KaniDestination>(KaniDestination.Games),
+            ShellReducer.launch(request = null, restored = KaniDestination.Games).backStack,
+        )
+    }
+
+    @Test
+    fun aDeepLinkReplacesTheLaunchStackRatherThanPushingOntoIt() {
+        // The user tapped a widget; they did not walk Home -> Stats. Synthesizing
+        // that history would make back retrace a path they never took.
+        val request = requireNotNull(
+            KaniLaunchCodec.request(KaniLaunchCodec.Target.STATS),
+        )
+
+        val state = ShellReducer.launch(request)
+
+        assertEquals(listOf<KaniDestination>(KaniDestination.Stats), state.backStack)
+        assertEquals(KaniTab.STATS, state.selectedTab)
+    }
+
+    @Test
+    fun backFromADeepLinkedScreenFallsThroughToItsParent() {
+        // The reason a one-entry launch stack is safe: a widget-launched Detail
+        // still has somewhere to go, via the destination's own parent rather than a
+        // faked history.
+        val request = requireNotNull(
+            KaniLaunchCodec.request(KaniLaunchCodec.Target.KANJI_DETAIL, kanji = "脱"),
+        )
+        val launched = ShellReducer.launch(request)
+
+        assertTrue(launched.canGoBack)
+        assertEquals(
+            listOf<KaniDestination>(KaniDestination.Home),
+            ShellReducer.reduce(launched, KaniAction.Navigation.Back).backStack,
+        )
+    }
+
+    @Test
+    fun anExplicitRequestOutranksARestoredSession() {
+        // Only reachable on a host whose session outlives the process — a desktop
+        // tray asking for Study over yesterday's saved Games screen. An explicit
+        // ask is newer information than a saved session.
+        val request = requireNotNull(
+            KaniLaunchCodec.request(KaniLaunchCodec.Target.STUDY),
+        )
+
+        val state = ShellReducer.launch(request, restored = KaniDestination.Games)
+
+        assertEquals(listOf<KaniDestination>(KaniDestination.Study), state.backStack)
+    }
+
+    @Test
+    fun everyLaunchTargetProducesAUsableShell() {
+        // Exhaustive, because a launch state that fails ShellState's own invariants
+        // is a crash on startup — the worst place to find one.
+        for (target in KaniLaunchCodec.Target.entries) {
+            val request = requireNotNull(KaniLaunchCodec.request(target, kanji = "脱"))
+            val state = ShellReducer.launch(request)
+
+            assertEquals(request.destination, state.current, target.wireName)
+            assertEquals(request.destination.tab, state.selectedTab, target.wireName)
+            assertTrue(state.effects.isEmpty, target.wireName)
+        }
+    }
+
+    @Test
     fun gatingAnActionOnAPresentCapabilityPassesItThrough() {
         val state = ShellState(
             capabilities = PlatformCapabilities.of(PlatformCapability.BACKUP_RESTORE),

@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.presentation.KaniLaunchCodec
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.fsrs.FsrsFitScheduler
@@ -100,14 +101,20 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         }
         activity.preserveStudyRecoveryForHarnessRoute = false
         activity.screenshotThemeChoiceOverride = null
-        val opensKanjiDetail = intent?.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) == true
-        val focusKanji = if (opensKanjiDetail) focusKanjiDetailFromIntent(intent) else null
-        val opensHome = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_HOME, false) == true
-        val opensStudy = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false) == true
-        val opensUpdate = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false) == true
-        val opensStats = intent?.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false) == true
-        val shortcutDestination = launcherShortcutDestination(intent?.action)
-        consumeProductionNavigation(intent, shortcutDestination != null)
+        // Which screen an external launch asked for is decided by the shared codec,
+        // not by the order of the branches below: the desktop host has the same
+        // widgets, notifications, and shortcuts to honor, and two hosts each
+        // re-deriving the precedence from the same prose is how they drift.
+        val target = KaniLaunchCodec.resolve(launchTargetsPresentIn(intent))
+        val focusKanji = if (target == KaniLaunchCodec.Target.KANJI_DETAIL) {
+            focusKanjiDetailFromIntent(intent)
+        } else {
+            null
+        }
+        consumeProductionNavigation(
+            intent,
+            consumedShortcut = target != null && launcherShortcutTarget(intent?.action) == target,
+        )
         val study = activity as? MainActivityStudy
         val restoreStudyRoute = activity.restoreStudyRouteOnCreate
         val recreatedRoute = activity.restoreRouteOnCreate
@@ -126,40 +133,53 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
             activity.renderRestoredHomeRoute(recreatedHomeRoute)
             return
         }
-        when {
-            opensKanjiDetail -> {
-                activity.disableStudyOrdinaryResume()
+        if (target != null) {
+            // Read off the target, not the branch taken, so the invalid-kanji
+            // fallback below suppresses resume exactly like the happy path.
+            if (target.suppressesStudyResume) activity.disableStudyOrdinaryResume()
+            renderLaunchTarget(target, focusKanji)
+            return
+        }
+        if (study?.shouldResumeStudyOnOrdinaryLaunch() == true) {
+            study.renderStudyRecoveryOnly()
+            return
+        }
+        activity.renderHome()
+    }
+
+    /**
+     * Renders [target], falling back to Home where this activity cannot show it.
+     *
+     * Still a render-method table rather than shell state: the Android host keeps
+     * its Activity-inheritance rendering until Goal 200 replaces it. What moved out
+     * is only *which* screen was asked for.
+     */
+    private fun renderLaunchTarget(
+        target: KaniLaunchCodec.Target,
+        focusKanji: String?,
+    ) {
+        when (target) {
+            KaniLaunchCodec.Target.KANJI_DETAIL ->
                 if (focusKanji == null || !activity.openFocusKanjiDetail(focusKanji)) {
                     activity.renderHome()
                 }
-            }
 
-            opensStudy -> {
-                activity.renderStudy()
-            }
-
-            opensUpdate -> {
-                activity.disableStudyOrdinaryResume()
-                activity.renderUpdate()
-            }
-
-            opensStats -> {
-                activity.disableStudyOrdinaryResume()
+            KaniLaunchCodec.Target.STUDY -> activity.renderStudy()
+            KaniLaunchCodec.Target.UPDATE -> activity.renderUpdate()
+            KaniLaunchCodec.Target.STATS ->
                 if (activity is MainActivityHome) activity.renderStats() else activity.renderHome()
-            }
 
-            opensHome -> {
-                activity.disableStudyOrdinaryResume()
-                activity.renderHome()
-            }
+            KaniLaunchCodec.Target.BROWSE ->
+                if (activity is MainActivityHome) {
+                    activity.renderBrowseKanji("")
+                } else {
+                    activity.renderHome()
+                }
 
-            shortcutDestination != null -> renderLauncherShortcut(shortcutDestination)
+            KaniLaunchCodec.Target.GAMES ->
+                if (activity is MainActivityHome) activity.renderGames() else activity.renderHome()
 
-            study?.shouldResumeStudyOnOrdinaryLaunch() == true -> {
-                study.renderStudyRecoveryOnly()
-            }
-
-            else -> activity.renderHome()
+            KaniLaunchCodec.Target.HOME -> activity.renderHome()
         }
     }
 
@@ -172,28 +192,6 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         intent.removeExtra(MainActivityBase.EXTRA_OPEN_STATS)
         if (consumedShortcut) {
             intent.action = Intent.ACTION_MAIN
-        }
-    }
-
-    private fun renderLauncherShortcut(destination: LauncherShortcutDestination) {
-        when (destination) {
-            LauncherShortcutDestination.STUDY -> activity.renderStudy()
-            LauncherShortcutDestination.BROWSE -> {
-                activity.disableStudyOrdinaryResume()
-                if (activity is MainActivityHome) {
-                    activity.renderBrowseKanji("")
-                } else {
-                    activity.renderHome()
-                }
-            }
-            LauncherShortcutDestination.GAMES -> {
-                activity.disableStudyOrdinaryResume()
-                if (activity is MainActivityHome) {
-                    activity.renderGames()
-                } else {
-                    activity.renderHome()
-                }
-            }
         }
     }
 
@@ -280,6 +278,39 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         // maintenance still runs rather than hanging the executor forever.
         private const val MIGRATION_WAIT_SECONDS = 20L
 
+        /**
+         * The targets [intent] names, for the codec to arbitrate between.
+         *
+         * A set rather than a single value because an `Intent` can carry several
+         * extras at once, and which one wins is the codec's decision, not this
+         * reader's. On the companion because it reads only the intent — nothing
+         * about the activity — which also makes the mapping directly testable.
+         */
+        internal fun launchTargetsPresentIn(intent: Intent?): Set<KaniLaunchCodec.Target> {
+            intent ?: return emptySet()
+            return buildSet {
+                // `hasExtra`, not a parsed glyph: an unusable kanji is still a
+                // request to open a card, and it must fall back to Home rather than
+                // resuming study as an ordinary launch would.
+                if (intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL)) {
+                    add(KaniLaunchCodec.Target.KANJI_DETAIL)
+                }
+                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false)) {
+                    add(KaniLaunchCodec.Target.STUDY)
+                }
+                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
+                    add(KaniLaunchCodec.Target.UPDATE)
+                }
+                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false)) {
+                    add(KaniLaunchCodec.Target.STATS)
+                }
+                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_HOME, false)) {
+                    add(KaniLaunchCodec.Target.HOME)
+                }
+                launcherShortcutTarget(intent.action)?.let(::add)
+            }
+        }
+
         internal fun backgroundStartupTasksAllowed(intent: Intent?): Boolean {
             return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
                 intent?.getStringExtra(MainActivityBase.EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
@@ -287,17 +318,19 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
     }
 }
 
-internal enum class LauncherShortcutDestination {
-    STUDY,
-    BROWSE,
-    GAMES,
-}
-
-internal fun launcherShortcutDestination(action: String?): LauncherShortcutDestination? {
+/**
+ * The launch target a launcher-shortcut action names, or `null` for any other
+ * action.
+ *
+ * Still an allowlist, and still deliberately narrow: `Intent.action` is
+ * caller-controlled, so only these three actions may pick a screen, and everything
+ * else — including `ACTION_MAIN` — falls through to the ordinary launch path.
+ */
+internal fun launcherShortcutTarget(action: String?): KaniLaunchCodec.Target? {
     return when (action) {
-        MainActivityBase.ACTION_OPEN_STUDY -> LauncherShortcutDestination.STUDY
-        MainActivityBase.ACTION_OPEN_BROWSE -> LauncherShortcutDestination.BROWSE
-        MainActivityBase.ACTION_OPEN_GAMES -> LauncherShortcutDestination.GAMES
+        MainActivityBase.ACTION_OPEN_STUDY -> KaniLaunchCodec.Target.STUDY
+        MainActivityBase.ACTION_OPEN_BROWSE -> KaniLaunchCodec.Target.BROWSE
+        MainActivityBase.ACTION_OPEN_GAMES -> KaniLaunchCodec.Target.GAMES
         else -> null
     }
 }

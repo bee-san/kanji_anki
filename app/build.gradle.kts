@@ -246,6 +246,10 @@ dependencies {
     implementation(project(":dictionary-core"))
     implementation(project(":platform-contracts"))
     implementation(project(":platform-android"))
+    // Launch-intent decoding only, for now: the Android host maps its own extras
+    // onto KaniLaunchCodec's targets so the deep-link precedence has one owner.
+    // Rendering still goes through MainActivityBase until Goal 200.
+    implementation(project(":presentation-api"))
     implementation(project(":provider-ankidroid"))
     implementation(project(":sync-api"))
     implementation(project(":sync-engine"))
