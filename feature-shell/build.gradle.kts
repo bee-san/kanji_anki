@@ -10,6 +10,10 @@ kotlin {
             // host that composes KaniShell cannot do so without them.
             api(project(":presentation-api"))
             api(project(":ui-common"))
+            // `api` for the same reason: the shell renders Home's surfaces and
+            // its route callback hands a host the copy types they take, so a
+            // host cannot supply a Home screen without seeing this module.
+            api(project(":feature-home"))
         }
     }
 }

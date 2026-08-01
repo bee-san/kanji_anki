@@ -129,10 +129,12 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "platform-contracts": frozenset(),
     "presentation-api": frozenset(),
     "ui-common": frozenset({"presentation-api"}),
-    # The shell hosts no feature yet: `:feature-home` exists but the Android host
-    # still renders MainActivityBase's screens until Goal 200, so the aggregator
-    # edges to the leaf features are in FINAL_PROJECT_DEPENDENCIES.
-    "feature-shell": frozenset({"presentation-api", "ui-common"}),
+    # The shell hosts `:feature-home` from Goal 194 on, which is what lets the
+    # desktop host render real Home/Browse screens rather than a placeholder.
+    # The Android host still renders MainActivityBase's screens until Goal 200,
+    # and the remaining leaf features have no shared screens yet, so the rest of
+    # the aggregator edges stay in FINAL_PROJECT_DEPENDENCIES.
+    "feature-shell": frozenset({"presentation-api", "ui-common", "feature-home"}),
     "feature-home": frozenset({"presentation-api", "ui-common"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
