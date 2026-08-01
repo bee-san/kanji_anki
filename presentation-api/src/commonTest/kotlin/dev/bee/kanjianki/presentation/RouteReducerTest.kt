@@ -203,6 +203,27 @@ class RouteReducerTest {
     }
 
     @Test
+    fun tickingAStudyCheckboxReloadsTheListWithoutBlankingIt() {
+        // The row that was just unmarked has left the study queue, so the summary
+        // above the list is now wrong and the route must reload. Keeping the old rows
+        // visible while it does is the difference between a checkbox and a flicker.
+        val loaded = home.withContent("results")
+
+        for (
+            action in listOf<KaniAction>(
+                KaniAction.Browse.SetStudied(kanji = "脱", studied = false),
+                KaniAction.Browse.SetAllStudied(studied = true),
+            )
+        ) {
+            val (state, intent) = RouteReducer.reduce(loaded, action)
+
+            assertEquals(RouteIntent.Load, intent, action.toString())
+            assertEquals(Loadable.Refreshing("results"), state.content, action.toString())
+            assertFalse(state.isInitialLoad, action.toString())
+        }
+    }
+
+    @Test
     fun aPortSuccessOrFailureFoldsIntoStateTheSameWayEveryTime() {
         val failure = PresentationFailure(PresentationFailure.Kind.CONFLICT)
 

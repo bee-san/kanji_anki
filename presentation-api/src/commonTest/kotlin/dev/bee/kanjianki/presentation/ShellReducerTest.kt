@@ -193,6 +193,22 @@ class ShellReducerTest {
     }
 
     @Test
+    fun changingWhichKanjiAreStudiedIsRouteContentAndNotShellState() {
+        // The study badge is recomputed from `:application`'s data on the next load. A
+        // shell that adjusted the count itself would be guessing at a number it is
+        // about to be told.
+        val state = ShellState(studyBadgeCount = 4)
+        val selections = listOf<KaniAction>(
+            KaniAction.Browse.SetStudied(kanji = "脱", studied = false),
+            KaniAction.Browse.SetAllStudied(studied = true),
+        )
+
+        for (action in selections) {
+            assertEquals(state, ShellReducer.reduce(state, action), action.toString())
+        }
+    }
+
+    @Test
     fun consumingAnEffectRemovesItFromTheShellQueue() {
         val state = ShellState(
             effects = EffectQueue().enqueue(KaniEffect.OpenUrl("https://example.invalid")),

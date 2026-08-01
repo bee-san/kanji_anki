@@ -87,4 +87,53 @@
     <string name="repaired_handoff_query">tag:kani_repaired is:suspended</string>
     <string name="repaired_handoff_copy">検索をコピー</string>
     <string name="repaired_handoff_copied">検索をコピーしました。</string>
+
+    <string name="home_title">カニ</string>
+    <string name="home_metric_sync">同期</string>
+    <string name="home_metric_streak">連続日数</string>
+    <string name="home_metric_focus">集中</string>
+    <string name="home_metric_card_description">ホームの指標カード</string>
+
+    <string name="home_sync_action">コレクションを同期</string>
+    <string name="home_study_action">今すぐ学習</string>
+    <plurals name="home_study_remaining">
+        <item quantity="other">残り%1$d件</item>
+    </plurals>
+
+    <string name="home_today_title">今日</string>
+    <string name="home_deck_overview_title">デッキ概要</string>
+
+    <string name="focus_queue_title">集中キュー</string>
+    <string name="focus_queue_view_all">すべて見る</string>
+    <string name="focus_queue_nothing_imported_title">キューに漢字がありません</string>
+    <string name="focus_queue_nothing_imported_body">コレクションを同期して漢字キューを読み込みます。</string>
+    <string name="focus_queue_nothing_active_title">学習中の漢字はまだありません</string>
+    <string name="focus_queue_nothing_active_body">今すぐ学習すると次の漢字が追加されます。</string>
+    <string name="focus_queue_card_description">%1$sの学習カード、%2$s</string>
+
+    <string name="browse_title">漢字を閲覧</string>
+    <string name="browse_search_hint">漢字、意味、読み、例文を検索</string>
+    <string name="browse_search_action">検索</string>
+    <string name="browse_similar_filter">類似漢字のみ</string>
+    <string name="browse_show_suspended">停止中を表示</string>
+    <string name="browse_result_none">該当なし</string>
+    <string name="browse_result_truncated">最初の%1$d件を表示</string>
+    <plurals name="browse_result_count">
+        <item quantity="other">%1$d件の漢字</item>
+    </plurals>
+    <string name="browse_selection_none">未選択</string>
+    <string name="browse_selection_all">すべて選択済み</string>
+    <string name="browse_selection_partial">%1$d/%2$d件を選択</string>
+    <string name="browse_select_all">すべて選択</string>
+    <string name="browse_deselect_all">すべてクリア</string>
+    <string name="browse_studied_toggle">%1$sを学習対象にする</string>
+    <string name="browse_row_description">%1$sの詳細を開く</string>
+    <string name="browse_suspended_chip">停止中</string>
+    <string name="browse_row_selected">選択済み</string>
+    <string name="browse_row_not_selected">未選択</string>
+    <string name="browse_empty_title">ローカル漢字が見つかりません</string>
+    <string name="browse_empty_body">先にコレクションを同期するか、別の検索を試してください。</string>
+
+    <string name="notice_reduced_fsrs_title">スケジューリング精度の低下</string>
+    <string name="notice_reduced_fsrs_body">このコレクションはFSRSの記憶状態を報告しないため、Kaniは各カードの間隔から推定します。最初の復習の予定が少し異なる場合があります。</string>
 </resources>

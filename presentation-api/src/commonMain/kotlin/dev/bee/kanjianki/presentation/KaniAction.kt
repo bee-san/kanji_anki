@@ -108,6 +108,33 @@ sealed interface KaniAction {
     }
 
     /**
+     * Choosing which kanji Kani practises.
+     *
+     * Kani-side queue state, not a collection write. Marking a kanji unstudied does
+     * not suspend anything in Anki and does not touch scheduling state — the same
+     * boundary [Provider] draws, restated here because Browse's checkbox sits directly
+     * beside a `SUSPENDED` chip that *is* collection state, and the two are easy to
+     * conflate from the screen alone.
+     */
+    sealed interface Browse : KaniAction {
+        /** Mark or unmark one kanji for study. */
+        data class SetStudied(val kanji: String, val studied: Boolean) : Browse {
+            init {
+                require(kanji.isNotBlank()) { "selecting nothing is not a user intent" }
+            }
+        }
+
+        /**
+         * Mark or unmark every row the current query returned.
+         *
+         * Scoped to the visible result set rather than the whole inventory, which is
+         * what Android's "Select all" did. A control that silently enrolled every kanji
+         * in the collection would be a very different button wearing the same label.
+         */
+        data class SetAllStudied(val studied: Boolean) : Browse
+    }
+
+    /**
      * The user asked to copy something to the clipboard.
      *
      * An action rather than a screen reaching for a clipboard API, because the

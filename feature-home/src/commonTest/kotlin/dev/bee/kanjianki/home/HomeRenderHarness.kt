@@ -15,6 +15,8 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Density
@@ -23,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.presentation.CollectionBinding
 import dev.bee.kanjianki.presentation.FieldMapping
 import dev.bee.kanjianki.presentation.FieldRole
+import dev.bee.kanjianki.presentation.FocusEmptyReason
+import dev.bee.kanjianki.presentation.HomeMetricKind
+import dev.bee.kanjianki.presentation.HomeNotice
 import dev.bee.kanjianki.presentation.ImportSource
 import dev.bee.kanjianki.presentation.NoteTypeOption
 import dev.bee.kanjianki.presentation.OnboardingStep
@@ -88,6 +93,53 @@ internal val FIXED_BODY_STEPS: List<OnboardingStep> = listOf(
     OnboardingStep.AUTHORIZE_PROVIDER,
     OnboardingStep.CHOOSE_SOURCE,
     OnboardingStep.RECOVER_AUTHORIZATION,
+)
+
+/**
+ * A [DashboardCopy] built from marker strings rather than the shipped wording.
+ *
+ * Same discipline as [homeCopy]: templates keep their `%n$s` so a failed substitution
+ * shows up as a literal placeholder, and every map comes from `.entries` so a new enum
+ * entry fails here rather than at the first user who reaches that state.
+ */
+internal fun dashboardCopy(): DashboardCopy = DashboardCopy(
+    title = "Kani",
+    syncAction = "Sync collection",
+    studyAction = "Study now",
+    todayTitle = "Today",
+    deckOverviewTitle = "Deck overview",
+    metricCardDescription = "metric",
+    focusQueueTitle = "Focus queue",
+    focusQueueViewAll = "View all",
+    metricLabels = HomeMetricKind.entries.associateWith { "metric-$it" },
+    emptyTitles = FocusEmptyReason.entries.associateWith { "empty-title-$it" },
+    emptyBodies = FocusEmptyReason.entries.associateWith { "empty-body-$it" },
+    noticeTitles = HomeNotice.entries.associateWith { "notice-title-$it" },
+    noticeBodies = HomeNotice.entries.associateWith { "notice-body-$it" },
+    focusCardDescriptionTemplate = "card %1\$s %2\$s",
+)
+
+/** A [BrowseCopy] built from marker strings, with every template placeholder kept. */
+internal fun browseCopy(): BrowseCopy = BrowseCopy(
+    title = "Browse Kanji",
+    searchHint = "Search",
+    searchAction = "Search now",
+    similarFilter = "Similar kanji only",
+    showSuspended = "Show suspended",
+    resultNone = "No matches",
+    selectionNone = "None selected",
+    selectionAll = "All selected",
+    selectAll = "Select all",
+    deselectAll = "Clear all",
+    suspendedChip = "SUSPENDED",
+    emptyTitle = "empty-title",
+    emptyBody = "empty-body",
+    studiedToggleTemplate = "study %1\$s",
+    rowDescriptionTemplate = "open %1\$s",
+    selectionPartialTemplate = "%1\$s of %2\$s selected",
+    resultTruncatedTemplate = "first %1\$s matches",
+    rowSelected = "selected",
+    rowNotSelected = "not selected",
 )
 
 /**
@@ -173,6 +225,23 @@ internal fun FixedWindow(
     }
 }
 
+/**
+ * Composes [content] at an accessibility font scale.
+ *
+ * Only `fontScale` changes; `density` is left alone so [FixedWindow]'s dp width still
+ * means what it says. This is how a user's system font-size setting reaches a
+ * composable, and the layouts that respond to it have no other way to be tested.
+ */
+@Composable
+internal fun ScaledFont(fontScale: Float, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalDensity provides Density(density = density.density, fontScale = fontScale),
+    ) {
+        content()
+    }
+}
+
 /** The phone window these surfaces are asserted at; the narrowest they must fit. */
 internal val HOME_WINDOW_WIDTH: Dp = 411.dp
 internal val HOME_WINDOW_HEIGHT: Dp = 891.dp
@@ -241,3 +310,15 @@ internal fun SemanticsNodeInteraction.contentDescriptionOrEmpty(): String =
 internal fun SemanticsNodeInteraction.assertIsSelectedForTest(
     selected: Boolean,
 ): SemanticsNodeInteraction = if (selected) assertIsSelected() else assertIsNotSelected()
+
+/**
+ * Asserts a toggleable node's checked state matches [checked].
+ *
+ * Distinct from [assertIsSelectedForTest] because the two are different semantics
+ * properties, and a filter checkbox carries `ToggleableState` rather than `Selected` —
+ * asserting the wrong one fails on a control that is behaving correctly. Selection is
+ * "this is the one of several you picked"; toggling is "this is on or off".
+ */
+internal fun SemanticsNodeInteraction.assertIsToggledForTest(
+    checked: Boolean,
+): SemanticsNodeInteraction = if (checked) assertIsOn() else assertIsOff()

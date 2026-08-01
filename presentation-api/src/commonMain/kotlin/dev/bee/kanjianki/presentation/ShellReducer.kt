@@ -56,6 +56,16 @@ object ShellReducer {
         KaniAction.Lifecycle.Exited,
         KaniAction.Lifecycle.Refresh,
         -> state
+
+        /**
+         * Study selection is route content, not shell state.
+         *
+         * Which kanji Kani practises changes the Browse list the user is looking at
+         * and the study badge count, and both are recomputed from `:application`'s
+         * data. A shell that adjusted the badge itself would be guessing at a number
+         * the next load would overwrite.
+         */
+        is KaniAction.Browse -> state
     }
 
     /**
@@ -229,6 +239,17 @@ object RouteReducer {
         is KaniAction.Provider -> state to null
 
         is KaniAction.Navigation -> state to null
+
+        /**
+         * A study-selection change reloads the route, keeping the list on screen.
+         *
+         * Unlike a provider action, this one has already happened by the time the
+         * route hears about it, and it changes what the current query returns — a
+         * kanji marked unstudied leaves the study queue, so the summary above the list
+         * is now wrong. [RouteState.loading] keeps the visible rows while the reload
+         * runs, so ticking a checkbox does not blank the list under the user's finger.
+         */
+        is KaniAction.Browse -> state.loading() to RouteIntent.Load
     }
 }
 

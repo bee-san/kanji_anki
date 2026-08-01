@@ -110,4 +110,119 @@ class HomeDesktopRenderTest {
     fun theTestTagsAreDistinctSoAssertionsCannotCollide() {
         assertTheTestTagsAreDistinctSoAssertionsCannotCollide()
     }
+
+    @Test
+    fun homesPrimaryActionSyncsBeforeAnythingIsImportedAndStudiesAfter() {
+        assertHomesPrimaryActionSyncsBeforeAnythingIsImportedAndStudiesAfter()
+    }
+
+    @Test
+    fun thePrimaryActionCarriesTheWaitingCountAndDisablesWhileSyncing() {
+        assertThePrimaryActionCarriesTheWaitingCountAndDisablesWhileSyncing()
+    }
+
+    @Test
+    fun everyMetricTileIsAnnouncedWithItsLabelAndFigure() {
+        assertEveryMetricTileIsAnnouncedWithItsLabelAndFigure()
+    }
+
+    @Test
+    fun onlyAMetricWithSomethingToDoIsClickable() {
+        assertOnlyAMetricWithSomethingToDoIsClickable()
+    }
+
+    @Test
+    fun metricTilesStackRatherThanTruncateAtLargeFontScales() {
+        assertMetricTilesStackRatherThanTruncateAtLargeFontScales()
+    }
+
+    @Test
+    fun theTodayCardOffersTheOneActionItsRecommendationChose() {
+        assertTheTodayCardOffersTheOneActionItsRecommendationChose()
+    }
+
+    @Test
+    fun theTodayCardIsAbsentRatherThanEmptyWhenItHasNothingToSay() {
+        assertTheTodayCardIsAbsentRatherThanEmptyWhenItHasNothingToSay()
+    }
+
+    @Test
+    fun theTodayCardIsAnnouncedAsOneSentenceInReadingOrder() {
+        assertTheTodayCardIsAnnouncedAsOneSentenceInReadingOrder()
+    }
+
+    @Test
+    fun theDeckOverviewRendersItsLinesAndVanishesWhenEmpty() {
+        assertTheDeckOverviewRendersItsLinesAndVanishesWhenEmpty()
+    }
+
+    @Test
+    fun everyHostNoticeExplainsItselfWithNoActionToTake() {
+        assertEveryHostNoticeExplainsItselfWithNoActionToTake()
+    }
+
+    @Test
+    fun aFocusCardOpensItsOwnKanjiAndIsAnnouncedAsOne() {
+        assertAFocusCardOpensItsOwnKanjiAndIsAnnouncedAsOne()
+    }
+
+    @Test
+    fun aFocusCardShowsItsSupportingLinesAndBadges() {
+        assertAFocusCardShowsItsSupportingLinesAndBadges()
+    }
+
+    @Test
+    fun anEmptyFocusQueueNamesItsOwnCauseAndHidesViewAll() {
+        assertAnEmptyFocusQueueNamesItsOwnCauseAndHidesViewAll()
+    }
+
+    @Test
+    fun viewAllOpensTheFullQueueOnlyWhenThereIsOne() {
+        assertViewAllOpensTheFullQueueOnlyWhenThereIsOne()
+    }
+
+    @Test
+    fun browseCommitsTheQueryOnSearchAndNotWhileTyping() {
+        assertBrowseCommitsTheQueryOnSearchAndNotWhileTyping()
+    }
+
+    @Test
+    fun browseFiltersOpenTheSameSearchWithTheFlagFlipped() {
+        assertBrowseFiltersOpenTheSameSearchWithTheFlagFlipped()
+    }
+
+    @Test
+    fun aBrowseRowOpensItsDetailCarryingTheSearch() {
+        assertABrowseRowOpensItsDetailCarryingTheSearch()
+    }
+
+    @Test
+    fun aBrowseRowIsAnnouncedAsOneSentenceIncludingItsState() {
+        assertABrowseRowIsAnnouncedAsOneSentenceIncludingItsState()
+    }
+
+    @Test
+    fun theStudyCheckboxIsQueueStateAndNeverASuspensionWrite() {
+        assertTheStudyCheckboxIsQueueStateAndNeverASuspensionWrite()
+    }
+
+    @Test
+    fun bothSelectionControlsAreOfferedWhateverTheSelection() {
+        assertBothSelectionControlsAreOfferedWhateverTheSelection()
+    }
+
+    @Test
+    fun browseReportsItsResultCountAndSaysWhenTheListIsCapped() {
+        assertBrowseReportsItsResultCountAndSaysWhenTheListIsCapped()
+    }
+
+    @Test
+    fun theShippedDashboardResourcesResolveOnThisHost() {
+        assertTheShippedDashboardResourcesResolveOnThisHost()
+    }
+
+    @Test
+    fun theDashboardTestTagsAreDistinctSoAssertionsCannotCollide() {
+        assertTheDashboardTestTagsAreDistinctSoAssertionsCannotCollide()
+    }
 }

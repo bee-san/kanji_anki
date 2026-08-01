@@ -12,9 +12,22 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import dev.bee.kanjianki.presentation.BrowseResults
+import dev.bee.kanjianki.presentation.BrowseRow
 import dev.bee.kanjianki.presentation.CollectionBinding
 import dev.bee.kanjianki.presentation.FieldMapping
 import dev.bee.kanjianki.presentation.FieldRole
+import dev.bee.kanjianki.presentation.FocusCard
+import dev.bee.kanjianki.presentation.FocusEmptyReason
+import dev.bee.kanjianki.presentation.FocusQueue
+import dev.bee.kanjianki.presentation.FocusTag
+import dev.bee.kanjianki.presentation.HomeAccent
+import dev.bee.kanjianki.presentation.HomeDashboard
+import dev.bee.kanjianki.presentation.HomeMetric
+import dev.bee.kanjianki.presentation.HomeMetricKind
+import dev.bee.kanjianki.presentation.HomeNotice
+import dev.bee.kanjianki.presentation.HomeRecommendation
 import dev.bee.kanjianki.presentation.HostOnboardingCopy
 import dev.bee.kanjianki.presentation.ImportSource
 import dev.bee.kanjianki.presentation.KaniAction
@@ -25,6 +38,7 @@ import dev.bee.kanjianki.presentation.OnboardingStep
 import dev.bee.kanjianki.presentation.PresentationFailure
 import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.presentation.SyncOutcome
+import dev.bee.kanjianki.presentation.TodayPlan
 import dev.bee.kanjianki.presentation.UiText
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -603,6 +617,682 @@ internal fun assertTheTestTagsAreDistinctSoAssertionsCannotCollide() {
     assertEquals("kani-field-expression", fieldRowTestTag(FieldRole.EXPRESSION))
     assertEquals("kani-note-type-Kiku", noteTypeRowTestTag("Kiku"))
 }
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertHomesPrimaryActionSyncsBeforeAnythingIsImportedAndStudiesAfter() {
+    // One button whose meaning changes, not two that swap places. The assertion is on
+    // the dispatched action rather than on the label, because the label is copy and the
+    // action is the contract: a host that rendered "Study now" and dispatched a sync
+    // would pass a text assertion.
+    val copy = dashboardCopy()
+    for (imported in listOf(false, true)) {
+        val recorded = mutableListOf<KaniAction>()
+        val home = HomeDashboard(focus = FocusQueue(hasImportedKanji = imported))
+        renderHome(
+            content = { HomePrimaryAction(home, copy, dispatch = { recorded += it }) },
+        ) {
+            onNodeWithTag(HOME_PRIMARY_TEST_TAG).assertIsDisplayed()
+            onNodeWithTag(HOME_PRIMARY_TEST_TAG).performClick()
+            assertEquals(listOf(home.primaryAction), recorded, "imported=$imported")
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertThePrimaryActionCarriesTheWaitingCountAndDisablesWhileSyncing() {
+    val copy = dashboardCopy()
+    renderHome(
+        content = {
+            HomePrimaryAction(
+                home = HomeDashboard(
+                    focus = FocusQueue(hasImportedKanji = true),
+                    studyRemainingCount = 12,
+                ),
+                copy = copy,
+                dispatch = {},
+            )
+        },
+    ) {
+        // The count is on the button because it answers "is this worth starting" — the
+        // question the user is asking as they reach for it.
+        assertTrue(
+            "12" in onNodeWithTag(HOME_PRIMARY_TEST_TAG).subtreeTextOrEmpty(),
+            "the waiting count must reach the button",
+        )
+    }
+
+    // Disabled rather than hidden, for the reason onboarding's button is: a control
+    // that vanishes mid-tap moves what is underneath it under the user's finger.
+    val recorded = mutableListOf<KaniAction>()
+    renderHome(
+        content = {
+            HomePrimaryAction(
+                home = HomeDashboard(syncing = true),
+                copy = copy,
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(HOME_PRIMARY_TEST_TAG).assertIsDisplayed()
+        onNodeWithTag(HOME_PRIMARY_TEST_TAG).assertIsNotEnabled()
+        onNodeWithTag(HOME_PRIMARY_TEST_TAG).performClick()
+        assertTrue(recorded.isEmpty(), "a sync in progress must not be restartable: $recorded")
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertEveryMetricTileIsAnnouncedWithItsLabelAndFigure() {
+    // Walked over every kind so a tile added later cannot ship without a label. The
+    // description is merged because three separate `Text`s read as three fragments.
+    val copy = dashboardCopy()
+    renderHome(
+        content = {
+            HomeMetricRow(
+                metrics = HomeMetricKind.entries.map { metricFor(it) },
+                copy = copy,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+        },
+    ) {
+        onNodeWithTag(HOME_METRIC_ROW_TEST_TAG).assertIsDisplayed()
+        for (kind in HomeMetricKind.entries) {
+            val description = onNodeWithTag(homeMetricTestTag(kind)).contentDescriptionOrEmpty()
+            assertEquals(
+                "${copy.metricCardDescription}, ${copy.metricLabel(kind)}, value-$kind, detail-$kind",
+                description,
+                "$kind was not announced as one labelled figure",
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertOnlyAMetricWithSomethingToDoIsClickable() {
+    // A tile that does nothing is not a button, and a screen reader must not promise an
+    // activation the streak tile would ignore.
+    val recorded = mutableListOf<KaniAction>()
+    val actionable = HomeMetric(
+        kind = HomeMetricKind.SYNC,
+        value = UiText.Literal("today"),
+        action = KaniAction.Provider.RequestSync,
+    )
+    val inert = HomeMetric(kind = HomeMetricKind.STREAK, value = UiText.Literal("4 days"))
+    renderHome(
+        content = {
+            HomeMetricRow(
+                metrics = listOf(actionable, inert),
+                copy = dashboardCopy(),
+                resolver = TestUiTextResolver,
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(homeMetricTestTag(HomeMetricKind.SYNC)).assertIsEnabled()
+        onNodeWithTag(homeMetricTestTag(HomeMetricKind.STREAK)).assertIsNotEnabled()
+        onNodeWithTag(homeMetricTestTag(HomeMetricKind.SYNC)).performClick()
+        onNodeWithTag(homeMetricTestTag(HomeMetricKind.STREAK)).performClick()
+        assertEquals(
+            listOf<KaniAction>(KaniAction.Provider.RequestSync),
+            recorded,
+            "only the tile with an action may act",
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertMetricTilesStackRatherThanTruncateAtLargeFontScales() {
+    // Three tiles side by side at a 1.3x font scale truncate their values, and a
+    // truncated streak count is worse than none: it reads as a smaller number. Both
+    // layouts must keep every tile present and reachable, which is what is asserted —
+    // the arrangement itself is not a semantics fact.
+    for (scale in listOf(1f, 1.5f)) {
+        renderHome(
+            content = {
+                ScaledFont(fontScale = scale) {
+                    HomeMetricRow(
+                        metrics = HomeMetricKind.entries.map { metricFor(it) },
+                        copy = dashboardCopy(),
+                        resolver = TestUiTextResolver,
+                        dispatch = {},
+                    )
+                }
+            },
+        ) {
+            for (kind in HomeMetricKind.entries) {
+                onNodeWithTag(homeMetricTestTag(kind)).assertIsDisplayed()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheTodayCardOffersTheOneActionItsRecommendationChose() {
+    // Exhaustive over the recommendations so a host cannot wire SYNC_FIRST to study.
+    // `SYNC_FIRST` asks for the confirmation rather than starting a sync, because every
+    // sync in Kani is user-confirmed.
+    val copy = dashboardCopy()
+    for (recommendation in HomeRecommendation.entries) {
+        val recorded = mutableListOf<KaniAction>()
+        val plan = TodayPlan(
+            recommendation = recommendation,
+            summary = UiText.Literal("summary-$recommendation"),
+            details = listOf(UiText.Literal("detail-$recommendation")),
+        )
+        renderHome(
+            content = {
+                HomeTodayCard(plan, copy, TestUiTextResolver, dispatch = { recorded += it })
+            },
+        ) {
+            onNodeWithTag(HOME_TODAY_TEST_TAG).assertIsDisplayed()
+            val expected = recommendation.action
+            if (expected == null) {
+                onAllNodesWithTag(HOME_TODAY_ACTION_TEST_TAG).assertCountEquals(0)
+            } else {
+                onNodeWithTag(HOME_TODAY_ACTION_TEST_TAG).performClick()
+                assertEquals(listOf(expected), recorded, "$recommendation dispatched wrongly")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheTodayCardIsAbsentRatherThanEmptyWhenItHasNothingToSay() {
+    // A titled card containing only its own title reads as content that failed to load.
+    renderHome(
+        content = {
+            HomeTodayCard(
+                plan = TodayPlan(HomeRecommendation.WAIT_UNTIL_LATER),
+                copy = dashboardCopy(),
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+        },
+    ) {
+        onAllNodesWithTag(HOME_TODAY_TEST_TAG).assertCountEquals(0)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheTodayCardIsAnnouncedAsOneSentenceInReadingOrder() {
+    val copy = dashboardCopy()
+    val plan = TodayPlan(
+        recommendation = HomeRecommendation.STUDY_NOW,
+        summary = UiText.Literal("18 cards are due"),
+        details = listOf(UiText.Literal("4 are relearning"), UiText.EMPTY),
+    )
+    renderHome(
+        content = { HomeTodayCard(plan, copy, TestUiTextResolver, dispatch = {}) },
+    ) {
+        // The blank detail is dropped rather than joined, so the sentence has no gap in
+        // the middle where a `UiText.EMPTY` used to be.
+        assertEquals(
+            "${copy.todayTitle} · 18 cards are due · 4 are relearning · ${copy.studyAction}",
+            onNodeWithTag(HOME_TODAY_TEST_TAG).contentDescriptionOrEmpty(),
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheDeckOverviewRendersItsLinesAndVanishesWhenEmpty() {
+    val copy = dashboardCopy()
+    renderHome(
+        content = {
+            HomeDeckOverview(
+                rows = listOf(UiText.Literal("Mining: 42"), UiText.EMPTY),
+                copy = copy,
+                resolver = TestUiTextResolver,
+            )
+        },
+    ) {
+        val text = onNodeWithTag(HOME_DECK_OVERVIEW_TEST_TAG).subtreeTextOrEmpty()
+        assertTrue(copy.deckOverviewTitle in text, "the section must be titled: $text")
+        assertTrue("Mining: 42" in text, "the deck line must show: $text")
+    }
+
+    // Blank lines are dropped, and a list of nothing but blanks renders nothing at all
+    // rather than a heading over empty space.
+    for (rows in listOf(emptyList(), listOf(UiText.EMPTY))) {
+        renderHome(
+            content = { HomeDeckOverview(rows, copy, TestUiTextResolver) },
+        ) {
+            onAllNodesWithTag(HOME_DECK_OVERVIEW_TEST_TAG).assertCountEquals(0)
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertEveryHostNoticeExplainsItselfWithNoActionToTake() {
+    // There is nothing for the user to do about a provider that cannot report memory
+    // state, so the card has no button — but a desktop user whose intervals differ from
+    // an Android user's deserves to know why.
+    val copy = dashboardCopy()
+    for (notice in HomeNotice.entries) {
+        renderHome(
+            content = { HomeNoticeCard(notice, copy) },
+        ) {
+            onNodeWithTag(homeNoticeTestTag(notice)).assertIsDisplayed()
+            assertEquals(
+                "${copy.noticeTitle(notice)}. ${copy.noticeBody(notice)}",
+                onNodeWithTag(homeNoticeTestTag(notice)).contentDescriptionOrEmpty(),
+                "$notice was not announced with its explanation",
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAFocusCardOpensItsOwnKanjiAndIsAnnouncedAsOne() {
+    val copy = dashboardCopy()
+    val cards = listOf(focusCard("脱", "take off"), focusCard("橋", "bridge"))
+    val recorded = mutableListOf<KaniAction>()
+    renderHome(
+        content = {
+            FocusQueuePanel(
+                queue = FocusQueue(plan = UiText.Literal("2 kanji today"), cards = cards),
+                copy = copy,
+                resolver = TestUiTextResolver,
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(FOCUS_QUEUE_TEST_TAG).assertIsDisplayed()
+        for (card in cards) {
+            assertEquals(
+                copy.focusCardDescription(card.kanji, TestUiTextResolver.resolve(card.meaning)),
+                onNodeWithTag(focusCardTestTag(card.kanji)).contentDescriptionOrEmpty(),
+                "${card.kanji} was not announced as one card",
+            )
+        }
+        // The second card, not the first: a queue that dispatched the head of the list
+        // whichever card was tapped would pass an assertion that only clicked one.
+        onNodeWithTag(focusCardTestTag("橋")).performClick()
+        assertEquals(listOf(cards[1].action), recorded, "a card must open its own kanji")
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAFocusCardShowsItsSupportingLinesAndBadges() {
+    // A card may carry any subset of the three supporting lines. Rendering an empty
+    // `Text` for a missing one leaves a gap indistinguishable from a failed load.
+    renderHome(
+        content = {
+            FocusQueuePanel(
+                queue = FocusQueue(
+                    cards = listOf(
+                        FocusCard(
+                            kanji = "脱",
+                            meaning = UiText.Literal("take off"),
+                            reasonLine = UiText.Literal("failed twice"),
+                            body = UiText.EMPTY,
+                            sourceEvidence = UiText.Literal("from 脱出"),
+                            tags = listOf(
+                                FocusTag(UiText.Literal("word reading")),
+                                FocusTag(UiText.EMPTY),
+                            ),
+                        ),
+                    ),
+                ),
+                copy = dashboardCopy(),
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+        },
+    ) {
+        val text = onNodeWithTag(focusCardTestTag("脱")).subtreeTextOrEmpty()
+        for (expected in listOf("脱", "take off", "failed twice", "from 脱出", "word reading")) {
+            assertTrue(expected in text, "the card dropped \"$expected\": $text")
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAnEmptyFocusQueueNamesItsOwnCauseAndHidesViewAll() {
+    // The assertion this whole enum exists for: a single "nothing queued" message sends
+    // half the users who see it to the wrong remedy. And "View all" leading to the same
+    // empty screen is a dead end wearing an invitation.
+    val copy = dashboardCopy()
+    val cases = mapOf(
+        FocusEmptyReason.NOTHING_IMPORTED to FocusQueue(),
+        FocusEmptyReason.NOTHING_ACTIVE to FocusQueue(hasImportedKanji = true),
+    )
+    for ((reason, queue) in cases) {
+        renderHome(
+            content = {
+                FocusQueuePanel(queue, copy, TestUiTextResolver, dispatch = {})
+            },
+        ) {
+            assertEquals(
+                "${copy.emptyTitle(reason)}. ${copy.emptyBody(reason)}",
+                onNodeWithTag(FOCUS_QUEUE_EMPTY_TEST_TAG).contentDescriptionOrEmpty(),
+                "$reason showed the other reason's copy",
+            )
+            onAllNodesWithTag(FOCUS_QUEUE_VIEW_ALL_TEST_TAG).assertCountEquals(0)
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertViewAllOpensTheFullQueueOnlyWhenThereIsOne() {
+    val recorded = mutableListOf<KaniAction>()
+    val queue = FocusQueue(cards = listOf(focusCard("脱", "take off")))
+    renderHome(
+        content = {
+            FocusQueuePanel(queue, dashboardCopy(), TestUiTextResolver, dispatch = { recorded += it })
+        },
+    ) {
+        onAllNodesWithTag(FOCUS_QUEUE_EMPTY_TEST_TAG).assertCountEquals(0)
+        onNodeWithTag(FOCUS_QUEUE_VIEW_ALL_TEST_TAG).performClick()
+        assertEquals(listOf(queue.viewAllAction), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertBrowseCommitsTheQueryOnSearchAndNotWhileTyping() {
+    // The plan's "no actions while editing text" requirement, and a correctness property
+    // rather than a preference: dispatching per keystroke would open a Browse
+    // destination per character, filling the back stack with queries nobody searched.
+    val recorded = mutableListOf<KaniAction>()
+    val results = BrowseResults.of(listOf(browseRow("脱", "take off")), onlySimilarKanji = true)
+    renderHome(
+        content = {
+            BrowseScreen(results, browseCopy(), TestUiTextResolver, dispatch = { recorded += it })
+        },
+    ) {
+        onNodeWithTag(BROWSE_QUERY_TEST_TAG).performTextInput("bri")
+        assertTrue(recorded.isEmpty(), "typing must not act: $recorded")
+        onNodeWithTag(BROWSE_SEARCH_TEST_TAG).performClick()
+        // The committed search keeps the filter the user already set; retyping a query
+        // is not a request to widen the scope again.
+        assertEquals(listOf(results.search("bri")), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertBrowseFiltersOpenTheSameSearchWithTheFlagFlipped() {
+    // Filters live in the back stack rather than in a callback, so back from a filtered
+    // list returns to the unfiltered one instead of dropping the filter with no undo.
+    val results = BrowseResults.of(listOf(browseRow("脱", "take off")), query = "off")
+    val cases = listOf(
+        BROWSE_SIMILAR_FILTER_TEST_TAG to results.withSimilarFilter(only = true),
+        BROWSE_SHOW_SUSPENDED_TEST_TAG to results.withSuspendedShown(shown = true),
+    )
+    for ((tag, expected) in cases) {
+        val recorded = mutableListOf<KaniAction>()
+        renderHome(
+            content = {
+                BrowseScreen(results, browseCopy(), TestUiTextResolver, dispatch = { recorded += it })
+            },
+        ) {
+            onNodeWithTag(tag).assertIsToggledForTest(false)
+            onNodeWithTag(tag).performClick()
+            assertEquals(listOf(expected), recorded, "$tag dispatched the wrong destination")
+        }
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertABrowseRowOpensItsDetailCarryingTheSearch() {
+    // The difference between "close this card" and "lose my search".
+    val recorded = mutableListOf<KaniAction>()
+    val rows = listOf(browseRow("脱", "take off"), browseRow("橋", "bridge"))
+    val results = BrowseResults.of(rows, query = "off", allKanjiScope = true)
+    renderHome(
+        content = {
+            BrowseScreen(results, browseCopy(), TestUiTextResolver, dispatch = { recorded += it })
+        },
+    ) {
+        onNodeWithTag(browseRowTestTag("橋")).performClick()
+        assertEquals(listOf(results.open(rows[1])), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertABrowseRowIsAnnouncedAsOneSentenceIncludingItsState() {
+    val copy = browseCopy()
+    val suspended = BrowseRow(
+        kanji = "橋",
+        meaning = UiText.Literal("bridge"),
+        readings = UiText.Literal("きょう"),
+        summary = UiText.EMPTY,
+        suspended = true,
+    )
+    val results = BrowseResults.of(listOf(suspended), showSuspended = true)
+    renderHome(
+        content = { BrowseScreen(results, copy, TestUiTextResolver, dispatch = {}) },
+    ) {
+        // The suspended chip is in the sentence because it is the collection's own state
+        // and explains why the row is not selected; the blank summary is dropped.
+        assertEquals(
+            copy.rowDescription(suspended, TestUiTextResolver),
+            onNodeWithTag(browseRowTestTag("橋")).contentDescriptionOrEmpty(),
+        )
+        assertTrue(
+            copy.suspendedChip in onNodeWithTag(browseRowTestTag("橋")).subtreeTextOrEmpty(),
+            "a suspended row must say so on screen too",
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheStudyCheckboxIsQueueStateAndNeverASuspensionWrite() {
+    // Kani never writes card queue state, suspension included. The checkbox sits beside
+    // a chip that *is* collection state, so this asserts what it dispatches: a
+    // Kani-side queue toggle for that one kanji and nothing else.
+    val recorded = mutableListOf<KaniAction>()
+    val row = browseRow("脱", "take off")
+    val results = BrowseResults.of(listOf(row))
+    renderHome(
+        content = {
+            BrowseScreen(results, browseCopy(), TestUiTextResolver, dispatch = { recorded += it })
+        },
+    ) {
+        onNodeWithTag(browseStudiedTestTag("脱")).performClick()
+        assertEquals(
+            listOf<KaniAction>(KaniAction.Browse.SetStudied(kanji = "脱", studied = false)),
+            recorded,
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertBothSelectionControlsAreOfferedWhateverTheSelection() {
+    // "Select all" on a fully-selected list is a harmless no-op, while a control that
+    // disappears at the extremes leaves the user hunting for the one they need.
+    val recorded = mutableListOf<KaniAction>()
+    val results = BrowseResults.of(listOf(browseRow("脱", "take off")))
+    renderHome(
+        content = {
+            BrowseScreen(results, browseCopy(), TestUiTextResolver, dispatch = { recorded += it })
+        },
+    ) {
+        onNodeWithTag(BROWSE_SELECT_ALL_TEST_TAG).performClick()
+        onNodeWithTag(BROWSE_DESELECT_ALL_TEST_TAG).performClick()
+        assertEquals(
+            listOf<KaniAction>(
+                KaniAction.Browse.SetAllStudied(studied = true),
+                KaniAction.Browse.SetAllStudied(studied = false),
+            ),
+            recorded,
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertBrowseReportsItsResultCountAndSaysWhenTheListIsCapped() {
+    val copy = browseCopy()
+    // One active and one suspended row, so the summary exercises the partial template
+    // rather than the "all selected" shortcut two active rows would take.
+    val rows = listOf(
+        browseRow("脱", "take off"),
+        BrowseRow(kanji = "橋", meaning = UiText.Literal("bridge"), suspended = true),
+    )
+    renderHome(
+        content = {
+            BrowseScreen(
+                results = BrowseResults.of(rows, showSuspended = true, truncated = true),
+                copy = copy,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+        },
+    ) {
+        // The capped case is its own sentence: a bare count at exactly the limit looks
+        // like a complete result set that happens to be a round number.
+        assertEquals(
+            "first 2 matches",
+            onNodeWithTag(BROWSE_RESULT_HEADING_TEST_TAG).textOrEmpty(),
+        )
+        assertEquals(
+            "1 of 2 selected",
+            onNodeWithTag(BROWSE_SELECTION_SUMMARY_TEST_TAG).textOrEmpty(),
+        )
+    }
+
+    renderHome(
+        content = {
+            BrowseScreen(BrowseResults(), copy, TestUiTextResolver, dispatch = {})
+        },
+    ) {
+        assertEquals(
+            copy.resultNone,
+            onNodeWithTag(BROWSE_RESULT_HEADING_TEST_TAG).textOrEmpty(),
+        )
+        assertEquals(
+            "${copy.emptyTitle}. ${copy.emptyBody}",
+            onNodeWithTag(BROWSE_EMPTY_TEST_TAG).contentDescriptionOrEmpty(),
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheShippedDashboardResourcesResolveOnThisHost() {
+    // The counterpart to the onboarding resource assertion: exercises this module's own
+    // Compose Multiplatform resources rather than marker strings, which is what catches
+    // a resource that loads under Skiko but not through Android's asset loader, and a
+    // plural entry missing from one locale.
+    val row = browseRow("脱", "take off")
+    renderHome(
+        content = {
+            val dashboard = rememberDashboardCopy()
+            val browse = rememberBrowseCopy()
+            HomePrimaryAction(
+                home = HomeDashboard(
+                    focus = FocusQueue(hasImportedKanji = true),
+                    studyRemainingCount = 7,
+                ),
+                copy = dashboard,
+                dispatch = {},
+            )
+            HomeMetricRow(
+                metrics = HomeMetricKind.entries.map { metricFor(it) },
+                copy = dashboard,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+            HomeTodayCard(
+                plan = TodayPlan(
+                    recommendation = HomeRecommendation.STUDY_NOW,
+                    summary = UiText.Literal("18 cards are due"),
+                ),
+                copy = dashboard,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+            HomeDeckOverview(
+                rows = listOf(UiText.Literal("Mining: 42")),
+                copy = dashboard,
+                resolver = TestUiTextResolver,
+            )
+            HomeNoticeCard(HomeNotice.REDUCED_FSRS_PRECISION, dashboard)
+            FocusQueuePanel(
+                queue = FocusQueue(cards = listOf(focusCard("脱", "take off"))),
+                copy = dashboard,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+            BrowseScreen(
+                results = BrowseResults.of(listOf(row)),
+                copy = browse,
+                resolver = TestUiTextResolver,
+                dispatch = {},
+            )
+        },
+    ) {
+        for (tag in dashboardTestTags()) {
+            onNodeWithTag(tag).assertExists()
+        }
+        // A shipped template that kept its placeholder is the failure this catches: it
+        // renders as a literal `%1$d` and no type checker would have objected.
+        for (tag in listOf(
+            HOME_PRIMARY_TEST_TAG,
+            HOME_METRIC_ROW_TEST_TAG,
+            HOME_TODAY_TEST_TAG,
+            FOCUS_QUEUE_TEST_TAG,
+            BROWSE_RESULT_HEADING_TEST_TAG,
+            BROWSE_SELECTION_SUMMARY_TEST_TAG,
+        )) {
+            val text = onNodeWithTag(tag).subtreeTextOrEmpty()
+            assertFalse("%" in text, "$tag kept a placeholder: $text")
+        }
+        assertTrue(
+            "7" in onNodeWithTag(HOME_PRIMARY_TEST_TAG).subtreeTextOrEmpty(),
+            "the shipped plural must substitute the waiting count",
+        )
+        val toggle = onNodeWithTag(browseStudiedTestTag("脱")).contentDescriptionOrEmpty()
+        assertTrue("脱" in toggle, "the shipped checkbox label must name its kanji: $toggle")
+        assertFalse("%" in toggle, "the shipped checkbox label kept a placeholder: $toggle")
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheDashboardTestTagsAreDistinctSoAssertionsCannotCollide() {
+    val tags = dashboardTestTags() +
+        HomeMetricKind.entries.map(::homeMetricTestTag) +
+        HomeNotice.entries.map(::homeNoticeTestTag) +
+        listOf("脱", "橋").flatMap {
+            listOf(focusCardTestTag(it), browseRowTestTag(it), browseStudiedTestTag(it))
+        }
+    assertEquals(tags.size, tags.distinct().size, "tags must be unique: $tags")
+    assertEquals("kani-home-metric-sync", homeMetricTestTag(HomeMetricKind.SYNC))
+    assertEquals(
+        "kani-home-notice-reduced_fsrs_precision",
+        homeNoticeTestTag(HomeNotice.REDUCED_FSRS_PRECISION),
+    )
+    assertEquals("kani-browse-row-脱", browseRowTestTag("脱"))
+}
+
+/** Every fixed dashboard and Browse tag, in one list both assertions above walk. */
+private fun dashboardTestTags(): List<String> = listOf(
+    HOME_PRIMARY_TEST_TAG,
+    HOME_METRIC_ROW_TEST_TAG,
+    HOME_TODAY_TEST_TAG,
+    HOME_TODAY_ACTION_TEST_TAG,
+    HOME_DECK_OVERVIEW_TEST_TAG,
+    FOCUS_QUEUE_TEST_TAG,
+    FOCUS_QUEUE_VIEW_ALL_TEST_TAG,
+    BROWSE_QUERY_TEST_TAG,
+    BROWSE_SEARCH_TEST_TAG,
+    BROWSE_SIMILAR_FILTER_TEST_TAG,
+    BROWSE_SHOW_SUSPENDED_TEST_TAG,
+    BROWSE_SELECT_ALL_TEST_TAG,
+    BROWSE_DESELECT_ALL_TEST_TAG,
+    BROWSE_RESULT_HEADING_TEST_TAG,
+    BROWSE_SELECTION_SUMMARY_TEST_TAG,
+)
+
+private fun metricFor(kind: HomeMetricKind): HomeMetric = HomeMetric(
+    kind = kind,
+    value = UiText.Literal("value-$kind"),
+    detail = UiText.Literal("detail-$kind"),
+    accent = HomeAccent.entries[kind.ordinal],
+)
+
+private fun focusCard(kanji: String, meaning: String): FocusCard =
+    FocusCard(kanji = kanji, meaning = UiText.Literal(meaning))
+
+private fun browseRow(kanji: String, meaning: String): BrowseRow =
+    BrowseRow(kanji = kanji, meaning = UiText.Literal(meaning))
 
 private fun planAt(
     step: OnboardingStep,

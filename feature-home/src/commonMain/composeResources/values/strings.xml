@@ -127,4 +127,78 @@
     <string name="repaired_handoff_query">tag:kani_repaired is:suspended</string>
     <string name="repaired_handoff_copy">Copy search</string>
     <string name="repaired_handoff_copied">Search copied.</string>
+
+    <!--
+      The Home dashboard. Wording carried over from `HomeTextCopy` in :core, except
+      where it named AnkiDroid: the primary action there read "Sync AnkiDroid", which
+      is wrong on a host talking to Anki over AnkiConnect, so it is "Sync collection"
+      here. The Android host keeps its own string for its own screens; this is the
+      shared surface.
+    -->
+    <string name="home_title">Kani</string>
+    <string name="home_metric_sync">Sync</string>
+    <string name="home_metric_streak">Streak</string>
+    <string name="home_metric_focus">Focus</string>
+    <string name="home_metric_card_description">Home metric card</string>
+
+    <string name="home_sync_action">Sync collection</string>
+    <string name="home_study_action">Study now</string>
+    <plurals name="home_study_remaining">
+        <item quantity="one">%1$d to study</item>
+        <item quantity="other">%1$d to study</item>
+    </plurals>
+
+    <string name="home_today_title">Today</string>
+    <string name="home_deck_overview_title">Deck overview</string>
+
+    <!--
+      The focus queue, and the two reasons it can be empty. They are separate strings
+      because the remedy differs: an empty collection needs a sync, and a full
+      collection with nothing active needs a study session.
+    -->
+    <string name="focus_queue_title">Focus queue</string>
+    <string name="focus_queue_view_all">View all</string>
+    <string name="focus_queue_nothing_imported_title">No kanji queued</string>
+    <string name="focus_queue_nothing_imported_body">Sync your collection to load your kanji queue.</string>
+    <string name="focus_queue_nothing_active_title">No active practice yet</string>
+    <string name="focus_queue_nothing_active_body">Study now adds the next kanji.</string>
+    <string name="focus_queue_card_description">Study card for %1$s, %2$s</string>
+
+    <!--
+      Browse. `browse_result_truncated` reports a capped result set rather than
+      letting the row count imply it, because a user who searched for something with
+      more matches than the cap needs to know the list is not the whole answer.
+    -->
+    <string name="browse_title">Browse Kanji</string>
+    <string name="browse_search_hint">Search kanji, meaning, reading, or examples</string>
+    <string name="browse_search_action">Search</string>
+    <string name="browse_similar_filter">Similar kanji only</string>
+    <string name="browse_show_suspended">Show suspended</string>
+    <string name="browse_result_none">No matches</string>
+    <string name="browse_result_truncated">Showing first %1$d matches</string>
+    <plurals name="browse_result_count">
+        <item quantity="one">%1$d kanji</item>
+        <item quantity="other">%1$d kanji</item>
+    </plurals>
+    <string name="browse_selection_none">None selected</string>
+    <string name="browse_selection_all">All selected</string>
+    <string name="browse_selection_partial">%1$d of %2$d selected</string>
+    <string name="browse_select_all">Select all</string>
+    <string name="browse_deselect_all">Clear all</string>
+    <string name="browse_studied_toggle">Study %1$s</string>
+    <string name="browse_row_description">Open details for %1$s</string>
+    <string name="browse_suspended_chip">SUSPENDED</string>
+    <string name="browse_row_selected">selected</string>
+    <string name="browse_row_not_selected">not selected</string>
+    <string name="browse_empty_title">No local kanji found</string>
+    <string name="browse_empty_body">Sync your collection first, or try a different search.</string>
+
+    <!--
+      A host limitation Home explains rather than hides. AnkiConnect does not
+      advertise FSRS memory state, so admission seeds maturity from the card's
+      interval instead — which changes how the first reviews are scheduled without
+      disabling anything, so saying so is the only correct response.
+    -->
+    <string name="notice_reduced_fsrs_title">Reduced scheduling precision</string>
+    <string name="notice_reduced_fsrs_body">This collection doesn\'t report FSRS memory state, so Kani estimates it from each card\'s interval. Your first reviews may be scheduled a little differently.</string>
 </resources>
