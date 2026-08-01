@@ -53,6 +53,83 @@ sealed interface KaniAction {
         data object Failure : Consume
     }
 
+    /**
+     * Asking the collection provider for something.
+     *
+     * These are the only actions in this file whose meaning differs by host, and
+     * they are here rather than in a host module because the *screen* that raises
+     * them is shared: onboarding shows one button, and which of these it dispatches
+     * is decided by [OnboardingPlan.primaryAction] from portable state. What each
+     * one then does — a runtime permission dialog on Android, opening Anki and
+     * waiting for the AnkiConnect prompt on desktop — is the host's business.
+     *
+     * Note what is absent: there is no `Provider.Tag`, `Provider.Suspend`, or
+     * anything else that would write scheduling state. Kani's supported write
+     * surface is note tags plus the additive Missing Kanji flow, and the tag write
+     * rides along inside a user-confirmed [ConfirmSync] rather than being
+     * independently dispatchable.
+     */
+    sealed interface Provider : KaniAction {
+        /**
+         * Make a collection reachable.
+         *
+         * Android sends the user to install AnkiDroid; desktop starts or focuses
+         * Anki. Both may legitimately do nothing but show instructions, because
+         * neither host can install or launch another app unilaterally.
+         */
+        data object Connect : Provider
+
+        /** Ask for read access: a runtime permission on Android, an AnkiConnect prompt on desktop. */
+        data object Authorize : Provider
+
+        /**
+         * The user asked to sync.
+         *
+         * Deliberately *not* the thing that starts a sync. It asks for the
+         * confirmation, and [ConfirmSync] is what starts one. Splitting them is what
+         * keeps the repaired-note tag write-back manual-confirm-only: there is no
+         * action a background runner could dispatch that both skips the dialog and
+         * performs the write.
+         */
+        data object RequestSync : Provider
+
+        /** The user answered the confirmation. This is the only action that starts a sync. */
+        data object ConfirmSync : Provider
+
+        /**
+         * Stop the sync in progress.
+         *
+         * Cancellation is cooperative and leaves whatever already committed
+         * committed: sync writes in batches and a cancelled run is a shorter run,
+         * not a rolled-back one. Nothing needs undoing because a partial import is
+         * a valid state that the next sync completes.
+         */
+        data object CancelSync : Provider
+    }
+
+    /**
+     * The user asked to copy something to the clipboard.
+     *
+     * An action rather than a screen reaching for a clipboard API, because the
+     * reducer owns the effect queue and this becomes a
+     * [KaniEffect.CopyToClipboard] there. That keeps the confirmation and the write
+     * in one place: a screen that copied directly would have to remember to show its
+     * own toast, and half of them would not.
+     *
+     * [text] is a plain `String` because it is data being moved, not copy being
+     * displayed — an Anki search, a diagnostic dump — and resolving it through a
+     * resource table would be wrong. [confirmation] is displayed, so it is a
+     * [UiText].
+     */
+    data class RequestCopy(
+        val text: String,
+        val confirmation: UiText = UiText.EMPTY,
+    ) : KaniAction {
+        init {
+            require(text.isNotEmpty()) { "copying nothing is not a user intent" }
+        }
+    }
+
     /** Retry the work that produced the currently visible failure. */
     data object Retry : KaniAction
 }

@@ -18,6 +18,38 @@ object ShellReducer {
         is KaniAction.Navigation.SelectTab -> state.selectTab(action.tab)
         KaniAction.Navigation.Back -> state.back()
         is KaniAction.Consume.Effect -> state.copy(effects = state.effects.consume(action.id))
+
+        /**
+         * A copy request becomes a queued effect rather than a direct clipboard write.
+         *
+         * Translating it here is what pairs the write with its confirmation: a screen
+         * that reached for the clipboard itself would have to remember to show a
+         * toast, and half of them would not. The queue also means the write survives
+         * a recomposition between the tap and the host handling it.
+         */
+        is KaniAction.RequestCopy -> state.copy(
+            effects = state.effects.enqueue(
+                KaniEffect.CopyToClipboard(
+                    text = action.text,
+                    confirmation = action.confirmation,
+                ),
+            ),
+        )
+
+        /**
+         * Provider actions do not touch shell state.
+         *
+         * They are host work — a permission dialog, launching Anki, starting a sync
+         * — and none of it changes the back stack or the selected tab. Listing them
+         * here rather than adding an `else` branch keeps this `when` exhaustive, so
+         * a future action that *does* need shell handling fails to compile until
+         * someone decides what it means.
+         */
+        KaniAction.Provider.Connect,
+        KaniAction.Provider.Authorize,
+        KaniAction.Provider.RequestSync,
+        KaniAction.Provider.ConfirmSync,
+        KaniAction.Provider.CancelSync,
         KaniAction.Consume.Failure,
         KaniAction.Retry,
         KaniAction.Lifecycle.Entered,
@@ -169,6 +201,32 @@ object RouteReducer {
         is KaniAction.Consume.Effect -> state.consumeEffect(action.id) to null
 
         KaniAction.Consume.Failure -> state.dismissFailure() to null
+
+        /**
+         * A route-level copy queues on the route rather than on the shell.
+         *
+         * Because the route is what the user is looking at: `Lifecycle.Exited` clears
+         * this queue, so a copy confirmation for a screen they navigated away from is
+         * dropped instead of surfacing over the next one.
+         */
+        is KaniAction.RequestCopy -> state.copy(
+            effects = state.effects.enqueue(
+                KaniEffect.CopyToClipboard(
+                    text = action.text,
+                    confirmation = action.confirmation,
+                ),
+            ),
+        ) to null
+
+        /**
+         * A provider action does not itself change the route's load state.
+         *
+         * A sync that finishes will reload the route, but through the host calling
+         * the content port again — not through the dispatch that asked for it.
+         * Reloading here would clear the screen the moment the user pressed Sync,
+         * before anything had actually changed.
+         */
+        is KaniAction.Provider -> state to null
 
         is KaniAction.Navigation -> state to null
     }

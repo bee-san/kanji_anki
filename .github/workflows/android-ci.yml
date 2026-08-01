@@ -163,6 +163,12 @@ jobs:
             reports: |
               feature-shell/build/reports/**
               feature-shell/build/test-results/**
+          - id: feature-home
+            label: Shared Home and onboarding (Android target)
+            tasks: ':feature-home:testAndroidHostTest :feature-home:compileAndroidDeviceTest :feature-home:lintAnalyzeAndroidHostTest'
+            reports: |
+              feature-home/build/reports/**
+              feature-home/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'

@@ -174,6 +174,35 @@ class RouteReducerTest {
     }
 
     @Test
+    fun aRouteLevelCopyQueuesOnTheRouteSoLeavingDropsIt() {
+        // On the route rather than the shell because the route is what the user is
+        // looking at: `Lifecycle.Exited` clears this queue, so a copy confirmation for
+        // a screen they navigated away from is dropped instead of surfacing over the
+        // next one.
+        val loaded = home.withContent("dashboard")
+        val (state, intent) = RouteReducer.reduce(
+            loaded,
+            KaniAction.RequestCopy(
+                text = "tag:kani_repaired is:suspended",
+                confirmation = UiText.Key("clipboard.copied"),
+            ),
+        )
+
+        assertNull(intent, "copying is not a reload")
+        assertEquals(
+            KaniEffect.CopyToClipboard(
+                text = "tag:kani_repaired is:suspended",
+                confirmation = UiText.Key("clipboard.copied"),
+            ),
+            requireNotNull(state.effects.head).effect,
+        )
+        assertEquals("dashboard", state.content.valueOrNull, "copying must not clear the screen")
+
+        val (exited, _) = RouteReducer.reduce(state, KaniAction.Lifecycle.Exited)
+        assertTrue(exited.effects.isEmpty)
+    }
+
+    @Test
     fun aPortSuccessOrFailureFoldsIntoStateTheSameWayEveryTime() {
         val failure = PresentationFailure(PresentationFailure.Kind.CONFLICT)
 

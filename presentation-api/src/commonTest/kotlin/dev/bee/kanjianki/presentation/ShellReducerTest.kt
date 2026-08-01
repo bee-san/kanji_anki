@@ -276,6 +276,46 @@ class ShellReducerTest {
     }
 
     @Test
+    fun aCopyRequestBecomesAQueuedClipboardEffectWithItsConfirmation() {
+        // Queued rather than written directly, which is what pairs the write with the
+        // confirmation: a screen reaching for the clipboard itself would have to
+        // remember its own toast, and half of them would not. The queue also means
+        // the write survives a recomposition between the tap and the host handling it.
+        val state = ShellReducer.reduce(
+            ShellState(),
+            KaniAction.RequestCopy(
+                text = "tag:kani_repaired is:suspended",
+                confirmation = UiText.Key("clipboard.copied"),
+            ),
+        )
+
+        assertEquals(
+            KaniEffect.CopyToClipboard(
+                text = "tag:kani_repaired is:suspended",
+                confirmation = UiText.Key("clipboard.copied"),
+            ),
+            requireNotNull(state.effects.head).effect,
+        )
+        // Copying is not navigation: the stack and the tab must be untouched.
+        assertEquals(ShellState().backStack, state.backStack)
+    }
+
+    @Test
+    fun aCopyRequestWithNothingToCopyIsRejectedAtConstruction() {
+        // An empty clipboard write is not a user intent, and silently queueing one
+        // would show a "copied" confirmation for a clipboard that did not change.
+        assertFailsWith<IllegalArgumentException> { KaniAction.RequestCopy(text = "") }
+    }
+
+    @Test
+    fun aCopyRequestNeedsNoConfirmationToBeValid() {
+        // Not every copy is worth a toast — a diagnostic dump the user asked for by
+        // name says enough by itself.
+        val request = KaniAction.RequestCopy(text = "kani-diagnostics")
+        assertEquals(UiText.EMPTY, request.confirmation)
+    }
+
+    @Test
     fun gatingAnActionOnAPresentCapabilityPassesItThrough() {
         val state = ShellState(
             capabilities = PlatformCapabilities.of(PlatformCapability.BACKUP_RESTORE),
