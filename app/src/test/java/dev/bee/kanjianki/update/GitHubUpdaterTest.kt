@@ -106,6 +106,19 @@ class GitHubUpdaterTest {
     }
 
     @Test
+    fun betaUpdatesInstallReleaseWithSuffixedTagAndApkVersion() {
+        LocalStore(context).use { it.saveBetaUpdatesEnabled(true) }
+        val client = InstallingBetaReleaseClient()
+
+        val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)
+
+        assertTrue(result.success)
+        assertTrue(client.requestedUrls.first().endsWith("/releases?per_page=30"))
+        assertEquals("v999.0.0-beta", client.installedVersion)
+        assertEquals(1, client.installs)
+    }
+
+    @Test
     fun checkDownloadAndInstallReportsLocalizedFailureWhenFetchingReleaseFails() {
         context.deleteDatabase("kanji_anki_simple.db")
         val updater = GitHubUpdater(context, failingTextClient(IOException("network down")))
@@ -807,6 +820,64 @@ class GitHubUpdaterTest {
             targetSdkVersion: Int,
         ) {
             installs++
+        }
+
+        override fun showPendingUpdate(version: String, message: String): Boolean = true
+    }
+
+    private inner class InstallingBetaReleaseClient : GitHubUpdater.UpdateClient {
+        private val apkBytes = "beta-apk".toByteArray(StandardCharsets.UTF_8)
+        private val signingCert = byteArrayOf(1, 2, 3, 4)
+        val requestedUrls = ArrayList<String>()
+        var installs = 0
+        var installedVersion = ""
+
+        override fun getText(url: String): String {
+            requestedUrls.add(url)
+            return if (url.endsWith("/releases?per_page=30")) {
+                """
+                [{
+                  "tag_name":"v999.0.0-beta",
+                  "prerelease":true,
+                  "assets":[
+                    {"name":"kani-android-999.0.0-beta.apk","browser_download_url":"https://example/beta.apk"},
+                    {"name":"kani-android-999.0.0-beta.apk.sha256","browser_download_url":"https://example/beta.apk.sha256"}
+                  ]
+                }]
+                """.trimIndent()
+            } else {
+                assertEquals("https://example/beta.apk.sha256", url)
+                expectedSha256(apkBytes)
+            }
+        }
+
+        override fun download(url: String, file: File) {
+            assertEquals("https://example/beta.apk", url)
+            file.writeBytes(apkBytes)
+        }
+
+        override fun inspectApk(apkFile: File): GitHubUpdater.ApkMetadata =
+            GitHubUpdater.ApkMetadata(
+                context.packageName,
+                "999.0.0-beta",
+                36,
+                currentSigners(signingCert),
+            )
+
+        override fun installedSigningCertificates(packageName: String): SigningCertificateInfo =
+            currentSigners(signingCert)
+
+        override fun canRequestPackageInstalls(): Boolean = true
+
+        override fun startPackageInstaller(
+            apkFile: File,
+            version: String,
+            source: GitHubUpdater.UpdateSource,
+            targetSdkVersion: Int,
+        ) {
+            assertEquals("v999.0.0-beta", version)
+            installs++
+            installedVersion = version
         }
 
         override fun showPendingUpdate(version: String, message: String): Boolean = true

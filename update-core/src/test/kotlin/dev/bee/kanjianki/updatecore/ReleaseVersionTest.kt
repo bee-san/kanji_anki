@@ -15,6 +15,15 @@ class ReleaseVersionTest {
     }
 
     @Test
+    fun comparesBetaVersionsUsingSemverPrereleasePrecedence() {
+        assertTrue(ReleaseVersion.isNewerSemver("0.5.11", "v0.5.12-beta"))
+        assertTrue(ReleaseVersion.isNewerSemver("0.5.12-beta", "v0.5.13-beta"))
+        assertTrue(ReleaseVersion.isNewerSemver("0.5.12-beta", "v0.5.12"))
+        assertFalse(ReleaseVersion.isNewerSemver("0.5.12-beta", "v0.5.12-beta"))
+        assertFalse(ReleaseVersion.isNewerSemver("0.5.12", "v0.5.12-beta"))
+    }
+
+    @Test
     fun invalidVersionsCompareAsNotNewer() {
         assertFalse(ReleaseVersion.isNewerSemver(null, null))
         assertFalse(ReleaseVersion.isNewerSemver("not-a-version", "also-bad"))
@@ -50,6 +59,8 @@ class ReleaseVersionTest {
         assertTrue(ReleaseVersion.isValidSemver("v0.4.204"))
         assertTrue(ReleaseVersion.isValidSemver("1.0.0"))
         assertTrue(ReleaseVersion.isValidSemver("v999999999999999999999.0.0"))
+        assertTrue(ReleaseVersion.isValidSemver("0.5.12-beta"))
+        assertTrue(ReleaseVersion.isValidSemver("v0.5.12-beta"))
     }
 
     @Test
@@ -59,6 +70,9 @@ class ReleaseVersionTest {
         assertFalse(ReleaseVersion.isValidSemver(""))
         assertFalse(ReleaseVersion.isValidSemver("not-a-version"))
         assertFalse(ReleaseVersion.isValidSemver("0.4"))
+        assertFalse(ReleaseVersion.isValidSemver("v0.5.12_beta"))
+        assertFalse(ReleaseVersion.isValidSemver("v0.5.12-alpha"))
+        assertFalse(ReleaseVersion.isValidSemver("v0.5.12-beta.1"))
         assertFalse(ReleaseVersion.isValidSemver("<!DOCTYPE html>"))
     }
 }
