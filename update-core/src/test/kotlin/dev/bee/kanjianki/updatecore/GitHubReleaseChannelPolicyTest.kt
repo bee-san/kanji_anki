@@ -22,10 +22,10 @@ class GitHubReleaseChannelPolicyTest {
 
         val release = GitHubReleaseChannelPolicy.parseRelease(
             true,
-            """[{"tag_name":"v1.2.5","prerelease":false,"assets":[]},{"tag_name":"v1.2.4","prerelease":true,"assets":[]},{"tag_name":"v1.2.3","prerelease":true,"assets":[]}]""",
+            """[{"tag_name":"v1.2.5","prerelease":false,"assets":[]},{"tag_name":"v1.2.4-beta","prerelease":true,"assets":[]},{"tag_name":"v1.2.3-beta","prerelease":true,"assets":[]}]""",
         )
 
-        assertEquals("v1.2.4", release.tagName())
+        assertEquals("v1.2.4-beta", release.tagName())
     }
 
     @Test

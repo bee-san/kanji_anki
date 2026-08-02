@@ -285,7 +285,8 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         self.assertEqual([], unconditional_uploads)
 
     def test_release_version_metadata_comes_from_the_tested_script(self) -> None:
-        self.assertIn("python3 ci/scripts/kani_version.py next-tag", self.workflow)
+        self.assertIn("python3 ci/scripts/kani_version.py next-tag --beta", self.workflow)
+        self.assertIn("python3 ci/scripts/kani_version.py validate-new-tag", self.workflow)
         self.assertIn("python3 ci/scripts/kani_version.py metadata", self.workflow)
         self.assertNotIn("* 1000000", self.workflow)
         self.assertNotIn("BASH_REMATCH", self.workflow)
@@ -300,10 +301,13 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
             self.workflow,
         )
 
-    def test_automatic_main_releases_are_prereleases_only(self) -> None:
-        self.assertIn("AUTOMATIC_PRERELEASE: ${{ github.event_name == 'workflow_run' }}", self.workflow)
-        self.assertIn('if [[ "${AUTOMATIC_PRERELEASE}" == "true" ]]; then', self.workflow)
+    def test_automatic_main_releases_use_explicit_beta_tags_and_prerelease_metadata(self) -> None:
+        self.assertIn("next-tag --beta", self.workflow)
+        self.assertIn("RELEASE_NAME: ${{ needs.metadata.outputs.release_name }}", self.workflow)
+        self.assertIn("RELEASE_IS_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}", self.workflow)
+        self.assertIn('if [[ "${RELEASE_IS_PRERELEASE}" == "true" ]]; then', self.workflow)
         self.assertIn("create_args+=(--prerelease)", self.workflow)
+        self.assertIn('--title "${RELEASE_NAME}"', self.workflow)
         self.assertNotRegex(self.workflow, r"gh release create[^\n]*--prerelease")
 
     def test_release_path_has_no_emulator_or_cross_workflow_check_polling(self) -> None:
@@ -370,7 +374,8 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
 
     def test_release_concurrency_and_job_timeouts_fail_closed(self) -> None:
         concurrency = _yaml_mapping_block(self.workflow, "concurrency", 0)
-        self.assertIn("group: android-release-", concurrency)
+        self.assertIn("group: android-release", concurrency)
+        self.assertNotIn("github.event_name", concurrency)
         self.assertIn("cancel-in-progress: false", concurrency)
         for job in ("metadata", "validate", "publish-release"):
             with self.subTest(job=job):

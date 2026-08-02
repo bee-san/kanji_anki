@@ -8,15 +8,16 @@ private const val MAJOR_MULTIPLIER = 1_000_000L
 private const val MINOR_MULTIPLIER = 1_000L
 private const val CANONICAL_COMPONENT_PATTERN = "(0|[1-9][0-9]*)"
 private val RELEASE_VERSION_PATTERN = Regex(
-    "^v?$CANONICAL_COMPONENT_PATTERN\\.$CANONICAL_COMPONENT_PATTERN\\.$CANONICAL_COMPONENT_PATTERN$",
+    "^v?$CANONICAL_COMPONENT_PATTERN\\.$CANONICAL_COMPONENT_PATTERN\\.$CANONICAL_COMPONENT_PATTERN(?:-(beta))?$",
 )
 
 data class KaniVersion(
     val major: Int,
     val minor: Int,
     val patch: Int,
+    val beta: Boolean = false,
 ) {
-    val versionName: String = "$major.$minor.$patch"
+    val versionName: String = "$major.$minor.$patch" + if (beta) "-beta" else ""
 
     val versionCode: Int = run {
         val calculated = major.toLong() * MAJOR_MULTIPLIER + minor.toLong() * MINOR_MULTIPLIER + patch
@@ -43,14 +44,15 @@ object KaniVersioning {
     /**
      * Parses the release wire format used by GitHub tags and Android metadata.
      * A leading `v` is accepted at the boundary but is never included in versionName.
+     * Automatic beta releases use the single canonical SemVer suffix `-beta`.
      */
     fun parse(value: String): KaniVersion {
         val normalized = value.trim()
         val match = RELEASE_VERSION_PATTERN.matchEntire(normalized)
             ?: throw IllegalArgumentException(
-                "Version '$value' must be MAJOR.MINOR.PATCH with an optional leading v",
+                "Version '$value' must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-beta with an optional leading v",
             )
-        val components = match.groupValues.drop(1).mapIndexed { index, component ->
+        val components = match.groupValues.slice(1..3).mapIndexed { index, component ->
             val componentName = listOf("major", "minor", "patch")[index]
             val parsed = component.toLongOrNull()
                 ?: throw IllegalArgumentException("Version $componentName component '$component' is not an integer")
@@ -59,7 +61,12 @@ object KaniVersioning {
             }
             parsed.toInt()
         }
-        return KaniVersion(components[0], components[1], components[2])
+        return KaniVersion(
+            components[0],
+            components[1],
+            components[2],
+            beta = match.groupValues[4] == "beta",
+        )
     }
 
     /**

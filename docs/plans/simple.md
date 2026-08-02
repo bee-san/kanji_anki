@@ -221,7 +221,8 @@ The update path should be boring and reliable.
 ### Simple version
 
 - Build a signed release APK.
-- Tag releases as `vMAJOR.MINOR.PATCH`.
+- Tag stable releases as `vMAJOR.MINOR.PATCH` and beta releases as
+  `vMAJOR.MINOR.PATCH-beta`.
 - Publish the APK to GitHub Releases.
 - Publish a SHA-256 checksum beside it.
 - Let the app check the latest public release, download the APK, and launch the installer flow.

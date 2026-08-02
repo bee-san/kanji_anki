@@ -42,11 +42,12 @@ assembling. `ciRelease` is the local gate, not the CI release build command.
 
 Beta releases are cut automatically: every successful `Android CI` run on a `main`
 push triggers `android-release.yml` through a `workflow_run` trigger, which
-computes the next `vMAJOR.MINOR.PATCH` patch tag, builds and verifies the
-signed APK at that CI run's commit, and publishes a GitHub prerelease (creating
-the tag at publish time). Stable users remain on GitHub's latest stable release;
-users who opt into beta builds in Kani receive the newest prerelease. The release
-path is deliberately self-contained: it
+computes the next `vMAJOR.MINOR.PATCH-beta` tag, builds an APK whose
+`versionName` and filename carry the same `-beta` suffix, verifies it at that CI
+run's commit, and publishes a GitHub prerelease (creating the tag at publish
+time). Stable users remain on GitHub's latest stable release; users who opt into
+beta builds in Kani receive the newest prerelease. Use SemVer's `-beta` form,
+never `_beta`. The release path is deliberately self-contained: it
 does not poll SonarQube/CodeQL check runs and it never runs emulator jobs.
 Those were the top causes of blocked, flaky, and multi-hour releases; SonarQube
 and CodeQL are advisory scans on `main`, and live AnkiDroid provider coverage
@@ -54,6 +55,9 @@ lives in the nightly/dispatch `android-instrumented.yml` workflow plus the
 stricter local gate below. `tools/test_release_workflows.py` locks these
 invariants in. Manual tag pushes and `workflow_dispatch` with an explicit
 `release_tag` still work for deliberate stable versions.
+Choose a stable version whose numeric core is newer than every published beta;
+do not turn `vX.Y.Z-beta` into `vX.Y.Z`, because both map to the same Android
+`versionCode`.
 
 SonarCloud and CodeQL run on pushes to `main`, and can also be run manually.
 CodeQL also has a scheduled weekly run. If you change either workflow, push it
@@ -676,8 +680,9 @@ secrets.
 
 The default path is automatic: push (or merge) to `main`, and a successful
 `Android CI` run on that push triggers `android-release.yml`, which bumps the
-patch version, builds and verifies the signed APK, and publishes the release
-with no further gating. Watch it with:
+patch version, appends the canonical `-beta` suffix to the tag, APK
+`versionName`, and asset filename, builds and verifies the signed APK, and
+publishes the prerelease with no further gating. Watch it with:
 
 ```sh
 gh run list --repo bee-san/kanji_anki --workflow android-release.yml --limit 5
@@ -685,6 +690,10 @@ gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
 ```
 
 For a deliberate (non-patch or re-cut) version, use the manual flow:
+
+Pick a numeric version newer than all existing stable and beta tags. In
+particular, publish `vX.Y.(Z+1)` or later after `vX.Y.Z-beta`; stable and beta
+variants of the same numeric core share an Android `versionCode`.
 
 1. Commit only the relevant files.
 2. Push the branch.

@@ -114,6 +114,34 @@ class UpdateArtifactValidatorTest {
         assertEquals("APK metadata verified.", result.message())
     }
 
+    @Test
+    fun packageMetadataAcceptsMatchingBetaTagAndArchiveVersion() {
+        val result = UpdateArtifactValidator.validatePackageMetadata(
+            "dev.bee.kanjianki",
+            "0.5.11",
+            "v0.5.12-beta",
+            "dev.bee.kanjianki",
+            "0.5.12-beta",
+        )
+
+        assertTrue(result.ok())
+        assertEquals("APK metadata verified.", result.message())
+    }
+
+    @Test
+    fun packageMetadataRejectsBetaTagWithStableArchiveVersion() {
+        val result = UpdateArtifactValidator.validatePackageMetadata(
+            "dev.bee.kanjianki",
+            "0.5.11",
+            "v0.5.12-beta",
+            "dev.bee.kanjianki",
+            "0.5.12",
+        )
+
+        assertFalse(result.ok())
+        assertEquals("APK version 0.5.12 does not match release v0.5.12-beta.", result.message())
+    }
+
     private fun assertInvalidExpectedChecksum(expected: String?) {
         val result = UpdateArtifactValidator.validateExpectedChecksum(expected)
 

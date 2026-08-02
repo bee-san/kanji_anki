@@ -16,6 +16,15 @@ class KaniVersioningTest {
     }
 
     @Test
+    fun parsesBetaTagAndPreservesPrereleaseVersionName() {
+        val version = KaniVersioning.parse("v0.5.12-beta")
+
+        assertEquals("0.5.12-beta", version.versionName)
+        assertEquals(5_012, version.versionCode)
+        assertTrue(version.beta)
+    }
+
+    @Test
     fun supportsAllThreeComponentsInVersionCode() {
         val version = KaniVersioning.parse("12.34.56")
 
@@ -24,7 +33,16 @@ class KaniVersioningTest {
 
     @Test
     fun rejectsMalformedVersionsAndOversizedComponents() {
-        listOf("1.2", "1.2.3.4", "release-v1.2.3", "1.-2.3", "v0.04.194").forEach { value ->
+        listOf(
+            "1.2",
+            "1.2.3.4",
+            "release-v1.2.3",
+            "1.-2.3",
+            "v0.04.194",
+            "v0.5.12_beta",
+            "v0.5.12-alpha",
+            "v0.5.12-beta.1",
+        ).forEach { value ->
             assertThrows(IllegalArgumentException::class.java) { KaniVersioning.parse(value) }
         }
         listOf("1000.0.1", "1.1000.1", "1.0.1000").forEach { value ->
@@ -54,6 +72,22 @@ class KaniVersioningTest {
         assertEquals(KaniVersionSource.RELEASE_TAG, resolved.source)
         assertEquals("0.4.193", resolved.version.versionName)
         assertEquals(4_193, resolved.version.versionCode)
+    }
+
+    @Test
+    fun betaReleaseTagAndVersionNameOverrideRemainConsistent() {
+        val resolved = KaniVersioning.resolve(
+            releaseTag = "v0.5.12-beta",
+            versionNameOverride = "0.5.12-beta",
+            versionCodeOverride = "5012",
+            latestReachableGitTag = { error("Git must not be queried for explicit release metadata") },
+            fallbackVersionName = "0.4.33",
+            fallbackVersionCode = "4033",
+        )
+
+        assertEquals(KaniVersionSource.RELEASE_TAG, resolved.source)
+        assertEquals("0.5.12-beta", resolved.version.versionName)
+        assertEquals(5_012, resolved.version.versionCode)
     }
 
     @Test
@@ -88,6 +122,22 @@ class KaniVersioningTest {
     }
 
     @Test
+    fun preservesBetaSuffixFromLatestReachableGitTag() {
+        val resolved = KaniVersioning.resolve(
+            releaseTag = null,
+            versionNameOverride = null,
+            versionCodeOverride = null,
+            latestReachableGitTag = { "v0.5.12-beta" },
+            fallbackVersionName = "0.4.33",
+            fallbackVersionCode = "4033",
+        )
+
+        assertEquals(KaniVersionSource.GIT_TAG, resolved.source)
+        assertEquals("0.5.12-beta", resolved.version.versionName)
+        assertEquals(5_012, resolved.version.versionCode)
+    }
+
+    @Test
     fun usesAndChecksCatalogFallbackOutsideGitCheckout() {
         val resolved = KaniVersioning.resolve(
             releaseTag = null,
@@ -104,6 +154,16 @@ class KaniVersioningTest {
 
     @Test
     fun rejectsConflictingNamesAndCodes() {
+        assertThrows(IllegalArgumentException::class.java) {
+            KaniVersioning.resolve(
+                releaseTag = "v0.5.12-beta",
+                versionNameOverride = "0.5.12",
+                versionCodeOverride = null,
+                latestReachableGitTag = { null },
+                fallbackVersionName = "0.4.33",
+                fallbackVersionCode = "4033",
+            )
+        }
         assertThrows(IllegalArgumentException::class.java) {
             KaniVersioning.resolve(
                 releaseTag = "v0.4.193",
