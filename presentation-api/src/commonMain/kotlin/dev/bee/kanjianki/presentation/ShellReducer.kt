@@ -64,8 +64,12 @@ object ShellReducer {
          * and the study badge count, and both are recomputed from `:application`'s
          * data. A shell that adjusted the badge itself would be guessing at a number
          * the next load would overwrite.
+         *
+         * A mnemonic save is the same shape of change one route down — persisted
+         * content the detail screen re-reads — so it too leaves the shell alone.
          */
         is KaniAction.Browse -> state
+        is KaniAction.SaveMnemonic -> state
     }
 
     /**
@@ -250,6 +254,17 @@ object RouteReducer {
          * runs, so ticking a checkbox does not blank the list under the user's finger.
          */
         is KaniAction.Browse -> state.loading() to RouteIntent.Load
+
+        /**
+         * Saving a mnemonic reloads the route, keeping the detail on screen.
+         *
+         * By the time the route hears this the note is written, and the detail's
+         * "stuck" helper text and the saved note both come from the store — so a
+         * reload is how the screen reflects what was just persisted.
+         * [RouteState.loading] keeps the visible detail while it runs, so saving does
+         * not blank the card the user is reading.
+         */
+        is KaniAction.SaveMnemonic -> state.loading() to RouteIntent.Load
     }
 }
 

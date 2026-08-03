@@ -235,4 +235,45 @@ class HomeAndroidRenderTest {
     fun theDashboardTestTagsAreDistinctSoAssertionsCannotCollide() {
         assertTheDashboardTestTagsAreDistinctSoAssertionsCannotCollide()
     }
+
+    @Test
+    fun aDetailScreenShowsEveryOptionalPanelWhenItHasThem() {
+        assertADetailScreenShowsEveryOptionalPanelWhenItHasThem()
+    }
+
+    @Test
+    fun aMissingKanjiIsAShortCardRatherThanAnEmptyDetail() {
+        assertAMissingKanjiIsAShortCardRatherThanAnEmptyDetail()
+    }
+
+    @Test
+    fun anOptionalPanelIsAbsentRatherThanEmptyWhenTheModelOmitsIt() {
+        assertAnOptionalPanelIsAbsentRatherThanEmptyWhenTheModelOmitsIt()
+    }
+
+    @Test
+    fun savingAMnemonicDispatchesTheTrimmedNoteForThisKanji() {
+        assertSavingAMnemonicDispatchesTheTrimmedNoteForThisKanji()
+    }
+
+    @Test
+    fun copyingTheAnkiSearchDispatchesTheSearchAndItsConfirmation() {
+        assertCopyingTheAnkiSearchDispatchesTheSearchAndItsConfirmation()
+    }
+
+    @Test
+    fun aNeighbourOpensItsOwnDetailKeepingTheBrowseContext() {
+        assertANeighbourOpensItsOwnDetailKeepingTheBrowseContext()
+    }
+
+    @Test
+    fun theReviewButtonIsAbsentWhenTheModelOffersNone() {
+        assertTheReviewButtonIsAbsentWhenTheModelOffersNone()
+    }
+
+    @Test
+    fun theDetailTestTagsAreDistinctSoAssertionsCannotCollide() {
+        assertTheDetailTestTagsAreDistinctSoAssertionsCannotCollide()
+    }
+
 }

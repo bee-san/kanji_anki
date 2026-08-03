@@ -196,11 +196,13 @@ class ShellReducerTest {
     fun changingWhichKanjiAreStudiedIsRouteContentAndNotShellState() {
         // The study badge is recomputed from `:application`'s data on the next load. A
         // shell that adjusted the count itself would be guessing at a number it is
-        // about to be told.
+        // about to be told. A mnemonic save is the same shape of persisted-content
+        // change one route down, so it too leaves the shell untouched.
         val state = ShellState(studyBadgeCount = 4)
         val selections = listOf<KaniAction>(
             KaniAction.Browse.SetStudied(kanji = "脱", studied = false),
             KaniAction.Browse.SetAllStudied(studied = true),
+            KaniAction.SaveMnemonic(kanji = "脱", note = "snake escaping"),
         )
 
         for (action in selections) {

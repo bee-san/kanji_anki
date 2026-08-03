@@ -207,12 +207,16 @@ class RouteReducerTest {
         // The row that was just unmarked has left the study queue, so the summary
         // above the list is now wrong and the route must reload. Keeping the old rows
         // visible while it does is the difference between a checkbox and a flicker.
+        // Saving a mnemonic reloads the same way: the detail's saved note and its
+        // "stuck" helper both come from the store, so the screen reflects the write
+        // by re-reading it, not by trusting the field it was typed into.
         val loaded = home.withContent("results")
 
         for (
             action in listOf<KaniAction>(
                 KaniAction.Browse.SetStudied(kanji = "脱", studied = false),
                 KaniAction.Browse.SetAllStudied(studied = true),
+                KaniAction.SaveMnemonic(kanji = "脱", note = "snake escaping"),
             )
         ) {
             val (state, intent) = RouteReducer.reduce(loaded, action)

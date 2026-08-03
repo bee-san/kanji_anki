@@ -157,6 +157,25 @@ sealed interface KaniAction {
         }
     }
 
+    /**
+     * The user saved a mnemonic note for a kanji.
+     *
+     * Kani-side content, not a collection write: the note lives in Kani's own
+     * store, the same boundary [Browse] and [Provider] draw. It is its own action
+     * rather than a [RequestCopy]-style effect because it changes persisted state
+     * the detail screen then re-reads — the reducer reloads the route the way it
+     * does for a [Browse] toggle, so the saved note is on screen from the store
+     * rather than from the field it was typed into.
+     *
+     * [note] is already trimmed by the editor; an empty note is a clear, which the
+     * host distinguishes when confirming.
+     */
+    data class SaveMnemonic(val kanji: String, val note: String) : KaniAction {
+        init {
+            require(kanji.isNotBlank()) { "a mnemonic is about a kanji" }
+        }
+    }
+
     /** Retry the work that produced the currently visible failure. */
     data object Retry : KaniAction
 }
