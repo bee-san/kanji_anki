@@ -68,7 +68,9 @@ import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.RouteState
+import dev.bee.kanjianki.data.desktop.DesktopBackupRestoreValidator
 import dev.bee.kanjianki.data.desktop.DesktopBackupSnapshotter
+import dev.bee.kanjianki.data.desktop.DesktopStagedRestoreApplier
 import dev.bee.kanjianki.platform.desktop.DesktopClipboardService
 import dev.bee.kanjianki.platform.desktop.DesktopFilePicker
 import dev.bee.kanjianki.platform.desktop.DesktopExternalNavigator
@@ -746,12 +748,23 @@ private fun desktopEffectHandler(
     // chosen path with DesktopFileAccess, then DesktopBackupSnapshotter writes the
     // VACUUM-INTO gzip there. The dialog is the one part that needs a display, so it is
     // the injected seam DesktopFilePicker takes.
-    val filePicker = DesktopFilePicker(container.fileAccess, ::awtSaveDialog)
+    val saveFilePicker = DesktopFilePicker(container.fileAccess, ::awtSaveDialog)
+    val openFilePicker = DesktopFilePicker(container.fileAccess, ::awtOpenDialog)
     val backupExport = DesktopBackupExport(
-        picker = filePicker,
+        picker = saveFilePicker,
         databaseFile = container.databaseFile,
         pathOf = container.fileAccess::resolve,
         snapshot = DesktopBackupSnapshotter::snapshot,
+    )
+    val backupRestore = DesktopBackupRestore(
+        picker = openFilePicker,
+        restoreDir = container.appDirectories.directories().cache,
+        profileDir = container.profileDir,
+        openInput = container.fileAccess::openInput,
+        validate = { restoreDir, sourceName, input ->
+            DesktopBackupRestoreValidator.validate(restoreDir, sourceName, input)
+        },
+        stage = DesktopStagedRestoreApplier::stage,
     )
     return object : ShellEffectHandler {
         override fun openUrl(url: String) {
@@ -768,9 +781,11 @@ private fun desktopEffectHandler(
         override fun pickFile(purpose: KaniEffect.PickFile) {
             when (purpose.purpose) {
                 KaniEffect.FilePurpose.BACKUP_EXPORT -> backupExport.run()
-                KaniEffect.FilePurpose.BACKUP_RESTORE,
-                KaniEffect.FilePurpose.MISSING_KANJI_CSV_EXPORT,
-                -> Unit
+                KaniEffect.FilePurpose.BACKUP_RESTORE -> backupRestore.run()
+                // The Missing Kanji CSV needs the Goal 183 dictionary candidates to
+                // export; until those assets land its report is empty, so a picker here
+                // would save an empty file. Stays a no-op rather than a misleading save.
+                KaniEffect.FilePurpose.MISSING_KANJI_CSV_EXPORT -> Unit
             }
         }
 
@@ -792,6 +807,19 @@ private fun desktopEffectHandler(
 private fun awtSaveDialog(request: dev.bee.kanjianki.platform.FilePickerRequest): java.nio.file.Path? {
     val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Save Kani backup", java.awt.FileDialog.SAVE)
     request.suggestedName?.let { dialog.file = it }
+    dialog.isVisible = true
+    val directory = dialog.directory ?: return null
+    val file = dialog.file ?: return null
+    return java.nio.file.Path.of(directory, file)
+}
+
+/**
+ * Shows an AWT LOAD [java.awt.FileDialog] and returns the chosen path, or null on
+ * cancel. The OPEN counterpart to [awtSaveDialog], the injected seam for restore's
+ * DesktopFilePicker.
+ */
+private fun awtOpenDialog(@Suppress("UNUSED_PARAMETER") request: dev.bee.kanjianki.platform.FilePickerRequest): java.nio.file.Path? {
+    val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Choose a Kani backup", java.awt.FileDialog.LOAD)
     dialog.isVisible = true
     val directory = dialog.directory ?: return null
     val file = dialog.file ?: return null
