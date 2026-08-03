@@ -52,6 +52,7 @@ import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PlatformCapabilities
+import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.RouteState
 import dev.bee.kanjianki.platform.desktop.DesktopClipboardService
 import dev.bee.kanjianki.platform.desktop.DesktopExternalNavigator
@@ -112,7 +113,16 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
     // continue, and undo. It is the source of truth for the Study route: its render
     // maps to the portable model the shared surface draws, so the generic per-action
     // reload does not drive Study.
-    val studyRuntime = remember(container) { StudyRuntime(container.studyUseCases) }
+    // Desktop declares no WRITING_RECOGNITION (ADR 0005): no offline Japanese
+    // recognizer has passed the quality/licensing gate, so the runtime re-routes a
+    // scheduled writing task to core recognition rather than present an ungradeable
+    // card. The capability is read from the resolved host set, not hard-coded, so a
+    // future desktop recognizer flips this without touching the runtime.
+    val writingRecognition = PlatformCapability.WRITING_RECOGNITION in
+        desktopHostCapabilities(persistsSecrets = container.persistsSecrets)
+    val studyRuntime = remember(container) {
+        StudyRuntime(container.studyUseCases, writingRecognitionAvailable = writingRecognition)
+    }
     var studyRender by remember { mutableStateOf<StudyRouteRender?>(null) }
     val host = remember(container) {
         DesktopShellHost(

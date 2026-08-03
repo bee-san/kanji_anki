@@ -8,6 +8,7 @@ import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
 import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyRatings
+import dev.bee.kanjianki.core.StudyCapabilityPolicy
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy
 import dev.bee.kanjianki.core.StudySessionSelector
 import dev.bee.kanjianki.core.StudyTaskTypes
@@ -41,12 +42,22 @@ import dev.bee.kanjianki.data.StudyQueueSnapshot
  * - **Only APPLIED advances state.** Feedback reaches APPLIED only when the commit
  *   landed; a duplicate or stale commit leaves the card retryable.
  */
-class StudyRuntime(private val useCases: StudyUseCases) {
+class StudyRuntime(
+    private val useCases: StudyUseCases,
+    /**
+     * Whether this host can recognize handwriting (ML Kit on Android; absent on
+     * desktop GA per ADR 0005). When false, a selected writing task is re-routed to
+     * core recognition by [StudyCapabilityPolicy] before it is ever presented — the
+     * card stays studyable, so a writing-only due card is not selected-then-skipped.
+     */
+    private val writingRecognitionAvailable: Boolean = true,
+) {
     private val selector = StudySessionSelector()
     private val meaningKanjiPlanner = MeaningKanjiChoicePlanner()
     private var phase: StudySessionPhase = StudySessionPhase.IDLE
     private var session: RecordsSchedulerModels.StudySession? = null
     private var choicePrompt: StudyChoicePrompt? = null
+    private var selectionTrace: String? = null
     private var feedback: StudyAnswerFeedbackState? = null
     private var lastApplied: AppliedReviewSnapshot? = null
     private var completedCount: Int = 0
@@ -58,6 +69,7 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         routeSnapshot = snapshot(),
         undoable = lastApplied != null,
         choicePrompt = choicePrompt,
+        selectionTrace = selectionTrace,
     )
 
     /**
@@ -185,7 +197,13 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         return render()
     }
 
-    private suspend fun mount(next: RecordsSchedulerModels.StudySession?, nowMillis: Long) {
+    private suspend fun mount(selected: RecordsSchedulerModels.StudySession?, nowMillis: Long) {
+        // Re-route a writing task off an incapable host before anything observes the
+        // session — the token, feedback, and choice prompt must all belong to the task
+        // actually presented, not the writing task that was filtered out.
+        val routed = StudyCapabilityPolicy.reroute(selected, writingRecognitionAvailable)
+        val next = routed.session
+        selectionTrace = routed.traceReason
         session = next
         choicePrompt = next?.let { buildChoicePrompt(it, nowMillis) }
         feedback = next?.let { StudyAnswerFeedbackState(it.token) }
@@ -288,6 +306,14 @@ data class StudyRouteRender(
     val routeSnapshot: StudyRouteSnapshot,
     val undoable: Boolean,
     val choicePrompt: StudyChoicePrompt? = null,
+    /**
+     * The non-review selection trace, when the runtime re-routed the card.
+     *
+     * [StudyCapabilityPolicy.WRITE_UNAVAILABLE_TRACE] when a writing task was filtered
+     * off an incapable host; null otherwise. Carried so a host or a test can prove the
+     * routing happened without the writing task ever being presented.
+     */
+    val selectionTrace: String? = null,
 )
 
 /**

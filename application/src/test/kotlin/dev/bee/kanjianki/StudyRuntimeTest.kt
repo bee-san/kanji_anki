@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.ReviewCommitResult
 import dev.bee.kanjianki.data.ReviewTokenStatus
@@ -171,6 +172,54 @@ class StudyRuntimeTest {
     }
 
     @Test
+    fun aWritingCardIsReroutedOffAHostWithoutRecognitionAndNeverPresentsWriting() = runTest {
+        // ADR 0005: with no recognizer, the writing task is filtered to core
+        // recognition before it is presented, the trace records why, and no review is
+        // committed for unavailability — the card stays studyable.
+        val store = InMemoryStudyStore(items = listOf(writingItem("脱")))
+        val runtime = StudyRuntime(StudyUseCases(store.repository), writingRecognitionAvailable = false)
+
+        val loaded = runtime.load(NOW)
+
+        assertNotNull(loaded.session)
+        assertFalse("a re-routed card is not a writing card", loaded.session?.writingRequired == true)
+        assertEquals(StudyTaskTypes.KANJI_MEANING, loaded.session?.taskType)
+        assertEquals(
+            dev.bee.kanjianki.core.StudyCapabilityPolicy.WRITE_UNAVAILABLE_TRACE,
+            loaded.selectionTrace,
+        )
+        assertEquals("no review is committed for unavailability", 0, store.reviewLog.size)
+    }
+
+    @Test
+    fun theSameWritingCardStaysAWritingCardOnACapableHost() = runTest {
+        // The Android-unchanged case: with recognition present, the writing task is
+        // presented as-is and there is no re-route trace.
+        val store = InMemoryStudyStore(items = listOf(writingItem("脱")))
+        val runtime = StudyRuntime(StudyUseCases(store.repository), writingRecognitionAvailable = true)
+
+        val loaded = runtime.load(NOW)
+
+        assertEquals(StudyTaskTypes.WRITE_KANJI, loaded.session?.taskType)
+        assertTrue(loaded.session?.writingRequired == true)
+        assertNull(loaded.selectionTrace)
+    }
+
+    @Test
+    fun aReroutedCardCanStillBeGradedThroughTheCoreTask() = runTest {
+        // The re-routed card is a real, gradeable recognition card — the point of
+        // routing rather than skipping: the user still makes progress.
+        val store = InMemoryStudyStore(items = listOf(writingItem("脱")))
+        val runtime = StudyRuntime(StudyUseCases(store.repository), writingRecognitionAvailable = false)
+        runtime.load(NOW)
+
+        val graded = runtime.grade("good", NOW)
+
+        assertEquals(StudyAnswerFeedbackPhase.APPLIED, graded.routeSnapshot.feedback?.phase)
+        assertEquals(1, store.reviewLog.size)
+    }
+
+    @Test
     fun anEmptyQueueLoadsToNoCard() = runTest {
         val store = InMemoryStudyStore(items = emptyList())
         val runtime = StudyRuntime(StudyUseCases(store.repository))
@@ -184,6 +233,8 @@ class StudyRuntimeTest {
     private fun dueItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.KANJI_MEANING)
 
     private fun meaningKanjiItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.MEANING_KANJI)
+
+    private fun writingItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.WRITE_KANJI)
 
     private fun itemOnRung(kanji: String, rung: RecordsBase.LadderRung) = RecordsStudyModels.StudyItem(
         kanji,

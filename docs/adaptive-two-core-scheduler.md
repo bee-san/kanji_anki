@@ -137,6 +137,27 @@ The legacy `similar_kanji_repair_queue` is retained only to drain existing rows
 for one compatibility release. No new row is enqueued; new repair state lives
 on the owning `study_items` row.
 
+## Handwriting platform capability (ADR 0005)
+
+A host that cannot recognize handwriting — desktop GA, which declares no
+`WRITING_RECOGNITION` because no offline Japanese recognizer has passed the
+quality/licensing gate — must not present an ungradeable `write_kanji` task.
+`StudyCapabilityPolicy` (pure, in `:core`) filters a writing task **before** it
+is presented and re-routes the selected item to its core recognition
+revalidation (`kanji_meaning`), recording `write_kanji_unavailable_on_platform`
+in the non-review selection trace.
+
+The re-route is presentation-only and load-bearing in what it does *not* do: it
+does not mark writing passed, mutate stored repair order/enablement, mint a
+review or timeline token, change scheduler state, increment `writingLevel`, or
+discard the failure cause. The item stays selected and studyable, so a
+writing-only due card is routed once — never selected-then-skipped in a loop —
+and reloading the same state and capability chooses the same non-writing task.
+Because nothing is persisted, restoring the same portable state on a capable
+Android install makes the writing repair available again. Android, which
+declares `WRITING_RECOGNITION`, is unaffected: the policy passes every session
+through unchanged, so its golden timelines and selection traces are identical.
+
 ## Settings and analytics
 
 Settings present:
