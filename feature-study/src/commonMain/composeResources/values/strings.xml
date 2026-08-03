@@ -1,0 +1,42 @@
+<resources>
+    <!--
+      Study session copy, resolved by Compose Multiplatform resources rather than by
+      each host. The task-specific wording (what each card asks, the rung labels, the
+      feedback lines) is computed in :core's StudyTaskCopy/StudyTextCopy and reaches
+      the surface as pre-resolved UiText on the portable model, exactly as Home's
+      does — so only the structural labels the session shell adds itself live here.
+
+      Pass/Fail are the two study grades the UI exposes; the core wire format stays
+      good/again, translated at the host boundary. The write_kanji rung's one
+      documented exception (a CLOSE ink attempt labelled "Save hard", submitting
+      hard) is carried on the model, not worded here.
+    -->
+
+    <!-- The session progress line: "N of M". -->
+    <string name="study_progress">%1$d of %2$d</string>
+
+    <!-- The two grades the study UI exposes. -->
+    <string name="study_pass">Pass</string>
+    <string name="study_fail">Fail</string>
+
+    <!-- The primary action that advances past a graded card. -->
+    <string name="study_continue">Continue</string>
+
+    <!-- Reveal the answer on a self-graded card. -->
+    <string name="study_reveal">Show answer</string>
+
+    <!-- The typed-answer submit action. -->
+    <string name="study_submit">Submit</string>
+
+    <!-- Undo the last graded card, where undo is supported. -->
+    <string name="study_undo">Undo</string>
+
+    <!-- The done screen, shown when the session's target is met. -->
+    <string name="study_done_title">Session complete</string>
+    <string name="study_done_body">You have finished this study session.</string>
+    <string name="study_done_home">Back to home</string>
+
+    <!-- The empty screen, shown when nothing is due to study. -->
+    <string name="study_empty_title">Nothing to study</string>
+    <string name="study_empty_body">There is no card due right now.</string>
+</resources>

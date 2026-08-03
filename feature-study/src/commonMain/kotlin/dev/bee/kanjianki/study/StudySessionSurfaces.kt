@@ -1,0 +1,212 @@
+package dev.bee.kanjianki.study
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KaniDestination
+import dev.bee.kanjianki.presentation.StudySession
+import dev.bee.kanjianki.presentation.StudySessionState
+import dev.bee.kanjianki.presentation.UiTextResolver
+import dev.bee.kanjianki.ui.KaniTheme
+import dev.bee.kanjianki.ui.KaniUiTokens
+
+const val STUDY_SESSION_TEST_TAG: String = "kani-study-session"
+const val STUDY_PROGRESS_TEST_TAG: String = "kani-study-progress"
+const val STUDY_LOADING_TEST_TAG: String = "kani-study-loading"
+const val STUDY_DONE_TEST_TAG: String = "kani-study-done"
+const val STUDY_DONE_HOME_TEST_TAG: String = "kani-study-done-home"
+const val STUDY_EMPTY_TEST_TAG: String = "kani-study-empty"
+const val STUDY_UNDO_TEST_TAG: String = "kani-study-undo"
+
+/**
+ * A whole study session, from one [StudySession].
+ *
+ * One entry point per host, branching on [StudySession.state]: a spinner before the
+ * first card, the card and its progress while studying, the done screen when the
+ * target is met, the empty screen when nothing was due, and — because a load can fail
+ * — nothing here for [StudySessionState.ERROR], which the shell's own failure surface
+ * already covers above this. The card branch is [StudyCardSurface], which picks the
+ * variant.
+ *
+ * The scheduler decides which state this is; the surface only lays it out. That is
+ * the checkable form of "both hosts run the same session": each host maps its
+ * authoritative snapshot to this and calls this one composable.
+ */
+@Composable
+fun StudySessionScreen(
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(STUDY_SESSION_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        when (session.state) {
+            StudySessionState.LOADING -> StudyLoading()
+            StudySessionState.CARD -> {
+                StudyProgressBar(session, copy)
+                session.card?.let { card ->
+                    StudyCardSurface(card, session, copy, resolver, dispatch)
+                }
+                if (session.undoable) {
+                    StudyUndoRow(copy, dispatch)
+                }
+            }
+            StudySessionState.DONE -> StudyDone(copy, dispatch)
+            StudySessionState.EMPTY -> StudyEmpty(copy)
+            // The shell draws the retryable failure above this; a second banner here
+            // would be the double error state the shared failure surface exists to
+            // prevent.
+            StudySessionState.ERROR -> Unit
+        }
+    }
+}
+
+@Composable
+private fun StudyProgressBar(session: StudySession, copy: StudyCopy) {
+    val target = session.progress.displayedTarget
+    val label = copy.progress(session.progress.completed, target)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_PROGRESS_TEST_TAG)
+            .semantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = label,
+            color = KaniTheme.colors.muted,
+            fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
+        )
+        // Determinate: unlike a sync, a study session knows its target up front, so a
+        // bar that fills toward it is honest.
+        LinearProgressIndicator(
+            progress = { if (target == 0) 0f else session.progress.completed.toFloat() / target },
+            modifier = Modifier.fillMaxWidth(),
+            color = KaniTheme.colors.primary,
+            trackColor = KaniTheme.colors.track,
+        )
+    }
+}
+
+@Composable
+private fun StudyUndoRow(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        TextButton(
+            onClick = { dispatch(KaniAction.Study.Undo) },
+            modifier = Modifier.testTag(STUDY_UNDO_TEST_TAG),
+            shape = KaniUiTokens.ButtonShape,
+        ) {
+            Text(text = copy.undo)
+        }
+    }
+}
+
+@Composable
+private fun StudyLoading() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_LOADING_TEST_TAG)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panelSoft,
+    ) {
+        LinearProgressIndicator(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            color = KaniTheme.colors.primary,
+            trackColor = KaniTheme.colors.track,
+        )
+    }
+}
+
+@Composable
+private fun StudyDone(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_DONE_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = copy.doneTitle,
+                modifier = Modifier.semantics { heading() },
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = copy.doneBody,
+                color = KaniTheme.colors.muted,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+            )
+            Button(
+                onClick = { dispatch(KaniAction.Navigation.Open(KaniDestination.Home)) },
+                modifier = Modifier.testTag(STUDY_DONE_HOME_TEST_TAG),
+                shape = KaniUiTokens.ButtonShape,
+            ) {
+                Text(text = copy.doneHome)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudyEmpty(copy: StudyCopy) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_EMPTY_TEST_TAG)
+            .semantics { contentDescription = "${copy.emptyTitle}. ${copy.emptyBody}" },
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panelSoft,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = copy.emptyTitle,
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = copy.emptyBody,
+                color = KaniTheme.colors.muted,
+                fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
+            )
+        }
+    }
+}

@@ -14,6 +14,10 @@ kotlin {
             // its route callback hands a host the copy types they take, so a
             // host cannot supply a Home screen without seeing this module.
             api(project(":feature-home"))
+            // `api` for the same reason as `:feature-home`: from Goal 195 the shell
+            // aggregates Study's surfaces too, so a host composing the Study route
+            // sees this module through the shell rather than depending on it directly.
+            api(project(":feature-study"))
         }
     }
 }

@@ -228,6 +228,39 @@ class RouteReducerTest {
     }
 
     @Test
+    fun gradingContinuingOrUndoingReloadsTheCardWithoutBlankingIt() {
+        // Each has changed the session by the time the route hears it, and the next
+        // card comes from re-reading the snapshot. Keeping the answered card visible
+        // while the reload runs is the difference between grading and a flicker.
+        val loaded = home.withContent("card")
+
+        for (
+            action in listOf<KaniAction>(
+                KaniAction.Study.Grade(rating = "good"),
+                KaniAction.Study.Continue,
+                KaniAction.Study.Undo,
+            )
+        ) {
+            val (state, intent) = RouteReducer.reduce(loaded, action)
+
+            assertEquals(RouteIntent.Load, intent, action.toString())
+            assertEquals(Loadable.Refreshing("card"), state.content, action.toString())
+        }
+    }
+
+    @Test
+    fun revealingACardsAnswerDoesNotReloadTheRoute() {
+        // Reveal turns over an answer the surface already holds, so nothing the host
+        // must reload has changed — reloading would fetch the same card and flicker.
+        val loaded = home.withContent("card")
+
+        val (state, intent) = RouteReducer.reduce(loaded, KaniAction.Study.Reveal)
+
+        assertNull(intent)
+        assertEquals(Loadable.Loaded("card"), state.content)
+    }
+
+    @Test
     fun aPortSuccessOrFailureFoldsIntoStateTheSameWayEveryTime() {
         val failure = PresentationFailure(PresentationFailure.Kind.CONFLICT)
 

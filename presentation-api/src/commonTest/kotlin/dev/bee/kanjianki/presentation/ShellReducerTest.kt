@@ -211,6 +211,24 @@ class ShellReducerTest {
     }
 
     @Test
+    fun gradingACardIsRouteContentAndLeavesTheShellAndItsBadgeAlone() {
+        // Which card is next and how many remain both come from `:application`'s
+        // snapshot on the reload the route asks for; a shell that moved the badge
+        // itself would guess at a number it is about to be told.
+        val state = ShellState(studyBadgeCount = 4)
+        val studyActions = listOf<KaniAction>(
+            KaniAction.Study.Grade(rating = "good"),
+            KaniAction.Study.Reveal,
+            KaniAction.Study.Continue,
+            KaniAction.Study.Undo,
+        )
+
+        for (action in studyActions) {
+            assertEquals(state, ShellReducer.reduce(state, action), action.toString())
+        }
+    }
+
+    @Test
     fun consumingAnEffectRemovesItFromTheShellQueue() {
         val state = ShellState(
             effects = EffectQueue().enqueue(KaniEffect.OpenUrl("https://example.invalid")),

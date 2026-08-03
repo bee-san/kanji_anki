@@ -83,6 +83,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "ui-common",
         "feature-shell",
         "feature-home",
+        "feature-study",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -134,8 +135,11 @@ CURRENT_PROJECT_DEPENDENCIES = {
     # The Android host still renders MainActivityBase's screens until Goal 200,
     # and the remaining leaf features have no shared screens yet, so the rest of
     # the aggregator edges stay in FINAL_PROJECT_DEPENDENCIES.
-    "feature-shell": frozenset({"presentation-api", "ui-common", "feature-home"}),
+    "feature-shell": frozenset(
+        {"presentation-api", "ui-common", "feature-home", "feature-study"},
+    ),
     "feature-home": frozenset({"presentation-api", "ui-common"}),
+    "feature-study": frozenset({"presentation-api", "ui-common"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},

@@ -70,6 +70,17 @@ object ShellReducer {
          */
         is KaniAction.Browse -> state
         is KaniAction.SaveMnemonic -> state
+
+        /**
+         * Study grading is route content, not shell state.
+         *
+         * A grade advances the session and moves the study badge count, both
+         * recomputed from `:application`'s snapshot on the next load. The shell must
+         * not guess at either: which card is next is the scheduler's call, and a badge
+         * the shell adjusted itself would be overwritten by the reload the route asks
+         * for. Listing the cases keeps the `when` exhaustive.
+         */
+        is KaniAction.Study -> state
     }
 
     /**
@@ -265,6 +276,22 @@ object RouteReducer {
          * not blank the card the user is reading.
          */
         is KaniAction.SaveMnemonic -> state.loading() to RouteIntent.Load
+
+        /**
+         * A study grade, continue, or undo reloads the route, keeping the card up.
+         *
+         * Each has already changed the session by the time the route hears it — a
+         * grade committed a review, Continue advanced the gate, Undo reversed the last
+         * card — and the next card comes from re-reading `:application`'s snapshot.
+         * [RouteState.loading] keeps the answered card visible while the reload runs,
+         * so grading does not blank the screen between cards.
+         *
+         * [KaniAction.Study.Reveal] is the exception: it turns over a self-graded
+         * card's answer, which the surface already holds, so it changes nothing the
+         * host must reload and is left as-is.
+         */
+        KaniAction.Study.Reveal -> state to null
+        is KaniAction.Study -> state.loading() to RouteIntent.Load
     }
 }
 

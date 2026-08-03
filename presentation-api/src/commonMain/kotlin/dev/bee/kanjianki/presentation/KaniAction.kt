@@ -158,6 +158,45 @@ sealed interface KaniAction {
     }
 
     /**
+     * Grading, revealing, and advancing a study card.
+     *
+     * The user-facing intents of a study session. Like [Browse], these are Kani-side —
+     * a grade is a review in Kani's own scheduler, never a write to the collection.
+     * What a [Grade]'s rating *means* — which interval, which rung move — is
+     * `:application`'s to decide; the reducer only records that the card was graded and
+     * lets the host perform the review, exactly as it does for a provider action. A
+     * reducer that scheduled from a rating would be a second scheduler.
+     *
+     * The guarded desktop controls dispatch these, and the reducer's idempotence is
+     * what makes a key-repeat or a double-click safe: a second [Grade] on an
+     * already-answered card is dropped by the session's own `acceptsGrade` gate before
+     * it reaches here.
+     */
+    sealed interface Study : KaniAction {
+        /**
+         * Submit a grade for the visible card.
+         *
+         * [rating] is a scheduler wire name (`good`/`again`/`hard`/`easy`). The UI's
+         * Pass/Fail map to `good`/`again` at the boundary that built the action, not
+         * here — the reducer treats the string as opaque.
+         */
+        data class Grade(val rating: String) : Study {
+            init {
+                require(rating.isNotBlank()) { "a grade needs a rating" }
+            }
+        }
+
+        /** Reveal a self-graded card's answer before grading it. */
+        data object Reveal : Study
+
+        /** Advance past the one-card feedback gate to the next card. */
+        data object Continue : Study
+
+        /** Reverse the last committed card, where the host reports one it can undo. */
+        data object Undo : Study
+    }
+
+    /**
      * The user saved a mnemonic note for a kanji.
      *
      * Kani-side content, not a collection write: the note lives in Kani's own

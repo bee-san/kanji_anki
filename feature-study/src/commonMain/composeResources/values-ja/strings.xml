@@ -1,0 +1,20 @@
+<resources>
+    <!--
+      Japanese study session copy, carried over from :core's StudyTextCopy so the
+      Android host's Japanese behavior is unchanged. Task-specific wording reaches the
+      surface as pre-resolved UiText; only the session shell's own labels are here.
+    -->
+
+    <string name="study_progress">%2$d 問中 %1$d 問目</string>
+    <string name="study_pass">正解</string>
+    <string name="study_fail">不正解</string>
+    <string name="study_continue">続ける</string>
+    <string name="study_reveal">答えを表示</string>
+    <string name="study_submit">送信</string>
+    <string name="study_undo">元に戻す</string>
+    <string name="study_done_title">セッション完了</string>
+    <string name="study_done_body">この学習セッションを終えました。</string>
+    <string name="study_done_home">ホームに戻る</string>
+    <string name="study_empty_title">学習する項目がありません</string>
+    <string name="study_empty_body">今すぐ復習するカードはありません。</string>
+</resources>

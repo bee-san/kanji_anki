@@ -1,0 +1,368 @@
+package dev.bee.kanjianki.study
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.StudyAnswerDetails
+import dev.bee.kanjianki.presentation.StudyCard
+import dev.bee.kanjianki.presentation.StudyChoice
+import dev.bee.kanjianki.presentation.StudyFeedbackPhase
+import dev.bee.kanjianki.presentation.StudyGradeAction
+import dev.bee.kanjianki.presentation.StudyOutcome
+import dev.bee.kanjianki.presentation.StudySession
+import dev.bee.kanjianki.presentation.UiText
+import dev.bee.kanjianki.presentation.UiTextResolver
+import dev.bee.kanjianki.ui.KaniTheme
+import dev.bee.kanjianki.ui.KaniUiTokens
+
+const val STUDY_CARD_TEST_TAG: String = "kani-study-card"
+const val STUDY_REVEAL_TEST_TAG: String = "kani-study-reveal"
+const val STUDY_PASS_TEST_TAG: String = "kani-study-pass"
+const val STUDY_FAIL_TEST_TAG: String = "kani-study-fail"
+const val STUDY_SAVE_HARD_TEST_TAG: String = "kani-study-save-hard"
+const val STUDY_CONTINUE_TEST_TAG: String = "kani-study-continue"
+const val STUDY_ANSWER_TEST_TAG: String = "kani-study-answer"
+const val STUDY_ANSWER_DETAILS_TEST_TAG: String = "kani-study-answer-details"
+const val STUDY_TYPING_INPUT_TEST_TAG: String = "kani-study-typing-input"
+const val STUDY_TYPING_SUBMIT_TEST_TAG: String = "kani-study-typing-submit"
+
+/** One choice on a multiple-choice card, tagged by its value. */
+fun studyChoiceTestTag(value: String): String = "kani-study-choice-$value"
+
+/**
+ * The active card, dispatched by variant.
+ *
+ * Every branch is one card type Android chose by branching on `session.taskType`.
+ * The feedback and continue handling is shared here rather than in each card, because
+ * the one-card gate — an answered card stays up until one Continue — is the same for
+ * every variant and is what stops a double-commit between cards.
+ */
+@Composable
+internal fun StudyCardSurface(
+    card: StudyCard,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(STUDY_CARD_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        when (card) {
+            is StudyCard.Flashcard -> FlashcardCard(card, session, copy, resolver, dispatch)
+            is StudyCard.Typed -> TypedCard(card, session, copy, resolver, dispatch)
+            is StudyCard.Choice -> ChoiceCard(card, session, copy, resolver, dispatch)
+            is StudyCard.Writing -> WritingCard(card, session, copy, resolver, dispatch)
+        }
+        if (session.acceptsContinue) {
+            ContinueButton(copy, dispatch)
+        }
+    }
+}
+
+@Composable
+private fun FlashcardCard(
+    card: StudyCard.Flashcard,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    // Revealed once graded, or when the user asks — reveal is local UI state the
+    // reducer deliberately does not reload for, so it lives here.
+    var revealed by remember(card.subject) { mutableStateOf(false) }
+    val showAnswer = revealed || session.feedback.visible
+    CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = card.emphasizeSubjectInPrompt)
+    if (showAnswer) {
+        AnswerBlock(card.answer, card.details, resolver)
+        PassFailRow(card.pass, card.fail, saveHard = null, session, copy, resolver, dispatch)
+    } else {
+        Button(
+            onClick = { revealed = true; dispatch(KaniAction.Study.Reveal) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_REVEAL_TEST_TAG),
+            shape = KaniUiTokens.ButtonShape,
+        ) {
+            Text(text = copy.reveal, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun TypedCard(
+    card: StudyCard.Typed,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    var input by remember(card.subject) { mutableStateOf("") }
+    val label = resolver.resolve(card.inputLabel)
+    CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
+    if (session.feedback.visible) {
+        AnswerBlock(card.answer, card.details, resolver)
+    } else {
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(STUDY_TYPING_INPUT_TEST_TAG)
+                .semantics { if (label.isNotBlank()) contentDescription = label },
+            label = { if (label.isNotBlank()) Text(label) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { submitIfAccepted(session, card.submit, dispatch) }),
+        )
+        Button(
+            onClick = { submitIfAccepted(session, card.submit, dispatch) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_TYPING_SUBMIT_TEST_TAG),
+            shape = KaniUiTokens.ButtonShape,
+        ) {
+            Text(text = copy.submit, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ChoiceCard(
+    card: StudyCard.Choice,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
+    for (choice in card.choices) {
+        ChoiceButton(choice, card.correct, session, resolver, dispatch)
+    }
+    if (session.feedback.visible) {
+        AnswerBlock(UiText.EMPTY, card.details, resolver)
+    }
+}
+
+@Composable
+private fun WritingCard(
+    card: StudyCard.Writing,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    // The ink surface is Goal 196's; this is the prompt and the grades the writing
+    // rung offers. Pass/Fail only, plus the "Save hard" exception when the model
+    // carries it — Hard and Easy are never user-selectable here.
+    CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
+    PassFailRow(card.pass, card.fail, card.saveHard, session, copy, resolver, dispatch)
+}
+
+@Composable
+private fun CardHero(prompt: UiText, resolver: UiTextResolver, emphasizeSubject: Boolean) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = HERO_MIN_HEIGHT),
+        shape = KaniUiTokens.StudyShapeLarge,
+        color = KaniTheme.colors.panelSoft,
+    ) {
+        Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = resolver.resolve(prompt),
+                color = KaniTheme.colors.ink,
+                // A mined sentence front is small; a single-glyph prompt is the hero.
+                fontSize = if (emphasizeSubject) {
+                    KaniUiTokens.StudyQuestionTextSizeSp.sp
+                } else {
+                    KaniUiTokens.StudyHeroTextSizeSp.sp
+                },
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnswerBlock(answer: UiText, details: StudyAnswerDetails?, resolver: UiTextResolver) {
+    val answerText = resolver.resolve(answer)
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(STUDY_ANSWER_TEST_TAG),
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panel,
+        border = BorderStroke(1.dp, KaniTheme.colors.borderSoft),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (answerText.isNotBlank()) {
+                Text(
+                    text = answerText,
+                    color = KaniTheme.colors.ink,
+                    fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            details?.let { DetailsBlock(it, resolver) }
+        }
+    }
+}
+
+@Composable
+private fun DetailsBlock(details: StudyAnswerDetails, resolver: UiTextResolver) {
+    val heading = resolver.resolve(details.heading)
+    val lines = details.lines.map(resolver::resolve).filter { it.isNotBlank() }
+    if (heading.isBlank() && lines.isEmpty()) return
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(STUDY_ANSWER_DETAILS_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (heading.isNotBlank()) {
+            Text(
+                text = heading,
+                color = KaniTheme.colors.teal,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        for (line in lines) {
+            Text(text = line, color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp)
+        }
+    }
+}
+
+@Composable
+private fun PassFailRow(
+    pass: StudyGradeAction,
+    fail: StudyGradeAction,
+    saveHard: StudyGradeAction?,
+    session: StudySession,
+    copy: StudyCopy,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Save hard replaces Pass for a CLOSE ink attempt; when present, it is the
+        // single primary action and plain Pass is not offered.
+        val primary = saveHard ?: pass
+        val primaryLabel = resolver.resolve(primary.label).ifBlank { copy.pass }
+        Button(
+            onClick = { submitIfAccepted(session, primary, dispatch) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+                .testTag(if (saveHard != null) STUDY_SAVE_HARD_TEST_TAG else STUDY_PASS_TEST_TAG),
+            shape = KaniUiTokens.ButtonShape,
+            colors = ButtonDefaults.buttonColors(containerColor = KaniTheme.colors.teal),
+        ) {
+            Text(text = primaryLabel, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
+        }
+        OutlinedButton(
+            onClick = { submitIfAccepted(session, fail, dispatch) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_FAIL_TEST_TAG),
+            shape = KaniUiTokens.ButtonShape,
+            border = BorderStroke(1.dp, KaniTheme.colors.coral),
+        ) {
+            Text(
+                text = resolver.resolve(fail.label).ifBlank { copy.fail },
+                color = KaniTheme.colors.coral,
+                fontSize = KaniUiTokens.StudyActionTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoiceButton(
+    choice: StudyChoice,
+    correct: String?,
+    session: StudySession,
+    resolver: UiTextResolver,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val label = resolver.resolve(choice.label).ifBlank { choice.value }
+    // After an answer, the correct choice turns teal and the wrong pick turns coral;
+    // before, every choice is neutral. Feedback is a function of the model state, so
+    // it survives a recomposition the way the Android grid's frozen state did.
+    val answered = session.feedback.visible
+    val accent = when {
+        !answered -> null
+        choice.value == correct -> KaniTheme.colors.teal
+        choice.value == session.feedback.selected &&
+            session.feedback.outcome == StudyOutcome.INCORRECT -> KaniTheme.colors.coral
+        else -> null
+    }
+    OutlinedButton(
+        onClick = { submitIfAccepted(session, choice.grade, dispatch) },
+        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(studyChoiceTestTag(choice.value)),
+        shape = KaniUiTokens.ButtonShape,
+        border = BorderStroke(1.dp, accent ?: KaniTheme.colors.borderSoft),
+    ) {
+        Text(
+            text = label,
+            color = accent ?: KaniTheme.colors.ink,
+            fontSize = KaniUiTokens.StudyActionTextSizeSp.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun ContinueButton(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
+    Button(
+        onClick = { dispatch(KaniAction.Study.Continue) },
+        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_CONTINUE_TEST_TAG),
+        shape = KaniUiTokens.ButtonShape,
+    ) {
+        Text(text = copy.cont, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+/**
+ * Dispatches a grade only when the session still accepts one.
+ *
+ * The double-commit guard, in one place every card goes through: a second grade from
+ * a double-click, a key-repeat, or a duplicate callback is dropped because the
+ * session's own `acceptsGrade` is already false once the first is in flight. The
+ * scheduler is token-idempotent underneath this, so a grade that slips through is
+ * still harmless — this stops the UI from trying.
+ */
+private fun submitIfAccepted(
+    session: StudySession,
+    grade: StudyGradeAction,
+    dispatch: (KaniAction) -> Unit,
+) {
+    if (!session.acceptsGrade) return
+    dispatch(grade.action)
+}
+
+private val ACTION_MIN_HEIGHT = 54.dp
+private val HERO_MIN_HEIGHT = 160.dp
