@@ -246,9 +246,13 @@ dependencies {
     implementation(project(":dictionary-core"))
     implementation(project(":platform-contracts"))
     implementation(project(":platform-android"))
-    // Launch-intent decoding only, for now: the Android host maps its own extras
-    // onto KaniLaunchCodec's targets so the deep-link precedence has one owner.
-    // Rendering still goes through MainActivityBase until Goal 200.
+    // The shared product shell and its host-neutral presentation mapping. The new thin
+    // KaniHostActivity (Goal 199) renders every route through :feature-shell's surfaces
+    // and assembles content through :host-presentation's KaniRouteLoader, the same as
+    // desktop. The legacy MainActivity* chain still renders in parallel until the thin
+    // host passes the instrumented gate and replaces it.
+    implementation(project(":feature-shell"))
+    implementation(project(":host-presentation"))
     implementation(project(":presentation-api"))
     implementation(project(":progress-core"))
     implementation(project(":provider-ankidroid"))

@@ -36,6 +36,16 @@
                 android:resource="@xml/shortcuts" />
         </activity>
         <!--
+            The thin shared-graph host (Goal 199), running in parallel with MainActivity
+            until the instrumented gate vouches for it. Not exported and not the
+            launcher: it is reached only by an explicit in-app/instrumentation intent,
+            so the shipping entry point is unchanged while the new host is validated.
+        -->
+        <activity
+            android:name=".host.KaniHostActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <!--
             Kani initializes scheduler/update work explicitly from MainActivityStartup,
             and does not use AndroidX Startup consumers. Removing the provider keeps
             transitive EmojiCompat/ProcessLifecycle/ProfileInstaller initializers out

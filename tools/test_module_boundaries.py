@@ -201,12 +201,13 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "core",
             "data-api",
             "dictionary-core",
+            # The shared shell and host-neutral presentation mapping the thin
+            # KaniHostActivity renders through. The legacy MainActivity* chain still
+            # renders in parallel until the thin host passes the instrumented gate.
+            "feature-shell",
+            "host-presentation",
             "platform-contracts",
             "platform-android",
-            # Launch-intent decoding only: the Android host maps its own widget,
-            # notification, and shortcut intents onto KaniLaunchCodec's targets so
-            # the deep-link precedence has a single owner across both hosts.
-            # Rendering is still MainActivityBase's until Goal 200.
             "presentation-api",
             "progress-core",
             "provider-ankidroid",
