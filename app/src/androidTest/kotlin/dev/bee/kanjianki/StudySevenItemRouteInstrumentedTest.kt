@@ -21,6 +21,7 @@ import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,12 +39,15 @@ class StudySevenItemRouteInstrumentedTest {
     val composeRule = createEmptyComposeRule()
 
     private lateinit var context: Context
+    private val routeEvents = CopyOnWriteArrayList<StudyRouteLifecycleEvent>()
 
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase("kanji_anki_simple.db")
         pendingAnswerPreferences().edit().clear().commit()
+        StudyRouteLifecycleDiagnostics.resetForTests()
+        StudyRouteLifecycleDiagnostics.setObserverForTests(routeEvents::add)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.study_seven_route"),
         )
@@ -57,6 +61,8 @@ class StudySevenItemRouteInstrumentedTest {
 
     @After
     fun tearDown() {
+        StudyRouteLifecycleDiagnostics.resetForTests()
+        routeEvents.clear()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         MainActivityRuntimeOverrides.setCollectionGateway(null)
         MainActivityRuntimeOverrides.setWritingRecognizer(null)
@@ -69,7 +75,7 @@ class StudySevenItemRouteInstrumentedTest {
     }
 
     @Test
-    fun exactSevenTargetRequiresFinalContinueBeforeVersionMatchedDone() {
+    fun sevenCardUiCompletionReachesDoneWithoutTerminalRouteRetryOrChurn() {
         val sessions = (1..7).map(::session)
         LocalStore(context).use { store -> sessions.forEach { store.saveStudyItem(requireNotNull(it.item)) } }
         ActivityScenario.launch(SevenItemRouteActivity::class.java).use { scenario ->
@@ -153,7 +159,36 @@ class StudySevenItemRouteInstrumentedTest {
             }
             assertFrame(viewModel, visibleSnapshot, completed = 7, done = true)
             assertEquals(StudyRouteCompletionReason.HARD_CAP, visibleSnapshot.completionReason)
+            assertTerminalRouteDidNotChurn()
         }
+    }
+
+    private fun assertTerminalRouteDidNotChurn() {
+        val events = routeEvents.toList()
+        assertEquals(
+            "the final Continue should create one terminal load candidate",
+            1,
+            events.count { it.stage == StudyRouteLifecycleStage.CANDIDATE_CREATED },
+        )
+        assertEquals(
+            listOf(
+                StudyRouteLifecycleStage.CANDIDATE_CREATED,
+                StudyRouteLifecycleStage.COMPUTATION_PREPARED,
+                StudyRouteLifecycleStage.PUBLICATION_DECIDED,
+            ),
+            events.map { it.stage },
+        )
+        assertEquals(1, events.map { it.candidateId }.distinct().size)
+        val publication = events.single { it.stage == StudyRouteLifecycleStage.PUBLICATION_DECIDED }
+        assertEquals(StudyRouteComputationBranch.HARD_CAP, publication.branch)
+        assertTrue(publication.trackerStateEquivalent)
+        assertTrue(publication.terminalEligible)
+        assertTrue(
+            publication.outcome == StudyRouteLifecycleOutcome.ACCEPTED ||
+                publication.outcome == StudyRouteLifecycleOutcome.ACCEPTED_TERMINAL,
+        )
+        assertFalse(events.any { it.outcome == StudyRouteLifecycleOutcome.RETRY })
+        assertFalse(events.any { it.outcome == StudyRouteLifecycleOutcome.DROPPED_STALE })
     }
 
     private fun mountAndRender(

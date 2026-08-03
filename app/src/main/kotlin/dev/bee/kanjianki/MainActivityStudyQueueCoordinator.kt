@@ -30,7 +30,10 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 showLoading = { study.renderStudyLoading(true) },
                 load = {
                     val prepared = study.prepareSessionRender(active)
-                    acceptedCandidateRender(candidate) { prepared() }
+                    acceptedCandidateRender(
+                        candidate,
+                        branch = StudyRouteComputationBranch.PENDING_ANSWER,
+                    ) { prepared() }
                 },
                 render = { it() },
                 traceName = "study-pending-answer-route",
@@ -62,11 +65,21 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         candidate: StudyLoadCandidate,
     ): () -> Unit {
         val continued = inspectContinuedRecovery(recoveryOnly)
-        continued.render?.let { return acceptedCandidateRender(candidate, render = it) }
+        continued.render?.let {
+            return acceptedCandidateRender(
+                candidate,
+                branch = StudyRouteComputationBranch.CONTINUED_RECOVERY,
+                render = it,
+            )
+        }
         val advancingRecovery = continued.marker
         if (advancingRecovery == null) {
             computeStoredRecoveryRender(recoveryOnly)?.let {
-                return acceptedCandidateRender(candidate, render = it)
+                return acceptedCandidateRender(
+                    candidate,
+                    branch = StudyRouteComputationBranch.STORED_RECOVERY,
+                    render = it,
+                )
             }
         }
         val sourceSyncFinishedAt = study.store.latestSuccessfulSyncFinishedAt() ?: 0L
@@ -94,7 +107,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 candidate,
             )?.let { return it }
             refreshSessionBadgeCount(0)
-            return terminalRender(advancingRecovery, candidate) { expectedRoute ->
+            return terminalRender(
+                advancingRecovery,
+                candidate,
+                StudyRouteComputationBranch.EMPTY_QUEUE,
+            ) { expectedRoute ->
                 study.doneActions.renderEmptyStudyQueue(expectedRoute)
             }
         }
@@ -158,13 +175,21 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         }
         if (session == null) {
             warmStudyDoneAvailability()
-            return terminalRender(advancingRecovery, candidate) { expectedRoute ->
+            return terminalRender(
+                advancingRecovery,
+                candidate,
+                StudyRouteComputationBranch.NO_SESSION,
+            ) { expectedRoute ->
                 study.doneActions.renderNoStudySession(seededPlan, expectedRoute)
             }
         }
         if (session.item == null) {
             warmStudyDoneAvailability()
-            return terminalRender(advancingRecovery, candidate) { expectedRoute ->
+            return terminalRender(
+                advancingRecovery,
+                candidate,
+                StudyRouteComputationBranch.NO_SESSION,
+            ) { expectedRoute ->
                 study.doneActions.renderNoStudySession(seededPlan, expectedRoute)
             }
         }
@@ -187,9 +212,16 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         // the background executor; only the returned render thunk touches the UI.
         val prepared = study.prepareSessionRender(session)
         if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
-            return acceptedCandidateRender(candidate, publishTracker = false) { study.renderStudy() }
+            return acceptedCandidateRender(
+                candidate,
+                branch = StudyRouteComputationBranch.SOURCE_SYNC_CHANGED,
+                publishTracker = false,
+            ) { study.renderStudy() }
         }
-        return acceptedCandidateRender(candidate) {
+        return acceptedCandidateRender(
+            candidate,
+            branch = StudyRouteComputationBranch.ACTIVE_SESSION,
+        ) {
             study.activeSimilarWritingRepair = null
             if (study.acceptNewActiveStudySession(
                     session,
@@ -452,7 +484,9 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
 
     fun renderStudyForKanji(kanji: String?) {
         val supersededRecoveryToken = study.studyRecoverySessionToken()
-        val candidate = newStudyLoadCandidate { study.renderStudyForKanji(kanji) }
+        val candidate = newStudyLoadCandidate(StudyRouteLoadKind.TARGETED) {
+            study.renderStudyForKanji(kanji)
+        }
         // Same async pattern as renderStudy: the targeted-session compute does full
         // dashboard/study-item reads and queue persistence, which used to run on the
         // main thread for undo and browse-detail entry points.
@@ -483,14 +517,22 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         study.activeStudyPlan = if (rows.isEmpty()) null else study.adaptivePlan(rows, currentItems, now)
         val row = study.findRow(rows, kanji ?: "")
         if (row == null) {
-            return terminalRender(null, candidate) { expectedRoute ->
+            return terminalRender(
+                null,
+                candidate,
+                StudyRouteComputationBranch.TARGET_UNAVAILABLE,
+            ) { expectedRoute ->
                 study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
             }
         }
         val seeded = study.studyQueue(rows, now, true, study.activeStudyPlan, currentItems)
         val targetItem = BrowseManualReviewPolicy.selectSeededTarget(seeded, row.kanji)
         if (targetItem == null) {
-            return terminalRender(null, candidate) { expectedRoute ->
+            return terminalRender(
+                null,
+                candidate,
+                StudyRouteComputationBranch.TARGET_UNAVAILABLE,
+            ) { expectedRoute ->
                 study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
             }
         }
@@ -525,7 +567,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             ladder
         )
         if (session == null) {
-            return terminalRender(null, candidate) { expectedRoute ->
+            return terminalRender(
+                null,
+                candidate,
+                StudyRouteComputationBranch.TARGET_UNAVAILABLE,
+            ) { expectedRoute ->
                 study.doneActions.renderStudyForKanjiNotAvailable(expectedRoute)
             }
         }
@@ -546,11 +592,18 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         )
         val prepared = study.prepareSessionRender(session)
         if ((study.store.latestSuccessfulSyncFinishedAt() ?: 0L) != sourceSyncFinishedAt) {
-            return acceptedCandidateRender(candidate, publishTracker = false) {
+            return acceptedCandidateRender(
+                candidate,
+                branch = StudyRouteComputationBranch.SOURCE_SYNC_CHANGED,
+                publishTracker = false,
+            ) {
                 study.renderStudyForKanji(kanji)
             }
         }
-        return acceptedCandidateRender(candidate) {
+        return acceptedCandidateRender(
+            candidate,
+            branch = StudyRouteComputationBranch.TARGETED_SESSION,
+        ) {
             study.activeSimilarWritingRepair = null
             study.acceptNewActiveStudySession(
                 session,
@@ -610,7 +663,12 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             // Use the same background preparation as every other session so the
             // current local mnemonic is loaded alongside dictionary/stroke assets.
             val render = study.prepareSessionRender(session).render
-            return nonRestorableSessionRender(advancingRecovery, session, candidate) {
+            return nonRestorableSessionRender(
+                advancingRecovery,
+                session,
+                candidate,
+                StudyRouteComputationBranch.PENDING_REPAIR,
+            ) {
                 study.activeSimilarWritingRepair = activeRepair
                 study.activeStudyPlan = plan
                 render()
@@ -630,7 +688,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (pendingRepeats.isEmpty()) {
                 refreshSessionBadgeCount(0)
                 warmStudyDoneAvailability()
-                return terminalRender(advancingRecovery, candidate) { expectedRoute ->
+                return terminalRender(
+                    advancingRecovery,
+                    candidate,
+                    StudyRouteComputationBranch.HARD_CAP,
+                ) { expectedRoute ->
                     study.doneActions.renderStudyRunDone(plan, expectedRoute)
                 }
             }
@@ -690,65 +752,127 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
 
     private fun acceptedCandidateRender(
         candidate: StudyLoadCandidate,
+        branch: StudyRouteComputationBranch,
         publishTracker: Boolean = true,
         acceptCurrentTerminalOnTrackerRace: Boolean = false,
         render: () -> Unit,
-    ): () -> Unit = {
-        val acceptedRoute = if (publishTracker) {
-            study.studySessionViewModel.acceptStudyLoadTracker(candidate.expectedRoute, candidate.tracker)
-        } else {
-            study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
-        }
-        val currentRoute = if (acceptedRoute == null && publishTracker) {
-            study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
-        } else {
-            null
-        }
-        // A terminal loader does not need to publish staged tracker internals when the
-        // still-current canonical route already proves completion. Retrying that CAS
-        // race can livelock because each retry can lose to another tracker revision.
-        val trackerStateEquivalent = currentRoute != null &&
-            study.studySessionTracker.hasSameStateAs(candidate.tracker)
-        val terminalRaceAccepted = acceptCurrentTerminalOnTrackerRace &&
-            currentRoute?.canComplete == true &&
-            trackerStateEquivalent
-        if (currentRoute != null && AppDebugLog.isCapturing()) {
-            AppDebugLog.log(
-                studyTrackerRaceLog(
-                    route = currentRoute,
-                    trackerStateEquivalent = trackerStateEquivalent,
-                    terminalRaceAccepted = terminalRaceAccepted,
+    ): () -> Unit {
+        if (StudyRouteLifecycleDiagnostics.isRecording()) {
+            val currentAtCompute = study.studySessionViewModel.acceptedRouteSnapshot()
+            StudyRouteLifecycleDiagnostics.record(
+                StudyRouteLifecycleEvent.computationPrepared(
+                    candidateId = candidate.id,
+                    routeKind = candidate.routeKind,
+                    branch = branch,
+                    expectedRoute = candidate.expectedRoute,
+                    currentRoute = currentAtCompute,
+                    trackerStateEquivalent = study.studySessionTracker.hasSameStateAs(candidate.tracker),
+                    terminalEligible = acceptCurrentTerminalOnTrackerRace && currentAtCompute.canComplete,
                 ),
             )
         }
-        if (acceptedRoute != null || terminalRaceAccepted) {
-            if (publishTracker && candidate.recoveredTargetReconciliationPending) {
-                study.recoveredStudyRunNeedsTargetReconciliation = false
+        return {
+            val acceptedRoute = if (publishTracker) {
+                study.studySessionViewModel.acceptStudyLoadTracker(candidate.expectedRoute, candidate.tracker)
+            } else {
+                study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
             }
-            render()
-        } else if (currentRoute != null) {
-            candidate.retry()
+            val compatibleCurrentRoute = if (acceptedRoute == null && publishTracker) {
+                study.studySessionViewModel.acceptStudyLoadRoute(candidate.expectedRoute)
+            } else {
+                null
+            }
+            // A terminal loader does not need to publish staged tracker internals when the
+            // still-current canonical route already proves completion. Retrying that CAS
+            // race can livelock because each retry can lose to another tracker revision.
+            val trackerStateEquivalent = compatibleCurrentRoute != null &&
+                study.studySessionTracker.hasSameStateAs(candidate.tracker)
+            val terminalRaceAccepted = acceptCurrentTerminalOnTrackerRace &&
+                compatibleCurrentRoute?.canComplete == true &&
+                trackerStateEquivalent
+            if (StudyRouteLifecycleDiagnostics.isRecording()) {
+                val publicationRoute = acceptedRoute ?: compatibleCurrentRoute
+                val diagnosticTrackerEquivalent = if (compatibleCurrentRoute != null) {
+                    trackerStateEquivalent
+                } else {
+                    study.studySessionTracker.hasSameStateAs(candidate.tracker)
+                }
+                val terminalEligible = acceptCurrentTerminalOnTrackerRace &&
+                    publicationRoute?.canComplete == true
+                val outcome = when {
+                    acceptedRoute != null -> StudyRouteLifecycleOutcome.ACCEPTED
+                    terminalRaceAccepted -> StudyRouteLifecycleOutcome.ACCEPTED_TERMINAL
+                    compatibleCurrentRoute != null -> StudyRouteLifecycleOutcome.RETRY
+                    else -> StudyRouteLifecycleOutcome.DROPPED_STALE
+                }
+                StudyRouteLifecycleDiagnostics.record(
+                    StudyRouteLifecycleEvent.publicationDecided(
+                        candidateId = candidate.id,
+                        routeKind = candidate.routeKind,
+                        branch = branch,
+                        expectedRoute = candidate.expectedRoute,
+                        currentRoute = publicationRoute
+                            ?: study.studySessionViewModel.acceptedRouteSnapshot(),
+                        trackerStateEquivalent = diagnosticTrackerEquivalent,
+                        terminalEligible = terminalEligible,
+                        outcome = outcome,
+                    ),
+                )
+            }
+            if (acceptedRoute != null || terminalRaceAccepted) {
+                if (publishTracker && candidate.recoveredTargetReconciliationPending) {
+                    study.recoveredStudyRunNeedsTargetReconciliation = false
+                }
+                render()
+            } else if (compatibleCurrentRoute != null) {
+                candidate.retry()
+            }
         }
     }
 
-    private fun newStudyLoadCandidate(recoveryOnly: Boolean): StudyLoadCandidate =
-        newStudyLoadCandidate(
+    private fun newStudyLoadCandidate(recoveryOnly: Boolean): StudyLoadCandidate {
+        val routeKind = if (recoveryOnly) StudyRouteLoadKind.RECOVERY else StudyRouteLoadKind.STANDARD
+        return newStudyLoadCandidate(
+            routeKind,
             if (recoveryOnly) study::renderStudyRecoveryOnly else study::renderStudy,
         )
+    }
 
-    private fun newStudyLoadCandidate(retry: () -> Unit): StudyLoadCandidate = StudyLoadCandidate(
-        expectedRoute = study.studySessionViewModel.acceptedRouteSnapshot(),
-        tracker = study.studySessionTracker.copyForStaging(),
-        recoveredTargetReconciliationPending = study.recoveredStudyRunNeedsTargetReconciliation,
-        retry = retry,
-    )
+    private fun newStudyLoadCandidate(
+        routeKind: StudyRouteLoadKind,
+        retry: () -> Unit,
+    ): StudyLoadCandidate {
+        val expectedRoute = study.studySessionViewModel.acceptedRouteSnapshot()
+        val stagedTracker = study.studySessionTracker.copyForStaging()
+        val candidate = StudyLoadCandidate(
+            id = StudyRouteLifecycleDiagnostics.newCandidateId(),
+            routeKind = routeKind,
+            expectedRoute = expectedRoute,
+            tracker = stagedTracker,
+            recoveredTargetReconciliationPending = study.recoveredStudyRunNeedsTargetReconciliation,
+            retry = retry,
+        )
+        if (StudyRouteLifecycleDiagnostics.isRecording()) {
+            StudyRouteLifecycleDiagnostics.record(
+                StudyRouteLifecycleEvent.candidateCreated(
+                    candidateId = candidate.id,
+                    routeKind = routeKind,
+                    expectedRoute = expectedRoute,
+                    currentRoute = study.studySessionViewModel.acceptedRouteSnapshot(),
+                    trackerStateEquivalent = study.studySessionTracker.hasSameStateAs(stagedTracker),
+                ),
+            )
+        }
+        return candidate
+    }
 
     private fun nonRestorableSessionRender(
         advancingRecovery: StoredPendingStudyRecovery?,
         session: RecordsSchedulerModels.StudySession,
         candidate: StudyLoadCandidate,
+        branch: StudyRouteComputationBranch,
         render: () -> Unit,
-    ): () -> Unit = acceptedCandidateRender(candidate) {
+    ): () -> Unit = acceptedCandidateRender(candidate, branch) {
         val accepted = if (advancingRecovery == null) {
             study.activeSession = session
             true
@@ -765,9 +889,11 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     private fun terminalRender(
         advancingRecovery: StoredPendingStudyRecovery?,
         candidate: StudyLoadCandidate,
+        branch: StudyRouteComputationBranch,
         render: (StudyRouteSnapshot) -> Unit,
     ): () -> Unit = acceptedCandidateRender(
         candidate,
+        branch,
         acceptCurrentTerminalOnTrackerRace = true,
     ) {
         val terminalEvidence = study.studySessionViewModel.acceptedRouteSnapshot()
@@ -782,6 +908,8 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
 }
 
 private data class StudyLoadCandidate(
+    val id: Long,
+    val routeKind: StudyRouteLoadKind,
     val expectedRoute: StudyRouteSnapshot,
     val tracker: StudySessionTracker,
     val recoveredTargetReconciliationPending: Boolean,
@@ -792,15 +920,6 @@ private data class ContinuedRecoveryInspection(
     val marker: StoredPendingStudyRecovery? = null,
     val render: (() -> Unit)? = null,
 )
-
-internal fun studyTrackerRaceLog(
-    route: StudyRouteSnapshot,
-    trackerStateEquivalent: Boolean,
-    terminalRaceAccepted: Boolean,
-): String = "study-route tracker-publication " +
-    "event=${if (terminalRaceAccepted) "accepted-terminal-race" else "retry"} " +
-    "phase=${route.phase.name} route_version=${route.version.value} " +
-    "can_complete=${route.canComplete} tracker_state_equivalent=$trackerStateEquivalent"
 
 internal fun recoveredStudyRunTarget(currentTarget: Int, completed: Int, selectableRemaining: Int): Int =
     maxOf(currentTarget, completed + selectableRemaining)
