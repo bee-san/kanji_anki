@@ -154,4 +154,5 @@ internal data class DesktopRouteContent(
     ),
     val browse: BrowseResults = BrowseResults(),
     val detail: KanjiDetail? = null,
+    val study: dev.bee.kanjianki.presentation.StudySession? = null,
 )

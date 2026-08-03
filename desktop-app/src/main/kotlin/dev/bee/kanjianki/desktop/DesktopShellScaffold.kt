@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.StudyRouteRender
+import dev.bee.kanjianki.StudyRuntime
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
@@ -27,6 +29,8 @@ import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.home.BrowseScreen
 import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.KanjiDetailScreen
+import dev.bee.kanjianki.study.StudySessionScreen
+import dev.bee.kanjianki.study.rememberStudyCopy
 import dev.bee.kanjianki.home.HomeDeckOverview
 import dev.bee.kanjianki.home.HomeMetricRow
 import dev.bee.kanjianki.home.HomeNoticeCard
@@ -77,6 +81,7 @@ internal const val DESKTOP_HOME_TEST_TAG: String = "kani-desktop-home"
 internal const val DESKTOP_FOCUS_QUEUE_TEST_TAG: String = "kani-desktop-focus-queue"
 internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
 internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
+internal const val DESKTOP_STUDY_TEST_TAG: String = "kani-desktop-study"
 
 private val ROUTE_PADDING = 24.dp
 private val SURFACE_SPACING = 16.dp
@@ -103,12 +108,25 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
     val provider = remember(container) {
         DesktopProviderProbe.forLoopbackEndpoint(container.secretStore)
     }
+    // One runtime per session, holding the scheduler-driven Study state across grade,
+    // continue, and undo. It is the source of truth for the Study route: its render
+    // maps to the portable model the shared surface draws, so the generic per-action
+    // reload does not drive Study.
+    val studyRuntime = remember(container) { StudyRuntime(container.studyUseCases) }
+    var studyRender by remember { mutableStateOf<StudyRouteRender?>(null) }
     val host = remember(container) {
         DesktopShellHost(
             capabilities = PlatformCapabilities(
                 desktopHostCapabilities(persistsSecrets = container.persistsSecrets),
             ),
-            loadRoute = { destination -> loadDesktopRoute(container, provider, destination) },
+            loadRoute = { destination ->
+                // Entering Study with no render yet loads the first card from the
+                // committed queue; a re-entry keeps the in-progress session.
+                if (destination is KaniDestination.Study && studyRender == null) {
+                    studyRender = studyRuntime.load(System.currentTimeMillis())
+                }
+                loadDesktopRoute(container, provider, destination, studyRender)
+            },
         )
     }
 
@@ -132,10 +150,13 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
                 // A Kani-side write is a write and then a reload, in that order and in
                 // one launch. `RouteReducer` already turns the action into a reload;
                 // what it cannot do is persist the change, and reloading first would
-                // re-read the state the user just wrote.
+                // re-read the state the user just wrote. A Study action drives the
+                // runtime instead of persisting inline — the runtime commits the review
+                // itself — and its render becomes the reloaded route's content.
                 when (action) {
                     is KaniAction.Browse -> persistBrowseChoice(container, action, listed)
                     is KaniAction.SaveMnemonic -> persistMnemonic(container, action)
+                    is KaniAction.Study -> studyRender = driveStudy(studyRuntime, action, studyRender)
                     else -> Unit
                 }
                 host.perform(pending)
@@ -214,6 +235,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             is KaniDestination.Detail -> DesktopDetailRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            KaniDestination.Study -> DesktopStudyRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -368,6 +393,34 @@ private fun DesktopDetailRoute(
 }
 
 /**
+ * The study session, from `:feature-study`'s own screen.
+ *
+ * The runtime is the source of truth; its render mapped to [content]'s study session
+ * feeds the shared surface. Scrollable because a card plus its grades and answer
+ * details is taller than the window, the same wrapping the surface's tests use. A
+ * session that has not loaded yet has no model, and the shell's loading surface is
+ * above this, so nothing is drawn until it arrives.
+ */
+@Composable
+private fun DesktopStudyRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val session = content.study ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_STUDY_TEST_TAG),
+    ) {
+        StudySessionScreen(
+            session = session,
+            copy = rememberStudyCopy(),
+            resolver = LiteralUiTextResolver,
+            dispatch = dispatch,
+        )
+    }
+}
+
+/**
  * A placeholder body for the routes Goals 195+ still own.
  *
  * Kept rather than replaced with an empty box because it is the cheapest evidence
@@ -411,6 +464,7 @@ private suspend fun loadDesktopRoute(
     container: DesktopKaniContainer,
     provider: DesktopProviderProbe,
     destination: KaniDestination,
+    studyRender: StudyRouteRender?,
 ): ContentResult<DesktopRouteContent> = withContext(Dispatchers.IO) {
     val now = System.currentTimeMillis()
     val status = provider.probe()
@@ -495,8 +549,32 @@ private suspend fun loadDesktopRoute(
             ),
             browse = loadBrowse(container, destination),
             detail = loadDetail(container, destination, settings.matureSupportThreshold, now),
+            study = studyRender?.let {
+                DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable)
+            },
         ),
     )
+}
+
+/**
+ * Drives the study runtime for one action, returning the new render.
+ *
+ * Grade/Continue/Undo are the runtime's; Reveal is pure UI the surface holds locally,
+ * so it does not touch the runtime and the current render carries through. The runtime
+ * commits the review itself, so there is no separate persist step here.
+ */
+private suspend fun driveStudy(
+    runtime: StudyRuntime,
+    action: KaniAction.Study,
+    current: StudyRouteRender?,
+): StudyRouteRender = withContext(Dispatchers.IO) {
+    val now = System.currentTimeMillis()
+    when (action) {
+        is KaniAction.Study.Grade -> runtime.grade(action.rating, now)
+        KaniAction.Study.Continue -> runtime.continueCard(now)
+        KaniAction.Study.Undo -> runtime.undo(now)
+        KaniAction.Study.Reveal -> current ?: runtime.render()
+    }
 }
 
 /**
