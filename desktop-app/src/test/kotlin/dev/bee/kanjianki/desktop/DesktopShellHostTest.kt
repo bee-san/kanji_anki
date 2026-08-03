@@ -10,7 +10,6 @@ import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.PresentationFailure
 import dev.bee.kanjianki.presentation.SettingsSection
-import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.syncapi.CollectionFailure
 import dev.bee.kanjianki.syncapi.CollectionFailureKind
 import kotlinx.coroutines.runBlocking
@@ -211,11 +210,7 @@ class DesktopShellHostTest {
 
     private fun success() = ContentResult.Success(
         DesktopRouteContent(
-            provider = DesktopProviderStatus(
-                message = "ready",
-                availability = CollectionAvailability.READY,
-                capabilities = emptySet(),
-            ),
+            providerMessage = "ready",
             studyItemCount = 3,
             dueCount = 1,
             themeChoice = KaniThemeChoice.GIRLYPOP,

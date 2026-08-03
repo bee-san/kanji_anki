@@ -64,9 +64,16 @@ internal fun DesktopShellHost(
  *
  * [detail] is `null` off the detail route, the same way [browse] is empty off Browse:
  * one snapshot type serves every route, and a route only fills the fields it draws.
+ *
+ * [providerMessage] is the provider's own status line as plain copy rather than the
+ * `DesktopProviderStatus` it came from. The stored content only ever displays that one
+ * string (the placeholder routes' status line); onboarding and sync-availability read
+ * the *fresh* probe, not this snapshot. Holding the projection rather than the
+ * AnkiConnect probe object is what lets this type become host-neutral in Goal 199 —
+ * Android has no `DesktopProviderStatus` to give it.
  */
 internal data class DesktopRouteContent(
-    val provider: DesktopProviderStatus,
+    val providerMessage: String,
     val studyItemCount: Int,
     val dueCount: Int,
     val themeChoice: KaniThemeChoice,

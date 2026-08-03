@@ -546,7 +546,7 @@ private fun DesktopRoutePlaceholder(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(text = destination.route, style = MaterialTheme.typography.titleLarge)
-        Text(text = content.provider.message, style = MaterialTheme.typography.bodyMedium)
+        Text(text = content.providerMessage, style = MaterialTheme.typography.bodyMedium)
         Text(
             text = "${content.studyItemCount} kanji admitted, ${content.dueCount} due",
             style = MaterialTheme.typography.bodySmall,
@@ -645,7 +645,7 @@ private suspend fun loadDesktopRoute(
 
     ContentResult.Success(
         DesktopRouteContent(
-            provider = status,
+            providerMessage = status.message,
             studyItemCount = study.studyItems.size,
             dueCount = due,
             themeChoice = snapshot.settings.themeChoice,
