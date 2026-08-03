@@ -15,6 +15,9 @@ class SettingsStudyBehaviorTextCopyTest {
         assertEquals("fails", SettingsStudyBehaviorTextCopy.failsUnit())
         assertEquals("min", SettingsStudyBehaviorTextCopy.minutesUnit())
         assertEquals("New card order", SettingsStudyBehaviorTextCopy.newCardSortLabel())
+        assertEquals("New cards per day", SettingsStudyBehaviorTextCopy.newPerDayLabel())
+        assertEquals("Active queue cap", SettingsStudyBehaviorTextCopy.activeQueueCapLabel())
+        assertEquals("cards", SettingsStudyBehaviorTextCopy.cardsUnit())
     }
 
     @Test
@@ -46,6 +49,9 @@ class SettingsStudyBehaviorTextCopyTest {
             assertEquals("回", SettingsStudyBehaviorTextCopy.failsUnit())
             assertEquals("分", SettingsStudyBehaviorTextCopy.minutesUnit())
             assertEquals("新規カードの順序", SettingsStudyBehaviorTextCopy.newCardSortLabel())
+            assertEquals("1日の新規カード", SettingsStudyBehaviorTextCopy.newPerDayLabel())
+            assertEquals("アクティブ上限", SettingsStudyBehaviorTextCopy.activeQueueCapLabel())
+            assertEquals("枚", SettingsStudyBehaviorTextCopy.cardsUnit())
             assertEquals("頻度", SettingsStudyBehaviorTextCopy.newCardSortModeLabel(RecordsBase.NEW_CARD_SORT_FREQUENCY))
             assertEquals("難易度", SettingsStudyBehaviorTextCopy.newCardSortModeLabel(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY))
             assertEquals("忘却リスク", SettingsStudyBehaviorTextCopy.newCardSortModeLabel(RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK))

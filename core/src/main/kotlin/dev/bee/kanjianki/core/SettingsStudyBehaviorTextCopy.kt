@@ -32,6 +32,15 @@ object SettingsStudyBehaviorTextCopy {
     fun minutesUnit(): String = localizedText("min", "分")
 
     @JvmStatic
+    fun newPerDayLabel(): String = localizedText("New cards per day", "1日の新規カード")
+
+    @JvmStatic
+    fun activeQueueCapLabel(): String = localizedText("Active queue cap", "アクティブ上限")
+
+    @JvmStatic
+    fun cardsUnit(): String = localizedText("cards", "枚")
+
+    @JvmStatic
     fun newCardSortLabel(): String = localizedText("New card order", "新規カードの順序")
 
     @JvmStatic

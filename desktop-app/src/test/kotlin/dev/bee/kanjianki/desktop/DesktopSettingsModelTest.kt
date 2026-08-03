@@ -156,6 +156,28 @@ class DesktopSettingsModelTest {
     }
 
     @Test
+    fun aDeckLimitStepperMapsToTheDeckLimitsCommandKeepingTheOtherValue() {
+        val current = snapshot()
+        assertEquals(
+            SettingsSaveCommand.DeckLimits(newPerDay = 25, activeQueueCap = current.sync.activeQueueCap),
+            DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetNumber("deck_new_per_day", 25), current),
+        )
+        assertEquals(
+            SettingsSaveCommand.DeckLimits(newPerDay = current.sync.newPerDay, activeQueueCap = 64),
+            DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetNumber("deck_active_queue_cap", 64), current),
+        )
+    }
+
+    @Test
+    fun theActiveQueueCapStepperStaysWithinItsBounds() {
+        val screen = DesktopSettingsModel.screen(SettingsSection.STUDY_BEHAVIOR, snapshot())
+        val steppers = (screen.content as SettingsSectionContent.Controls).controls
+            .filterIsInstance<SettingsControl.Stepper>()
+        val cap = steppers.first { it.min == 8 && it.max == 200 }
+        assertTrue(cap.value in 8..200)
+    }
+
+    @Test
     fun sortAndStudyAheadMapToTheirCommands() {
         assertEquals(
             SettingsSaveCommand.NewCardSort(RecordsBase.NEW_CARD_SORT_FREQUENCY),

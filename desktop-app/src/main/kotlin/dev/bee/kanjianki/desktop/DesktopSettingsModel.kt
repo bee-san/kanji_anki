@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.desktop
 
+import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsInputRules
@@ -38,6 +39,8 @@ internal object DesktopSettingsModel {
     private const val PROMOTION_INTERVAL_KEY = "ladder_promotion_interval_days"
     private const val DEMOTION_FAIL_STREAK_KEY = "ladder_demotion_fail_streak"
     private const val STUDY_AHEAD_KEY = "study_ahead_minutes"
+    private const val NEW_PER_DAY_KEY = "deck_new_per_day"
+    private const val ACTIVE_QUEUE_CAP_KEY = "deck_active_queue_cap"
 
     // The new-card sort modes, in the order the section lists them.
     private val NEW_CARD_SORT_MODES: List<String> = listOf(
@@ -110,6 +113,24 @@ internal object DesktopSettingsModel {
                     unit = SettingsStudyBehaviorTextCopy.minutesUnit(),
                     onChange = { KaniAction.Settings.SetNumber(STUDY_AHEAD_KEY, it) },
                 ),
+                SettingsControl.Stepper(
+                    label = SettingsStudyBehaviorTextCopy.newPerDayLabel(),
+                    value = sync.newPerDay,
+                    min = 0,
+                    max = DeckLimitsSettingsPolicy.MAX_NEW_PER_DAY,
+                    step = 5,
+                    unit = SettingsStudyBehaviorTextCopy.cardsUnit(),
+                    onChange = { KaniAction.Settings.SetNumber(NEW_PER_DAY_KEY, it) },
+                ),
+                SettingsControl.Stepper(
+                    label = SettingsStudyBehaviorTextCopy.activeQueueCapLabel(),
+                    value = sync.activeQueueCap,
+                    min = DeckLimitsSettingsPolicy.MIN_ACTIVE_QUEUE_CAP,
+                    max = DeckLimitsSettingsPolicy.MAX_ACTIVE_QUEUE_CAP,
+                    step = 8,
+                    unit = SettingsStudyBehaviorTextCopy.cardsUnit(),
+                    onChange = { KaniAction.Settings.SetNumber(ACTIVE_QUEUE_CAP_KEY, it) },
+                ),
             ),
         )
     }
@@ -174,6 +195,14 @@ internal object DesktopSettingsModel {
                     demotionFailStreak = action.value,
                 )
                 STUDY_AHEAD_KEY -> SettingsSaveCommand.StudyAhead(minutes = action.value)
+                NEW_PER_DAY_KEY -> SettingsSaveCommand.DeckLimits(
+                    newPerDay = action.value,
+                    activeQueueCap = current.sync.activeQueueCap,
+                )
+                ACTIVE_QUEUE_CAP_KEY -> SettingsSaveCommand.DeckLimits(
+                    newPerDay = current.sync.newPerDay,
+                    activeQueueCap = action.value,
+                )
                 else -> null
             }
             is KaniAction.Settings.SetToggle -> null
