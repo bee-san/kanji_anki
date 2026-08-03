@@ -45,6 +45,7 @@ import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.OnboardingPlan
 import dev.bee.kanjianki.presentation.OnboardingPolicy
 import dev.bee.kanjianki.presentation.PresentationFailure
+import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.presentation.SyncOutcome
 import dev.bee.kanjianki.presentation.TodayPlan
 import dev.bee.kanjianki.presentation.UiText
@@ -422,15 +423,16 @@ internal object DesktopHomeModels {
      * `HostOnboardingCopy`'s own KDoc names desktop's mapping as its source.
      */
     fun onboarding(
-        provider: DesktopProviderStatus,
+        readiness: ProviderReadiness,
+        guidance: String,
         settings: RecordsSyncModels.Settings,
         latestSync: SyncStatusSnapshot?,
         repairedKanjiCount: Int,
     ): OnboardingPlan = OnboardingPolicy.plan(
-        readiness = provider.readiness,
+        readiness = readiness,
         binding = binding(settings),
         sync = syncOutcome(latestSync),
-        hostCopy = HostOnboardingCopy(guidance = UiText.Literal(provider.message)),
+        hostCopy = HostOnboardingCopy(guidance = UiText.Literal(guidance)),
         repairedKanjiCount = repairedKanjiCount,
     )
 

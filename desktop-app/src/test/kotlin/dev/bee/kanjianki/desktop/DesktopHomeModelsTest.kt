@@ -333,7 +333,8 @@ class DesktopHomeModelsTest {
     @Test
     fun onboardingCarriesTheProvidersOwnWordsRatherThanASharedString() {
         val plan = DesktopHomeModels.onboarding(
-            provider = status(CollectionAvailability.NOT_AVAILABLE),
+            readiness = status(CollectionAvailability.NOT_AVAILABLE).readiness,
+            guidance = status(CollectionAvailability.NOT_AVAILABLE).message,
             settings = settings(),
             latestSync = null,
             repairedKanjiCount = 0,
@@ -352,28 +353,20 @@ class DesktopHomeModelsTest {
     fun onboardingWalksTheStepsTheUserActuallyHasToSatisfy() {
         assertEquals(
             OnboardingStep.AUTHORIZE_PROVIDER,
-            DesktopHomeModels.onboarding(
-                status(CollectionAvailability.AUTH_REQUIRED), settings(), null, 0,
-            ).step,
+            onboardingFor(status(CollectionAvailability.AUTH_REQUIRED), settings(), null).step,
         )
         // Ready and bound, but never synced.
         assertEquals(
             OnboardingStep.READY_FIRST_SYNC,
-            DesktopHomeModels.onboarding(
-                status(CollectionAvailability.READY), settings(), null, 0,
-            ).step,
+            onboardingFor(status(CollectionAvailability.READY), settings(), null).step,
         )
         assertEquals(
             OnboardingStep.SYNCED,
-            DesktopHomeModels.onboarding(
-                status(CollectionAvailability.READY), settings(), sync("success"), 0,
-            ).step,
+            onboardingFor(status(CollectionAvailability.READY), settings(), sync("success")).step,
         )
         assertEquals(
             OnboardingStep.RECOVER_SYNC,
-            DesktopHomeModels.onboarding(
-                status(CollectionAvailability.READY), settings(), sync("error"), 0,
-            ).step,
+            onboardingFor(status(CollectionAvailability.READY), settings(), sync("error")).step,
         )
     }
 
@@ -381,9 +374,9 @@ class DesktopHomeModelsTest {
     fun aSourceThatImportsNothingIsNotReportedAsASource() {
         // `importTaggedCards` with no tags and a query import with a blank query both
         // import nothing, which is exactly the state CHOOSE_SOURCE is for.
-        val emptySources = DesktopHomeModels.onboarding(
-            provider = status(CollectionAvailability.READY),
-            settings = settings(
+        val emptySources = onboardingFor(
+            status(CollectionAvailability.READY),
+            settings(
                 importActiveCards = false,
                 importSuspendedCards = false,
                 importWeakCards = false,
@@ -393,7 +386,6 @@ class DesktopHomeModelsTest {
                 importBrowserQuery = "   ",
             ),
             latestSync = null,
-            repairedKanjiCount = 0,
         )
 
         assertEquals(OnboardingStep.CHOOSE_SOURCE, emptySources.step)
@@ -402,9 +394,9 @@ class DesktopHomeModelsTest {
 
     @Test
     fun eachImportFlagBecomesItsOwnSource() {
-        val everything = DesktopHomeModels.onboarding(
-            provider = status(CollectionAvailability.READY),
-            settings = settings(
+        val everything = onboardingFor(
+            status(CollectionAvailability.READY),
+            settings(
                 importActiveCards = true,
                 importSuspendedCards = true,
                 importWeakCards = true,
@@ -414,7 +406,6 @@ class DesktopHomeModelsTest {
                 importBrowserQuery = "deck:current",
             ),
             latestSync = null,
-            repairedKanjiCount = 0,
         ).binding
 
         assertEquals(
@@ -514,6 +505,19 @@ class DesktopHomeModelsTest {
         message = AnkiConnectStatusMapping.messageFor(UNAVAILABLE),
         availability = availability,
         capabilities = emptySet(),
+    )
+
+    /** Calls the host-neutral onboarding mapper from a desktop [status], as the host does. */
+    private fun onboardingFor(
+        status: DesktopProviderStatus,
+        settings: RecordsSyncModels.Settings,
+        latestSync: SyncStatusSnapshot?,
+    ) = DesktopHomeModels.onboarding(
+        readiness = status.readiness,
+        guidance = status.message,
+        settings = settings,
+        latestSync = latestSync,
+        repairedKanjiCount = 0,
     )
 
     private fun snapshot(

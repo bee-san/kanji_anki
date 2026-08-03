@@ -656,7 +656,8 @@ private suspend fun loadDesktopRoute(
             themeChoice = snapshot.settings.themeChoice,
             home = home,
             onboarding = DesktopHomeModels.onboarding(
-                provider = status,
+                readiness = status.readiness,
+                guidance = status.message,
                 settings = settings,
                 latestSync = snapshot.home.latestSync,
                 repairedKanjiCount = repairedKanjiCount,
