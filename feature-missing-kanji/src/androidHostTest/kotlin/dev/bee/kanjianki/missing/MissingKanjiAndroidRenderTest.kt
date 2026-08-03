@@ -63,4 +63,24 @@ class MissingKanjiAndroidRenderTest {
     fun theMissingTestTagsAreDistinct() {
         assertTheMissingTestTagsAreDistinct()
     }
+
+    @Test
+    fun aLargeReportRendersAndSelectsEveryRow() {
+        assertALargeReportRendersAndSelectsEveryRow()
+    }
+
+    @Test
+    fun anEmptyReportRendersNoDestinationsButStillReports() {
+        assertAnEmptyReportRendersNoDestinationsButStillReports()
+    }
+
+    @Test
+    fun aWriteInProgressDisablesTheDestinations() {
+        assertAWriteInProgressDisablesTheDestinations()
+    }
+
+    @Test
+    fun aFailedOperationResultRenders() {
+        assertAFailedOperationResultRenders()
+    }
 }

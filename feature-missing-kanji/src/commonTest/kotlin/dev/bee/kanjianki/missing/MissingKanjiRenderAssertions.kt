@@ -168,6 +168,111 @@ internal fun assertTheShippedMissingResourcesResolveOnThisHost() {
 }
 
 @OptIn(ExperimentalTestApi::class)
+internal fun assertALargeReportRendersAndSelectsEveryRow() {
+    // The report can hold hundreds of rows; select-all then export must carry every
+    // one, and the surface must render the large list without error.
+    val rows = (1..200).map {
+        dev.bee.kanjianki.presentation.MissingKanjiRow(
+            literal = LARGE_KANJI[it % LARGE_KANJI.size] + it.toString(),
+            meaning = "meaning $it",
+            reading = "reading $it",
+        )
+    }
+    val recorded = mutableListOf<KaniAction>()
+    renderMissing(
+        content = {
+            MissingKanjiScreenView(
+                reportScreen().copy(
+                    content = MissingKanjiContent.Report(
+                        summaryLine = "Scanned 9000 notes",
+                        missingCountLine = "200 missing kanji",
+                        rows = rows,
+                    ),
+                ),
+                missingCopy(),
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(MISSING_SELECT_ALL_TEST_TAG).performScrollTo().performClick()
+        onNodeWithTag(MISSING_EXPORT_CSV_TEST_TAG).performScrollTo().performClick()
+        val export = recorded.single()
+        assertTrue(export is KaniAction.MissingKanji.ExportCsv)
+        assertEquals(200, export.literals.size)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAnEmptyReportRendersNoDestinationsButStillReports() {
+    // A scan that found nothing missing: the summary shows, but with no rows the
+    // destinations dispatch nothing (select-all selects an empty set).
+    val recorded = mutableListOf<KaniAction>()
+    renderMissing(
+        content = {
+            MissingKanjiScreenView(
+                reportScreen().copy(
+                    content = MissingKanjiContent.Report(
+                        summaryLine = "Scanned 9000 notes",
+                        missingCountLine = "0 missing kanji",
+                        rows = emptyList(),
+                    ),
+                ),
+                missingCopy(),
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(MISSING_REPORT_TEST_TAG).assertExists()
+        onNodeWithTag(MISSING_SELECT_ALL_TEST_TAG).performScrollTo().performClick()
+        // Add stays disabled with an empty selection.
+        onNodeWithTag(MISSING_ADD_TEST_TAG).assertIsNotEnabled()
+        assertEquals(emptyList<KaniAction>(), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAWriteInProgressDisablesTheDestinations() {
+    // A partial write (export running) disables the batch buttons and narrates
+    // progress, so the user cannot fire a second overlapping write.
+    renderMissing(
+        content = {
+            MissingKanjiScreenView(
+                reportScreen(
+                    destinations = MissingKanjiDestinations(
+                        addToKaniEnabled = true,
+                        csvExportEnabled = true,
+                        operationInProgress = true,
+                        exportLine = "Writing 40 of 200…",
+                    ),
+                ),
+                missingCopy(),
+                dispatch = {},
+            )
+        },
+    ) {
+        onNodeWithTag(MISSING_ADD_TEST_TAG).performScrollTo().assertIsNotEnabled()
+        onNodeWithTag(MISSING_EXPORT_CSV_TEST_TAG).assertIsNotEnabled()
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAFailedOperationResultRenders() {
+    val screen = reportScreen().copy(
+        operationResult = MissingKanjiOperationResult.Failed(
+            title = "Could not create notes",
+            lines = listOf("The provider rejected the write."),
+        ),
+    )
+    renderMissing(
+        content = { MissingKanjiScreenView(screen, missingCopy(), dispatch = {}) },
+    ) {
+        onNodeWithTag(MISSING_RESULT_TEST_TAG).assertExists()
+    }
+}
+
+private val LARGE_KANJI = listOf("脱", "説", "税", "鋭", "税", "刷", "冊", "劇")
+
+@OptIn(ExperimentalTestApi::class)
 internal fun assertTheMissingTestTagsAreDistinct() {
     val tags = listOf(
         MISSING_SCREEN_TEST_TAG, MISSING_PRIMARY_TEST_TAG, MISSING_CANCEL_TEST_TAG,
