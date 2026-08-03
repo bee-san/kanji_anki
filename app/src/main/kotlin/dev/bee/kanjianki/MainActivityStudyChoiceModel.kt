@@ -128,13 +128,14 @@ private fun addJoinedLine(
     }
 }
 
-data class SimilarChoiceSessionModel(
+internal data class SimilarChoiceSessionModel(
     val modeLabel: String,
     val question: String,
     val gridModel: SimilarChoiceGridModel,
     val explanationLines: List<SimilarKanjiExplanationLineModel> = emptyList(),
     val feedbackState: StudyAnswerFeedbackState? = null,
     val onContinue: Runnable = Runnable {},
+    val continueAction: StudyContinueAction? = null,
     val mnemonic: StudyAnswerMnemonicModel? = null,
 )
 
@@ -165,4 +166,5 @@ internal data class MeaningChoiceSessionModel(
     val resultResolver: MeaningChoiceResultResolver? = null,
     val feedbackState: StudyAnswerFeedbackState? = null,
     val onContinue: Runnable = Runnable {},
+    val continueAction: StudyContinueAction? = null,
 )

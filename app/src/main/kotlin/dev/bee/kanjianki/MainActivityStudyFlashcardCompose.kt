@@ -313,7 +313,7 @@ private fun submitFlashcardReview(
 }
 
 @Composable
-fun StudyFlashcardActionBar(
+internal fun StudyFlashcardActionBar(
     revealed: Boolean,
     onReveal: () -> Unit,
     onFail: () -> Unit,
@@ -326,6 +326,7 @@ fun StudyFlashcardActionBar(
     feedbackState: StudyAnswerFeedbackState? = null,
     mnemonicNote: BrowseMnemonicNoteModel? = null,
     onContinue: () -> Unit = {},
+    continueAction: StudyContinueAction? = null,
 ) {
     val submitReview: (String, String) -> Boolean = { source, rating ->
         submitFlashcardReview(onReview, onFail, onPass, source, rating)
@@ -341,7 +342,7 @@ fun StudyFlashcardActionBar(
         }
         if (feedbackState?.feedbackVisible == true) {
             mnemonicNote?.let { StudyMnemonicNoteAction(it) }
-            StudyFlashcardFeedbackActions(feedbackState, onContinue)
+            StudyFlashcardFeedbackActions(feedbackState, onContinue, continueAction)
         } else if (!revealed) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -391,6 +392,7 @@ private fun StudyMnemonicNoteAction(model: BrowseMnemonicNoteModel) {
 private fun StudyFlashcardFeedbackActions(
     feedbackState: StudyAnswerFeedbackState,
     onContinue: () -> Unit,
+    continueAction: StudyContinueAction?,
 ) {
     val correct = feedbackState.outcome == StudyAnswerOutcome.CORRECT
     MeaningChoiceResultActionBar(
@@ -398,6 +400,7 @@ private fun StudyFlashcardFeedbackActions(
         statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
         actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
         continueEnabled = feedbackState.continueEnabled,
+        continueAction = continueAction,
         onNext = onContinue,
     )
 }

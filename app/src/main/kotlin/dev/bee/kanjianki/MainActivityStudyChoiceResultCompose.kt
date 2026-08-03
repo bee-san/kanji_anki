@@ -29,6 +29,7 @@ internal fun MeaningChoiceResultActionBar(
         statusColor = result.statusColor,
         actionTone = result.actionTone,
         continueEnabled = model.feedbackState?.continueEnabled ?: true,
+        continueAction = model.continueAction,
         onNext = { model.onContinue.run() },
     )
 }
@@ -39,8 +40,15 @@ internal fun MeaningChoiceResultActionBar(
     statusColor: Int,
     actionTone: StudyActionTone,
     continueEnabled: Boolean = true,
+    continueAction: StudyContinueAction? = null,
     onNext: () -> Unit,
 ) {
+    val continueBinding = if (continueAction == null) {
+        null
+    } else {
+        rememberStudyContinueUiBinding(continueAction)
+    }
+    val actionEnabled = continueAction?.feedbackState?.continueEnabled ?: continueEnabled
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -59,13 +67,14 @@ internal fun MeaningChoiceResultActionBar(
         )
         StudyPrimaryActionButton(
             label = dev.bee.kanjianki.core.StudyTextCopy.continueLabel(),
-            onClick = onNext,
+            onClick = continueBinding?.onClick ?: onNext,
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics {
                     this[StudyExplicitContinueSemantics] = true
-                },
-            enabled = continueEnabled,
+                }
+                .then(continueBinding?.modifier ?: Modifier),
+            enabled = actionEnabled,
             tone = actionTone,
         )
     }

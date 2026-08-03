@@ -174,7 +174,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 },
             ).copy(
                 feedbackState = feedback,
-                onContinue = Runnable { home.continueAfterStudyAnswer() },
+                continueAction = home.studyContinueAction(feedback) {
+                    home.continueAfterStudyAnswer()
+                },
             )
             renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
@@ -279,7 +281,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 },
             ).copy(
                 feedbackState = feedback,
-                onContinue = Runnable { home.continueAfterStudyAnswer() },
+                continueAction = home.studyContinueAction(feedback) {
+                    home.continueAfterStudyAnswer()
+                },
             )
             renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
@@ -371,7 +375,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                 },
             ).copy(
                 feedbackState = feedback,
-                onContinue = Runnable { home.continueAfterStudyAnswer() },
+                continueAction = home.studyContinueAction(feedback) {
+                    home.continueAfterStudyAnswer()
+                },
             )
             renderMeaningChoiceRoute(model, meaningChoiceSessionStateForFeedback(feedback))
         }
@@ -485,7 +491,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     explanationLines,
                     mnemonic = mnemonic,
                     feedbackState = feedback,
-                    onContinue = Runnable {
+                    continueAction = home.studyContinueAction(feedback) {
                         home.continueAfterStudyAnswer(session.token, activeUiRecovery)
                     },
                 )
