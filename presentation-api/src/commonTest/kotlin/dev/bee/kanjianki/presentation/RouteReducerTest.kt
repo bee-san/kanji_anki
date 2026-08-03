@@ -242,6 +242,13 @@ class RouteReducerTest {
                 KaniAction.Game.Start(modeId = "meaning_pop"),
                 KaniAction.Game.Answer(answer = "take off"),
                 KaniAction.Game.Continue,
+                KaniAction.MissingKanji.ScanIntent,
+                KaniAction.MissingKanji.CancelScan,
+                KaniAction.MissingKanji.AddToKani(literals = setOf("脱")),
+                KaniAction.MissingKanji.CreateAnkiNotes(literals = setOf("脱"), deckName = "Kani"),
+                KaniAction.MissingKanji.ExportCsv(literals = setOf("脱")),
+                KaniAction.MissingKanji.Remove(literal = "脱"),
+                KaniAction.MissingKanji.DismissResult,
             )
         ) {
             val (state, intent) = RouteReducer.reduce(loaded, action)

@@ -1,0 +1,18 @@
+<resources>
+    <string name="missing_first_run_title">未登録の漢字を探す</string>
+    <string name="missing_first_run_body">コレクションをスキャンして、まだ追加していない一般的な漢字を見つけます。</string>
+    <string name="missing_provider_missing_title">コレクションが接続されていません</string>
+    <string name="missing_provider_missing_body">スキャンするにはコレクションを接続してください。</string>
+    <string name="missing_permission_title">権限が必要です</string>
+    <string name="missing_permission_body">Kaniにコレクションの読み取りを許可してください。</string>
+    <string name="missing_error_title">スキャンに失敗しました</string>
+    <string name="missing_scanning">スキャン中…</string>
+    <string name="missing_cancel">キャンセル</string>
+    <string name="missing_select_all">すべて選択</string>
+    <string name="missing_clear">クリア</string>
+    <string name="missing_add_to_kani">Kaniに追加</string>
+    <string name="missing_create_anki">Ankiに作成</string>
+    <string name="missing_export_csv">CSVを書き出す</string>
+    <string name="missing_dismiss">完了</string>
+    <string name="missing_selection">%1$d 件選択</string>
+</resources>

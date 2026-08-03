@@ -24,6 +24,9 @@ kotlin {
             // `api` for the same reason: from Goal 197 the shell aggregates the Games
             // surfaces, so a host composing the Games route sees them through the shell.
             api(project(":feature-games"))
+            // `api` for the same reason: from Goal 197 the shell aggregates the
+            // Missing Kanji surfaces, so a host composing that route sees them here.
+            api(project(":feature-missing-kanji"))
         }
     }
 }

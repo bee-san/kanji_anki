@@ -89,6 +89,14 @@ object ShellReducer {
          * exactly like a study grade — the shell's stack and tabs are untouched.
          */
         is KaniAction.Game -> state
+
+        /**
+         * Missing Kanji actions are route content, not shell state.
+         *
+         * A scan, a batch write, or a dismissal changes what that route shows and is
+         * re-derived from `:application`; the shell's stack and tabs are untouched.
+         */
+        is KaniAction.MissingKanji -> state
     }
 
     /**
@@ -309,6 +317,15 @@ object RouteReducer {
          * the engine. [RouteState.loading] keeps the current screen up while it does.
          */
         is KaniAction.Game -> state.loading() to RouteIntent.Load
+
+        /**
+         * A Missing Kanji action reloads the route from the advanced flow state.
+         *
+         * A scan produces a report, a batch write produces a result dialog, a dismiss
+         * clears it — each re-read from `:application`. [RouteState.loading] keeps the
+         * current screen up while the reload runs.
+         */
+        is KaniAction.MissingKanji -> state.loading() to RouteIntent.Load
     }
 }
 

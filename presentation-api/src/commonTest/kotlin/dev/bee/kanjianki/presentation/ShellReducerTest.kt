@@ -224,6 +224,10 @@ class ShellReducerTest {
             KaniAction.Game.Start(modeId = "meaning_pop"),
             KaniAction.Game.Answer(answer = "take off"),
             KaniAction.Game.Continue,
+            KaniAction.MissingKanji.ScanIntent,
+            KaniAction.MissingKanji.AddToKani(literals = setOf("脱")),
+            KaniAction.MissingKanji.ExportCsv(literals = setOf("脱")),
+            KaniAction.MissingKanji.DismissResult,
         )
 
         for (action in studyActions) {

@@ -242,6 +242,43 @@ sealed interface KaniAction {
         }
     }
 
+    /**
+     * The Missing Kanji flow: scan, filter, and the batch destinations.
+     *
+     * [ScanIntent] is the one primary button whose meaning the host decides (scan,
+     * scan again, grant permission, install, retry). [AddToKani] and [Remove] are
+     * Kani-side queue edits; [CreateAnkiNotes] is the one capability-gated provider
+     * write — additive notes in Kani's own model/deck, per CLAUDE.md — and [ExportCsv]
+     * is the always-available fallback that the host turns into a file-picker save.
+     * None of these writes a user's existing notes or scheduling state.
+     */
+    sealed interface MissingKanji : KaniAction {
+        /** The primary button; what it does is [MissingKanjiScreen.primaryAction]'s host meaning. */
+        data object ScanIntent : MissingKanji
+
+        /** Cancel a scan in progress. */
+        data object CancelScan : MissingKanji
+
+        /** Dismiss the operation-result dialog. */
+        data object DismissResult : MissingKanji
+
+        /** Admit the selected kanji into Kani's queue (local). */
+        data class AddToKani(val literals: Set<String>) : MissingKanji
+
+        /** Remove one admitted kanji from Kani's queue (local). */
+        data class Remove(val literal: String) : MissingKanji {
+            init {
+                require(literal.isNotBlank()) { "removing nothing is not a user intent" }
+            }
+        }
+
+        /** Create additive Anki notes for the selected kanji in the named deck. */
+        data class CreateAnkiNotes(val literals: Set<String>, val deckName: String) : MissingKanji
+
+        /** Export the selected kanji as CSV through the host's file picker. */
+        data class ExportCsv(val literals: Set<String>) : MissingKanji
+    }
+
     /** Retry the work that produced the currently visible failure. */
     data object Retry : KaniAction
 }
