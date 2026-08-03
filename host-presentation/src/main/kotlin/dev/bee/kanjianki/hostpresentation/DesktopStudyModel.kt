@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.StudyAnswerFeedbackPhase
 import dev.bee.kanjianki.StudyAnswerFeedbackSnapshot
@@ -40,7 +40,7 @@ import dev.bee.kanjianki.presentation.UiText
  * [StudyCard.Writing] carrying its grades, but desktop cannot present one until the
  * capability work lands.
  */
-internal object DesktopStudyModel {
+object DesktopStudyModel {
     /**
      * The portable session for the current route.
      *

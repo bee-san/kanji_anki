@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.KaniThemeChoice
@@ -33,7 +33,7 @@ import dev.bee.kanjianki.presentation.SettingsSectionContent
  * fire only while the window is open — so the limitation is visible at the menu, not
  * discovered after the user opens a section that cannot do what Android's does.
  */
-internal object DesktopSettingsModel {
+object DesktopSettingsModel {
     // Stable keys the controls dispatch and `settingsCommandFor` maps back. Kept here so
     // the round trip cannot drift: a control and its command read the same constant.
     private const val NEW_CARD_SORT_KEY = "new_card_sort_mode"

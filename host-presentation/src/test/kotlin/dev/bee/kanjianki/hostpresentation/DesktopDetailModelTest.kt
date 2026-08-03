@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.RecordsImportModels

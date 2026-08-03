@@ -33,6 +33,11 @@ import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.KanjiDetailScreen
 import dev.bee.kanjianki.games.GamesScreenView
 import dev.bee.kanjianki.games.rememberGamesCopy
+import dev.bee.kanjianki.hostpresentation.DesktopDetailModel
+import dev.bee.kanjianki.hostpresentation.DesktopGamesModel
+import dev.bee.kanjianki.hostpresentation.DesktopSettingsModel
+import dev.bee.kanjianki.hostpresentation.DesktopStatsModel
+import dev.bee.kanjianki.hostpresentation.DesktopStudyModel
 import dev.bee.kanjianki.settings.SettingsScreenView
 import dev.bee.kanjianki.settings.rememberSettingsCopy
 import dev.bee.kanjianki.stats.StatsDashboardScreen

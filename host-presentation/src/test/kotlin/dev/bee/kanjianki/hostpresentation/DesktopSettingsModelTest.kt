@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase

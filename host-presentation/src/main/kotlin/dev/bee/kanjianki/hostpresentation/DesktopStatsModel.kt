@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.ChartAxisPolicy
 import dev.bee.kanjianki.core.ReviewHeatmapPolicy
@@ -48,7 +48,7 @@ import dev.bee.kanjianki.presentation.StatsWeaknessRow
  * [ReviewHeatmap]) and flattening the Android model's per-metric value objects to the
  * value labels the shared dashboard renders.
  */
-internal object DesktopStatsModel {
+object DesktopStatsModel {
     fun dashboard(state: ProgressAnalyticsState): StatsDashboard = StatsDashboard(
         forecast = state.forecast?.let(::forecast),
         overview = overview(state.overview),

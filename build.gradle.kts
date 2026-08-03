@@ -286,6 +286,7 @@ val desktopCiTasks = listOf(
     ":platform-contracts:check",
     ":platform-desktop:check",
     ":presentation-api:check",
+    ":host-presentation:check",
     ":ui-common:check",
     ":feature-shell:check",
     ":feature-home:check",

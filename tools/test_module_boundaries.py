@@ -24,6 +24,7 @@ NEW_SHARED_JVM_MODULES = frozenset(
         "backup-core",
         "data-api",
         "data-sql",
+        "host-presentation",
         "platform-contracts",
         "progress-core",
         "reference-assets",
@@ -100,6 +101,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "sync-api",
         "sync-engine",
         "application",
+        "host-presentation",
         "data-android",
         "provider-ankidroid",
         "platform-android",
@@ -171,6 +173,9 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "backup-core": frozenset({"platform-contracts"}),
     "sync-api": frozenset({"core", "sync-domain"}),
     "application": frozenset({"data-api", "platform-contracts", "sync-engine"}),
+    "host-presentation": frozenset(
+        {"application", "presentation-api", "core", "data-api", "progress-core"},
+    ),
     "sync-engine": frozenset(
         {
             "core",
@@ -216,6 +221,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "application",
             "data-desktop",
             "feature-shell",
+            "host-presentation",
             "platform-desktop",
             "progress-core",
             "provider-ankiconnect",
@@ -260,6 +266,9 @@ FINAL_PROJECT_DEPENDENCIES = {
     ),
     "backup-core": frozenset({"data-api", "platform-contracts"}),
     "progress-core": frozenset({"core", "data-api"}),
+    "host-presentation": frozenset(
+        {"application", "presentation-api", "core", "data-api", "progress-core"},
+    ),
     "reference-assets": frozenset({"dictionary-core", "writing-core"}),
     "presentation-api": frozenset(),
     "ui-common": frozenset({"presentation-api"}),
@@ -283,6 +292,7 @@ FINAL_PROJECT_DEPENDENCIES = {
             "automation-android",
             "data-android",
             "feature-shell",
+            "host-presentation",
             "platform-android",
             "provider-ankidroid",
             "widget",
@@ -296,6 +306,7 @@ FINAL_PROJECT_DEPENDENCIES = {
             "application",
             "data-desktop",
             "feature-shell",
+            "host-presentation",
             "platform-desktop",
             "progress-core",
             "provider-ankiconnect",
@@ -369,6 +380,13 @@ EDGE_RATIONALES = {
     ("progress-core", "core"): "Progress analytics apply scheduler policy.",
     ("progress-core", "data-api"): "Progress analytics read stats snapshots.",
     ("desktop-app", "progress-core"): "Desktop maps analytics state to the stats model.",
+    ("host-presentation", "application"): "Host mappers read use-case snapshots and runtime renders.",
+    ("host-presentation", "presentation-api"): "Host mappers produce portable presentation DTOs.",
+    ("host-presentation", "core"): "Host mappers apply scheduler and copy policy.",
+    ("host-presentation", "data-api"): "Host mappers read repository snapshot types.",
+    ("host-presentation", "progress-core"): "Host mappers map analytics state to the stats dashboard.",
+    ("app", "host-presentation"): "Android maps its snapshots to shared presentation DTOs.",
+    ("desktop-app", "host-presentation"): "Desktop maps its snapshots to shared presentation DTOs.",
     ("ui-common", "presentation-api"): "Shared UI renders portable presentation DTOs.",
     **{
         (feature, "presentation-api"): (

@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.StudyAnswerFeedbackPhase
 import dev.bee.kanjianki.StudyAnswerFeedbackSnapshot

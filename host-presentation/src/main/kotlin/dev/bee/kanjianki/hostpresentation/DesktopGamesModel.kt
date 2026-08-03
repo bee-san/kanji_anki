@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.GamesRender
 import dev.bee.kanjianki.core.KanjiGameCopy
@@ -20,7 +20,7 @@ import dev.bee.kanjianki.presentation.KaniAction
  * pure translation. Its only work is choosing the state (menu / round / result), the
  * accent per mode, and flattening the round/result into the shared shape.
  */
-internal object DesktopGamesModel {
+object DesktopGamesModel {
     fun screen(render: GamesRender): GamesScreen = when {
         render.showingResult -> GamesScreen(state = GamesState.RESULT, result = result(render))
         render.inRound -> GamesScreen(state = GamesState.ROUND, round = round(render))

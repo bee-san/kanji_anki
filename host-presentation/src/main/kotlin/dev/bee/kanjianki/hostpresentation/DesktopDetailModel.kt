@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.DateTextPolicy
 import dev.bee.kanjianki.core.HomeTextCopy
@@ -49,7 +49,7 @@ import dev.bee.kanjianki.presentation.UiText
  * study entry point is Goal 195's to build; until then it opens Study, which is what
  * `BrowseManualReviewPolicy` gated Android's own button on.
  */
-internal object DesktopDetailModel {
+object DesktopDetailModel {
     /**
      * The detail, or a "not found" card for a kanji with no local record.
      *
