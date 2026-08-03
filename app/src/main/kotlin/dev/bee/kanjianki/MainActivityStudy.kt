@@ -541,7 +541,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             val after = state?.snapshot()?.phase
             logStudyAnswerEvent(
                 "event=${if (applied) "applied" else "apply-rejected"} " +
-                    "token_id=${studyAnswerTokenId(token)} " +
+                    "token_id=${studyContinueTokenId(token)} " +
                     "phase_before=${studyAnswerPhaseName(before)} " +
                     "phase_after=${studyAnswerPhaseName(after)} persisted=$persisted " +
                     "active_token_match=${activeSession?.token == token} " +
@@ -587,7 +587,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
             return false
         }
         var pending = studyRecoveryStore.readPending()
-        val tokenId = studyAnswerTokenId(state.sessionToken)
+        val tokenId = studyContinueTokenId(state.sessionToken)
         logStudyAnswerEvent(
             "event=continue-start token_id=$tokenId " +
                 "phase=${studyAnswerPhaseName(state.snapshot().phase)} " +
@@ -654,9 +654,6 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     private fun studyAnswerPhaseName(phase: StudyAnswerFeedbackPhase?): String =
         phase?.name?.lowercase(java.util.Locale.ROOT) ?: "none"
-
-    private fun studyAnswerTokenId(token: String): String =
-        Integer.toUnsignedString(token.hashCode(), 16)
 
     private fun canPersistContinuedHandoff(pending: StoredPendingStudyRecovery): Boolean =
         pending.snapshot.feedback.phase == StudyAnswerFeedbackPhase.APPLIED &&

@@ -102,7 +102,7 @@ internal fun rememberMeaningChoiceSessionState(model: MeaningChoiceSessionModel)
 }
 
 @Composable
-fun SimilarChoiceSessionCard(
+internal fun SimilarChoiceSessionCard(
     model: SimilarChoiceSessionModel,
     modifier: Modifier = Modifier,
     showInlineChoices: Boolean = true,
@@ -310,6 +310,7 @@ private fun SimilarChoiceResultBar(
             statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
             actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
             continueEnabled = model.feedbackState?.continueEnabled ?: true,
+            continueAction = model.continueAction,
             onNext = { model.onContinue.run() },
         )
     }

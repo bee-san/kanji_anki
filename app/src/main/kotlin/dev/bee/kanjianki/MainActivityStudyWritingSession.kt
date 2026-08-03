@@ -55,8 +55,8 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         mnemonic: StudyAnswerMnemonicModel?,
     ): WritingSessionRouteModel {
         resetWritingInteractionState(session)
-        home.prepareStudyAnswerFeedback(session.token)
-        val route = writingRouteModel(session, mnemonic)
+        val feedback = home.prepareStudyAnswerFeedback(session.token)
+        val route = writingRouteModel(session, mnemonic, feedback)
         route.actionBarState = home.buildComposeWritingActionBarState()
         return route
     }
@@ -64,6 +64,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     private fun writingRouteModel(
         session: RecordsSchedulerModels.StudySession,
         mnemonic: StudyAnswerMnemonicModel?,
+        feedback: StudyAnswerFeedbackState,
     ): WritingSessionRouteModel {
         val targetKanji = session.item?.kanji ?: ""
         val answerPanelState = WritingAnswerPanelState(home.studyAnswerFeedbackState?.feedbackVisible == true)
@@ -96,6 +97,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                 resultStatus
             ),
             session.token,
+            home.studyContinueAction(feedback) { home.continueAfterStudyAnswer() },
         )
     }
 
@@ -204,15 +206,16 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                     }
                 },
             )
-            val feedback = home.studyAnswerFeedbackState
-            if (feedback?.feedbackVisible == true) {
+            val feedback = route.continueAction.feedbackState
+            if (feedback.feedbackVisible) {
                 val correct = feedback.outcome == StudyAnswerOutcome.CORRECT
                 MeaningChoiceResultActionBar(
                     status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
                     statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
                     actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
                     continueEnabled = feedback.continueEnabled,
-                    onNext = { home.continueAfterStudyAnswer() },
+                    continueAction = route.continueAction,
+                    onNext = {},
                 )
             } else {
                 WritingActionsBar(state, modifier = Modifier.fillMaxWidth())
@@ -223,6 +226,7 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     private data class WritingSessionRouteModel(
         val cardModel: WritingSessionCardModel,
         val sessionToken: String,
+        val continueAction: StudyContinueAction,
         var actionBarState: WritingActionsBarState? = null,
     )
 }
