@@ -40,6 +40,15 @@ class DesktopFilePickerTest {
         access.openInput(result!!).use { stream ->
             assertNotNull("registered reference resolves to a readable stream", stream)
         }
+        // And resolve() returns the concrete path a snapshot flow needs.
+        assertEquals(chosen.toAbsolutePath().normalize(), access.resolve(result!!))
+    }
+
+    @Test
+    fun resolveReturnsNullForAReferenceThatWasNeverRegistered() {
+        val access = DesktopFileAccess()
+        val fabricated = PlatformFileReference.create("/tmp/never-registered.gz", "never-registered.gz")
+        assertNull("an unregistered reference resolves to nothing", access.resolve(fabricated))
     }
 
     @Test

@@ -68,7 +68,9 @@ import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.RouteState
+import dev.bee.kanjianki.data.desktop.DesktopBackupSnapshotter
 import dev.bee.kanjianki.platform.desktop.DesktopClipboardService
+import dev.bee.kanjianki.platform.desktop.DesktopFilePicker
 import dev.bee.kanjianki.platform.desktop.DesktopExternalNavigator
 import dev.bee.kanjianki.shell.KaniShell
 import dev.bee.kanjianki.shell.LiteralUiTextResolver
@@ -740,6 +742,17 @@ private fun desktopEffectHandler(
         Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
         true
     }
+    // The backup-export flow: an AWT SAVE dialog through DesktopFilePicker registers the
+    // chosen path with DesktopFileAccess, then DesktopBackupSnapshotter writes the
+    // VACUUM-INTO gzip there. The dialog is the one part that needs a display, so it is
+    // the injected seam DesktopFilePicker takes.
+    val filePicker = DesktopFilePicker(container.fileAccess, ::awtSaveDialog)
+    val backupExport = DesktopBackupExport(
+        picker = filePicker,
+        databaseFile = container.databaseFile,
+        pathOf = container.fileAccess::resolve,
+        snapshot = DesktopBackupSnapshotter::snapshot,
+    )
     return object : ShellEffectHandler {
         override fun openUrl(url: String) {
             runCatching { navigator.openUrl(URI(url)) }
@@ -749,14 +762,38 @@ private fun desktopEffectHandler(
             clipboard.setText(label = "Kani", text = text)
         }
 
-        // Goal 199 wires backup export/import and the Missing Kanji CSV to the AWT
-        // file dialog. Until then this is a no-op rather than a stub dialog: a
-        // picker that opens and cannot deliver its file is worse than a button the
-        // capability gate keeps disabled.
-        override fun pickFile(purpose: KaniEffect.PickFile) = Unit
+        // Backup export is wired; restore and the Missing Kanji CSV need the same
+        // dialog plus their own consumers and land next. An unhandled purpose stays a
+        // no-op rather than a dialog that cannot deliver.
+        override fun pickFile(purpose: KaniEffect.PickFile) {
+            when (purpose.purpose) {
+                KaniEffect.FilePurpose.BACKUP_EXPORT -> backupExport.run()
+                KaniEffect.FilePurpose.BACKUP_RESTORE,
+                KaniEffect.FilePurpose.MISSING_KANJI_CSV_EXPORT,
+                -> Unit
+            }
+        }
 
         // Focus targets are registered by the feature composables that own the
         // fields, and none exist yet. An unknown target is a no-op by contract.
         override fun requestFocus(target: String) = Unit
     }
+}
+
+/**
+ * Shows an AWT SAVE [java.awt.FileDialog] and returns the chosen path, or null if the
+ * user cancelled.
+ *
+ * The one piece of the backup flow that needs a display, kept a top-level function so
+ * DesktopFilePicker's own logic stays headlessly testable (the dialog is its injected
+ * seam). The request's suggested name pre-fills the field; its filters are advisory on
+ * a SAVE dialog, which AWT does not enforce, so they are not applied here.
+ */
+private fun awtSaveDialog(request: dev.bee.kanjianki.platform.FilePickerRequest): java.nio.file.Path? {
+    val dialog = java.awt.FileDialog(null as java.awt.Frame?, "Save Kani backup", java.awt.FileDialog.SAVE)
+    request.suggestedName?.let { dialog.file = it }
+    dialog.isVisible = true
+    val directory = dialog.directory ?: return null
+    val file = dialog.file ?: return null
+    return java.nio.file.Path.of(directory, file)
 }

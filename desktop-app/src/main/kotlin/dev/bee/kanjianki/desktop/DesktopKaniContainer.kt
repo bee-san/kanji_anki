@@ -86,6 +86,9 @@ internal class DesktopKaniContainer(
 
     val fileAccess = DesktopFileAccess()
 
+    /** This profile's live database file — the source for a backup snapshot. */
+    val databaseFile: Path = profileDir.resolve(DesktopStorageLayout.DATABASE_FILE_NAME)
+
     override val appLifecycle = DesktopAppLifecycle()
 
     val appDirectories = DesktopAppDirectories.forProfile(

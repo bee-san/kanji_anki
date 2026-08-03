@@ -83,6 +83,14 @@ class DesktopFileAccess : PlatformFileAccess {
         }
     }
 
-    private fun resolve(file: PlatformFileReference): Path? =
+    /**
+     * The registered path for [file], or null if it was never granted.
+     *
+     * Public so a flow that needs the concrete path — a backup snapshot writing through
+     * SQLite `VACUUM INTO`, which takes a filesystem path rather than a stream — can get
+     * it while still going through the registration guard. A reference fabricated
+     * elsewhere resolves to null here exactly as it does for [openInput]/[openOutput].
+     */
+    fun resolve(file: PlatformFileReference): Path? =
         synchronized(registered) { registered[file.opaqueId] }
 }
