@@ -156,4 +156,5 @@ internal data class DesktopRouteContent(
     val detail: KanjiDetail? = null,
     val study: dev.bee.kanjianki.presentation.StudySession? = null,
     val stats: dev.bee.kanjianki.presentation.StatsDashboard? = null,
+    val games: dev.bee.kanjianki.presentation.GamesScreen? = null,
 )

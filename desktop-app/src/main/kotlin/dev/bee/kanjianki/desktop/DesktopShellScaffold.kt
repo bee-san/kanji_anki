@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.GamesRender
+import dev.bee.kanjianki.GamesRuntime
 import dev.bee.kanjianki.StudyRouteRender
 import dev.bee.kanjianki.StudyRuntime
 import dev.bee.kanjianki.core.FocusQueuePolicy
@@ -29,6 +31,8 @@ import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.home.BrowseScreen
 import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.KanjiDetailScreen
+import dev.bee.kanjianki.games.GamesScreenView
+import dev.bee.kanjianki.games.rememberGamesCopy
 import dev.bee.kanjianki.stats.StatsDashboardScreen
 import dev.bee.kanjianki.study.StudySessionScreen
 import dev.bee.kanjianki.study.rememberStudyCopy
@@ -85,6 +89,7 @@ internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
 internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
 internal const val DESKTOP_STUDY_TEST_TAG: String = "kani-desktop-study"
 internal const val DESKTOP_STATS_TEST_TAG: String = "kani-desktop-stats"
+internal const val DESKTOP_GAMES_TEST_TAG: String = "kani-desktop-games"
 
 private val ROUTE_PADDING = 24.dp
 private val SURFACE_SPACING = 16.dp
@@ -126,6 +131,9 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
         StudyRuntime(container.studyUseCases, writingRecognitionAvailable = writingRecognition)
     }
     var studyRender by remember { mutableStateOf<StudyRouteRender?>(null) }
+    // One games session per container, holding the round/score state across answers.
+    val gamesRuntime = remember(container) { GamesRuntime(container.homeUseCases) }
+    var gamesRender by remember { mutableStateOf<GamesRender?>(null) }
     val host = remember(container) {
         DesktopShellHost(
             capabilities = PlatformCapabilities(
@@ -137,7 +145,12 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
                 if (destination is KaniDestination.Study && studyRender == null) {
                     studyRender = studyRuntime.load(System.currentTimeMillis())
                 }
-                loadDesktopRoute(container, provider, destination, studyRender)
+                // Entering Games with no session yet loads the menu; a re-entry keeps
+                // the round in progress.
+                if (destination == KaniDestination.Games && gamesRender == null) {
+                    gamesRender = gamesRuntime.menu()
+                }
+                loadDesktopRoute(container, provider, destination, studyRender, gamesRender)
             },
         )
     }
@@ -169,6 +182,7 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
                     is KaniAction.Browse -> persistBrowseChoice(container, action, listed)
                     is KaniAction.SaveMnemonic -> persistMnemonic(container, action)
                     is KaniAction.Study -> studyRender = driveStudy(studyRuntime, action, studyRender)
+                    is KaniAction.Game -> gamesRender = driveGames(gamesRuntime, action)
                     else -> Unit
                 }
                 host.perform(pending)
@@ -255,6 +269,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             KaniDestination.Stats -> DesktopStatsRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            KaniDestination.Games -> DesktopGamesRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -459,6 +477,27 @@ private fun DesktopStatsRoute(
 }
 
 /**
+ * The kanji games, from `:feature-games`'s own screen.
+ *
+ * Runtime-driven like Study: the engine state maps to the portable screen, which the
+ * shared surface renders. Scrollable because a round's prompt plus choices can exceed
+ * the window.
+ */
+@Composable
+private fun DesktopGamesRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val screen = content.games ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_GAMES_TEST_TAG),
+    ) {
+        GamesScreenView(screen = screen, copy = rememberGamesCopy(), dispatch = dispatch)
+    }
+}
+
+/**
  * A placeholder body for the routes Goals 195+ still own.
  *
  * Kept rather than replaced with an empty box because it is the cheapest evidence
@@ -503,6 +542,7 @@ private suspend fun loadDesktopRoute(
     provider: DesktopProviderProbe,
     destination: KaniDestination,
     studyRender: StudyRouteRender?,
+    gamesRender: GamesRender?,
 ): ContentResult<DesktopRouteContent> = withContext(Dispatchers.IO) {
     val now = System.currentTimeMillis()
     val status = provider.probe()
@@ -591,8 +631,25 @@ private suspend fun loadDesktopRoute(
                 DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable, it.choicePrompt)
             },
             stats = loadStats(container, destination, now),
+            games = gamesRender?.let(DesktopGamesModel::screen),
         ),
     )
+}
+
+/**
+ * Drives the games runtime for one action, returning the new render.
+ *
+ * Start begins a mode, Answer scores the round, Continue advances — all in-memory in
+ * the engine, nothing persisted. The menu is loaded on route entry, so this never
+ * needs the suspend `menu()` path.
+ */
+private fun driveGames(runtime: GamesRuntime, action: KaniAction.Game): GamesRender {
+    val now = System.currentTimeMillis()
+    return when (action) {
+        is KaniAction.Game.Start -> runtime.start(action.modeId, now)
+        is KaniAction.Game.Answer -> runtime.answer(action.answer, now)
+        KaniAction.Game.Continue -> runtime.advance(now)
+    }
 }
 
 /**
