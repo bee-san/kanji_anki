@@ -38,6 +38,7 @@ internal fun studyCopy(): StudyCopy = StudyCopy(
     reveal = "Show answer",
     submit = "Submit",
     undo = "Undo",
+    clear = "Clear",
     doneTitle = "Session complete",
     doneBody = "You finished.",
     doneHome = "Back to home",

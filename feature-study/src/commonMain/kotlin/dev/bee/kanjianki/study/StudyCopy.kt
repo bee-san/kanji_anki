@@ -3,6 +3,7 @@ package dev.bee.kanjianki.study
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import dev.bee.kanjianki.feature.study.generated.resources.Res
+import dev.bee.kanjianki.feature.study.generated.resources.study_clear
 import dev.bee.kanjianki.feature.study.generated.resources.study_continue
 import dev.bee.kanjianki.feature.study.generated.resources.study_done_body
 import dev.bee.kanjianki.feature.study.generated.resources.study_done_home
@@ -37,6 +38,7 @@ data class StudyCopy(
     val reveal: String,
     val submit: String,
     val undo: String,
+    val clear: String,
     val doneTitle: String,
     val doneBody: String,
     val doneHome: String,
@@ -65,6 +67,7 @@ fun rememberStudyCopy(): StudyCopy {
         reveal = stringResource(Res.string.study_reveal),
         submit = stringResource(Res.string.study_submit),
         undo = stringResource(Res.string.study_undo),
+        clear = stringResource(Res.string.study_clear),
         doneTitle = stringResource(Res.string.study_done_title),
         doneBody = stringResource(Res.string.study_done_body),
         doneHome = stringResource(Res.string.study_done_home),
@@ -82,6 +85,7 @@ private data class FixedStudyStrings(
     val reveal: String,
     val submit: String,
     val undo: String,
+    val clear: String,
     val doneTitle: String,
     val doneBody: String,
     val doneHome: String,
@@ -96,6 +100,7 @@ private data class FixedStudyStrings(
         reveal = reveal,
         submit = submit,
         undo = undo,
+        clear = clear,
         doneTitle = doneTitle,
         doneBody = doneBody,
         doneHome = doneHome,

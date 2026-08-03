@@ -100,4 +100,24 @@ class StudyDesktopRenderTest {
     fun typingAKeyIntoTheAnswerFieldDoesNotGradeTheCard() {
         assertTypingAKeyIntoTheAnswerFieldDoesNotGradeTheCard()
     }
+
+    @Test
+    fun draggingCapturesANormalizedStroke() {
+        assertDraggingCapturesANormalizedStroke()
+    }
+
+    @Test
+    fun undoDropsTheLastStrokeAndClearWipesTheCanvas() {
+        assertUndoDropsTheLastStrokeAndClearWipesTheCanvas()
+    }
+
+    @Test
+    fun theCanvasRendersACommittedStrokeAndAGuideWithoutError() {
+        assertTheCanvasRendersACommittedStrokeAndAGuideWithoutError()
+    }
+
+    @Test
+    fun theInkTestTagsAreDistinct() {
+        assertTheInkTestTagsAreDistinct()
+    }
 }

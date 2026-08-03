@@ -31,6 +31,9 @@
     <!-- Undo the last graded card, where undo is supported. -->
     <string name="study_undo">Undo</string>
 
+    <!-- Clear the whole ink canvas back to blank. -->
+    <string name="study_clear">Clear</string>
+
     <!-- The done screen, shown when the session's target is met. -->
     <string name="study_done_title">Session complete</string>
     <string name="study_done_body">You have finished this study session.</string>

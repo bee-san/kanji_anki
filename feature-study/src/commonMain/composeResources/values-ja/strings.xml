@@ -12,6 +12,7 @@
     <string name="study_reveal">答えを表示</string>
     <string name="study_submit">送信</string>
     <string name="study_undo">元に戻す</string>
+    <string name="study_clear">消去</string>
     <string name="study_done_title">セッション完了</string>
     <string name="study_done_body">この学習セッションを終えました。</string>
     <string name="study_done_home">ホームに戻る</string>
