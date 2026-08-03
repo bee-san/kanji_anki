@@ -1,0 +1,18 @@
+<resources>
+    <!--
+      Stats dashboard structural copy. The analytics prose — every metric value,
+      chart label, and summary sentence — is host-computed and reaches the surface as
+      plain strings on the portable StatsDashboard model, the same way the Android
+      ProgressAnalyticsState carried it. Only the labels the dashboard shell adds
+      itself live here.
+    -->
+
+    <!-- The range selector's day-count chips. -->
+    <string name="stats_range_7">7 days</string>
+    <string name="stats_range_30">30 days</string>
+    <string name="stats_range_90">90 days</string>
+
+    <!-- Shown when a section has no data yet. -->
+    <string name="stats_empty_title">Not enough data yet</string>
+    <string name="stats_empty_body">Study a few cards and this fills in.</string>
+</resources>

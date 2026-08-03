@@ -18,6 +18,9 @@ kotlin {
             // aggregates Study's surfaces too, so a host composing the Study route
             // sees this module through the shell rather than depending on it directly.
             api(project(":feature-study"))
+            // `api` for the same reason: from Goal 197 the shell aggregates Stats's
+            // dashboard, so a host composing the Stats route sees it through the shell.
+            api(project(":feature-stats"))
         }
     }
 }

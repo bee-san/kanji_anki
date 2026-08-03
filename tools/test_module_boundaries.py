@@ -84,6 +84,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "feature-shell",
         "feature-home",
         "feature-study",
+        "feature-stats",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -136,10 +137,17 @@ CURRENT_PROJECT_DEPENDENCIES = {
     # and the remaining leaf features have no shared screens yet, so the rest of
     # the aggregator edges stay in FINAL_PROJECT_DEPENDENCIES.
     "feature-shell": frozenset(
-        {"presentation-api", "ui-common", "feature-home", "feature-study"},
+        {
+            "presentation-api",
+            "ui-common",
+            "feature-home",
+            "feature-study",
+            "feature-stats",
+        },
     ),
     "feature-home": frozenset({"presentation-api", "ui-common"}),
     "feature-study": frozenset({"presentation-api", "ui-common"}),
+    "feature-stats": frozenset({"presentation-api", "ui-common"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
