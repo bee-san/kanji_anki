@@ -310,6 +310,18 @@ sealed interface KaniAction {
         }
 
         /**
+         * Set the bounded integer setting identified by [key] to [value].
+         *
+         * The value is already clamped to the control's bounds by the stepper that
+         * raised it; this carries what the setting should become, not a delta.
+         */
+        data class SetNumber(val key: String, val value: Int) : Settings {
+            init {
+                require(key.isNotBlank()) { "a number needs a key" }
+            }
+        }
+
+        /**
          * A named settings command the host resolves.
          *
          * Reset the ladder, recompute stats, export a backup, stage a restore, export

@@ -96,6 +96,45 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun aStepperClampsToItsBoundsAndReportsWhereItCanGo() {
+        val mid = SettingsControl.Stepper(
+            label = "Promotion interval",
+            value = 21,
+            min = 1,
+            max = 365,
+            step = 7,
+            unit = "days",
+            onChange = { KaniAction.Settings.SetNumber("promotion_interval_days", it) },
+        )
+        assertEquals(28, mid.incremented())
+        assertEquals(14, mid.decremented())
+        assertTrue(mid.canIncrement)
+        assertTrue(mid.canDecrement)
+        assertEquals(KaniAction.Settings.SetNumber("promotion_interval_days", 28), mid.onChange(mid.incremented()))
+
+        val atMax = mid.copy(value = 364)
+        assertEquals(365, atMax.incremented())
+        assertTrue(atMax.canIncrement)
+        val pastMax = mid.copy(value = 365)
+        assertEquals(365, pastMax.incremented())
+        assertEquals(false, pastMax.canIncrement)
+
+        val atMin = mid.copy(value = 1)
+        assertEquals(1, atMin.decremented())
+        assertEquals(false, atMin.canDecrement)
+    }
+
+    @Test
+    fun aStepperRejectsAnInvalidRangeOrStep() {
+        assertFailsWith<IllegalArgumentException> {
+            SettingsControl.Stepper(label = "x", value = 0, min = 5, max = 1, onChange = { KaniAction.Retry })
+        }
+        assertFailsWith<IllegalArgumentException> {
+            SettingsControl.Stepper(label = "x", value = 0, min = 0, max = 1, step = 0, onChange = { KaniAction.Retry })
+        }
+    }
+
+    @Test
     fun anInfoRowIsLabelAndValueOnly() {
         val info = SettingsControl.Info(label = "Database version", value = "31")
         assertEquals("Database version", info.label)
@@ -117,6 +156,7 @@ class SettingsScreenTest {
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetToggle(" ", enabled = true) }
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetChoice(" ", "x") }
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetChoice("k", " ") }
+        assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetNumber(" ", 1) }
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.Command(" ") }
     }
 }

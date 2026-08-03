@@ -81,6 +81,15 @@ internal fun controlsScreen(): SettingsScreen = SettingsScreen(
                     SettingsChoiceOption("frequency", "Frequency", KaniAction.Settings.SetChoice("new_card_sort", "frequency")),
                 ),
             ),
+            SettingsControl.Stepper(
+                label = "Promotion interval",
+                value = 21,
+                min = 1,
+                max = 365,
+                step = 7,
+                unit = "days",
+                onChange = { KaniAction.Settings.SetNumber("promotion_interval_days", it) },
+            ),
             SettingsControl.ActionButton(
                 label = "Reset ladder",
                 action = KaniAction.Settings.Command("reset_ladder"),

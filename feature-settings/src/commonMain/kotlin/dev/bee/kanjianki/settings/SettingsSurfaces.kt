@@ -43,6 +43,10 @@ fun settingsCategoryTestTag(route: String): String = "kani-settings-category-$ro
 /** One control, tagged by its label. */
 fun settingsControlTestTag(label: String): String = "kani-settings-control-$label"
 
+/** A stepper's decrement/increment button, tagged by its control label and direction. */
+fun settingsStepperButtonTestTag(label: String, up: Boolean): String =
+    "kani-settings-stepper-${if (up) "up" else "down"}-$label"
+
 /**
  * The Settings surface, from one [SettingsScreen].
  *
@@ -173,6 +177,38 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
                             color = if (selected) KaniTheme.colors.primary else KaniTheme.colors.ink,
                         )
                     }
+                }
+            }
+        }
+
+        is SettingsControl.Stepper -> Row(
+            modifier = Modifier.fillMaxWidth().then(tag),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(
+                    onClick = { dispatch(control.onChange(control.decremented())) },
+                    enabled = control.canDecrement,
+                    shape = KaniUiTokens.ButtonShape,
+                    modifier = Modifier.testTag(settingsStepperButtonTestTag(control.label, up = false)),
+                ) {
+                    Text(text = "−", color = KaniTheme.colors.ink)
+                }
+                Text(
+                    text = if (control.unit.isBlank()) "${control.value}" else "${control.value} ${control.unit}",
+                    color = KaniTheme.colors.ink,
+                    fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                OutlinedButton(
+                    onClick = { dispatch(control.onChange(control.incremented())) },
+                    enabled = control.canIncrement,
+                    shape = KaniUiTokens.ButtonShape,
+                    modifier = Modifier.testTag(settingsStepperButtonTestTag(control.label, up = true)),
+                ) {
+                    Text(text = "+", color = KaniTheme.colors.ink)
                 }
             }
         }

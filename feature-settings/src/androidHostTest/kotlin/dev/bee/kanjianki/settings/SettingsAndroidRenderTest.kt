@@ -35,6 +35,11 @@ class SettingsAndroidRenderTest {
     }
 
     @Test
+    fun aStepperStepsWithinItsBounds() {
+        assertAStepperStepsWithinItsBounds()
+    }
+
+    @Test
     fun aDestructiveButtonDispatchesItsCommand() {
         assertADestructiveButtonDispatchesItsCommand()
     }

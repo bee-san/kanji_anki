@@ -84,6 +84,42 @@ sealed interface SettingsControl {
         val selectedId: String,
     ) : SettingsControl
 
+    /**
+     * A bounded integer, decremented and incremented within [[min], [max]].
+     *
+     * The shape every "days", "passes", "cards per day", and "minutes" setting reduces
+     * to. [onChange] takes the clamped next value, so the surface never has to know a
+     * setting's bounds — it steps by [step] and hands the result back, and this decides
+     * what that value means. The controls that would step past a bound are the surface's
+     * to disable, from [value] against [min]/[max].
+     */
+    data class Stepper(
+        override val label: String,
+        val value: Int,
+        val min: Int,
+        val max: Int,
+        val step: Int = 1,
+        val unit: String = "",
+        val onChange: (Int) -> KaniAction,
+    ) : SettingsControl {
+        init {
+            require(min <= max) { "a stepper's min must not exceed its max" }
+            require(step > 0) { "a stepper steps by a positive amount" }
+        }
+
+        /** The clamped value one [step] down, for the decrement control. */
+        fun decremented(): Int = (value - step).coerceIn(min, max)
+
+        /** The clamped value one [step] up, for the increment control. */
+        fun incremented(): Int = (value + step).coerceIn(min, max)
+
+        /** Whether the value can still go down; the surface disables the control otherwise. */
+        val canDecrement: Boolean get() = value > min
+
+        /** Whether the value can still go up; the surface disables the control otherwise. */
+        val canIncrement: Boolean get() = value < max
+    }
+
     data class ActionButton(
         override val label: String,
         val action: KaniAction,

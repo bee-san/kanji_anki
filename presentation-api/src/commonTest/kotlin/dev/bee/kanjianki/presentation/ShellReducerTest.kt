@@ -230,6 +230,7 @@ class ShellReducerTest {
             KaniAction.MissingKanji.DismissResult,
             KaniAction.Settings.SetToggle(key = "import_weak_cards", enabled = false),
             KaniAction.Settings.SetChoice(key = "new_card_sort", optionId = "frequency"),
+            KaniAction.Settings.SetNumber(key = "promotion_interval_days", value = 28),
             KaniAction.Settings.Command(id = "reset_ladder"),
         )
 

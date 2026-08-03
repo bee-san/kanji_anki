@@ -88,6 +88,25 @@ internal fun assertAChoiceDispatchesTheOptionItsButtonCarries() {
 }
 
 @OptIn(ExperimentalTestApi::class)
+internal fun assertAStepperStepsWithinItsBounds() {
+    val recorded = mutableListOf<KaniAction>()
+    renderSettings(
+        content = { SettingsScreenView(controlsScreen(), settingsCopy(), dispatch = { recorded += it }) },
+    ) {
+        // Value 21, step 7: up commits 28, down commits 14 — both clamped by the model.
+        onNodeWithTag(settingsStepperButtonTestTag("Promotion interval", up = true)).performScrollTo().performClick()
+        onNodeWithTag(settingsStepperButtonTestTag("Promotion interval", up = false)).performScrollTo().performClick()
+        assertEquals(
+            listOf<KaniAction>(
+                KaniAction.Settings.SetNumber("promotion_interval_days", 28),
+                KaniAction.Settings.SetNumber("promotion_interval_days", 14),
+            ),
+            recorded,
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
 internal fun assertADestructiveButtonDispatchesItsCommand() {
     val recorded = mutableListOf<KaniAction>()
     renderSettings(
@@ -155,7 +174,11 @@ internal fun assertTheSettingsTestTagsAreDistinct() {
         SETTINGS_CONTROLS_TEST_TAG,
         SETTINGS_PLACEHOLDER_TEST_TAG,
     ) + SettingsSection.entries.map { settingsCategoryTestTag(it.route) } +
-        listOf("Import weak cards", "New card order").map(::settingsControlTestTag)
+        listOf("Import weak cards", "New card order").map(::settingsControlTestTag) +
+        listOf(
+            settingsStepperButtonTestTag("Promotion interval", up = true),
+            settingsStepperButtonTestTag("Promotion interval", up = false),
+        )
     assertEquals(tags.size, tags.distinct().size, "tags must be unique: $tags")
     assertEquals("kani-settings-category-settings/appearance", settingsCategoryTestTag(SettingsSection.APPEARANCE.route))
 }

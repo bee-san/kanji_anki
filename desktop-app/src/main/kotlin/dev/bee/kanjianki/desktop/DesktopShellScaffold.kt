@@ -664,7 +664,7 @@ private suspend fun loadDesktopRoute(
             stats = loadStats(container, destination, now),
             games = gamesRender?.let(DesktopGamesModel::screen),
             settings = (destination as? KaniDestination.Settings)?.let {
-                DesktopSettingsModel.screen(it.section, snapshot.settings.themeChoice)
+                DesktopSettingsModel.screen(it.section, snapshot.settings)
             },
         ),
     )
@@ -840,7 +840,10 @@ private suspend fun persistSettings(
     container: DesktopKaniContainer,
     action: KaniAction.Settings,
 ) {
-    val command = DesktopSettingsModel.settingsCommandFor(action) ?: return
+    // The current snapshot resolves paired commands (a ladder threshold carries both
+    // values, so the untouched one is read here rather than clobbered).
+    val current = container.settingsUseCases.load()
+    val command = DesktopSettingsModel.settingsCommandFor(action, current) ?: return
     container.settingsUseCases.save(command)
 }
 

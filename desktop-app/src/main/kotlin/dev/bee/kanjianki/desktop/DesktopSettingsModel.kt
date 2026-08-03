@@ -1,9 +1,14 @@
 package dev.bee.kanjianki.desktop
 
 import dev.bee.kanjianki.core.KaniThemeChoice
+import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsSectionTextCopy
+import dev.bee.kanjianki.core.SettingsStudyBehaviorTextCopy
 import dev.bee.kanjianki.core.SettingsThemeTextCopy
+import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.data.SettingsSaveCommand
+import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsChoiceOption
@@ -27,10 +32,86 @@ import dev.bee.kanjianki.presentation.SettingsSectionContent
  * discovered after the user opens a section that cannot do what Android's does.
  */
 internal object DesktopSettingsModel {
-    fun screen(section: SettingsSection, theme: KaniThemeChoice): SettingsScreen = when (section) {
+    // Stable keys the controls dispatch and `settingsCommandFor` maps back. Kept here so
+    // the round trip cannot drift: a control and its command read the same constant.
+    private const val NEW_CARD_SORT_KEY = "new_card_sort_mode"
+    private const val PROMOTION_INTERVAL_KEY = "ladder_promotion_interval_days"
+    private const val DEMOTION_FAIL_STREAK_KEY = "ladder_demotion_fail_streak"
+    private const val STUDY_AHEAD_KEY = "study_ahead_minutes"
+
+    // The new-card sort modes, in the order the section lists them.
+    private val NEW_CARD_SORT_MODES: List<String> = listOf(
+        RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY,
+        RecordsBase.NEW_CARD_SORT_FREQUENCY,
+        RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY,
+        RecordsBase.NEW_CARD_SORT_RETRIEVABILITY_RISK,
+        RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS,
+    )
+
+    fun screen(section: SettingsSection, snapshot: SettingsSnapshot): SettingsScreen = when (section) {
         SettingsSection.ROOT -> SettingsScreen(section = section, root = root())
-        SettingsSection.APPEARANCE -> SettingsScreen(section = section, content = appearance(theme))
+        SettingsSection.APPEARANCE ->
+            SettingsScreen(section = section, content = appearance(snapshot.themeChoice))
+        SettingsSection.STUDY_BEHAVIOR ->
+            SettingsScreen(section = section, content = studyBehavior(snapshot))
         else -> SettingsScreen(section = section)
+    }
+
+    /**
+     * The Study-behaviour section: the tractable subset that is pure device state.
+     *
+     * New-card order (a choice), promotion interval / demotion fail streak / study-ahead
+     * (bounded steppers). Bounds come from the settings model itself
+     * ([StudyLadderThresholdPolicy], [SettingsInputRules]) rather than being restated
+     * here, so a control can never offer a value the store would clamp. The FSRS
+     * personalisation and learning-step editors stay unported for now (their Android
+     * panels are larger); this is the honest subset, not a claim the whole section is
+     * shared.
+     */
+    private fun studyBehavior(snapshot: SettingsSnapshot): SettingsSectionContent.Controls {
+        val sync = snapshot.sync
+        return SettingsSectionContent.Controls(
+            title = SettingsSectionTextCopy.settingsStudyBehaviorTitle(),
+            controls = listOf(
+                SettingsControl.Choice(
+                    label = SettingsStudyBehaviorTextCopy.newCardSortLabel(),
+                    selectedId = sync.newCardSortMode,
+                    options = NEW_CARD_SORT_MODES.map { mode ->
+                        SettingsChoiceOption(
+                            id = mode,
+                            label = SettingsStudyBehaviorTextCopy.newCardSortModeLabel(mode),
+                            action = KaniAction.Settings.SetChoice(NEW_CARD_SORT_KEY, mode),
+                        )
+                    },
+                ),
+                SettingsControl.Stepper(
+                    label = SettingsStudyBehaviorTextCopy.promotionIntervalLabel(),
+                    value = sync.ladderPromotionIntervalDays,
+                    min = 1,
+                    max = StudyLadderThresholdPolicy.MAX_PROMOTION_INTERVAL_DAYS,
+                    step = 7,
+                    unit = SettingsStudyBehaviorTextCopy.daysUnit(),
+                    onChange = { KaniAction.Settings.SetNumber(PROMOTION_INTERVAL_KEY, it) },
+                ),
+                SettingsControl.Stepper(
+                    label = SettingsStudyBehaviorTextCopy.demotionFailStreakLabel(),
+                    value = sync.ladderDemotionFailStreak,
+                    min = 1,
+                    max = StudyLadderThresholdPolicy.MAX_DEMOTION_FAIL_STREAK,
+                    unit = SettingsStudyBehaviorTextCopy.failsUnit(),
+                    onChange = { KaniAction.Settings.SetNumber(DEMOTION_FAIL_STREAK_KEY, it) },
+                ),
+                SettingsControl.Stepper(
+                    label = SettingsStudyBehaviorTextCopy.studyAheadLabel(),
+                    value = snapshot.studyAheadMinutes,
+                    min = 0,
+                    max = SettingsInputRules.MAX_STUDY_AHEAD_MINUTES,
+                    step = 15,
+                    unit = SettingsStudyBehaviorTextCopy.minutesUnit(),
+                    onChange = { KaniAction.Settings.SetNumber(STUDY_AHEAD_KEY, it) },
+                ),
+            ),
+        )
     }
 
     /**
@@ -64,24 +145,40 @@ internal object DesktopSettingsModel {
         )
 
     /**
-     * The persistence command a settings [action] means, or null if it is not one the
-     * desktop app currently persists.
+     * The persistence command a settings [action] means against [current], or null if it
+     * is not one the desktop app currently persists.
      *
-     * The inverse of the [SettingsControl.action]s [screen] builds: a control here
-     * dispatches a keyed [KaniAction.Settings], and this turns it back into the concrete
-     * `SettingsSaveCommand`. Kept a pure function so the round trip — control key to
-     * command — is unit-testable without a store. Only the ported edits map today; the
-     * `null` branch is reached only by an edit whose control is not yet rendered.
+     * The inverse of the [SettingsControl] actions [screen] builds: a control dispatches
+     * a keyed [KaniAction.Settings], and this turns it back into the concrete
+     * `SettingsSaveCommand`. [current] is needed because some commands are paired —
+     * `LadderThresholds` carries both thresholds, so setting one reads the other from the
+     * current snapshot rather than clobbering it. Kept a pure function so the round trip
+     * is unit-testable without a store. Only the ported edits map; the `null` branches
+     * are reached only by an edit whose control is not yet rendered.
      */
-    fun settingsCommandFor(action: KaniAction.Settings): SettingsSaveCommand? = when (action) {
-        is KaniAction.Settings.SetChoice -> when (action.key) {
-            KaniThemeChoice.SETTING_KEY ->
-                SettingsSaveCommand.Theme(KaniThemeChoice.fromStorageKey(action.optionId))
-            else -> null
+    fun settingsCommandFor(action: KaniAction.Settings, current: SettingsSnapshot): SettingsSaveCommand? =
+        when (action) {
+            is KaniAction.Settings.SetChoice -> when (action.key) {
+                KaniThemeChoice.SETTING_KEY ->
+                    SettingsSaveCommand.Theme(KaniThemeChoice.fromStorageKey(action.optionId))
+                NEW_CARD_SORT_KEY -> SettingsSaveCommand.NewCardSort(action.optionId)
+                else -> null
+            }
+            is KaniAction.Settings.SetNumber -> when (action.key) {
+                PROMOTION_INTERVAL_KEY -> SettingsSaveCommand.LadderThresholds(
+                    promotionIntervalDays = action.value,
+                    demotionFailStreak = current.sync.ladderDemotionFailStreak,
+                )
+                DEMOTION_FAIL_STREAK_KEY -> SettingsSaveCommand.LadderThresholds(
+                    promotionIntervalDays = current.sync.ladderPromotionIntervalDays,
+                    demotionFailStreak = action.value,
+                )
+                STUDY_AHEAD_KEY -> SettingsSaveCommand.StudyAhead(minutes = action.value)
+                else -> null
+            }
+            is KaniAction.Settings.SetToggle -> null
+            is KaniAction.Settings.Command -> null
         }
-        is KaniAction.Settings.SetToggle -> null
-        is KaniAction.Settings.Command -> null
-    }
 
     private fun root(): SettingsRoot = SettingsRoot(
         title = SettingsSectionTextCopy.settingsTitle(),

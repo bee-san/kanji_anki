@@ -36,6 +36,11 @@ class SettingsDesktopRenderTest {
     }
 
     @Test
+    fun aStepperStepsWithinItsBounds() {
+        assertAStepperStepsWithinItsBounds()
+    }
+
+    @Test
     fun aDestructiveButtonDispatchesItsCommand() {
         assertADestructiveButtonDispatchesItsCommand()
     }
