@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.desktop
 
+import dev.bee.kanjianki.hostpresentation.DesktopHomeModels
 import dev.bee.kanjianki.hostpresentation.KaniRouteContent
 import dev.bee.kanjianki.presentation.ContentResult
 import dev.bee.kanjianki.presentation.KaniDestination

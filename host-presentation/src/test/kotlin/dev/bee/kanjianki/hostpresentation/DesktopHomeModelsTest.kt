@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.DailyStudyPlan
 import dev.bee.kanjianki.core.DailyStudyPlanPolicy
@@ -26,10 +26,8 @@ import dev.bee.kanjianki.presentation.ImportSource
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.OnboardingStep
 import dev.bee.kanjianki.presentation.PresentationFailure
+import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.presentation.UiText
-import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectHandshake
-import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectStatusMapping
-import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.syncapi.CollectionFailureKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -332,19 +330,22 @@ class DesktopHomeModelsTest {
 
     @Test
     fun onboardingCarriesTheProvidersOwnWordsRatherThanASharedString() {
+        // The one line no shared resource table could hold: which of "start Anki" and
+        // "this AnkiConnect is too old" applies is a host probe's answer, passed in as
+        // guidance. The mapper carries it through verbatim rather than substituting a
+        // shared string — proven here with a marker only a host could produce.
+        val hostGuidance = "start Anki, or upgrade this AnkiConnect"
         val plan = DesktopHomeModels.onboarding(
-            readiness = status(CollectionAvailability.NOT_AVAILABLE).readiness,
-            guidance = status(CollectionAvailability.NOT_AVAILABLE).message,
+            readiness = ProviderReadiness.ABSENT,
+            guidance = hostGuidance,
             settings = settings(),
             latestSync = null,
             repairedKanjiCount = 0,
         )
 
         assertEquals(OnboardingStep.CONNECT_PROVIDER, plan.step)
-        // The one line no shared resource table could hold: which of "start Anki" and
-        // "this AnkiConnect is too old" applies is the provider module's answer.
         assertEquals(
-            UiText.Literal(AnkiConnectStatusMapping.messageFor(UNAVAILABLE)),
+            UiText.Literal(hostGuidance),
             plan.hostCopy.guidance,
         )
     }
@@ -353,20 +354,20 @@ class DesktopHomeModelsTest {
     fun onboardingWalksTheStepsTheUserActuallyHasToSatisfy() {
         assertEquals(
             OnboardingStep.AUTHORIZE_PROVIDER,
-            onboardingFor(status(CollectionAvailability.AUTH_REQUIRED), settings(), null).step,
+            onboardingFor(ProviderReadiness.UNAUTHORIZED, settings(), null).step,
         )
         // Ready and bound, but never synced.
         assertEquals(
             OnboardingStep.READY_FIRST_SYNC,
-            onboardingFor(status(CollectionAvailability.READY), settings(), null).step,
+            onboardingFor(ProviderReadiness.READY, settings(), null).step,
         )
         assertEquals(
             OnboardingStep.SYNCED,
-            onboardingFor(status(CollectionAvailability.READY), settings(), sync("success")).step,
+            onboardingFor(ProviderReadiness.READY, settings(), sync("success")).step,
         )
         assertEquals(
             OnboardingStep.RECOVER_SYNC,
-            onboardingFor(status(CollectionAvailability.READY), settings(), sync("error")).step,
+            onboardingFor(ProviderReadiness.READY, settings(), sync("error")).step,
         )
     }
 
@@ -375,7 +376,7 @@ class DesktopHomeModelsTest {
         // `importTaggedCards` with no tags and a query import with a blank query both
         // import nothing, which is exactly the state CHOOSE_SOURCE is for.
         val emptySources = onboardingFor(
-            status(CollectionAvailability.READY),
+            ProviderReadiness.READY,
             settings(
                 importActiveCards = false,
                 importSuspendedCards = false,
@@ -395,7 +396,7 @@ class DesktopHomeModelsTest {
     @Test
     fun eachImportFlagBecomesItsOwnSource() {
         val everything = onboardingFor(
-            status(CollectionAvailability.READY),
+            ProviderReadiness.READY,
             settings(
                 importActiveCards = true,
                 importSuspendedCards = true,
@@ -501,20 +502,14 @@ class DesktopHomeModelsTest {
         matureSupportThreshold = 2,
     ).cards.single()
 
-    private fun status(availability: CollectionAvailability) = DesktopProviderStatus(
-        message = AnkiConnectStatusMapping.messageFor(UNAVAILABLE),
-        availability = availability,
-        capabilities = emptySet(),
-    )
-
-    /** Calls the host-neutral onboarding mapper from a desktop [status], as the host does. */
+    /** Calls the host-neutral onboarding mapper the way either host does. */
     private fun onboardingFor(
-        status: DesktopProviderStatus,
+        readiness: ProviderReadiness,
         settings: RecordsSyncModels.Settings,
         latestSync: SyncStatusSnapshot?,
     ) = DesktopHomeModels.onboarding(
-        readiness = status.readiness,
-        guidance = status.message,
+        readiness = readiness,
+        guidance = "host guidance",
         settings = settings,
         latestSync = latestSync,
         repairedKanjiCount = 0,
@@ -665,9 +660,5 @@ class DesktopHomeModelsTest {
     private companion object {
         const val NOW = 1_800_000_000_000L
         const val DAY = 24L * 60L * 60L * 1000L
-        val UNAVAILABLE =
-            AnkiConnectHandshake.Status.Unavailable(
-                detail = "connection refused",
-            )
     }
 }

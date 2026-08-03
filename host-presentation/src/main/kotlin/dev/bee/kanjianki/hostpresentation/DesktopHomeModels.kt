@@ -1,4 +1,4 @@
-package dev.bee.kanjianki.desktop
+package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.StudyNowCountCoordinator
 import dev.bee.kanjianki.core.AdaptiveFocusCopy
@@ -70,7 +70,7 @@ import dev.bee.kanjianki.syncapi.CollectionFailureKind
  * count feeding `studyRemainingCount` reads the legacy repair queue, which desktop
  * has never written a row into.
  */
-internal object DesktopHomeModels {
+object DesktopHomeModels {
     /**
      * The three Home tiles, in Android's order, with only the sync tile actionable.
      *
