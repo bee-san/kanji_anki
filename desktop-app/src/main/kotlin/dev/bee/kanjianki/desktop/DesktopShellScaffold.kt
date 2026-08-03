@@ -186,6 +186,7 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
                     is KaniAction.SaveMnemonic -> persistMnemonic(container, action)
                     is KaniAction.Study -> studyRender = driveStudy(studyRuntime, action, studyRender)
                     is KaniAction.Game -> gamesRender = driveGames(gamesRuntime, action)
+                    is KaniAction.Settings -> persistSettings(container, action)
                     else -> Unit
                 }
                 host.perform(pending)
@@ -663,7 +664,7 @@ private suspend fun loadDesktopRoute(
             stats = loadStats(container, destination, now),
             games = gamesRender?.let(DesktopGamesModel::screen),
             settings = (destination as? KaniDestination.Settings)?.let {
-                DesktopSettingsModel.screen(it.section)
+                DesktopSettingsModel.screen(it.section, snapshot.settings.themeChoice)
             },
         ),
     )
@@ -824,6 +825,23 @@ private suspend fun persistBrowseChoice(
             updatedAtMillis = System.currentTimeMillis(),
         ),
     )
+}
+
+/**
+ * Persists a settings edit before the section reloads.
+ *
+ * The action carries a stable key/id; [DesktopSettingsModel.settingsCommandFor] maps it
+ * to the concrete `SettingsSaveCommand`. Only edits the desktop app currently ports map
+ * to a command — an un-ported edit produces null and is ignored, which cannot happen in
+ * practice because only ported sections render a control that dispatches one. Kani-side
+ * device state; nothing here reaches the collection.
+ */
+private suspend fun persistSettings(
+    container: DesktopKaniContainer,
+    action: KaniAction.Settings,
+) {
+    val command = DesktopSettingsModel.settingsCommandFor(action) ?: return
+    container.settingsUseCases.save(command)
 }
 
 /** The persisted streak, as the policy type both the plan and the metric take. */
