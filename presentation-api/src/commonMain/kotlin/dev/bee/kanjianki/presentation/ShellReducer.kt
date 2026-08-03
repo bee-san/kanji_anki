@@ -97,6 +97,16 @@ object ShellReducer {
          * re-derived from `:application`; the shell's stack and tabs are untouched.
          */
         is KaniAction.MissingKanji -> state
+
+        /**
+         * A settings edit is route content, not shell state.
+         *
+         * A toggle, choice, or command changes what the settings section shows and is
+         * re-derived from `:application`; the shell's back stack and tabs are untouched.
+         * A command that ends up navigating (a restore that restarts the app) does so
+         * through the host's effect, not by this reducer moving the stack.
+         */
+        is KaniAction.Settings -> state
     }
 
     /**
@@ -326,6 +336,17 @@ object RouteReducer {
          * current screen up while the reload runs.
          */
         is KaniAction.MissingKanji -> state.loading() to RouteIntent.Load
+
+        /**
+         * A settings edit reloads the section from the persisted value.
+         *
+         * By the time the route hears a toggle or choice the value is written, and the
+         * control reflects the stored setting rather than the tap — so a reload is how
+         * the section shows what was persisted, and how a dependent control (a slider
+         * that a toggle enables) updates. [RouteState.loading] keeps the section
+         * visible while it runs.
+         */
+        is KaniAction.Settings -> state.loading() to RouteIntent.Load
     }
 }
 

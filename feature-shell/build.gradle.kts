@@ -27,6 +27,9 @@ kotlin {
             // `api` for the same reason: from Goal 197 the shell aggregates the
             // Missing Kanji surfaces, so a host composing that route sees them here.
             api(project(":feature-missing-kanji"))
+            // `api` for the same reason: from Goal 198 the shell aggregates the
+            // Settings surfaces, so a host composing the Settings route sees them here.
+            api(project(":feature-settings"))
         }
     }
 }

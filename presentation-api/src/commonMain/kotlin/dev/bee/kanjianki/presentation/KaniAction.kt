@@ -279,6 +279,51 @@ sealed interface KaniAction {
         data class ExportCsv(val literals: Set<String>) : MissingKanji
     }
 
+    /**
+     * Editing a setting.
+     *
+     * A small, stable vocabulary rather than one action per preference, because
+     * Settings is the app's largest surface (~40 Android panels) and is ported one
+     * section at a time — a shared enum would force this file to grow with every
+     * section, and a screen that dispatched a typed setting would pull the settings
+     * schema into `:presentation-api`. Each carries a stable [key]/[id] the host maps
+     * to the concrete `Settings` field; validation, bounds, and persistence stay in
+     * `:core`/`:application`, the same boundary [Provider] and [Study] draw.
+     *
+     * Note what is absent: nothing here writes the collection. Every settings edit is
+     * Kani-side device state.
+     */
+    sealed interface Settings : KaniAction {
+        /** Flip a boolean setting identified by [key]. */
+        data class SetToggle(val key: String, val enabled: Boolean) : Settings {
+            init {
+                require(key.isNotBlank()) { "a toggle needs a key" }
+            }
+        }
+
+        /** Choose one [optionId] of the multi-value setting identified by [key]. */
+        data class SetChoice(val key: String, val optionId: String) : Settings {
+            init {
+                require(key.isNotBlank()) { "a choice needs a key" }
+                require(optionId.isNotBlank()) { "a choice needs an option" }
+            }
+        }
+
+        /**
+         * A named settings command the host resolves.
+         *
+         * Reset the ladder, recompute stats, export a backup, stage a restore, export
+         * diagnostics: the actions that are not a simple field edit. [id] is the stable
+         * command name; whether it needs a picker, a confirmation, or a restart is the
+         * host's business, decided from [SettingsControl] and its own capabilities.
+         */
+        data class Command(val id: String) : Settings {
+            init {
+                require(id.isNotBlank()) { "a command needs an id" }
+            }
+        }
+    }
+
     /** Retry the work that produced the currently visible failure. */
     data object Retry : KaniAction
 }

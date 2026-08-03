@@ -89,6 +89,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "feature-stats",
         "feature-games",
         "feature-missing-kanji",
+        "feature-settings",
         "data-api",
         "data-sql",
         "data-desktop",
@@ -149,6 +150,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "feature-stats",
             "feature-games",
             "feature-missing-kanji",
+            "feature-settings",
         },
     ),
     "feature-home": frozenset({"presentation-api", "ui-common"}),
@@ -156,6 +158,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "feature-stats": frozenset({"presentation-api", "ui-common"}),
     "feature-games": frozenset({"presentation-api", "ui-common"}),
     "feature-missing-kanji": frozenset({"presentation-api", "ui-common"}),
+    "feature-settings": frozenset({"presentation-api", "ui-common"}),
     "data-api": frozenset({"core", "sync-domain"}),
     "data-sql": frozenset(
         {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},

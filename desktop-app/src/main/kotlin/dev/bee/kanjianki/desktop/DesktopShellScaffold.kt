@@ -33,6 +33,8 @@ import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.KanjiDetailScreen
 import dev.bee.kanjianki.games.GamesScreenView
 import dev.bee.kanjianki.games.rememberGamesCopy
+import dev.bee.kanjianki.settings.SettingsScreenView
+import dev.bee.kanjianki.settings.rememberSettingsCopy
 import dev.bee.kanjianki.stats.StatsDashboardScreen
 import dev.bee.kanjianki.study.StudySessionScreen
 import dev.bee.kanjianki.study.rememberStudyCopy
@@ -90,6 +92,7 @@ internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
 internal const val DESKTOP_STUDY_TEST_TAG: String = "kani-desktop-study"
 internal const val DESKTOP_STATS_TEST_TAG: String = "kani-desktop-stats"
 internal const val DESKTOP_GAMES_TEST_TAG: String = "kani-desktop-games"
+internal const val DESKTOP_SETTINGS_TEST_TAG: String = "kani-desktop-settings"
 
 private val ROUTE_PADDING = 24.dp
 private val SURFACE_SPACING = 16.dp
@@ -273,6 +276,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             KaniDestination.Games -> DesktopGamesRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            is KaniDestination.Settings -> DesktopSettingsRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -498,6 +505,29 @@ private fun DesktopGamesRoute(
 }
 
 /**
+ * Settings, from `:feature-settings`'s own screen.
+ *
+ * The root category menu is real — the same titles and summaries the Android host
+ * shows, from `SettingsSectionTextCopy` — and each leaf section is the shared surface's
+ * honest placeholder until later Goal 198 slices port it. Scrollable because the
+ * category menu is taller than a short window. A route that has not loaded yet has no
+ * model, and the shell's loading surface is above this.
+ */
+@Composable
+private fun DesktopSettingsRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val screen = content.settings ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_SETTINGS_TEST_TAG),
+    ) {
+        SettingsScreenView(screen = screen, copy = rememberSettingsCopy(), dispatch = dispatch)
+    }
+}
+
+/**
  * A placeholder body for the routes Goals 195+ still own.
  *
  * Kept rather than replaced with an empty box because it is the cheapest evidence
@@ -632,6 +662,9 @@ private suspend fun loadDesktopRoute(
             },
             stats = loadStats(container, destination, now),
             games = gamesRender?.let(DesktopGamesModel::screen),
+            settings = (destination as? KaniDestination.Settings)?.let {
+                DesktopSettingsModel.screen(it.section)
+            },
         ),
     )
 }

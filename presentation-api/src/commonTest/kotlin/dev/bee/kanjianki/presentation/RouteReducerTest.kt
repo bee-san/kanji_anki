@@ -249,6 +249,9 @@ class RouteReducerTest {
                 KaniAction.MissingKanji.ExportCsv(literals = setOf("脱")),
                 KaniAction.MissingKanji.Remove(literal = "脱"),
                 KaniAction.MissingKanji.DismissResult,
+                KaniAction.Settings.SetToggle(key = "import_weak_cards", enabled = false),
+                KaniAction.Settings.SetChoice(key = "new_card_sort", optionId = "frequency"),
+                KaniAction.Settings.Command(id = "reset_ladder"),
             )
         ) {
             val (state, intent) = RouteReducer.reduce(loaded, action)
