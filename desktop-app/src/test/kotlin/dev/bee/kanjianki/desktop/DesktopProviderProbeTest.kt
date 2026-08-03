@@ -5,6 +5,7 @@ import dev.bee.kanjianki.platform.SecretReference
 import dev.bee.kanjianki.platform.SecretStore
 import dev.bee.kanjianki.platform.SecretValue
 import dev.bee.kanjianki.presentation.PlatformCapability
+import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectActions
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectHandshake
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectKeyStore
@@ -72,6 +73,47 @@ class DesktopProviderProbeTest {
             // "start Anki" across both hosts is the point of the mapping.
             assertEquals(AnkiConnectStatusMapping.messageFor(status), observed.message)
         }
+    }
+
+    @Test
+    fun readinessTellsApartStartAnkiFromGrantKaniAccess() {
+        // The distinction `isReady` alone destroys, and the reason the status carries
+        // an availability rather than a boolean: onboarding has to choose between two
+        // different instructions, and both of these are `isReady == false`.
+        assertEquals(
+            ProviderReadiness.UNAUTHORIZED,
+            probe(AnkiConnectHandshake.Status.PermissionRequired).probe().readiness,
+        )
+        assertEquals(
+            ProviderReadiness.ABSENT,
+            probe(AnkiConnectHandshake.Status.Unavailable(detail = "refused")).probe().readiness,
+        )
+        assertEquals(
+            ProviderReadiness.READY,
+            probe(ready(emptySet())).probe().readiness,
+        )
+    }
+
+    @Test
+    fun anUnusableConfigurationReadsAsAbsentRatherThanUnauthorized() {
+        // Granting access fixes neither an AnkiConnect too old for Kani nor a profile
+        // that is not open, so both belong with "nothing to talk to yet" — where the
+        // host-supplied message says which of the two it actually is.
+        val statuses = listOf(
+            AnkiConnectHandshake.Status.NoActiveProfile,
+            AnkiConnectHandshake.Status.UnsupportedVersion(reported = 4),
+            AnkiConnectHandshake.Status.MissingRequiredActions(setOf("findNotes")),
+        )
+
+        for (status in statuses) {
+            assertEquals("$status", ProviderReadiness.ABSENT, probe(status).probe().readiness)
+        }
+
+        val unusableEndpoint = DesktopProviderProbe.forLoopbackEndpoint(
+            secrets = StubSecrets(key = null),
+            endpointUrl = "http://example.com:8765",
+        )
+        assertEquals(ProviderReadiness.ABSENT, unusableEndpoint.probe().readiness)
     }
 
     @Test

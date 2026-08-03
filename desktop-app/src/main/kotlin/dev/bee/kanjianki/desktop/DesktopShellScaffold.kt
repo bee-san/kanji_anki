@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,8 +18,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
+import dev.bee.kanjianki.core.StudyStreakPolicy
+import dev.bee.kanjianki.data.SetLocalSuspensionCommand
+import dev.bee.kanjianki.data.StudyQueueSnapshot
+import dev.bee.kanjianki.home.BrowseScreen
+import dev.bee.kanjianki.home.FocusQueuePanel
+import dev.bee.kanjianki.home.HomeDeckOverview
+import dev.bee.kanjianki.home.HomeMetricRow
+import dev.bee.kanjianki.home.HomeNoticeCard
+import dev.bee.kanjianki.home.HomePrimaryAction
+import dev.bee.kanjianki.home.HomeTodayCard
+import dev.bee.kanjianki.home.OnboardingCard
+import dev.bee.kanjianki.home.ProviderStatusRow
+import dev.bee.kanjianki.home.RepairedHandoffCard
+import dev.bee.kanjianki.home.SyncProgressCard
+import dev.bee.kanjianki.home.rememberBrowseCopy
+import dev.bee.kanjianki.home.rememberDashboardCopy
+import dev.bee.kanjianki.home.rememberHomeCopy
+import dev.bee.kanjianki.home.rememberHomeCountedCopy
+import dev.bee.kanjianki.presentation.BrowseResults
 import dev.bee.kanjianki.presentation.ContentResult
+import dev.bee.kanjianki.presentation.HomeDashboard
+import dev.bee.kanjianki.presentation.HomeNoticePolicy
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniEffect
@@ -40,10 +64,21 @@ import java.awt.datatransfer.StringSelection
 import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /** The tag the desktop placeholder body renders under, mirroring the shell's. */
 internal const val DESKTOP_PLACEHOLDER_TEST_TAG: String = "kani-desktop-placeholder"
+
+/** The tags the three wired routes render their own column under. */
+internal const val DESKTOP_HOME_TEST_TAG: String = "kani-desktop-home"
+internal const val DESKTOP_FOCUS_QUEUE_TEST_TAG: String = "kani-desktop-focus-queue"
+internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
+
+private val ROUTE_PADDING = 24.dp
+private val SURFACE_SPACING = 16.dp
+
+private const val MINUTE_MILLIS = 60_000L
 
 /**
  * The shared shell, wired to a live desktop container.
@@ -70,7 +105,7 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
             capabilities = PlatformCapabilities(
                 desktopHostCapabilities(persistsSecrets = container.persistsSecrets),
             ),
-            loadRoute = { loadDesktopRoute(container, provider) },
+            loadRoute = { destination -> loadDesktopRoute(container, provider, destination) },
         )
     }
 
@@ -83,10 +118,21 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
     val routeState = remember(revision) { host.route(shellState.current) }
 
     val dispatch: (KaniAction) -> Unit = { action ->
+        // The rows the action is about, read before the reducer marks the route
+        // reloading. `SetAllStudied` names no kanji — it means "every row currently
+        // listed" — so the list it applies to has to come from the visible content.
+        val listed = routeState.content.valueOrNull?.browse?.rows.orEmpty().map { it.kanji }
         val pending = host.dispatch(action)
         revision++
         if (pending != null) {
             scope.launch {
+                // A Browse toggle is a write and then a reload, in that order and in
+                // one launch. `RouteReducer` already turns the toggle into a reload;
+                // what it cannot do is persist the choice, and reloading first would
+                // re-read the state the user just changed.
+                if (action is KaniAction.Browse) {
+                    persistBrowseChoice(container, action, listed)
+                }
                 host.perform(pending)
                 revision++
             }
@@ -115,9 +161,10 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
             dispatch = dispatch,
             backAffordance = ShellBackAffordanceMode.IN_SHELL,
         ) { destination ->
-            DesktopRoutePlaceholder(
+            DesktopRouteBody(
                 destination = destination,
                 state = routeState,
+                capabilities = shellState.capabilities,
                 dispatch = dispatch,
             )
         }
@@ -125,18 +172,19 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
 }
 
 /**
- * A placeholder body for every route, until Goals 194+ replace them one at a time.
+ * One route's body: Home, Browse, and the focus queue for real; the rest still stubs.
  *
- * It goes through [ShellRouteContent] rather than rendering its own loading and
- * error states, so the placeholder already exercises the shared surfaces the real
- * screens will use — which means the loading spinner, refresh hint, failure banner,
- * and retry button on desktop are the ones covered by the shell's own tests, not a
- * temporary copy that has to be removed later.
+ * Every branch goes through [ShellRouteContent] rather than rendering its own loading
+ * and error states, which is what makes the desktop spinner, refresh hint, failure
+ * banner, and retry button the ones the shell's own tests already cover. It also
+ * keeps [shellRouteTestTag] on every route, which `:feature-shell`'s render
+ * assertions depend on.
  */
 @Composable
-private fun DesktopRoutePlaceholder(
+private fun DesktopRouteBody(
     destination: KaniDestination,
     state: RouteState<DesktopRouteContent>,
+    capabilities: PlatformCapabilities,
     dispatch: (KaniAction) -> Unit,
 ) {
     ShellRouteContent(
@@ -146,48 +194,348 @@ private fun DesktopRoutePlaceholder(
         dispatch = dispatch,
         modifier = Modifier.testTag(shellRouteTestTag(destination)),
     ) { content ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp).testTag(DESKTOP_PLACEHOLDER_TEST_TAG),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(text = destination.route, style = MaterialTheme.typography.titleLarge)
-            Text(text = content.provider.message, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                text = "${content.studyItemCount} kanji admitted, ${content.dueCount} due",
-                style = MaterialTheme.typography.bodySmall,
+        when (destination) {
+            KaniDestination.Home -> DesktopHomeRoute(
+                content = content,
+                capabilities = capabilities,
+                dispatch = dispatch,
             )
+            KaniDestination.FocusQueue -> DesktopFocusQueueRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            is KaniDestination.Browse -> DesktopBrowseRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            else -> DesktopRoutePlaceholder(destination = destination, content = content)
         }
     }
 }
 
 /**
- * Loads the one snapshot every placeholder route shows.
+ * Home, entirely from `:feature-home`.
+ *
+ * Nothing is laid out here beyond the column that stacks the shared surfaces, and
+ * that restraint is the deliverable: the onboarding card, the metric row, the Today
+ * card, the deck overview, the capability notice, and the focus preview are the same
+ * composables the Android host shows, fed from the same portable models. A layout
+ * written here would be the point at which "both hosts render the same Home" stopped
+ * being checkable.
+ *
+ * The notice list comes from [HomeNoticePolicy] against the live capability set
+ * rather than a desktop constant, so it says what this connection actually lacks —
+ * which on AnkiConnect is FSRS memory state, and so reduced early-interval precision.
+ */
+@Composable
+private fun DesktopHomeRoute(
+    content: DesktopRouteContent,
+    capabilities: PlatformCapabilities,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val homeCopy = rememberHomeCopy()
+    val dashboardCopy = rememberDashboardCopy()
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_HOME_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(SURFACE_SPACING),
+    ) {
+        ProviderStatusRow(readiness = content.home.readiness, copy = homeCopy)
+        OnboardingCard(
+            plan = content.onboarding,
+            copy = homeCopy,
+            resolver = LiteralUiTextResolver,
+            dispatch = dispatch,
+            counted = rememberHomeCountedCopy(content.onboarding),
+            // A sync cannot be requested while one is running, and desktop has no
+            // sync engine wired yet (Goal 202), so this is always enabled today.
+            // Threading it from the model rather than passing `true` means the flag
+            // starts working the moment the engine reports a run.
+            enabled = !content.home.syncing,
+        )
+        if (content.home.syncing) {
+            SyncProgressCard(copy = homeCopy, dispatch = dispatch)
+        }
+        if (content.home.repairedKanjiCount > 0) {
+            RepairedHandoffCard(
+                count = content.home.repairedKanjiCount,
+                copy = homeCopy,
+                dispatch = dispatch,
+            )
+        }
+        for (notice in HomeNoticePolicy.notices(capabilities)) {
+            HomeNoticeCard(notice = notice, copy = dashboardCopy)
+        }
+        HomePrimaryAction(home = content.home, copy = dashboardCopy, dispatch = dispatch)
+        HomeMetricRow(
+            metrics = content.home.metrics,
+            copy = dashboardCopy,
+            resolver = LiteralUiTextResolver,
+            dispatch = dispatch,
+        )
+        content.home.todayPlan?.let { plan ->
+            HomeTodayCard(
+                plan = plan,
+                copy = dashboardCopy,
+                resolver = LiteralUiTextResolver,
+                dispatch = dispatch,
+            )
+        }
+        HomeDeckOverview(
+            rows = content.home.deckOverview,
+            copy = dashboardCopy,
+            resolver = LiteralUiTextResolver,
+        )
+        FocusQueuePanel(
+            queue = content.home.focus,
+            copy = dashboardCopy,
+            resolver = LiteralUiTextResolver,
+            dispatch = dispatch,
+        )
+    }
+}
+
+/**
+ * The full focus queue.
+ *
+ * The same panel Home previews, without the preview cap — which is the whole
+ * difference between the two routes, and the reason "View all" is a destination
+ * rather than an expand toggle.
+ */
+@Composable
+private fun DesktopFocusQueueRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_FOCUS_QUEUE_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(SURFACE_SPACING),
+    ) {
+        FocusQueuePanel(
+            queue = content.home.focus,
+            copy = rememberDashboardCopy(),
+            resolver = LiteralUiTextResolver,
+            dispatch = dispatch,
+        )
+    }
+}
+
+/** Browse, from `:feature-home`'s own screen. */
+@Composable
+private fun DesktopBrowseRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    BrowseScreen(
+        results = content.browse,
+        copy = rememberBrowseCopy(),
+        resolver = LiteralUiTextResolver,
+        dispatch = dispatch,
+        modifier = Modifier.fillMaxSize().testTag(DESKTOP_BROWSE_TEST_TAG),
+    )
+}
+
+/**
+ * A placeholder body for the routes Goals 195+ still own.
+ *
+ * Kept rather than replaced with an empty box because it is the cheapest evidence
+ * that a route loaded through the real startup lifecycle: it reports what Anki said
+ * and how much of the collection is admitted, which a stub could not produce.
+ */
+@Composable
+private fun DesktopRoutePlaceholder(
+    destination: KaniDestination,
+    content: DesktopRouteContent,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(ROUTE_PADDING)
+            .testTag(DESKTOP_PLACEHOLDER_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text = destination.route, style = MaterialTheme.typography.titleLarge)
+        Text(text = content.provider.message, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = "${content.studyItemCount} kanji admitted, ${content.dueCount} due",
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+/**
+ * Loads what [destination] needs, from one profile snapshot and one provider probe.
  *
  * On IO, because the provider probe is a blocking HTTP round trip and the profile
  * read is a blocking SQL query, and doing either on the Compose dispatcher stalls
  * the window. This is the whole reason [DesktopShellHost.perform] is suspending
  * rather than plain.
+ *
+ * One snapshot for every route rather than a per-route query: the routes share a
+ * `DesktopRouteContent`, the reads are one transaction each, and the alternative —
+ * a route-shaped query per destination — is the second host harness Goal 193
+ * forbids. Browse is the one route with an extra read, because its rows come from a
+ * query the destination itself parameterizes.
  */
 private suspend fun loadDesktopRoute(
     container: DesktopKaniContainer,
     provider: DesktopProviderProbe,
+    destination: KaniDestination,
 ): ContentResult<DesktopRouteContent> = withContext(Dispatchers.IO) {
     val now = System.currentTimeMillis()
+    val status = provider.probe()
     val snapshot = container.homeUseCases.loadRoute(now)
+    val study = snapshot.study
+    val settings = snapshot.settings.sync
+    val streak = streakOf(study)
     val due = ReminderEligibilityPolicy
-        .eligibleDueTimes(
-            snapshot.study.studyItems,
-            snapshot.study.activeRows,
-            snapshot.study.studyLadder,
-        )
+        .eligibleDueTimes(study.studyItems, study.activeRows, study.studyLadder)
         .count { dueAt -> dueAt <= now }
+
+    val dailyPlan = DesktopHomeModels.dailyPlan(
+        study = study,
+        streak = streak,
+        latestSuccessfulSyncAtMillis = study.latestSuccessfulSyncAtMillis,
+        consecutiveFailedSyncs = snapshot.home.consecutiveFailedSyncs,
+        deviceSettings = container.deviceSettingsStore.snapshot(),
+        nowMillis = now,
+    )
+    val adaptivePlan = DesktopHomeModels.adaptivePlan(study, settings, streak, now)
+    val entries = if (study.activeRows.isEmpty()) {
+        emptyList()
+    } else {
+        FocusQueuePolicy.queuedEntries(
+            study.activeRows,
+            study.studyItems,
+            now,
+            study.studyAheadMinutes * MINUTE_MILLIS,
+            adaptivePlan,
+            study.studyLadder,
+        )
+    }
+    val repairedKanjiCount = snapshot.repairedWriteBackProposal?.repairedKanji?.size ?: 0
+
+    val home = HomeDashboard(
+        readiness = status.readiness,
+        metrics = DesktopHomeModels.metrics(
+            sync = snapshot.home.latestSync,
+            streak = streak,
+            // Sync is offerable only when the provider says the collection is
+            // reachable and authorized. Reporting "up to date" from a host that
+            // cannot reach Anki would be a claim about a collection it has not read.
+            canSync = status.isReady,
+            dailyPlan = dailyPlan,
+            plan = adaptivePlan,
+        ),
+        todayPlan = DesktopHomeModels.todayPlan(dailyPlan),
+        deckOverview = DesktopHomeModels.deckOverview(study, now, study.locallySuspendedKanji),
+        focus = DesktopHomeModels.focusQueue(
+            rows = study.activeRows,
+            entries = entries,
+            plan = adaptivePlan,
+            nowMillis = now,
+            matureSupportThreshold = settings.matureSupportThreshold,
+        ),
+        repairedKanjiCount = repairedKanjiCount,
+        studyRemainingCount = DesktopHomeModels.studyRemainingCount(
+            study = study,
+            settings = settings,
+            plan = adaptivePlan,
+            dueLegacyWritingRepairs = snapshot.home.dueLegacyWritingRepairs,
+            annotate = { items -> runBlocking { container.homeUseCases.annotateCapabilities(items) } },
+            nowMillis = now,
+        ),
+        // No sync engine reaches this host yet (Goal 202), so a running sync is not a
+        // state it can observe. False is the honest answer, not a placeholder.
+        syncing = false,
+    )
+
     ContentResult.Success(
         DesktopRouteContent(
-            provider = provider.probe(),
-            studyItemCount = snapshot.study.studyItems.size,
+            provider = status,
+            studyItemCount = study.studyItems.size,
             dueCount = due,
             themeChoice = snapshot.settings.themeChoice,
+            home = home,
+            onboarding = DesktopHomeModels.onboarding(
+                provider = status,
+                settings = settings,
+                latestSync = snapshot.home.latestSync,
+                repairedKanjiCount = repairedKanjiCount,
+            ),
+            browse = loadBrowse(container, destination),
         ),
+    )
+}
+
+/**
+ * Browse's rows, or none when the visible route is not Browse.
+ *
+ * The query is read from the destination rather than held as screen state, which is
+ * what makes back from a filtered list return the unfiltered one — see
+ * [BrowseResults]'s own note on modelling the filters as destinations. A non-Browse
+ * route skips the query entirely rather than running it and discarding the result.
+ */
+private suspend fun loadBrowse(
+    container: DesktopKaniContainer,
+    destination: KaniDestination,
+): BrowseResults {
+    val browse = destination as? KaniDestination.Browse ?: return BrowseResults()
+    val items = container.homeUseCases.searchStudyInventory(
+        query = browse.query,
+        onlySimilarKanji = browse.onlySimilarKanji,
+        // The management view admits local suspensions so the user can reverse them,
+        // which is why this follows the filter rather than being always false.
+        includeLocallySuspended = browse.showSuspended,
+    )
+    return DesktopHomeModels.browse(
+        items = items,
+        query = browse.query,
+        onlySimilarKanji = browse.onlySimilarKanji,
+        allKanjiScope = browse.allKanjiScope,
+        showSuspended = browse.showSuspended,
+    )
+}
+
+/**
+ * Persists a Browse checkbox before the route reloads.
+ *
+ * `studied` and `suspended` are opposites: marking a kanji for study clears its local
+ * suspension. The polarity is Android's — its detail path writes
+ * `SetLocalSuspensionCommand(kanji, !suspended, …)` — and inverting it here would
+ * silently retire every kanji the user ticked.
+ *
+ * This is Kani-side queue state. Nothing here reaches the collection: CLAUDE.md's
+ * write surface is note tags plus the additive Missing Kanji flow, and suspension is
+ * explicitly not on it.
+ */
+private suspend fun persistBrowseChoice(
+    container: DesktopKaniContainer,
+    action: KaniAction.Browse,
+    listed: List<String>,
+) {
+    val (kanji, studied) = when (action) {
+        is KaniAction.Browse.SetStudied -> listOf(action.kanji) to action.studied
+        is KaniAction.Browse.SetAllStudied -> listed to action.studied
+    }
+    if (kanji.isEmpty()) return
+    container.homeUseCases.setLocalSuspension(
+        SetLocalSuspensionCommand(
+            kanji = kanji,
+            suspended = !studied,
+            updatedAtMillis = System.currentTimeMillis(),
+        ),
+    )
+}
+
+/** The persisted streak, as the policy type both the plan and the metric take. */
+private fun streakOf(study: StudyQueueSnapshot): StudyStreakPolicy.Streak {
+    val streak = study.studyStreak
+    return StudyStreakPolicy.Streak(
+        currentDays = streak.currentDays,
+        bestDays = streak.bestDays,
+        studiedToday = streak.studiedToday,
+        reviewsToday = streak.reviewsToday,
+        lastStudyAtMillis = streak.lastStudyAtMillis,
     )
 }
 

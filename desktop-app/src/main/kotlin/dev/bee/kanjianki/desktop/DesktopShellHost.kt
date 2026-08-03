@@ -1,10 +1,15 @@
 package dev.bee.kanjianki.desktop
 
 import dev.bee.kanjianki.core.KaniThemeChoice
+import dev.bee.kanjianki.presentation.BrowseResults
+import dev.bee.kanjianki.presentation.CollectionBinding
 import dev.bee.kanjianki.presentation.ContentResult
+import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniLaunchRequest
+import dev.bee.kanjianki.presentation.OnboardingPlan
+import dev.bee.kanjianki.presentation.OnboardingStep
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PresentationFailure
 import dev.bee.kanjianki.presentation.RouteIntent
@@ -14,6 +19,7 @@ import dev.bee.kanjianki.presentation.ShellReducer
 import dev.bee.kanjianki.presentation.ShellState
 import dev.bee.kanjianki.presentation.UiText
 import dev.bee.kanjianki.presentation.applying
+import dev.bee.kanjianki.syncapi.CollectionFailure
 
 /**
  * The desktop host's presentation state, and the only place actions become state.
@@ -85,14 +91,24 @@ internal class DesktopShellHost(
      * the composition would take the window down with it. The message is
      * deliberately generic and the throwable's text goes to [diagnostic], which is
      * logs-only — a SQL error string is not user-facing copy.
+     *
+     * A [CollectionFailure] already knows what went wrong, so its kind is carried
+     * across rather than flattened to [PresentationFailure.Kind.UNKNOWN]. That is
+     * what makes the retry button honest: `UNKNOWN` is retryable by design, and
+     * offering "try again" for an unopened profile or a too-old AnkiConnect sends the
+     * user in a circle. Only the kind crosses; the exception's own message stays in
+     * [diagnostic] because "Sync cancelled." is engine text, not copy.
      */
     suspend fun perform(pending: PendingLoad) {
         val result = try {
             loadRoute(pending.destination)
         } catch (failure: Throwable) {
+            val kind = (failure as? CollectionFailure)
+                ?.let { DesktopHomeModels.failureKind(it.kind) }
+                ?: PresentationFailure.Kind.UNKNOWN
             ContentResult.Failure(
                 PresentationFailure(
-                    kind = PresentationFailure.Kind.UNKNOWN,
+                    kind = kind,
                     message = UiText.Literal("Kani could not load this screen."),
                     diagnostic = failure.toString(),
                 ),
@@ -108,15 +124,29 @@ internal class DesktopShellHost(
 /**
  * What a desktop route currently has to show.
  *
- * One type for every route because the feature routes are placeholders until Goals
- * 194+ replace them one at a time. It carries the two facts the placeholder screens
- * actually report — what Anki said, and how much of the collection is admitted — so
- * "the composition root reaches a provider-status placeholder through the real
- * startup lifecycle" is something the screen demonstrates rather than asserts.
+ * Still one type for every route, and still for the reason it started as: the routes
+ * past Home are placeholders until Goals 195+ replace them one at a time, and a
+ * per-route sealed hierarchy would be six empty branches. What has changed is that
+ * the Home fields are no longer placeholder facts — [home], [onboarding], and
+ * [browse] are the same portable models `:feature-home` renders on Android, so the
+ * two hosts show Home from one set of types.
+ *
+ * [studyItemCount] and [dueCount] stay because the placeholder routes still report
+ * them, and because they are the cheapest evidence that a route was loaded through
+ * the real startup lifecycle rather than from a stub.
+ *
+ * The Home models carry defaults so a route that is not Home — and a test that only
+ * cares about load state — can construct this without assembling a dashboard.
  */
 internal data class DesktopRouteContent(
     val provider: DesktopProviderStatus,
     val studyItemCount: Int,
     val dueCount: Int,
     val themeChoice: KaniThemeChoice,
+    val home: HomeDashboard = HomeDashboard(),
+    val onboarding: OnboardingPlan = OnboardingPlan(
+        step = OnboardingStep.CONNECT_PROVIDER,
+        binding = CollectionBinding(noteType = ""),
+    ),
+    val browse: BrowseResults = BrowseResults(),
 )

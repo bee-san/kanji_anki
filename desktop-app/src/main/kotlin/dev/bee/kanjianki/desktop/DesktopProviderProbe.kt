@@ -2,6 +2,8 @@ package dev.bee.kanjianki.desktop
 
 import dev.bee.kanjianki.platform.SecretStore
 import dev.bee.kanjianki.presentation.PlatformCapability
+import dev.bee.kanjianki.presentation.ProviderReadiness
+import dev.bee.kanjianki.syncapi.CollectionAvailability
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectBrowseHandoff
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectEndpoint
 import dev.bee.kanjianki.provider.ankiconnect.AnkiConnectHandshake
@@ -14,10 +16,41 @@ import dev.bee.kanjianki.provider.ankiconnect.JdkHttpExchange
 internal data class DesktopProviderStatus(
     /** User-facing copy naming what to fix, from [AnkiConnectStatusMapping]. */
     val message: String,
-    val isReady: Boolean,
+    /**
+     * Which of the four provider states this is, from [AnkiConnectStatusMapping].
+     *
+     * Carried rather than reduced to [isReady] because onboarding needs the
+     * distinction a boolean destroys: a `PermissionRequired` handshake means "grant
+     * Kani access" and an `Unavailable` one means "start Anki", and both are
+     * `isReady == false`. [ProviderReadiness] is the presentation-side shape of the
+     * same three-way question, and [readiness] is where the two meet.
+     */
+    val availability: CollectionAvailability,
     /** The provider-derived capabilities this connection actually supports. */
     val capabilities: Set<PlatformCapability>,
-)
+) {
+    /** True only for a completed handshake against a reachable, authorized profile. */
+    val isReady: Boolean
+        get() = availability == CollectionAvailability.READY
+
+    /**
+     * The onboarding step's view of [availability].
+     *
+     * [CollectionAvailability.INVALID_CONFIGURATION] folds into
+     * [ProviderReadiness.ABSENT] rather than into [ProviderReadiness.UNAUTHORIZED]:
+     * an AnkiConnect too old for Kani, or a profile that is not open, is not
+     * something granting access fixes, and the onboarding copy for `ABSENT` is the
+     * host-supplied [message] which already says which of the two it is.
+     */
+    val readiness: ProviderReadiness
+        get() = when (availability) {
+            CollectionAvailability.READY -> ProviderReadiness.READY
+            CollectionAvailability.AUTH_REQUIRED -> ProviderReadiness.UNAUTHORIZED
+            CollectionAvailability.NOT_AVAILABLE,
+            CollectionAvailability.INVALID_CONFIGURATION,
+            -> ProviderReadiness.ABSENT
+        }
+}
 
 /**
  * The desktop host's view of Anki: one handshake, and the browser handoff that
@@ -59,7 +92,7 @@ internal class DesktopProviderProbe(
     fun probe(): DesktopProviderStatus {
         val connection = client ?: return DesktopProviderStatus(
             message = INVALID_ENDPOINT_MESSAGE,
-            isReady = false,
+            availability = CollectionAvailability.INVALID_CONFIGURATION,
             capabilities = emptySet(),
         )
         // The keyless probe first, then one retry with the stored key. This order is
@@ -75,7 +108,7 @@ internal class DesktopProviderProbe(
         }
         return DesktopProviderStatus(
             message = AnkiConnectStatusMapping.messageFor(status),
-            isReady = status is AnkiConnectHandshake.Status.Ready,
+            availability = AnkiConnectStatusMapping.availabilityFor(status),
             capabilities = capabilitiesFor(status),
         )
     }

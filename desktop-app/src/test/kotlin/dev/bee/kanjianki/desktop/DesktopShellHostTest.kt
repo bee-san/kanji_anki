@@ -10,6 +10,9 @@ import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.PresentationFailure
 import dev.bee.kanjianki.presentation.SettingsSection
+import dev.bee.kanjianki.syncapi.CollectionAvailability
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionFailureKind
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -128,6 +131,46 @@ class DesktopShellHostTest {
     }
 
     @Test
+    fun aProviderFailureKeepsItsOwnKindRatherThanBecomingUnknown() {
+        val host = DesktopShellHost(
+            loadRoute = {
+                throw CollectionFailure(
+                    kind = CollectionFailureKind.INVALID_CONFIGURATION,
+                    message = "no profile is open",
+                )
+            },
+        )
+
+        runBlocking { host.perform(host.dispatch(KaniAction.Lifecycle.Entered)!!) }
+
+        // The point of carrying the kind: `UNKNOWN` is retryable, and offering "try
+        // again" for a profile that is not open sends the user in a circle.
+        val failure = host.route(KaniDestination.Home).failure
+        assertEquals(PresentationFailure.Kind.CONFIGURATION, failure?.kind)
+        assertEquals(false, failure?.isRetryable)
+        // Still diagnostic-only. The engine's own text never becomes copy.
+        assertTrue(failure?.diagnostic.orEmpty().contains("no profile is open"))
+    }
+
+    @Test
+    fun aCancelledLoadStaysRetryableAndAnOrdinaryThrowIsStillUnknown() {
+        val cancelled = DesktopShellHost(loadRoute = { throw CollectionFailure.cancelled() })
+        runBlocking { cancelled.perform(cancelled.dispatch(KaniAction.Lifecycle.Entered)!!) }
+        assertEquals(
+            PresentationFailure.Kind.CANCELLED,
+            cancelled.route(KaniDestination.Home).failure?.kind,
+        )
+
+        // And a plain exception is not misclassified as a provider problem.
+        val plain = DesktopShellHost(loadRoute = { throw IllegalStateException("boom") })
+        runBlocking { plain.perform(plain.dispatch(KaniAction.Lifecycle.Entered)!!) }
+        assertEquals(
+            PresentationFailure.Kind.UNKNOWN,
+            plain.route(KaniDestination.Home).failure?.kind,
+        )
+    }
+
+    @Test
     fun retryAfterAFailureAsksForTheLoadAgain() {
         var attempts = 0
         val host = DesktopShellHost(
@@ -170,7 +213,7 @@ class DesktopShellHostTest {
         DesktopRouteContent(
             provider = DesktopProviderStatus(
                 message = "ready",
-                isReady = true,
+                availability = CollectionAvailability.READY,
                 capabilities = emptySet(),
             ),
             studyItemCount = 3,
