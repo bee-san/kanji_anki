@@ -1,6 +1,8 @@
 package dev.bee.kanjianki.desktop
 
 import dev.bee.kanjianki.application.HomeUseCases
+import dev.bee.kanjianki.hostpresentation.KaniRouteLoader
+import kotlinx.coroutines.runBlocking
 import dev.bee.kanjianki.application.KaniContainer
 import dev.bee.kanjianki.application.SettingsUseCases
 import dev.bee.kanjianki.application.StatsUseCases
@@ -97,6 +99,17 @@ internal class DesktopKaniContainer(
     val statsUseCases = StatsUseCases(statsRepository)
     val studyUseCases = StudyUseCases(studyRepository)
     val syncUseCases = SyncUseCases(syncRepository, studyRepository, settingsRepository)
+
+    // The shared route-content assembly, identical to Android's. annotateCapabilities is
+    // a blocking bridge over the suspend use-case, matching how the scaffold called it
+    // inline before this moved to KaniRouteLoader.
+    val routeLoader = KaniRouteLoader(
+        homeUseCases = homeUseCases,
+        statsUseCases = statsUseCases,
+        settingsUseCases = settingsUseCases,
+        deviceSettings = { deviceSettingsStore.snapshot() },
+        annotateCapabilities = { items -> runBlocking { homeUseCases.annotateCapabilities(items) } },
+    )
 
     override val userIoExecutor: ExecutorService =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "kani-user-io") }

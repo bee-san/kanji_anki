@@ -35,6 +35,7 @@ import dev.bee.kanjianki.games.GamesScreenView
 import dev.bee.kanjianki.games.rememberGamesCopy
 import dev.bee.kanjianki.hostpresentation.DesktopDetailModel
 import dev.bee.kanjianki.hostpresentation.DesktopHomeModels
+import dev.bee.kanjianki.hostpresentation.HostProviderStatus
 import dev.bee.kanjianki.hostpresentation.DesktopGamesModel
 import dev.bee.kanjianki.hostpresentation.DesktopSettingsModel
 import dev.bee.kanjianki.hostpresentation.DesktopStatsModel
@@ -581,98 +582,21 @@ private suspend fun loadDesktopRoute(
     studyRender: StudyRouteRender?,
     gamesRender: GamesRender?,
 ): ContentResult<DesktopRouteContent> = withContext(Dispatchers.IO) {
-    val now = System.currentTimeMillis()
+    // The provider probe is desktop's (an AnkiConnect handshake); everything after it
+    // is the shared KaniRouteLoader, so both hosts assemble route content identically.
     val status = provider.probe()
-    val snapshot = container.homeUseCases.loadRoute(now)
-    val study = snapshot.study
-    val settings = snapshot.settings.sync
-    val streak = streakOf(study)
-    val due = ReminderEligibilityPolicy
-        .eligibleDueTimes(study.studyItems, study.activeRows, study.studyLadder)
-        .count { dueAt -> dueAt <= now }
-
-    val dailyPlan = DesktopHomeModels.dailyPlan(
-        study = study,
-        streak = streak,
-        latestSuccessfulSyncAtMillis = study.latestSuccessfulSyncAtMillis,
-        consecutiveFailedSyncs = snapshot.home.consecutiveFailedSyncs,
-        deviceSettings = container.deviceSettingsStore.snapshot(),
-        nowMillis = now,
-    )
-    val adaptivePlan = DesktopHomeModels.adaptivePlan(study, settings, streak, now)
-    val entries = if (study.activeRows.isEmpty()) {
-        emptyList()
-    } else {
-        FocusQueuePolicy.queuedEntries(
-            study.activeRows,
-            study.studyItems,
-            now,
-            study.studyAheadMinutes * MINUTE_MILLIS,
-            adaptivePlan,
-            study.studyLadder,
-        )
-    }
-    val repairedKanjiCount = snapshot.repairedWriteBackProposal?.repairedKanji?.size ?: 0
-
-    val home = HomeDashboard(
-        readiness = status.readiness,
-        metrics = DesktopHomeModels.metrics(
-            sync = snapshot.home.latestSync,
-            streak = streak,
-            // Sync is offerable only when the provider says the collection is
-            // reachable and authorized. Reporting "up to date" from a host that
-            // cannot reach Anki would be a claim about a collection it has not read.
-            canSync = status.isReady,
-            dailyPlan = dailyPlan,
-            plan = adaptivePlan,
-        ),
-        todayPlan = DesktopHomeModels.todayPlan(dailyPlan),
-        deckOverview = DesktopHomeModels.deckOverview(study, now, study.locallySuspendedKanji),
-        focus = DesktopHomeModels.focusQueue(
-            rows = study.activeRows,
-            entries = entries,
-            plan = adaptivePlan,
-            nowMillis = now,
-            matureSupportThreshold = settings.matureSupportThreshold,
-        ),
-        repairedKanjiCount = repairedKanjiCount,
-        studyRemainingCount = DesktopHomeModels.studyRemainingCount(
-            study = study,
-            settings = settings,
-            plan = adaptivePlan,
-            dueLegacyWritingRepairs = snapshot.home.dueLegacyWritingRepairs,
-            annotate = { items -> runBlocking { container.homeUseCases.annotateCapabilities(items) } },
-            nowMillis = now,
-        ),
-        // No sync engine reaches this host yet (Goal 202), so a running sync is not a
-        // state it can observe. False is the honest answer, not a placeholder.
-        syncing = false,
-    )
-
     ContentResult.Success(
-        DesktopRouteContent(
-            providerMessage = status.message,
-            studyItemCount = study.studyItems.size,
-            dueCount = due,
-            themeChoice = snapshot.settings.themeChoice,
-            home = home,
-            onboarding = DesktopHomeModels.onboarding(
+        container.routeLoader.load(
+            destination = destination,
+            status = HostProviderStatus(
                 readiness = status.readiness,
-                guidance = status.message,
-                settings = settings,
-                latestSync = snapshot.home.latestSync,
-                repairedKanjiCount = repairedKanjiCount,
+                message = status.message,
+                isReady = status.isReady,
+                capabilities = status.capabilities,
             ),
-            browse = loadBrowse(container, destination),
-            detail = loadDetail(container, destination, settings.matureSupportThreshold, now),
-            study = studyRender?.let {
-                DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable, it.choicePrompt)
-            },
-            stats = loadStats(container, destination, now),
-            games = gamesRender?.let(DesktopGamesModel::screen),
-            settings = (destination as? KaniDestination.Settings)?.let {
-                DesktopSettingsModel.screen(it.section, snapshot.settings)
-            },
+            nowMillis = System.currentTimeMillis(),
+            studyRender = studyRender,
+            gamesRender = gamesRender,
         ),
     )
 }
@@ -694,26 +618,6 @@ private fun driveGames(runtime: GamesRuntime, action: KaniAction.Game): GamesRen
 }
 
 /**
- * The stats dashboard, or null off the Stats route.
- *
- * The analytics come from `:progress-core`'s `progressAnalyticsSnapshot` — the same
- * computation the Android host runs — over the stats snapshot the use-case loads,
- * then [DesktopStatsModel] maps it to the portable dashboard. A non-Stats route skips
- * the read entirely.
- */
-private suspend fun loadStats(
-    container: DesktopKaniContainer,
-    destination: KaniDestination,
-    nowMillis: Long,
-): dev.bee.kanjianki.presentation.StatsDashboard? {
-    if (destination != KaniDestination.Stats) return null
-    val snapshot = container.statsUseCases.loadForDisplay(nowMillis)
-    val ladder = container.settingsUseCases.load().studyLadder
-    val analytics = dev.bee.kanjianki.progress.progressAnalyticsSnapshot(snapshot, nowMillis, ladder)
-    return DesktopStatsModel.dashboard(analytics)
-}
-
-/**
  * Drives the study runtime for one action, returning the new render.
  *
  * Grade/Continue/Undo are the runtime's; Reveal is pure UI the surface holds locally,
@@ -732,55 +636,6 @@ private suspend fun driveStudy(
         KaniAction.Study.Undo -> runtime.undo(now)
         KaniAction.Study.Reveal -> current ?: runtime.render()
     }
-}
-
-/**
- * Browse's rows, or none when the visible route is not Browse.
- *
- * The query is read from the destination rather than held as screen state, which is
- * what makes back from a filtered list return the unfiltered one — see
- * [BrowseResults]'s own note on modelling the filters as destinations. A non-Browse
- * route skips the query entirely rather than running it and discarding the result.
- */
-private suspend fun loadBrowse(
-    container: DesktopKaniContainer,
-    destination: KaniDestination,
-): BrowseResults {
-    val browse = destination as? KaniDestination.Browse ?: return BrowseResults()
-    val items = container.homeUseCases.searchStudyInventory(
-        query = browse.query,
-        onlySimilarKanji = browse.onlySimilarKanji,
-        // The management view admits local suspensions so the user can reverse them,
-        // which is why this follows the filter rather than being always false.
-        includeLocallySuspended = browse.showSuspended,
-    )
-    return DesktopHomeModels.browse(
-        items = items,
-        query = browse.query,
-        onlySimilarKanji = browse.onlySimilarKanji,
-        allKanjiScope = browse.allKanjiScope,
-        showSuspended = browse.showSuspended,
-    )
-}
-
-/**
- * One kanji's detail, or `null` when the visible route is not Detail.
- *
- * The kanji is read from the destination, the same as Browse's query: a Detail route
- * is a kanji plus the browse context to return to, and the detail content follows the
- * kanji. A non-Detail route skips the extra read rather than loading a detail no
- * screen will show. The `matureSupportThreshold` is the setting the timeline's support
- * line reports against.
- */
-private suspend fun loadDetail(
-    container: DesktopKaniContainer,
-    destination: KaniDestination,
-    matureSupportThreshold: Int,
-    nowMillis: Long,
-): dev.bee.kanjianki.presentation.KanjiDetail? {
-    val detail = destination as? KaniDestination.Detail ?: return null
-    val snapshot = container.homeUseCases.loadKanjiDetail(detail.kanji, nowMillis)
-    return DesktopDetailModel.detail(detail.kanji, snapshot, matureSupportThreshold, nowMillis)
 }
 
 /**
@@ -852,18 +707,6 @@ private suspend fun persistSettings(
     val current = container.settingsUseCases.load()
     val command = DesktopSettingsModel.settingsCommandFor(action, current) ?: return
     container.settingsUseCases.save(command)
-}
-
-/** The persisted streak, as the policy type both the plan and the metric take. */
-private fun streakOf(study: StudyQueueSnapshot): StudyStreakPolicy.Streak {
-    val streak = study.studyStreak
-    return StudyStreakPolicy.Streak(
-        currentDays = streak.currentDays,
-        bestDays = streak.bestDays,
-        studiedToday = streak.studiedToday,
-        reviewsToday = streak.reviewsToday,
-        lastStudyAtMillis = streak.lastStudyAtMillis,
-    )
 }
 
 /**
