@@ -94,4 +94,14 @@ class StudyAndroidRenderTest {
     fun theStudyTestTagsAreDistinctSoAssertionsCannotCollide() {
         assertTheStudyTestTagsAreDistinctSoAssertionsCannotCollide()
     }
+
+    @Test
+    fun keyboardShortcutsGradeAndAdvanceThroughTheSharedModifier() {
+        assertKeyboardShortcutsGradeAndAdvanceThroughTheSharedModifier()
+    }
+
+    @Test
+    fun typingAKeyIntoTheAnswerFieldDoesNotGradeTheCard() {
+        assertTypingAKeyIntoTheAnswerFieldDoesNotGradeTheCard()
+    }
 }

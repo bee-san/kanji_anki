@@ -1,11 +1,15 @@
 package dev.bee.kanjianki.study
 
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.StudyFeedback
@@ -255,6 +259,49 @@ internal fun assertTheWrongPickAndCorrectChoiceAreMarkedAfterAnAnswer() {
         onNodeWithTag(studyChoiceTestTag("説")).assertExists()
         onNodeWithTag(studyChoiceTestTag("脱")).assertExists()
         onNodeWithTag(STUDY_CONTINUE_TEST_TAG).assertExists()
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertKeyboardShortcutsGradeAndAdvanceThroughTheSharedModifier() {
+    // Exercises the wired keyboard path, not just the pure decision: a real key event
+    // reaches the modifier, is reduced, and dispatches. P grades a revealed flashcard.
+    val recorded = mutableListOf<KaniAction>()
+    renderStudy(
+        content = {
+            StudySessionScreen(
+                session(
+                    StudySessionState.CARD,
+                    card = flashcard(),
+                    feedback = StudyFeedback(),
+                ),
+                studyCopy(),
+                TestUiTextResolver,
+                dispatch = { recorded += it },
+            )
+        },
+    ) {
+        onNodeWithTag(STUDY_SESSION_TEST_TAG).requestFocus().performKeyInput { pressKey(Key.P) }
+        assertTrue(
+            KaniAction.Study.Grade(rating = "good") in recorded,
+            "P must grade the flashcard good through the modifier: $recorded",
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTypingAKeyIntoTheAnswerFieldDoesNotGradeTheCard() {
+    // The focus guard, end to end: with the typed card's field focused, letter keys
+    // reach the field and grade nothing.
+    val recorded = mutableListOf<KaniAction>()
+    renderStudy(
+        content = { StudySessionScreen(session(StudySessionState.CARD, card = typedCard()), studyCopy(), TestUiTextResolver, dispatch = { recorded += it }) },
+    ) {
+        onNodeWithTag(STUDY_TYPING_INPUT_TEST_TAG).performScrollTo().performTextInput("possible")
+        assertTrue(
+            recorded.none { it is KaniAction.Study.Grade },
+            "typing into the answer field must not grade: $recorded",
+        )
     }
 }
 

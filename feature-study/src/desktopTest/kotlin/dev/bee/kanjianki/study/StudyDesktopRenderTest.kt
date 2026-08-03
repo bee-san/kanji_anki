@@ -90,4 +90,14 @@ class StudyDesktopRenderTest {
     fun theStudyTestTagsAreDistinctSoAssertionsCannotCollide() {
         assertTheStudyTestTagsAreDistinctSoAssertionsCannotCollide()
     }
+
+    @Test
+    fun keyboardShortcutsGradeAndAdvanceThroughTheSharedModifier() {
+        assertKeyboardShortcutsGradeAndAdvanceThroughTheSharedModifier()
+    }
+
+    @Test
+    fun typingAKeyIntoTheAnswerFieldDoesNotGradeTheCard() {
+        assertTypingAKeyIntoTheAnswerFieldDoesNotGradeTheCard()
+    }
 }

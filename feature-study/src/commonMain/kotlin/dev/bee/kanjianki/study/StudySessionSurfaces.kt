@@ -1,16 +1,21 @@
 package dev.bee.kanjianki.study
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -24,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
+import dev.bee.kanjianki.presentation.StudyCard
 import dev.bee.kanjianki.presentation.StudySession
 import dev.bee.kanjianki.presentation.StudySessionState
 import dev.bee.kanjianki.presentation.UiTextResolver
@@ -60,9 +66,29 @@ fun StudySessionScreen(
     dispatch: (KaniAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // The typed card's field holds focus while it is unanswered, which is exactly
+    // when letter and space keys must reach the field instead of grading — so the
+    // focus guard is a function of the visible card, not a live focus query the two
+    // hosts might answer differently.
+    val textFieldFocused = session.state == StudySessionState.CARD &&
+        session.card is StudyCard.Typed &&
+        !session.feedback.visible
+    // A focus anchor so the shortcuts receive keys the moment the session appears,
+    // without the user clicking first. The typed card's field takes focus for itself
+    // when it mounts, so this only wins on the self-graded and choice cards — exactly
+    // the ones whose keys must not wait for a click.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(session.state, session.card, textFieldFocused) {
+        if (session.state == StudySessionState.CARD && !textFieldFocused) {
+            focusRequester.requestFocus()
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .focusable()
+            .studyKeyboardShortcuts(session, textFieldFocused, dispatch)
             .testTag(STUDY_SESSION_TEST_TAG),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
