@@ -21,10 +21,12 @@ import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
+import dev.bee.kanjianki.data.SaveMnemonicCommand
 import dev.bee.kanjianki.data.SetLocalSuspensionCommand
 import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.home.BrowseScreen
 import dev.bee.kanjianki.home.FocusQueuePanel
+import dev.bee.kanjianki.home.KanjiDetailScreen
 import dev.bee.kanjianki.home.HomeDeckOverview
 import dev.bee.kanjianki.home.HomeMetricRow
 import dev.bee.kanjianki.home.HomeNoticeCard
@@ -74,6 +76,7 @@ internal const val DESKTOP_PLACEHOLDER_TEST_TAG: String = "kani-desktop-placehol
 internal const val DESKTOP_HOME_TEST_TAG: String = "kani-desktop-home"
 internal const val DESKTOP_FOCUS_QUEUE_TEST_TAG: String = "kani-desktop-focus-queue"
 internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
+internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
 
 private val ROUTE_PADDING = 24.dp
 private val SURFACE_SPACING = 16.dp
@@ -126,12 +129,14 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
         revision++
         if (pending != null) {
             scope.launch {
-                // A Browse toggle is a write and then a reload, in that order and in
-                // one launch. `RouteReducer` already turns the toggle into a reload;
-                // what it cannot do is persist the choice, and reloading first would
-                // re-read the state the user just changed.
-                if (action is KaniAction.Browse) {
-                    persistBrowseChoice(container, action, listed)
+                // A Kani-side write is a write and then a reload, in that order and in
+                // one launch. `RouteReducer` already turns the action into a reload;
+                // what it cannot do is persist the change, and reloading first would
+                // re-read the state the user just wrote.
+                when (action) {
+                    is KaniAction.Browse -> persistBrowseChoice(container, action, listed)
+                    is KaniAction.SaveMnemonic -> persistMnemonic(container, action)
+                    else -> Unit
                 }
                 host.perform(pending)
                 revision++
@@ -205,6 +210,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             is KaniDestination.Browse -> DesktopBrowseRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            is KaniDestination.Detail -> DesktopDetailRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -337,6 +346,28 @@ private fun DesktopBrowseRoute(
 }
 
 /**
+ * One kanji's detail, from `:feature-home`'s own screen.
+ *
+ * Scrollable because the full card — hero, panels, neighbours, timeline, examples —
+ * is taller than the window, the same wrapping the surface's own tests use. A detail
+ * that has not loaded yet has no [KanjiDetail], and the shell's loading surface is
+ * already on screen above this, so nothing is drawn until it arrives.
+ */
+@Composable
+private fun DesktopDetailRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val detail = content.detail ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_DETAIL_TEST_TAG),
+    ) {
+        KanjiDetailScreen(detail = detail, resolver = LiteralUiTextResolver, dispatch = dispatch)
+    }
+}
+
+/**
  * A placeholder body for the routes Goals 195+ still own.
  *
  * Kept rather than replaced with an empty box because it is the cheapest evidence
@@ -463,6 +494,7 @@ private suspend fun loadDesktopRoute(
                 repairedKanjiCount = repairedKanjiCount,
             ),
             browse = loadBrowse(container, destination),
+            detail = loadDetail(container, destination, settings.matureSupportThreshold, now),
         ),
     )
 }
@@ -493,6 +525,46 @@ private suspend fun loadBrowse(
         onlySimilarKanji = browse.onlySimilarKanji,
         allKanjiScope = browse.allKanjiScope,
         showSuspended = browse.showSuspended,
+    )
+}
+
+/**
+ * One kanji's detail, or `null` when the visible route is not Detail.
+ *
+ * The kanji is read from the destination, the same as Browse's query: a Detail route
+ * is a kanji plus the browse context to return to, and the detail content follows the
+ * kanji. A non-Detail route skips the extra read rather than loading a detail no
+ * screen will show. The `matureSupportThreshold` is the setting the timeline's support
+ * line reports against.
+ */
+private suspend fun loadDetail(
+    container: DesktopKaniContainer,
+    destination: KaniDestination,
+    matureSupportThreshold: Int,
+    nowMillis: Long,
+): dev.bee.kanjianki.presentation.KanjiDetail? {
+    val detail = destination as? KaniDestination.Detail ?: return null
+    val snapshot = container.homeUseCases.loadKanjiDetail(detail.kanji, nowMillis)
+    return DesktopDetailModel.detail(detail.kanji, snapshot, matureSupportThreshold, nowMillis)
+}
+
+/**
+ * Persists a saved mnemonic before the route reloads.
+ *
+ * The trimming is the surface's; an empty note is a clear, which the store records as
+ * an empty mnemonic. Kani-side content — the note lives in Kani's own store, never in
+ * the collection.
+ */
+private suspend fun persistMnemonic(
+    container: DesktopKaniContainer,
+    action: KaniAction.SaveMnemonic,
+) {
+    container.homeUseCases.saveMnemonic(
+        SaveMnemonicCommand(
+            kanji = action.kanji,
+            note = action.note,
+            updatedAtMillis = System.currentTimeMillis(),
+        ),
     )
 }
 

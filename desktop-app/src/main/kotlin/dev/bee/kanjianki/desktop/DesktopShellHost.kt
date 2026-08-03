@@ -6,6 +6,7 @@ import dev.bee.kanjianki.presentation.CollectionBinding
 import dev.bee.kanjianki.presentation.ContentResult
 import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KanjiDetail
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniLaunchRequest
 import dev.bee.kanjianki.presentation.OnboardingPlan
@@ -137,6 +138,9 @@ internal class DesktopShellHost(
  *
  * The Home models carry defaults so a route that is not Home — and a test that only
  * cares about load state — can construct this without assembling a dashboard.
+ *
+ * [detail] is `null` off the detail route, the same way [browse] is empty off Browse:
+ * one snapshot type serves every route, and a route only fills the fields it draws.
  */
 internal data class DesktopRouteContent(
     val provider: DesktopProviderStatus,
@@ -149,4 +153,5 @@ internal data class DesktopRouteContent(
         binding = CollectionBinding(noteType = ""),
     ),
     val browse: BrowseResults = BrowseResults(),
+    val detail: KanjiDetail? = null,
 )
