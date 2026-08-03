@@ -25,7 +25,7 @@ import java.util.TimeZone
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-internal interface ProgressAnalyticsStatsSource {
+interface ProgressAnalyticsStatsSource {
     fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsSnapshot?
     fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsSnapshot
     fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary>
@@ -34,7 +34,7 @@ internal interface ProgressAnalyticsStatsSource {
 private const val CACHED_REVIEW_DAY_COUNT = 366
 private val FORECAST_TIME_ZONE: TimeZone = TimeZone.getTimeZone("UTC")
 
-internal fun progressAnalyticsSnapshot(
+fun progressAnalyticsSnapshot(
     snapshot: StatsSnapshot,
     nowMillis: Long = System.currentTimeMillis(),
     ladderSettings: RecordsBase.StudyLadderSettings,
@@ -49,7 +49,7 @@ internal fun progressAnalyticsSnapshot(
     ladderSettings = ladderSettings,
 )
 
-internal fun progressAnalyticsSnapshot(
+fun progressAnalyticsSnapshot(
     source: ProgressAnalyticsStatsSource,
     nowMillis: Long = System.currentTimeMillis(),
     scheduleRefresh: (() -> Unit)? = null,
@@ -308,7 +308,7 @@ internal fun progressAnalyticsSnapshot(
     return state
 }
 
-internal data class ReviewDaySummary(
+data class ReviewDaySummary(
     val dayStart: Long,
     val total: Long,
     val again: Long,

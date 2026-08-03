@@ -6,6 +6,21 @@ import org.junit.Test
 
 class ProgressAnalyticsDemoDataSourceTest {
     @Test
+    fun theSampleSourceAndSampleSnapshotMatchTheDemoSnapshot() {
+        // Both sources are the same demo data behind the ProgressAnalyticsDataSource
+        // interface — the screenshot and preview entry points share one dataset.
+        val nowMillis = 1_747_000_000_000L
+        assertEquals(
+            progressAnalyticsDemoSnapshot(nowMillis),
+            SampleProgressAnalyticsDataSource.snapshot(nowMillis),
+        )
+        assertEquals(
+            progressAnalyticsDemoSnapshot(nowMillis),
+            progressAnalyticsSampleSnapshot(nowMillis),
+        )
+    }
+
+    @Test
     fun demoDataSourceExposesTheFiveScreenSnapshot() {
         val nowMillis = 1_747_000_000_000L
         val snapshot = DemoProgressAnalyticsDataSource.snapshot(nowMillis)

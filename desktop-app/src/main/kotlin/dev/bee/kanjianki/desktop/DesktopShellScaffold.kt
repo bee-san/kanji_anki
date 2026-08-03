@@ -29,6 +29,7 @@ import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.home.BrowseScreen
 import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.KanjiDetailScreen
+import dev.bee.kanjianki.stats.StatsDashboardScreen
 import dev.bee.kanjianki.study.StudySessionScreen
 import dev.bee.kanjianki.study.rememberStudyCopy
 import dev.bee.kanjianki.home.HomeDeckOverview
@@ -83,6 +84,7 @@ internal const val DESKTOP_FOCUS_QUEUE_TEST_TAG: String = "kani-desktop-focus-qu
 internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
 internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
 internal const val DESKTOP_STUDY_TEST_TAG: String = "kani-desktop-study"
+internal const val DESKTOP_STATS_TEST_TAG: String = "kani-desktop-stats"
 
 private val ROUTE_PADDING = 24.dp
 private val SURFACE_SPACING = 16.dp
@@ -249,6 +251,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             KaniDestination.Study -> DesktopStudyRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            KaniDestination.Stats -> DesktopStatsRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -431,6 +437,28 @@ private fun DesktopStudyRoute(
 }
 
 /**
+ * The progress-analytics dashboard, from `:feature-stats`'s own screen.
+ *
+ * Scrollable because six sections of charts are far taller than the window. The
+ * analytics are computed by `:progress-core` and mapped to the portable dashboard;
+ * this only lays them out. A dashboard that has not loaded yet is null, and the
+ * shell's loading surface is above this.
+ */
+@Composable
+private fun DesktopStatsRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val dashboard = content.stats ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_STATS_TEST_TAG),
+    ) {
+        StatsDashboardScreen(dashboard = dashboard, dispatch = dispatch)
+    }
+}
+
+/**
  * A placeholder body for the routes Goals 195+ still own.
  *
  * Kept rather than replaced with an empty box because it is the cheapest evidence
@@ -562,8 +590,29 @@ private suspend fun loadDesktopRoute(
             study = studyRender?.let {
                 DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable, it.choicePrompt)
             },
+            stats = loadStats(container, destination, now),
         ),
     )
+}
+
+/**
+ * The stats dashboard, or null off the Stats route.
+ *
+ * The analytics come from `:progress-core`'s `progressAnalyticsSnapshot` — the same
+ * computation the Android host runs — over the stats snapshot the use-case loads,
+ * then [DesktopStatsModel] maps it to the portable dashboard. A non-Stats route skips
+ * the read entirely.
+ */
+private suspend fun loadStats(
+    container: DesktopKaniContainer,
+    destination: KaniDestination,
+    nowMillis: Long,
+): dev.bee.kanjianki.presentation.StatsDashboard? {
+    if (destination != KaniDestination.Stats) return null
+    val snapshot = container.statsUseCases.loadForDisplay(nowMillis)
+    val ladder = container.settingsUseCases.load().studyLadder
+    val analytics = dev.bee.kanjianki.progress.progressAnalyticsSnapshot(snapshot, nowMillis, ladder)
+    return DesktopStatsModel.dashboard(analytics)
 }
 
 /**

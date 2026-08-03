@@ -12,5 +12,6 @@ dependencies {
     implementation(project(":data-desktop"))
     implementation(project(":feature-shell"))
     implementation(project(":platform-desktop"))
+    implementation(project(":progress-core"))
     implementation(project(":provider-ankiconnect"))
 }

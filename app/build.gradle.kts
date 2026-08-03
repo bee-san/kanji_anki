@@ -250,6 +250,7 @@ dependencies {
     // onto KaniLaunchCodec's targets so the deep-link precedence has one owner.
     // Rendering still goes through MainActivityBase until Goal 200.
     implementation(project(":presentation-api"))
+    implementation(project(":progress-core"))
     implementation(project(":provider-ankidroid"))
     implementation(project(":sync-api"))
     implementation(project(":sync-engine"))
