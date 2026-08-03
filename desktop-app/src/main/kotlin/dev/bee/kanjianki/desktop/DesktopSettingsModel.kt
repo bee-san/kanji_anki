@@ -3,6 +3,7 @@ package dev.bee.kanjianki.desktop
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.SettingsImportTextCopy
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsSectionTextCopy
 import dev.bee.kanjianki.core.SettingsStudyBehaviorTextCopy
@@ -41,6 +42,9 @@ internal object DesktopSettingsModel {
     private const val STUDY_AHEAD_KEY = "study_ahead_minutes"
     private const val NEW_PER_DAY_KEY = "deck_new_per_day"
     private const val ACTIVE_QUEUE_CAP_KEY = "deck_active_queue_cap"
+    private const val IMPORT_ACTIVE_KEY = "import_active_cards"
+    private const val IMPORT_SUSPENDED_KEY = "import_suspended_cards"
+    private const val IMPORT_WEAK_KEY = "import_weak_cards"
 
     // The new-card sort modes, in the order the section lists them.
     private val NEW_CARD_SORT_MODES: List<String> = listOf(
@@ -57,7 +61,43 @@ internal object DesktopSettingsModel {
             SettingsScreen(section = section, content = appearance(snapshot.themeChoice))
         SettingsSection.STUDY_BEHAVIOR ->
             SettingsScreen(section = section, content = studyBehavior(snapshot))
+        SettingsSection.IMPORT_SYNC ->
+            SettingsScreen(section = section, content = importSync(snapshot))
         else -> SettingsScreen(section = section)
+    }
+
+    /**
+     * The Import & sync section: the self-contained source toggles.
+     *
+     * Active, suspended, and weak-card import are plain booleans and port cleanly. The
+     * tagged-cards and browser-query sources depend on their tag-list/query text (the
+     * settings model zeroes tagged import when the tag list is empty), and a text-field
+     * control is not in the shared vocabulary yet — so those, and the weak-card
+     * thresholds, stay unported. This is the honest subset, not a claim the section is
+     * complete.
+     */
+    private fun importSync(snapshot: SettingsSnapshot): SettingsSectionContent.Controls {
+        val sync = snapshot.sync
+        return SettingsSectionContent.Controls(
+            title = SettingsSectionTextCopy.settingsAnkiSourceTitle(),
+            controls = listOf(
+                SettingsControl.Toggle(
+                    label = SettingsImportTextCopy.activeCardsLabel(),
+                    checked = sync.importActiveCards,
+                    onChange = { KaniAction.Settings.SetToggle(IMPORT_ACTIVE_KEY, it) },
+                ),
+                SettingsControl.Toggle(
+                    label = SettingsImportTextCopy.suspendedCardsLabel(),
+                    checked = sync.importSuspendedCards,
+                    onChange = { KaniAction.Settings.SetToggle(IMPORT_SUSPENDED_KEY, it) },
+                ),
+                SettingsControl.Toggle(
+                    label = SettingsImportTextCopy.weakCardsLabel(),
+                    checked = sync.importWeakCards,
+                    onChange = { KaniAction.Settings.SetToggle(IMPORT_WEAK_KEY, it) },
+                ),
+            ),
+        )
     }
 
     /**
@@ -205,9 +245,46 @@ internal object DesktopSettingsModel {
                 )
                 else -> null
             }
-            is KaniAction.Settings.SetToggle -> null
+            is KaniAction.Settings.SetToggle -> when (action.key) {
+                IMPORT_ACTIVE_KEY -> importFilters(current) { it.copy(activeCards = action.enabled) }
+                IMPORT_SUSPENDED_KEY -> importFilters(current) { it.copy(suspendedCards = action.enabled) }
+                IMPORT_WEAK_KEY -> importFilters(current) { it.copy(weakCards = action.enabled) }
+                else -> null
+            }
             is KaniAction.Settings.Command -> null
         }
+
+    /**
+     * The current import filters as a full [SettingsSaveCommand.ImportFilters], with one
+     * field changed by [mutate].
+     *
+     * `ImportFilters` carries every filter at once, so flipping one source toggle has to
+     * resend the rest from the current snapshot rather than defaulting them — otherwise
+     * ticking "import suspended" would silently reset the weak-card thresholds and the
+     * tag list. This reads the untouched fields from [current] and lets [mutate] change
+     * only the one the toggle owns.
+     */
+    private fun importFilters(
+        current: SettingsSnapshot,
+        mutate: (SettingsSaveCommand.ImportFilters) -> SettingsSaveCommand.ImportFilters,
+    ): SettingsSaveCommand.ImportFilters {
+        val sync = current.sync
+        return mutate(
+            SettingsSaveCommand.ImportFilters(
+                activeCards = sync.importActiveCards,
+                suspendedCards = sync.importSuspendedCards,
+                taggedCards = sync.importTaggedCards,
+                tags = sync.importTagsText(),
+                weakCards = sync.importWeakCards,
+                weakDifficulty = sync.importWeakFsrsDifficultyThreshold,
+                weakLapses = sync.importWeakLapsesThreshold,
+                minMatchingCards = sync.importMinMatchingCardsPerKanji,
+                browserQueryCards = sync.importBrowserQueryCards,
+                browserQuery = sync.importBrowserQuery,
+                tagRepairedCards = current.tagRepairedCards,
+            ),
+        )
+    }
 
     private fun root(): SettingsRoot = SettingsRoot(
         title = SettingsSectionTextCopy.settingsTitle(),

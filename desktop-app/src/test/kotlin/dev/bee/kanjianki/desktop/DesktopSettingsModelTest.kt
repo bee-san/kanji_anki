@@ -69,6 +69,7 @@ class DesktopSettingsModelTest {
             SettingsSection.ROOT,
             SettingsSection.APPEARANCE,
             SettingsSection.STUDY_BEHAVIOR,
+            SettingsSection.IMPORT_SYNC,
         )
         for (section in SettingsSection.entries.filter { it !in ported }) {
             val screen = DesktopSettingsModel.screen(section, snapshot())
@@ -115,6 +116,38 @@ class DesktopSettingsModelTest {
         assertEquals(365, promotion.max)
         val demotion = steppers.first { it.max == 30 }
         assertEquals(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK, demotion.value)
+    }
+
+    @Test
+    fun importSyncReflectsTheCurrentSourceToggles() {
+        val screen = DesktopSettingsModel.screen(SettingsSection.IMPORT_SYNC, snapshot())
+        val toggles = (screen.content as SettingsSectionContent.Controls).controls
+            .filterIsInstance<SettingsControl.Toggle>()
+        assertEquals(3, toggles.size)
+        // Each toggle carries the current value and dispatches its own keyed action.
+        val weak = toggles.first { it.label.contains("weak") }
+        assertEquals(
+            KaniAction.Settings.SetToggle("import_weak_cards", enabled = false),
+            weak.onChange(false),
+        )
+    }
+
+    @Test
+    fun anImportToggleResendsEveryOtherFilterUnchanged() {
+        // Flipping suspended-card import keeps active, weak, and the thresholds as they
+        // were — ImportFilters carries them all, so a partial command would reset them.
+        val current = snapshot()
+        val command = DesktopSettingsModel.settingsCommandFor(
+            KaniAction.Settings.SetToggle("import_suspended_cards", enabled = true),
+            current,
+        ) as SettingsSaveCommand.ImportFilters
+
+        assertEquals(true, command.suspendedCards)
+        assertEquals(current.sync.importActiveCards, command.activeCards)
+        assertEquals(current.sync.importWeakCards, command.weakCards)
+        assertEquals(current.sync.importWeakLapsesThreshold, command.weakLapses)
+        assertEquals(current.sync.importMinMatchingCardsPerKanji, command.minMatchingCards)
+        assertEquals(current.tagRepairedCards, command.tagRepairedCards)
     }
 
     @Test
@@ -200,7 +233,7 @@ class DesktopSettingsModelTest {
         val current = snapshot()
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetChoice("unknown_key", "x"), current))
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetNumber("unknown_key", 1), current))
-        assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetToggle("import_weak_cards", enabled = true), current))
+        assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetToggle("unknown_key", enabled = true), current))
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.Command("reset_ladder"), current))
     }
 
