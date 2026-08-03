@@ -1,0 +1,11 @@
+<resources>
+    <!--
+      Games structural copy. The mode titles, prompts, question text, and result
+      wording are computed in :core's KanjiGameCopy/KanjiGameEngine and reach the
+      surface as plain strings on the portable model. Only the chrome the games shell
+      adds itself — the sync button and the unavailable notice — is here.
+    -->
+    <string name="games_sync">Sync a collection</string>
+    <string name="games_unavailable_title">Games need a collection</string>
+    <string name="games_unavailable_body">Sync some kanji and the games unlock.</string>
+</resources>

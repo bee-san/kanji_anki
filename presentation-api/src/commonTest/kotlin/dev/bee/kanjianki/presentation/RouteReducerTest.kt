@@ -239,6 +239,9 @@ class RouteReducerTest {
                 KaniAction.Study.Grade(rating = "good"),
                 KaniAction.Study.Continue,
                 KaniAction.Study.Undo,
+                KaniAction.Game.Start(modeId = "meaning_pop"),
+                KaniAction.Game.Answer(answer = "take off"),
+                KaniAction.Game.Continue,
             )
         ) {
             val (state, intent) = RouteReducer.reduce(loaded, action)

@@ -81,6 +81,14 @@ object ShellReducer {
          * for. Listing the cases keeps the `when` exhaustive.
          */
         is KaniAction.Study -> state
+
+        /**
+         * Game play is route content, not shell state.
+         *
+         * A game answer scores in the engine and the next round is re-derived from it,
+         * exactly like a study grade — the shell's stack and tabs are untouched.
+         */
+        is KaniAction.Game -> state
     }
 
     /**
@@ -292,6 +300,15 @@ object RouteReducer {
          */
         KaniAction.Study.Reveal -> state to null
         is KaniAction.Study -> state.loading() to RouteIntent.Load
+
+        /**
+         * A game action reloads the route from the advanced engine state.
+         *
+         * Start, Answer, and Continue each change what the games screen shows — a new
+         * round, a graded result, the next question — and the host re-derives it from
+         * the engine. [RouteState.loading] keeps the current screen up while it does.
+         */
+        is KaniAction.Game -> state.loading() to RouteIntent.Load
     }
 }
 

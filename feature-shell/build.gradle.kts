@@ -21,6 +21,9 @@ kotlin {
             // `api` for the same reason: from Goal 197 the shell aggregates Stats's
             // dashboard, so a host composing the Stats route sees it through the shell.
             api(project(":feature-stats"))
+            // `api` for the same reason: from Goal 197 the shell aggregates the Games
+            // surfaces, so a host composing the Games route sees them through the shell.
+            api(project(":feature-games"))
         }
     }
 }

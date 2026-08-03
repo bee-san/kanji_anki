@@ -197,6 +197,33 @@ sealed interface KaniAction {
     }
 
     /**
+     * Playing a kanji game.
+     *
+     * Kani-side, like [Study]: a game answer scores in the engine, never touches the
+     * collection or the scheduler. The reducer records the action and lets the host
+     * advance the engine, exactly as it does for a study grade — deciding what a game
+     * answer means is the engine's, not the reducer's.
+     */
+    sealed interface Game : KaniAction {
+        /** Start a game mode by its id. */
+        data class Start(val modeId: String) : Game {
+            init {
+                require(modeId.isNotBlank()) { "a game mode needs an id" }
+            }
+        }
+
+        /** Answer the current round with a chosen value. */
+        data class Answer(val answer: String) : Game {
+            init {
+                require(answer.isNotBlank()) { "answering nothing is not a user intent" }
+            }
+        }
+
+        /** Advance past the result to the next round or back to the menu. */
+        data object Continue : Game
+    }
+
+    /**
      * The user saved a mnemonic note for a kanji.
      *
      * Kani-side content, not a collection write: the note lives in Kani's own

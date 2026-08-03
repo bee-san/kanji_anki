@@ -221,6 +221,9 @@ class ShellReducerTest {
             KaniAction.Study.Reveal,
             KaniAction.Study.Continue,
             KaniAction.Study.Undo,
+            KaniAction.Game.Start(modeId = "meaning_pop"),
+            KaniAction.Game.Answer(answer = "take off"),
+            KaniAction.Game.Continue,
         )
 
         for (action in studyActions) {
