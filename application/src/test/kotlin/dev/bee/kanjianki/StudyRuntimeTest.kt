@@ -10,6 +10,7 @@ import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.ReviewCommitResult
 import dev.bee.kanjianki.data.ReviewTokenStatus
 import dev.bee.kanjianki.data.StoreResult
+import dev.bee.kanjianki.data.StudyChoiceDataSnapshot
 import dev.bee.kanjianki.data.StudyQueueSnapshot
 import dev.bee.kanjianki.data.StudyStreakSnapshot
 import dev.bee.kanjianki.data.fakes.FakeStudyRepository
@@ -144,6 +145,32 @@ class StudyRuntimeTest {
     }
 
     @Test
+    fun aMeaningKanjiCardBuildsAChoicePromptFromTheCoresPlanner() = runTest {
+        // Four distinct-meaning kanji on the meaning_kanji rung give the planner a
+        // full four-option card; the runtime carries it as a choice prompt.
+        val kanji = listOf("脱", "説", "税", "鋭")
+        val store = InMemoryStudyStore(
+            items = kanji.map { meaningKanjiItem(it) },
+            meanings = kanji.zip(listOf("take off", "explain", "tax", "sharp")).toMap(),
+        )
+        val runtime = StudyRuntime(StudyUseCases(store.repository))
+
+        val loaded = runtime.load(NOW)
+
+        val prompt = loaded.choicePrompt
+        assertNotNull(prompt)
+        assertEquals(4, prompt!!.choices.size)
+        assertTrue("the served card's kanji is the correct option", prompt.correct in kanji)
+    }
+
+    @Test
+    fun aRecognitionCardHasNoChoicePrompt() = runTest {
+        val store = InMemoryStudyStore(items = listOf(dueItem("脱")))
+        val runtime = StudyRuntime(StudyUseCases(store.repository))
+        assertNull(runtime.load(NOW).choicePrompt)
+    }
+
+    @Test
     fun anEmptyQueueLoadsToNoCard() = runTest {
         val store = InMemoryStudyStore(items = emptyList())
         val runtime = StudyRuntime(StudyUseCases(store.repository))
@@ -154,7 +181,11 @@ class StudyRuntimeTest {
         assertEquals(0, loaded.routeSnapshot.progress.targetCount)
     }
 
-    private fun dueItem(kanji: String) = RecordsStudyModels.StudyItem(
+    private fun dueItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.KANJI_MEANING)
+
+    private fun meaningKanjiItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.MEANING_KANJI)
+
+    private fun itemOnRung(kanji: String, rung: RecordsBase.LadderRung) = RecordsStudyModels.StudyItem(
         kanji,
         "review",
         NOW - 1_000L,
@@ -166,7 +197,7 @@ class StudyRuntimeTest {
         1,
         null,
         0L,
-    ).withRung(RecordsBase.LadderRung.KANJI_MEANING)
+    ).withRung(rung)
 
     private companion object {
         const val NOW = 1_800_000_000_000L
@@ -181,7 +212,10 @@ class StudyRuntimeTest {
  * reflects that log, and `undoLastReview` restores the pre-review item and drops the
  * row — the token-first, revision-CAS behavior CLAUDE.md pins.
  */
-private class InMemoryStudyStore(items: List<RecordsStudyModels.StudyItem>) {
+private class InMemoryStudyStore(
+    items: List<RecordsStudyModels.StudyItem>,
+    private val meanings: Map<String, String> = emptyMap(),
+) {
     private val itemsByKanji = items.associateBy { it.kanji }.toMutableMap()
     val reviewLog = mutableListOf<String>()
     private val forcedTokens = mutableSetOf<String>()
@@ -214,6 +248,21 @@ private class InMemoryStudyStore(items: List<RecordsStudyModels.StudyItem>) {
             } else {
                 StoreResult.ok(false)
             }
+        }
+        choiceHandler = { _, _ ->
+            val rows = itemsByKanji.values.map(::row)
+            StoreResult.ok(
+                StudyChoiceDataSnapshot(
+                    kanjiReadingUsages = emptyList(),
+                    kanjiReadingPool = emptyList(),
+                    readingKanjiUsages = emptyList(),
+                    readingKanjiCandidates = emptyMap(),
+                    activeRows = rows,
+                    inventory = emptyList(),
+                    similarPairs = emptyList(),
+                    wrongPickCounts = emptyMap(),
+                ),
+            )
         }
     }
 
@@ -250,7 +299,7 @@ private class InMemoryStudyStore(items: List<RecordsStudyModels.StudyItem>) {
     private fun row(item: RecordsStudyModels.StudyItem) = RecordsImportModels.DashboardRow(
         item.kanji,
         900,
-        "take off",
+        meanings[item.kanji] ?: "take off",
         "だつ",
         "deck:current",
         50,

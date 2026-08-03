@@ -550,7 +550,7 @@ private suspend fun loadDesktopRoute(
             browse = loadBrowse(container, destination),
             detail = loadDetail(container, destination, settings.matureSupportThreshold, now),
             study = studyRender?.let {
-                DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable)
+                DesktopStudyModel.session(it.session, it.routeSnapshot, it.undoable, it.choicePrompt)
             },
         ),
     )

@@ -3,6 +3,7 @@ package dev.bee.kanjianki.desktop
 import dev.bee.kanjianki.StudyAnswerFeedbackPhase
 import dev.bee.kanjianki.StudyAnswerFeedbackSnapshot
 import dev.bee.kanjianki.StudyAnswerOutcome
+import dev.bee.kanjianki.StudyChoicePrompt
 import dev.bee.kanjianki.StudyRouteSnapshot
 import dev.bee.kanjianki.StudySessionPhase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -51,12 +52,13 @@ internal object DesktopStudyModel {
         session: RecordsSchedulerModels.StudySession?,
         route: StudyRouteSnapshot,
         undoable: Boolean,
+        choicePrompt: StudyChoicePrompt? = null,
     ): StudySession {
         val feedback = feedback(route.feedback)
         return StudySession(
             state = state(session, route),
             progress = progress(route),
-            card = session?.let(::card),
+            card = session?.let { card(it, choicePrompt) },
             feedback = feedback,
             undoable = undoable,
         )
@@ -101,8 +103,15 @@ internal object DesktopStudyModel {
         )
     }
 
-    private fun card(session: RecordsSchedulerModels.StudySession): StudyCard {
+    private fun card(
+        session: RecordsSchedulerModels.StudySession,
+        choicePrompt: StudyChoicePrompt?,
+    ): StudyCard {
         val subject = session.item?.kanji ?: session.prompt
+        // A choice task the runtime built options for renders as a choice card; a
+        // choice task it could not (too few options, missing data, or the not-yet-
+        // shared similar-kanji family) falls back to the flashcard below.
+        choicePrompt?.let { return choiceCard(session, subject, it) }
         return when {
             StudyTaskCopy.isRepairWritingTask(session) ||
                 session.writingRequired -> writingCard(session, subject)
@@ -112,6 +121,30 @@ internal object DesktopStudyModel {
             else -> flashcard(session, subject)
         }
     }
+
+    /**
+     * A multiple-choice card from the runtime-built prompt.
+     *
+     * Each option grades itself: the correct one submits `good`, the rest `again` —
+     * picking is grading, which is what `StudyCard.Choice` models. The correct option
+     * is carried so the surface can mark it after a wrong pick.
+     */
+    private fun choiceCard(
+        session: RecordsSchedulerModels.StudySession,
+        subject: String,
+        prompt: StudyChoicePrompt,
+    ): StudyCard.Choice = StudyCard.Choice(
+        prompt = UiText.Literal(prompt.question),
+        subject = subject,
+        choices = prompt.choices.map { value ->
+            dev.bee.kanjianki.presentation.StudyChoice(
+                value = value,
+                label = UiText.Literal(value),
+                grade = grade(if (value == prompt.correct) StudyRatings.GOOD else StudyRatings.AGAIN),
+            )
+        },
+        correct = prompt.correct,
+    )
 
     /** A recognition/reading flashcard: a prompt to recall, an answer to reveal. */
     private fun flashcard(

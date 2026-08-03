@@ -3,10 +3,14 @@ package dev.bee.kanjianki
 import dev.bee.kanjianki.application.StudyUseCases
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
+import dev.bee.kanjianki.core.MeaningKanjiChoicePlanner
+import dev.bee.kanjianki.core.ReadingKanjiChoicePlanner
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyReviewRequestPolicy
 import dev.bee.kanjianki.core.StudySessionSelector
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.ReviewTokenQuery
 import dev.bee.kanjianki.data.StudyQueueSnapshot
 
@@ -39,8 +43,10 @@ import dev.bee.kanjianki.data.StudyQueueSnapshot
  */
 class StudyRuntime(private val useCases: StudyUseCases) {
     private val selector = StudySessionSelector()
+    private val meaningKanjiPlanner = MeaningKanjiChoicePlanner()
     private var phase: StudySessionPhase = StudySessionPhase.IDLE
     private var session: RecordsSchedulerModels.StudySession? = null
+    private var choicePrompt: StudyChoicePrompt? = null
     private var feedback: StudyAnswerFeedbackState? = null
     private var lastApplied: AppliedReviewSnapshot? = null
     private var completedCount: Int = 0
@@ -51,6 +57,7 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         session = session,
         routeSnapshot = snapshot(),
         undoable = lastApplied != null,
+        choicePrompt = choicePrompt,
     )
 
     /**
@@ -65,7 +72,7 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         val queue = useCases.loadQueue(nowMillis)
         targetCount = countDue(queue, nowMillis)
         completedCount = 0
-        mount(selectNext(queue, nowMillis))
+        mount(selectNext(queue, nowMillis), nowMillis)
         return render()
     }
 
@@ -155,7 +162,7 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         val gate = feedback ?: return render()
         if (!gate.tryContinue()) return render()
         val queue = useCases.loadQueue(nowMillis)
-        mount(selectNext(queue, nowMillis))
+        mount(selectNext(queue, nowMillis), nowMillis)
         return render()
     }
 
@@ -174,14 +181,69 @@ class StudyRuntime(private val useCases: StudyUseCases) {
         if (!reversed) return render()
         completedCount = (completedCount - 1).coerceAtLeast(0)
         val queue = useCases.loadQueue(nowMillis)
-        mount(selectNext(queue, nowMillis))
+        mount(selectNext(queue, nowMillis), nowMillis)
         return render()
     }
 
-    private fun mount(next: RecordsSchedulerModels.StudySession?) {
+    private suspend fun mount(next: RecordsSchedulerModels.StudySession?, nowMillis: Long) {
         session = next
+        choicePrompt = next?.let { buildChoicePrompt(it, nowMillis) }
         feedback = next?.let { StudyAnswerFeedbackState(it.token) }
         phase = if (next != null) StudySessionPhase.ACTIVE else StudySessionPhase.COMPLETE
+    }
+
+    /**
+     * The multiple-choice options for a choice task, or null for a non-choice card.
+     *
+     * Built from the same `:core` planners Android uses, fed the same
+     * `StudyChoiceDataSnapshot`. `meaning_kanji`, `kanji_reading`, and `reading_kanji`
+     * are covered; `similar_kanji` carries its own persisted choice state and
+     * explanation sub-system and is left to the flashcard fallback until that is
+     * shared too. A planner that cannot build a valid card (too few choices, missing
+     * data) returns null, and the host renders the flashcard fallback — the same
+     * degradation Android's choice sessions take.
+     */
+    private suspend fun buildChoicePrompt(
+        current: RecordsSchedulerModels.StudySession,
+        nowMillis: Long,
+    ): StudyChoicePrompt? {
+        val kanji = current.item?.kanji ?: return null
+        return when (current.taskType) {
+            StudyTaskTypes.MEANING_KANJI -> {
+                val row = current.row ?: return null
+                val data = useCases.loadChoiceData(row.kanji, nowMillis)
+                val card = meaningKanjiPlanner.buildChoiceCard(
+                    row,
+                    data.activeRows,
+                    data.inventory,
+                    null,
+                    data.wrongPickCounts,
+                    null,
+                ) ?: return null
+                StudyChoicePrompt(question = row.primaryMeaning, choices = card.choices, correct = card.targetKanji)
+            }
+            StudyTaskTypes.KANJI_READING -> {
+                val data = useCases.loadChoiceData(kanji, nowMillis)
+                val card = KanjiReadingChoicePlanner.buildChoiceCard(
+                    kanji,
+                    data.kanjiReadingUsages,
+                    data.kanjiReadingPool,
+                    null,
+                ) ?: return null
+                StudyChoicePrompt(question = card.word, choices = card.choices, correct = card.correctReading)
+            }
+            StudyTaskTypes.READING_KANJI -> {
+                val data = useCases.loadChoiceData(kanji, nowMillis)
+                val card = ReadingKanjiChoicePlanner.buildChoiceCard(
+                    kanji,
+                    data.readingKanjiUsages,
+                    data.readingKanjiCandidates,
+                    null,
+                ) ?: return null
+                StudyChoicePrompt(question = card.blankedWord, choices = card.choices, correct = card.targetKanji)
+            }
+            else -> null
+        }
     }
 
     private fun snapshot(): StudyRouteSnapshot = StudyRouteSnapshot(
@@ -220,9 +282,25 @@ class StudyRuntime(private val useCases: StudyUseCases) {
     }
 }
 
-/** What a host renders: the active session and the route snapshot the model maps. */
+/** What a host renders: the active session, the route snapshot, and any choice card. */
 data class StudyRouteRender(
     val session: RecordsSchedulerModels.StudySession?,
     val routeSnapshot: StudyRouteSnapshot,
     val undoable: Boolean,
+    val choicePrompt: StudyChoicePrompt? = null,
+)
+
+/**
+ * A multiple-choice card's options, built by the runtime from a `:core` planner.
+ *
+ * Present only for a choice task the runtime could build a valid card for; the host
+ * maps it to `StudyCard.Choice`, and its absence on a choice task is the flashcard
+ * fallback. [correct] is the option that would have been right — the kanji for a
+ * meaning-kanji or reading-kanji card, the reading for a kanji-reading card — shown as
+ * green feedback after a pick.
+ */
+data class StudyChoicePrompt(
+    val question: String,
+    val choices: List<String>,
+    val correct: String,
 )

@@ -75,6 +75,44 @@ class DesktopStudyModelTest {
     }
 
     @Test
+    fun aChoicePromptBecomesAChoiceCardWhereEachOptionGradesItself() {
+        val prompt = dev.bee.kanjianki.StudyChoicePrompt(
+            question = "take off",
+            choices = listOf("脱", "説", "税", "鋭"),
+            correct = "脱",
+        )
+        val model = DesktopStudyModel.session(
+            session(StudyTaskTypes.MEANING_KANJI),
+            route(StudySessionPhase.ACTIVE),
+            undoable = false,
+            choicePrompt = prompt,
+        )
+
+        val card = model.card
+        assertTrue("expected a choice card, was $card", card is StudyCard.Choice)
+        card as StudyCard.Choice
+        assertEquals(listOf("脱", "説", "税", "鋭"), card.choices.map { it.value })
+        assertEquals("脱", card.correct)
+        // Picking is grading: the correct option submits good, the rest again.
+        assertEquals("good", card.choices.first { it.value == "脱" }.grade.rating)
+        assertEquals("again", card.choices.first { it.value == "説" }.grade.rating)
+    }
+
+    @Test
+    fun aChoiceTaskWithNoBuiltPromptFallsBackToAFlashcard() {
+        // The runtime returns no prompt when it cannot build a valid card (too few
+        // options, missing data, or the not-yet-shared similar-kanji family); the
+        // mapping then renders the flashcard fallback rather than an empty grid.
+        val model = DesktopStudyModel.session(
+            session(StudyTaskTypes.MEANING_KANJI),
+            route(StudySessionPhase.ACTIVE),
+            undoable = false,
+            choicePrompt = null,
+        )
+        assertTrue(model.card is StudyCard.Flashcard)
+    }
+
+    @Test
     fun aWordReadingCardRevealsAReadingRatherThanAMeaning() {
         val model = DesktopStudyModel.session(session(StudyTaskTypes.WORD_READING), route(StudySessionPhase.ACTIVE), false)
         val card = model.card
