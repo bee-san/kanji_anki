@@ -285,9 +285,11 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         self.assertEqual([], unconditional_uploads)
 
     def test_release_version_metadata_comes_from_the_tested_script(self) -> None:
-        self.assertIn("python3 ci/scripts/kani_version.py next-tag --beta", self.workflow)
+        self.assertIn("python3 ci/scripts/kani_version.py next-tag", self.workflow)
+        self.assertNotIn("next-tag --beta", self.workflow)
         self.assertIn("python3 ci/scripts/kani_version.py validate-new-tag", self.workflow)
-        self.assertIn("python3 ci/scripts/kani_version.py metadata", self.workflow)
+        self.assertIn("metadata_args=(", self.workflow)
+        self.assertIn('python3 ci/scripts/kani_version.py "${metadata_args[@]}"', self.workflow)
         self.assertNotIn("* 1000000", self.workflow)
         self.assertNotIn("BASH_REMATCH", self.workflow)
 
@@ -301,8 +303,9 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
             self.workflow,
         )
 
-    def test_automatic_main_releases_use_explicit_beta_tags_and_prerelease_metadata(self) -> None:
-        self.assertIn("next-tag --beta", self.workflow)
+    def test_automatic_main_releases_use_legacy_compatible_numeric_tags_and_prerelease_metadata(self) -> None:
+        self.assertNotIn("next-tag --beta", self.workflow)
+        self.assertIn("metadata_args+=(--prerelease)", self.workflow)
         self.assertIn("RELEASE_NAME: ${{ needs.metadata.outputs.release_name }}", self.workflow)
         self.assertIn("RELEASE_IS_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}", self.workflow)
         self.assertIn('if [[ "${RELEASE_IS_PRERELEASE}" == "true" ]]; then', self.workflow)

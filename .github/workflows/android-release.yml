@@ -82,7 +82,10 @@ jobs:
               python3 ci/scripts/kani_version.py validate-new-tag --tag "${release_tag}"
             fi
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
-            release_tag="$(python3 ci/scripts/kani_version.py next-tag --beta)"
+            # Keep automatic beta tags numeric so Kani 0.5.10 and 0.5.11 can
+            # discover the release. GitHub prerelease metadata, not the tag
+            # suffix, keeps stable-channel users on /releases/latest.
+            release_tag="$(python3 ci/scripts/kani_version.py next-tag)"
             python3 ci/scripts/kani_version.py validate-new-tag --tag "${release_tag}"
             if git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
               echo "::error::Computed auto-release tag ${release_tag} already exists."
@@ -95,9 +98,15 @@ jobs:
               --ignore-existing-exact
           fi
 
-          python3 ci/scripts/kani_version.py metadata \
-            --tag "${release_tag}" \
-            --build-sha "${build_sha}" >> "${GITHUB_OUTPUT}"
+          metadata_args=(
+            metadata
+            --tag "${release_tag}"
+            --build-sha "${build_sha}"
+          )
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            metadata_args+=(--prerelease)
+          fi
+          python3 ci/scripts/kani_version.py "${metadata_args[@]}" >> "${GITHUB_OUTPUT}"
 
   validate:
     name: Validate and assemble release
