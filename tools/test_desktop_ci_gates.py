@@ -93,6 +93,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
             (
                 "tools.test_desktop_ci_gates",
                 "tools.test_desktop_ci_workflow",
+                "tools.test_desktop_packaging_audit",
                 "tools.test_generate_desktop_icons",
                 "tools.test_host_render_parity",
                 "tools.test_measure_desktop_startup_budget",
