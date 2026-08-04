@@ -33,6 +33,12 @@ dependencies {
 tasks.withType<Test>().configureEach {
     useJUnit()
     systemProperty("kani.repositoryRoot", rootProject.projectDir.parentFile.absolutePath)
+    // Forwarded so a slow host can raise the functional-test timeout without editing
+    // Kotlin; see FunctionalTestTimeout. Gradle does not pass -D flags to forked test
+    // JVMs, so without this line the override is silently inert.
+    providers.systemProperty("kani.functionalTestTimeoutSeconds").orNull?.let {
+        systemProperty("kani.functionalTestTimeoutSeconds", it)
+    }
     inputs.dir(layout.projectDirectory.dir("src/test/fixtures"))
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle/libs.versions.toml"))
     inputs.file(rootProject.projectDir.parentFile.resolve("gradle/verification-metadata.xml"))

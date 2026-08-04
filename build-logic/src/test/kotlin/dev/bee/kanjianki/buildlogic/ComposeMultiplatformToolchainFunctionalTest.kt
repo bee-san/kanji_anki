@@ -14,7 +14,10 @@ class ComposeMultiplatformToolchainFunctionalTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    @Test(timeout = 300_000L)
+    @get:Rule
+    val timeout = FunctionalTestTimeout.rule()
+
+    @Test
     fun composeJvmFixtureCompilesAndResolvesThePinnedToolchain() {
         val repositoryRoot = File(requireNotNull(System.getProperty("kani.repositoryRoot")))
         val fixture = File(

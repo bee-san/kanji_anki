@@ -251,8 +251,31 @@ cause is unrecoverable from a user's bug report.
 
 Also not yet done: install/upgrade/uninstall/data-retention tests against a synthetic
 lower-version package (Windows, sharing the upgrade UUID; macOS, sharing the bundle
-identity), the macOS quarantine test, and documenting the WiX 3+/SignTool and Xcode
-command-line prerequisites per runner.
+identity), and the macOS quarantine test.
+
+### Per-runner packaging prerequisites
+
+| Runner | Needed | Provided by |
+| --- | --- | --- |
+| Windows | WiX 3.11 (`candle.exe`/`light.exe`) | The Compose plugin's own `downloadWix`/`unzipWix` tasks |
+| Windows | SignTool | Not needed — Kani does not sign yet |
+| macOS | `hdiutil`, `codesign` | Base macOS; both are in the OS |
+| macOS | Xcode command-line tools | Not needed for an unsigned DMG |
+| Linux | `dpkg-deb`, `fakeroot` | The `ubuntu-24.04` image (absent on this dev host) |
+
+**WiX is not a runner prerequisite**, which is worth stating because assuming otherwise is
+the natural mistake: jpackage needs WiX 3.x, WiX 4+ is incompatible, and the runner image
+ships neither. The Compose plugin resolves this itself — the Windows CI log shows
+`> Task :downloadWix` fetching `wix311-binaries.zip` from the WiX GitHub release, then
+`:unzipWix`. So no install step is required, but the MSI build does depend on network
+access to that release at build time, which is a real (and unpinned-by-us) external
+dependency rather than a documented local tool.
+
+The data-retention half of the install/uninstall requirement is covered on any host by
+`DesktopStorageLayoutTest.userDataIsNeverNestedInsideAnUninstallerOwnedDirectory`: an
+uninstaller removes what it installed, so retention holds if and only if no user-data path
+is nested under an install root, which is path arithmetic rather than a host behavior. The
+remaining install/upgrade runs still need real Windows and macOS hosts.
 
 ## Building locally
 

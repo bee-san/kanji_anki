@@ -18,7 +18,10 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    @Test(timeout = 600_000L)
+    @get:Rule
+    val timeout = FunctionalTestTimeout.rule()
+
+    @Test
     fun desktopConventionCompilesTestsAndPublishesCoverage() {
         val projectDir = prepareFixtureProject("desktop-application", needsAndroidSdk = false)
 
@@ -60,7 +63,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         )
     }
 
-    @Test(timeout = 600_000L)
+    @Test
     fun desktopConventionRejectsKotlinWarnings() {
         val projectDir = prepareFixtureProject(
             "desktop-application",
@@ -88,7 +91,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertWarningFailure(result.output)
     }
 
-    @Test(timeout = 600_000L)
+    @Test
     fun multiplatformConventionCompilesEveryConfiguredSurface() {
         val projectDir = prepareFixtureProject(
             "multiplatform-compose-library",
@@ -141,7 +144,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         )
     }
 
-    @Test(timeout = 600_000L)
+    @Test
     fun multiplatformConventionRejectsDesktopKotlinWarnings() {
         val projectDir = prepareFixtureProject(
             "multiplatform-compose-library",
@@ -169,7 +172,7 @@ class DesktopAndMultiplatformConventionsFunctionalTest {
         assertWarningFailure(result.output)
     }
 
-    @Test(timeout = 600_000L)
+    @Test
     fun multiplatformConventionRejectsAndroidKotlinWarnings() {
         val projectDir = prepareFixtureProject(
             "multiplatform-compose-library",

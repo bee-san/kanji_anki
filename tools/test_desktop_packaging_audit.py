@@ -98,6 +98,33 @@ class DesktopPackagingAuditTest(unittest.TestCase):
         for claim in ("Windows 10/11 on real VMs", "Ubuntu 20.04", "macOS 13 on Apple silicon"):
             self.assertIn(claim, self.audit)
 
+    def test_the_prerequisite_table_records_who_supplies_wix(self) -> None:
+        # The audit previously listed WiX as a runner prerequisite to document. That was
+        # wrong: the Compose plugin downloads WiX 3.11 itself (`:downloadWix` /
+        # `:unzipWix` in the Windows CI log). The correction matters in both directions --
+        # nobody should add a WiX install step that does nothing, and nobody should read
+        # "no prerequisite" as "no external dependency", because the MSI build reaches the
+        # network for that release every time.
+        self.assertIn("WiX is not a runner prerequisite", self.audit)
+        self.assertIn("downloadWix", self.audit)
+        self.assertNotIn("WiX 3+/SignTool", self.audit)
+
+    def test_the_data_retention_claim_names_a_test_that_exists(self) -> None:
+        # The audit says the host-independent half of Goal 204's data-retention
+        # requirement is covered by a named test. A renamed test would leave the document
+        # asserting coverage that nothing provides.
+        test_name = "userDataIsNeverNestedInsideAnUninstallerOwnedDirectory"
+        self.assertIn(test_name, self.audit)
+        source = ROOT / (
+            "data-desktop/src/test/kotlin/dev/bee/kanjianki/data/desktop/"
+            "DesktopStorageLayoutTest.kt"
+        )
+        self.assertIn(
+            f"fun {test_name}(",
+            source.read_text(encoding="utf-8"),
+            f"the audit cites {test_name}, which no longer exists",
+        )
+
     def test_the_entitlements_files_point_at_a_document_that_exists(self) -> None:
         # Both entitlements files cite this document; a dangling reference in a file that
         # is only read during a signing investigation is the worst place for one.

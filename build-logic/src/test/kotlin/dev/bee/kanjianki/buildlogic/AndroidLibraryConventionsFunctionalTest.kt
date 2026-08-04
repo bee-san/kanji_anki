@@ -15,7 +15,10 @@ class AndroidLibraryConventionsFunctionalTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    @Test(timeout = 300_000L)
+    @get:Rule
+    val timeout = FunctionalTestTimeout.rule()
+
+    @Test
     fun composeLibraryConventionCompilesLintsTestsAndPublishesCoverage() {
         val projectDir = prepareFixtureProject("android-library")
 
@@ -50,7 +53,7 @@ class AndroidLibraryConventionsFunctionalTest {
         assertTrue(coverageReport.isFile && coverageReport.length() > 0L)
     }
 
-    @Test(timeout = 300_000L)
+    @Test
     fun builtInAndroidKotlinWarningsFailCompilation() {
         val projectDir = prepareFixtureProject("android-library-warning")
         val warningSource = File(
