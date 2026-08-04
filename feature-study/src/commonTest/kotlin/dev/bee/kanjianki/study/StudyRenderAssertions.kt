@@ -264,8 +264,9 @@ internal fun assertTheWrongPickAndCorrectChoiceAreMarkedAfterAnAnswer() {
 
 @OptIn(ExperimentalTestApi::class)
 internal fun assertKeyboardShortcutsGradeAndAdvanceThroughTheSharedModifier() {
-    // Exercises the wired keyboard path, not just the pure decision: a real key event
-    // reaches the modifier, is reduced, and dispatches. P grades a revealed flashcard.
+    // Exercises the wired keyboard path, not just the pure decision: real key events
+    // reach the modifier, are translated to portable presses, and dispatch. Space
+    // reveals the face-down card and 3 then grades it good, as in Anki's reviewer.
     val recorded = mutableListOf<KaniAction>()
     renderStudy(
         content = {
@@ -281,10 +282,25 @@ internal fun assertKeyboardShortcutsGradeAndAdvanceThroughTheSharedModifier() {
             )
         },
     ) {
-        onNodeWithTag(STUDY_SESSION_TEST_TAG).requestFocus().performKeyInput { pressKey(Key.P) }
+        val session = onNodeWithTag(STUDY_SESSION_TEST_TAG).requestFocus()
+        // Nothing grades a card that is still face down, so the grade key comes second.
+        session.performKeyInput { pressKey(Key.Three) }
         assertTrue(
-            KaniAction.Study.Grade(rating = "good") in recorded,
-            "P must grade the flashcard good through the modifier: $recorded",
+            recorded.none { it is KaniAction.Study.Grade },
+            "a face-down card must not be gradable from the keyboard: $recorded",
+        )
+        session.performKeyInput { pressKey(Key.Spacebar) }
+        assertTrue(
+            KaniAction.Study.Reveal in recorded,
+            "space must reveal the face-down card: $recorded",
+        )
+        // Revealed by key, so the answer is on screen exactly as a click would leave it.
+        onNodeWithTag(STUDY_ANSWER_TEST_TAG).assertExists()
+        session.performKeyInput { pressKey(Key.Three) }
+        assertEquals(
+            listOf<KaniAction>(KaniAction.Study.Reveal, KaniAction.Study.Grade(rating = "good")),
+            recorded,
+            "3 must grade the revealed flashcard good, exactly once",
         )
     }
 }

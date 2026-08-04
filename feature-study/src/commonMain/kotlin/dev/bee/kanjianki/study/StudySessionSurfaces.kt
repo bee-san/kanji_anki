@@ -15,7 +15,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.StudyCard
+import dev.bee.kanjianki.presentation.StudyInputContext
 import dev.bee.kanjianki.presentation.StudySession
 import dev.bee.kanjianki.presentation.StudySessionState
 import dev.bee.kanjianki.presentation.UiTextResolver
@@ -73,6 +77,16 @@ fun StudySessionScreen(
     val textFieldFocused = session.state == StudySessionState.CARD &&
         session.card is StudyCard.Typed &&
         !session.feedback.visible
+    // Whether a self-graded card is face up. Hoisted out of the card surface because
+    // the keyboard needs it too: no key may grade an answer the user has not seen, and
+    // the reveal key must turn the card over as the button does. Local UI state — the
+    // reducer deliberately does not reload for a reveal — keyed on the card so the next
+    // one starts face down.
+    var revealed by remember(session.card) { mutableStateOf(false) }
+    val context = StudyInputContext(
+        textFieldFocused = textFieldFocused,
+        answerRevealed = revealed || session.feedback.visible,
+    )
     // A focus anchor so the shortcuts receive keys the moment the session appears,
     // without the user clicking first. The typed card's field takes focus for itself
     // when it mounts, so this only wins on the self-graded and choice cards — exactly
@@ -83,12 +97,18 @@ fun StudySessionScreen(
             focusRequester.requestFocus()
         }
     }
+    // One dispatch for the keyboard and the buttons, so a revealed-by-key card shows
+    // its answer exactly as a revealed-by-click one does.
+    val dispatchAndReveal: (KaniAction) -> Unit = { action ->
+        if (action == KaniAction.Study.Reveal) revealed = true
+        dispatch(action)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester)
             .focusable()
-            .studyKeyboardShortcuts(session, textFieldFocused, dispatch)
+            .studyKeyboardShortcuts(session, context, dispatchAndReveal)
             .testTag(STUDY_SESSION_TEST_TAG),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -97,7 +117,7 @@ fun StudySessionScreen(
             StudySessionState.CARD -> {
                 StudyProgressBar(session, copy)
                 session.card?.let { card ->
-                    StudyCardSurface(card, session, copy, resolver, dispatch)
+                    StudyCardSurface(card, session, copy, resolver, context, dispatchAndReveal)
                 }
                 if (session.undoable) {
                     StudyUndoRow(copy, dispatch)

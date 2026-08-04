@@ -37,6 +37,7 @@ import dev.bee.kanjianki.presentation.StudyCard
 import dev.bee.kanjianki.presentation.StudyChoice
 import dev.bee.kanjianki.presentation.StudyFeedbackPhase
 import dev.bee.kanjianki.presentation.StudyGradeAction
+import dev.bee.kanjianki.presentation.StudyInputContext
 import dev.bee.kanjianki.presentation.StudyOutcome
 import dev.bee.kanjianki.presentation.StudySession
 import dev.bee.kanjianki.presentation.UiText
@@ -65,6 +66,10 @@ fun studyChoiceTestTag(value: String): String = "kani-study-choice-$value"
  * The feedback and continue handling is shared here rather than in each card, because
  * the one-card gate — an answered card stays up until one Continue — is the same for
  * every variant and is what stops a double-commit between cards.
+ *
+ * [context] carries the reveal state, which the session surface owns because the
+ * keyboard needs the same answer: a face-down card may be revealed and not graded, by
+ * either input path.
  */
 @Composable
 internal fun StudyCardSurface(
@@ -72,6 +77,7 @@ internal fun StudyCardSurface(
     session: StudySession,
     copy: StudyCopy,
     resolver: UiTextResolver,
+    context: StudyInputContext,
     dispatch: (KaniAction) -> Unit,
 ) {
     Column(
@@ -81,7 +87,7 @@ internal fun StudyCardSurface(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when (card) {
-            is StudyCard.Flashcard -> FlashcardCard(card, session, copy, resolver, dispatch)
+            is StudyCard.Flashcard -> FlashcardCard(card, session, copy, resolver, context, dispatch)
             is StudyCard.Typed -> TypedCard(card, session, copy, resolver, dispatch)
             is StudyCard.Choice -> ChoiceCard(card, session, copy, resolver, dispatch)
             is StudyCard.Writing -> WritingCard(card, session, copy, resolver, dispatch)
@@ -98,19 +104,16 @@ private fun FlashcardCard(
     session: StudySession,
     copy: StudyCopy,
     resolver: UiTextResolver,
+    context: StudyInputContext,
     dispatch: (KaniAction) -> Unit,
 ) {
-    // Revealed once graded, or when the user asks — reveal is local UI state the
-    // reducer deliberately does not reload for, so it lives here.
-    var revealed by remember(card.subject) { mutableStateOf(false) }
-    val showAnswer = revealed || session.feedback.visible
     CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = card.emphasizeSubjectInPrompt)
-    if (showAnswer) {
+    if (context.answerRevealed) {
         AnswerBlock(card.answer, card.details, resolver)
         PassFailRow(card.pass, card.fail, saveHard = null, session, copy, resolver, dispatch)
     } else {
         Button(
-            onClick = { revealed = true; dispatch(KaniAction.Study.Reveal) },
+            onClick = { dispatch(KaniAction.Study.Reveal) },
             modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_REVEAL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
