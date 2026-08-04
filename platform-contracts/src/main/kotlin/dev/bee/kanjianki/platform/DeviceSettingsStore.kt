@@ -99,6 +99,15 @@ object DeviceSettingKeys {
     val hostBackupPath = stringKey("host_backup_path")
 
     /**
+     * How this desktop install was packaged, for Settings and diagnostics to report.
+     *
+     * Device-local by nature: restoring a Linux `.deb` profile onto a Windows machine
+     * must not tell the updater it is a `.deb` install. The updater re-detects the
+     * channel from the install path on every launch rather than trusting this value.
+     */
+    val desktopInstallationChannel = stringKey("desktop_installation_channel")
+
+    /**
      * The versioned allowlist of device-local settings storage names that must
      * never be published into a portable backup and must be reset on the
      * destination during a cross-platform restore. Covers the legacy
@@ -155,6 +164,7 @@ object DeviceSettingKeys {
         runAtLogin.storageName,
         hostProfilePath.storageName,
         hostBackupPath.storageName,
+        desktopInstallationChannel.storageName,
     )
 
     private fun booleanKey(name: String) =
