@@ -83,6 +83,83 @@ class DesktopStorageLayoutTest {
         assertEquals("/home/aki/.local/share/Kani/profiles/$uuid/backups", DesktopStorageLayout.backupsDir(dirs, uuid))
     }
 
+    /**
+     * User data never lives inside a directory an uninstaller owns (Goal 204).
+     *
+     * Goal 204's data-retention requirement is that uninstalling removes binaries and
+     * keeps user data. Most of that has to be tested on a real Windows or macOS host,
+     * but the part that decides the outcome is this layout: an uninstaller deletes what
+     * it installed, so retention holds if and only if no data path is nested under an
+     * install root. That is checkable on any host, and it is the half that a passing
+     * install/uninstall run on one machine would not generalize.
+     *
+     * The Windows case is the one worth stating. Kani installs per-user, and a per-user
+     * MSI installs under `%LOCALAPPDATA%\Programs` — while Kani's data directory is
+     * `%LOCALAPPDATA%\Kani`. Those are siblings, which is fine, but they share a parent,
+     * so a future change to either (an `installationPath`, or moving data under
+     * `Programs`) could nest one inside the other and make uninstall destroy the user's
+     * collection. Nothing else in the suite would notice.
+     */
+    @Test
+    fun userDataIsNeverNestedInsideAnUninstallerOwnedDirectory() {
+        data class Host(
+            val os: DesktopStorageLayout.Os,
+            val home: String,
+            val env: Map<String, String>,
+            val installRoots: List<String>,
+        )
+
+        val hosts = listOf(
+            Host(
+                DesktopStorageLayout.Os.WINDOWS,
+                "C:\\Users\\aki",
+                mapOf(
+                    "LOCALAPPDATA" to "C:\\Users\\aki\\AppData\\Local",
+                    "APPDATA" to "C:\\Users\\aki\\AppData\\Roaming",
+                ),
+                // Per-user MSI default, and the per-machine location Kani deliberately
+                // does not use — checked too, so switching scope cannot silently nest.
+                listOf(
+                    "C:\\Users\\aki\\AppData\\Local\\Programs\\Kani",
+                    "C:\\Program Files\\Kani",
+                ),
+            ),
+            Host(
+                DesktopStorageLayout.Os.MACOS,
+                "/Users/aki",
+                emptyMap(),
+                listOf("/Applications/Kani.app", "/Users/aki/Applications/Kani.app"),
+            ),
+            Host(
+                DesktopStorageLayout.Os.LINUX,
+                "/home/aki",
+                emptyMap(),
+                listOf("/opt/kani", "/usr/lib/kani"),
+            ),
+        )
+
+        for (host in hosts) {
+            val dirs = DesktopStorageLayout.directories(host.os, host.env::get, host.home)
+            val dataPaths = listOf(
+                dirs.dataDir,
+                dirs.configDir,
+                dirs.cacheDir,
+                DesktopStorageLayout.profilesRoot(dirs),
+                DesktopStorageLayout.databaseFile(dirs, uuid),
+                DesktopStorageLayout.backupsDir(dirs, uuid),
+            )
+            for (installRoot in host.installRoots) {
+                val prefix = installRoot + dirs.separator
+                for (dataPath in dataPaths) {
+                    assertFalse(
+                        "${host.os}: uninstalling $installRoot would delete $dataPath",
+                        dataPath == installRoot || dataPath.startsWith(prefix),
+                    )
+                }
+            }
+        }
+    }
+
     @Test
     fun profileIdValidationRejectsTraversal() {
         assertTrue(DesktopStorageLayout.isValidProfileId(uuid))
