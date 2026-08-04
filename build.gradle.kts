@@ -239,7 +239,11 @@ val desktopPythonExecutable = if (
 
 tasks.register<Exec>("testDesktopTooling") {
     group = "verification"
-    description = "Runs host-portable desktop gate, icon-contract, boundary, and smoke-runner tests."
+    description = "Runs host-portable desktop gate, icon-contract, boundary, locale, and smoke-runner tests."
+    // Enumerated rather than discovered, because most of `tools/` needs the generated
+    // dictionary assets and belongs to the Android gate. The list is pinned by
+    // `test_desktop_ci_gates`, so adding a desktop tooling test without adding it here
+    // fails rather than silently never running.
     commandLine(
         desktopPythonExecutable,
         "-m",
@@ -247,9 +251,11 @@ tasks.register<Exec>("testDesktopTooling") {
         "tools.test_desktop_ci_gates",
         "tools.test_desktop_ci_workflow",
         "tools.test_generate_desktop_icons",
+        "tools.test_host_render_parity",
         "tools.test_merge_verification_metadata",
         "tools.test_module_boundaries",
         "tools.test_run_desktop_installed_image_smoke",
+        "tools.test_shared_string_locales",
     )
 }
 

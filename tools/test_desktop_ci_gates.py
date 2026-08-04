@@ -80,6 +80,35 @@ class DesktopRootGateContractTest(unittest.TestCase):
         sonar_block = kotlin_block('tasks.register("sonarPreflight")')
         self.assertIn('mustRunAfter("ciQuality")', sonar_block)
 
+    def test_desktop_tooling_gate_names_every_module_it_is_meant_to_run(self) -> None:
+        # `testDesktopTooling` enumerates its modules instead of discovering them,
+        # because most of `tools/` needs the generated dictionary assets and belongs
+        # to the Android gate. The cost of enumerating is that a new desktop tooling
+        # test silently never runs, so the list is pinned here and each entry is
+        # checked to be a real module — a rename shows up as a failing name rather
+        # than as a gate that quietly got smaller.
+        block = kotlin_block('tasks.register<Exec>("testDesktopTooling")')
+        modules = tuple(re.findall(r'"(tools\.test_[a-z_]+)"', block))
+        self.assertEqual(
+            (
+                "tools.test_desktop_ci_gates",
+                "tools.test_desktop_ci_workflow",
+                "tools.test_generate_desktop_icons",
+                "tools.test_host_render_parity",
+                "tools.test_merge_verification_metadata",
+                "tools.test_module_boundaries",
+                "tools.test_run_desktop_installed_image_smoke",
+                "tools.test_shared_string_locales",
+            ),
+            modules,
+        )
+        for module in modules:
+            with self.subTest(module=module):
+                self.assertTrue(
+                    (ROOT / f"{module.replace('.', '/')}.py").is_file(),
+                    f"{module} is enumerated but does not exist",
+                )
+
     def test_desktop_package_gate_builds_image_package_and_runs_smoke(self) -> None:
         smoke_block = kotlin_block(
             'tasks.register<Exec>("smokeDesktopInstalledImage")',

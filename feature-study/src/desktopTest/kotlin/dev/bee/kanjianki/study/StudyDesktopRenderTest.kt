@@ -122,6 +122,51 @@ class StudyDesktopRenderTest {
     }
 
     @Test
+    fun everyGradeStaysReachableAcrossWindowsAndFontScales() {
+        assertEveryGradeStaysReachableAcrossWindowsAndFontScales()
+    }
+
+    @Test
+    fun eachNamedWindowReallyRendersAtItsOwnWidth() {
+        assertEachNamedWindowReallyRendersAtItsOwnWidth()
+    }
+
+    @Test
+    fun eachFontScaleReallyReachesTheRenderedText() {
+        assertEachFontScaleReallyReachesTheRenderedText()
+    }
+
+    @Test
+    fun noActionShrinksBelowAUsableTargetAtAnyFontScale() {
+        assertNoActionShrinksBelowAUsableTargetAtAnyFontScale()
+    }
+
+    @Test
+    fun noControlOverflowsTheWindowSidewaysAtAnyScale() {
+        assertNoControlOverflowsTheWindowSidewaysAtAnyScale()
+    }
+
+    @Test
+    fun aLongTranslationStillRendersWholeLabelsAndSubstitutes() {
+        assertALongTranslationStillRendersWholeLabelsAndSubstitutes()
+    }
+
+    @Test
+    fun aLongTranslationKeepsTheDoneAndEmptyScreensWhole() {
+        assertALongTranslationKeepsTheDoneAndEmptyScreensWhole()
+    }
+
+    @Test
+    fun theWholeSessionIsCompletableWithoutAPointerAtEveryScale() {
+        assertTheWholeSessionIsCompletableWithoutAPointerAtEveryScale()
+    }
+
+    @Test
+    fun everyAnnouncementSurvivesALongTranslationAndALargeFont() {
+        assertEveryAnnouncementSurvivesALongTranslationAndALargeFont()
+    }
+
+    @Test
     fun draggingCapturesANormalizedStroke() {
         assertDraggingCapturesANormalizedStroke()
     }
@@ -134,6 +179,11 @@ class StudyDesktopRenderTest {
     @Test
     fun theCanvasRendersACommittedStrokeAndAGuideWithoutError() {
         assertTheCanvasRendersACommittedStrokeAndAGuideWithoutError()
+    }
+
+    @Test
+    fun theInkControlsStayUsableTargetsAtEveryFontScale() {
+        assertTheInkControlsStayUsableTargetsAtEveryFontScale()
     }
 
     @Test

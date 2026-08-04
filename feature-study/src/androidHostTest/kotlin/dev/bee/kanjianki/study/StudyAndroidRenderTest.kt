@@ -11,6 +11,12 @@ import org.robolectric.annotation.Config
  * Robolectric stands up the Android environment `runComposeUiTest` needs off-device.
  * The assertion list is identical to the desktop twin's, which is what makes this the
  * Android/desktop Study parity proof Goal 195 asks for.
+ *
+ * One deliberate exception, named here so the difference cannot be mistaken for drift:
+ * `assertEachFontScaleReallyReachesTheRenderedText` is desktop-only. Robolectric's text
+ * measurement ignores `Density.fontScale` — the progress line measures the same height at
+ * 1x and at 2x — so that assertion would pass here without measuring anything. The
+ * scaled-layout assertions it guards still run on both hosts.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -126,6 +132,46 @@ class StudyAndroidRenderTest {
     }
 
     @Test
+    fun everyGradeStaysReachableAcrossWindowsAndFontScales() {
+        assertEveryGradeStaysReachableAcrossWindowsAndFontScales()
+    }
+
+    @Test
+    fun eachNamedWindowReallyRendersAtItsOwnWidth() {
+        assertEachNamedWindowReallyRendersAtItsOwnWidth()
+    }
+
+    @Test
+    fun noActionShrinksBelowAUsableTargetAtAnyFontScale() {
+        assertNoActionShrinksBelowAUsableTargetAtAnyFontScale()
+    }
+
+    @Test
+    fun noControlOverflowsTheWindowSidewaysAtAnyScale() {
+        assertNoControlOverflowsTheWindowSidewaysAtAnyScale()
+    }
+
+    @Test
+    fun aLongTranslationStillRendersWholeLabelsAndSubstitutes() {
+        assertALongTranslationStillRendersWholeLabelsAndSubstitutes()
+    }
+
+    @Test
+    fun aLongTranslationKeepsTheDoneAndEmptyScreensWhole() {
+        assertALongTranslationKeepsTheDoneAndEmptyScreensWhole()
+    }
+
+    @Test
+    fun theWholeSessionIsCompletableWithoutAPointerAtEveryScale() {
+        assertTheWholeSessionIsCompletableWithoutAPointerAtEveryScale()
+    }
+
+    @Test
+    fun everyAnnouncementSurvivesALongTranslationAndALargeFont() {
+        assertEveryAnnouncementSurvivesALongTranslationAndALargeFont()
+    }
+
+    @Test
     fun draggingCapturesANormalizedStroke() {
         assertDraggingCapturesANormalizedStroke()
     }
@@ -138,6 +184,11 @@ class StudyAndroidRenderTest {
     @Test
     fun theCanvasRendersACommittedStrokeAndAGuideWithoutError() {
         assertTheCanvasRendersACommittedStrokeAndAGuideWithoutError()
+    }
+
+    @Test
+    fun theInkControlsStayUsableTargetsAtEveryFontScale() {
+        assertTheInkControlsStayUsableTargetsAtEveryFontScale()
     }
 
     @Test

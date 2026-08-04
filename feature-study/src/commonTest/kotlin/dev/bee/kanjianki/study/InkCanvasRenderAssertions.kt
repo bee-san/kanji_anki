@@ -7,8 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.unit.dp
@@ -84,6 +86,42 @@ internal fun assertTheCanvasRendersACommittedStrokeAndAGuideWithoutError() {
         onNodeWithTag(INK_CANVAS_TEST_TAG).assertExists()
     }
 }
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertTheInkControlsStayUsableTargetsAtEveryFontScale() {
+    // The pad's own Undo and Clear, which the session-level target matrix cannot reach:
+    // `InkCanvas` is composed directly by the writing surface's caller, so it is only
+    // measurable here. Both took Material's 40dp `TextButton` default until the session
+    // matrix found the same defect on the session's Undo.
+    for (fontScale in INK_FONT_SCALES) {
+        renderStudyAt(
+            window = StudyWindow.DESKTOP_SMALL,
+            fontScale = fontScale,
+            content = {
+                InkCanvas(
+                    ink = CapturedInk(strokes = listOf(stroke(0.5f))),
+                    onChange = {},
+                    copy = studyCopy(),
+                )
+            },
+        ) {
+            for (tag in listOf(INK_UNDO_TEST_TAG, INK_CLEAR_TEST_TAG)) {
+                val bounds = onNodeWithTag(tag).performScrollTo().getBoundsInRoot()
+                val height = bounds.bottom - bounds.top
+                assertTrue(
+                    height.value + 1f >= INK_MIN_TARGET,
+                    "$tag is $height tall at ${fontScale}x, under the ${INK_MIN_TARGET}dp target",
+                )
+            }
+        }
+    }
+}
+
+/** Matches the session matrix's scales, so the two agree on what "large text" means. */
+private val INK_FONT_SCALES: List<Float> = STUDY_FONT_SCALES
+
+/** The same floor `SECONDARY_MIN_HEIGHT` sets in production, restated as the requirement. */
+private const val INK_MIN_TARGET: Float = 44f
 
 @OptIn(ExperimentalTestApi::class)
 internal fun assertTheInkTestTagsAreDistinct() {

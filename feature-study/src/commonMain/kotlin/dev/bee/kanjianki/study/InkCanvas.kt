@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -118,14 +119,18 @@ fun InkCanvas(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(
                 onClick = { onChange(ink.withoutLastStroke()) },
-                modifier = Modifier.testTag(INK_UNDO_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = SECONDARY_MIN_HEIGHT)
+                    .testTag(INK_UNDO_TEST_TAG),
                 shape = KaniUiTokens.ButtonShape,
             ) {
                 Text(text = copy.undo)
             }
             TextButton(
                 onClick = { onChange(CapturedInk.EMPTY) },
-                modifier = Modifier.testTag(INK_CLEAR_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = SECONDARY_MIN_HEIGHT)
+                    .testTag(INK_CLEAR_TEST_TAG),
                 shape = KaniUiTokens.ButtonShape,
             ) {
                 Text(text = copy.clear)

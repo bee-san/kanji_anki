@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.FocusRequester
@@ -207,6 +208,7 @@ private fun StudyUndoRow(copy: StudyCopy, dispatch: (KaniAction) -> Unit, accele
         TextButton(
             onClick = { dispatch(KaniAction.Study.Undo) },
             modifier = Modifier
+                .heightIn(min = SECONDARY_MIN_HEIGHT)
                 .announcesKey(accelerator)
                 .testTag(STUDY_UNDO_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
@@ -262,7 +264,9 @@ private fun StudyDone(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
             )
             Button(
                 onClick = { dispatch(KaniAction.Navigation.Open(KaniDestination.Home)) },
-                modifier = Modifier.testTag(STUDY_DONE_HOME_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = SECONDARY_MIN_HEIGHT)
+                    .testTag(STUDY_DONE_HOME_TEST_TAG),
                 shape = KaniUiTokens.ButtonShape,
             ) {
                 Text(text = copy.doneHome)
