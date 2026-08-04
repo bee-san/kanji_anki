@@ -487,6 +487,7 @@ class MainActivityStudyRouteInitializationTest {
         val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
         val session = flashcardSession()
+        val item = requireNotNull(session.item)
         activity.activeSession = session
         val feedback = activity.prepareStudyAnswerFeedback(session.token)
         assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
@@ -496,30 +497,181 @@ class MainActivityStudyRouteInitializationTest {
             recoveryStore.replaceWithPending(
                 StudyPendingAnswerSnapshot(
                     feedback = feedback.snapshot().copy(phase = StudyAnswerFeedbackPhase.APPLIED),
-                    kanji = requireNotNull(session.item).kanji,
+                    kanji = item.kanji,
                     taskType = session.taskType,
                     writingRequired = session.writingRequired,
                     prompt = session.prompt,
+                    answerSignature = item.answerSignature,
+                    schedulerRevision = item.schedulerRevision,
                 ),
             ),
         )
-        val advancing = applied.copy(
-            snapshot = applied.snapshot.copy(
-                feedback = applied.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.CONTINUED),
-            ),
-        )
+        val advancing = requireNotNull(recoveryStore.continuePending(applied))
         activity.studySessionTracker.setTargetCount(2)
-        activity.studySessionTracker.markTaskCompleted(StudySessionTracker.sessionTaskKey(session))
+        val taskKey = StudySessionTracker.sessionTaskKey(session)
+        activity.studySessionTracker.markTaskCompleted(taskKey)
+        activity.studySessionTracker.startActiveTask(
+            taskKey,
+            item.kanji,
+            session.taskType,
+            1L,
+            resumeImmediately = false,
+        )
         assertTrue(feedback.tryContinue())
         val incomplete = activity.studySessionViewModel.acceptedRouteSnapshot()
         assertEquals(StudySessionPhase.ADVANCING, incomplete.phase)
         assertEquals(session.token, incomplete.sessionToken)
         assertFalse(incomplete.canComplete)
 
-        assertTrue(activity.clearAdvancingStudyRecoveryForSessionAbsence(advancing, incomplete))
+        val stale = advancing.copy(raw = advancing.raw + " ")
+        assertFalse(activity.clearAdvancingStudyRecoveryForSessionAbsence(stale, incomplete))
+        assertEquals(advancing, recoveryStore.readPending())
+        assertEquals(session.token, activity.activeSession?.token)
+        assertEquals(2, activity.studySessionTracker.targetCount())
+        assertTrue(activity.studySessionTracker.hasActiveTask())
+
+        activity.studySessionViewModel.showLoading()
+        val loading = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertFalse(activity.clearAdvancingStudyRecoveryForSessionAbsence(advancing, incomplete))
+        assertEquals(advancing, recoveryStore.readPending())
+        assertEquals(session.token, activity.activeSession?.token)
+        assertTrue(activity.studySessionTracker.hasActiveTask())
+
+        assertTrue(activity.clearAdvancingStudyRecoveryForSessionAbsence(advancing, loading))
 
         assertNull(recoveryStore.readPending())
         assertNull(activity.activeSession)
+        assertFalse(activity.studySessionTracker.hasActiveTask())
+        val reconciled = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(reconciled.progress.completedCount, reconciled.progress.targetCount)
+        assertTrue(reconciled.canComplete)
+        preferences.edit().clear().commit()
+    }
+
+    @Test
+    fun noSessionCoordinatorCompletesIncompleteAdvancingRouteEndToEnd() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        activity.store.writableDatabase.delete(LocalStoreBase.TABLE_DASHBOARD_ROWS, null, null)
+        activity.store.writableDatabase.delete(LocalStoreBase.TABLE_STUDY_ITEMS, null, null)
+        activity.store.writableDatabase.delete(LocalStoreBase.TABLE_REVIEW_LOG, null, null)
+        activity.store.writableDatabase.delete(LocalStoreBase.TABLE_SIMILAR_KANJI_REPAIR_QUEUE, null, null)
+        val now = System.currentTimeMillis()
+        val row = dashboardRow("終")
+        val signature = StudyQueueSeeder.answerSignature(row)
+        val token = "no-session-terminal-token"
+        val persistedItem = studyItem(row.kanji, "").copyBuilder()
+            .answerSignature(signature)
+            .schedulerRevision(6L)
+            .dueAtMillis(now + TimeUnit.DAYS.toMillis(30L))
+            .activeToken(null)
+            .build()
+        activity.store.saveRows(activity.store.writableDatabase, listOf(row), now)
+        activity.store.saveStudyItem(persistedItem)
+        activity.store.clearDashboardRowsCache()
+        activity.store.saveReview(
+            RecordsSchedulerModels.ReviewRequest(
+                row.kanji,
+                token,
+                StudyRatings.GOOD,
+                false,
+                true,
+                false,
+                false,
+                0,
+                StudyTaskTypes.KANJI_MEANING,
+                signature,
+                row.reasonText,
+            ),
+            StudyRatings.GOOD,
+            now,
+        )
+        val session = RecordsSchedulerModels.StudySession(
+            persistedItem.copyBuilder().activeToken(token).build(),
+            row,
+            token,
+            StudyTaskTypes.KANJI_MEANING,
+            false,
+            row.reasonText,
+        )
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = feedback.snapshot(),
+                    kanji = row.kanji,
+                    taskType = session.taskType,
+                    writingRequired = session.writingRequired,
+                    prompt = session.prompt,
+                    answerSignature = signature,
+                    schedulerRevision = persistedItem.schedulerRevision,
+                ),
+            ),
+        )
+        requireNotNull(recoveryStore.continuePending(applied))
+        assertTrue(feedback.tryContinue())
+        activity.continueAllKanjiSession = true
+        activity.studySessionTracker.setTargetCount(2)
+        val taskKey = StudySessionTracker.sessionTaskKey(session)
+        activity.studySessionTracker.markTaskCompleted(taskKey)
+        activity.studySessionTracker.startActiveTask(
+            taskKey,
+            row.kanji,
+            session.taskType,
+            now,
+            resumeImmediately = false,
+        )
+        val advancing = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.ADVANCING, advancing.phase)
+        assertFalse(advancing.canComplete)
+
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { mainTasks.addLast(it) },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+        val routeEvents = CopyOnWriteArrayList<StudyRouteLifecycleEvent>()
+        StudyRouteLifecycleDiagnostics.setObserverForTests(routeEvents::add)
+        try {
+            activity.renderStudy()
+            backgroundTasks.removeFirst().run()
+            mainTasks.removeFirst().run()
+        } finally {
+            StudyRouteLifecycleDiagnostics.resetForTests()
+        }
+
+        val publications = routeEvents.filter {
+            it.stage == StudyRouteLifecycleStage.PUBLICATION_DECIDED &&
+                it.branch == StudyRouteComputationBranch.NO_SESSION
+        }
+        assertEquals(
+            routeEvents.joinToString(separator = "\n", transform = StudyRouteLifecycleEvent::format),
+            1,
+            publications.size,
+        )
+        val publication = publications.single()
+        assertEquals(StudyRouteLifecycleOutcome.ACCEPTED, publication.outcome)
+        assertFalse(publication.terminalEligible)
+        assertTrue("the terminal render must not enqueue a retry", backgroundTasks.isEmpty())
+        assertTrue("the accepted terminal render must drain its main-thread work", mainTasks.isEmpty())
+        assertNull(recoveryStore.readPending())
+        assertNull(activity.activeSession)
+        assertFalse(activity.studySessionTracker.hasActiveTask())
+        val done = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(done.progress.completedCount, done.progress.targetCount)
+        assertTrue(done.isComplete)
+        assertEquals(StudyRouteCompletionReason.NO_SESSION, done.completionReason)
         preferences.edit().clear().commit()
     }
 

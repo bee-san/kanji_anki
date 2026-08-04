@@ -181,6 +181,23 @@ internal class StudySessionTracker(
         onChanged()
     }
 
+    /**
+     * Finalizes progress after an accepted loader proves there is no next session.
+     * Completed task history stays intact for the done summary and Continue-all
+     * deduplication; only unservable planned work and a stale active timer are retired.
+     */
+    fun reconcileTerminalSessionAbsence() {
+        synchronized(lock) {
+            val reconciled = reconcileSessionTaskKeys(emptyList())
+            plannedSessionTaskKeys.clear()
+            plannedSessionTaskKeys.addAll(reconciled)
+            progressTracker.setTargetCount(progressTracker.completedCount())
+            activeTask = null
+            advanceRevisionLocked()
+        }
+        onChanged()
+    }
+
     private fun normalizeSessionTaskKeys(taskKeys: List<String>?): List<String> {
         val normalized = LinkedHashSet<String>()
         for (key in taskKeys.orEmpty()) {
