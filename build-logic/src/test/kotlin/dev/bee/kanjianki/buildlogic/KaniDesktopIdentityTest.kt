@@ -34,6 +34,43 @@ class KaniDesktopIdentityTest {
         )
     }
 
+    /**
+     * The runtime image must carry the modules the installed app needs.
+     *
+     * Pinned as an exact list rather than a containment check, because the failure this
+     * guards is a module *disappearing*: the packaged app then launches, renders, and
+     * throws `NoClassDefFoundError` on the first provider call, which is a defect only
+     * a real installed-image launch can see. `java.net.http` is called out by name
+     * because it is the entire desktop provider transport — without it Kani cannot
+     * reach Anki at all.
+     */
+    @Test
+    fun theRuntimeImageCarriesEveryModuleTheInstalledAppNeeds() {
+        assertEquals(
+            listOf("java.instrument", "java.net.http", "jdk.unsupported"),
+            KaniDesktopRuntimeModules.REQUIRED,
+        )
+        assertTrue(
+            "The AnkiConnect transport needs java.net.http in the packaged runtime",
+            "java.net.http" in KaniDesktopRuntimeModules.REQUIRED,
+        )
+
+        val repositoryRoot = File(
+            requireNotNull(System.getProperty("kani.repositoryRoot")),
+        )
+        val convention = File(
+            repositoryRoot,
+            "build-logic/src/main/kotlin/" +
+                "kani.desktop-application-conventions.gradle.kts",
+        ).readText()
+        // Read from the pinned list rather than spelled again in the convention, so
+        // this test and the packaged image cannot disagree about which modules ship.
+        assertTrue(
+            "The desktop package must configure modules from the pinned list",
+            convention.contains("modules(*KaniDesktopRuntimeModules.REQUIRED.toTypedArray())"),
+        )
+    }
+
     @Test
     fun macOsJpackageVersionIsValidReversibleAndMonotonic() {
         assertEquals(

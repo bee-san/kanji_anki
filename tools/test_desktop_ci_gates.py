@@ -95,6 +95,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 "tools.test_desktop_ci_workflow",
                 "tools.test_generate_desktop_icons",
                 "tools.test_host_render_parity",
+                "tools.test_measure_desktop_startup_budget",
                 "tools.test_merge_verification_metadata",
                 "tools.test_module_boundaries",
                 "tools.test_run_desktop_installed_image_smoke",
@@ -126,6 +127,24 @@ class DesktopRootGateContractTest(unittest.TestCase):
             package_block,
         )
         self.assertIn("smokeDesktopInstalledImage", package_block)
+
+    def test_package_gate_measures_startup_and_memory_after_the_smoke_gate(self) -> None:
+        # The performance budget rides the same installed image as the smoke gate,
+        # and runs after it: timing an image that does not render would report the
+        # fastest startup the app has ever had for a build that shows nothing.
+        budget_block = kotlin_block(
+            'tasks.register<Exec>("measureDesktopStartupBudget")',
+        )
+        self.assertIn('dependsOn(":desktop-app:createDistributable")', budget_block)
+        self.assertIn("mustRunAfter(smokeDesktopInstalledImage", budget_block)
+        # Invoked as a module, because this gate imports the smoke runner instead
+        # of duplicating it and a path invocation cannot resolve that import.
+        self.assertIn('"tools.measure_desktop_startup_budget"', budget_block)
+        self.assertIn('"-m"', budget_block)
+        self.assertIn('"--image-root"', budget_block)
+
+        package_block = kotlin_block('tasks.register("ciDesktopPackage")')
+        self.assertIn("measureDesktopStartupBudget", package_block)
 
     def test_aggregate_is_explicitly_current_host_without_release_tasks(self) -> None:
         block = kotlin_block('tasks.register("ciAll")')

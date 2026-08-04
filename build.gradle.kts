@@ -252,6 +252,7 @@ tasks.register<Exec>("testDesktopTooling") {
         "tools.test_desktop_ci_workflow",
         "tools.test_generate_desktop_icons",
         "tools.test_host_render_parity",
+        "tools.test_measure_desktop_startup_budget",
         "tools.test_merge_verification_metadata",
         "tools.test_module_boundaries",
         "tools.test_run_desktop_installed_image_smoke",
@@ -335,10 +336,36 @@ val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImag
     )
 }
 
+val measureDesktopStartupBudget = tasks.register<Exec>("measureDesktopStartupBudget") {
+    group = "verification"
+    description = "Measures the installed desktop image against its startup and peak-memory budgets."
+    dependsOn(":desktop-app:createDistributable")
+    // After the smoke gate, not instead of it: the smoke gate answers "does the
+    // packaged image work", and there is no point timing an image that does not.
+    mustRunAfter(smokeDesktopInstalledImage, ":desktop-app:packageDistributionForCurrentOS")
+    inputs.file(
+        layout.projectDirectory.file(
+            "tools/measure_desktop_startup_budget.py",
+        ),
+    )
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // Run as a module, not as a path: this gate imports the smoke runner rather
+    // than duplicating it, and a path invocation leaves `tools` off `sys.path`.
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.measure_desktop_startup_budget",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
 tasks.register("ciDesktopPackage") {
     group = "verification"
-    description = "Builds the current-host desktop image and native package, then runs the installed-image smoke contract."
+    description = "Builds the current-host desktop image and native package, then runs the installed-image smoke and performance-budget contracts."
     dependsOn(
+        measureDesktopStartupBudget,
         ":desktop-app:packageDistributionForCurrentOS",
         smokeDesktopInstalledImage,
     )

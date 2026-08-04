@@ -11,6 +11,39 @@ object KaniDesktopIdentity {
 }
 
 /**
+ * The JDK modules Kani's packaged runtime image must contain beyond jpackage's default.
+ *
+ * `jpackage` builds a minimal `jlink` image, and a module that is missing from it does
+ * not fail the build — it fails at the first line of code that touches it, in the
+ * installed application, on the user's machine. Kani found this the way it is usually
+ * found: the packaged image launched, rendered, and then threw
+ * `NoClassDefFoundError: java/net/http/HttpConnectTimeoutException` out of the
+ * composition root the moment it probed AnkiConnect, while every Gradle-run and
+ * `:desktop-app:run` launch — which use the full JDK — had always worked.
+ *
+ * Each entry is here because something on a real launch path needs it:
+ *
+ *  - `java.net.http` is the AnkiConnect transport. Every provider call on desktop is
+ *    an HTTP request to loopback, so without this module the desktop host has no
+ *    provider at all.
+ *  - `java.instrument` and `jdk.unsupported` are required by the Kotlin/Compose
+ *    runtime stack rather than by Kani's own code, which is exactly why they cannot be
+ *    reasoned about from Kani's sources and must be pinned from the dependency scan.
+ *
+ * Regenerate with `./gradlew :desktop-app:suggestRuntimeModules`, which reports the
+ * modules the packaged classpath actually references. Add what it names rather than
+ * guessing, and never remove an entry to make an image smaller: the cost of an extra
+ * module is disk, and the cost of a missing one is a crash no unit test can see.
+ */
+object KaniDesktopRuntimeModules {
+    val REQUIRED: List<String> = listOf(
+        "java.instrument",
+        "java.net.http",
+        "jdk.unsupported",
+    )
+}
+
+/**
  * The per-OS package version mappings for the desktop distributions (Goal 202).
  *
  * Each installer format has its own version grammar, and each mapping here is the

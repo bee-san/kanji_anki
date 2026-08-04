@@ -1,5 +1,6 @@
 import dev.bee.kanjianki.buildlogic.KaniDesktopIdentity
 import dev.bee.kanjianki.buildlogic.KaniDesktopPackageVersions
+import dev.bee.kanjianki.buildlogic.KaniDesktopRuntimeModules
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.testing.Test
@@ -78,6 +79,11 @@ compose.desktop {
             packageVersion = kaniVersionName
             description = KaniDesktopIdentity.DESCRIPTION
             vendor = KaniDesktopIdentity.VENDOR
+
+            // The packaged runtime image is minimal, and a module missing from it
+            // fails in the installed app rather than in this build. See
+            // `KaniDesktopRuntimeModules` for how each entry earned its place.
+            modules(*KaniDesktopRuntimeModules.REQUIRED.toTypedArray())
 
             // Each platform's version grammar is mapped by exactly one pinned
             // function, so the release tag remains the single source (Goal 202).
