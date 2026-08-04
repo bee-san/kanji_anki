@@ -37,12 +37,17 @@ object DesktopReleaseAssetSelector {
         LINUX_X64("linux", "x64", listOf(DesktopPackageType.DEB, DesktopPackageType.TAR_GZ)),
     }
 
-    enum class DesktopPackageType(val extension: String, val participatesInAutomaticHandoff: Boolean) {
-        MSI(".msi", true),
-        DMG(".dmg", true),
-        DEB(".deb", true),
+    enum class DesktopPackageType(
+        val extension: String,
+        /** The token a signed release manifest records for this package type. */
+        val manifestToken: String,
+        val participatesInAutomaticHandoff: Boolean,
+    ) {
+        MSI(".msi", "msi", true),
+        DMG(".dmg", "dmg", true),
+        DEB(".deb", "deb", true),
         // Portable tarball: updates are manual, so it never drives automatic handoff.
-        TAR_GZ(".tar.gz", false),
+        TAR_GZ(".tar.gz", "tar.gz", false),
     }
 
     data class Selection(
