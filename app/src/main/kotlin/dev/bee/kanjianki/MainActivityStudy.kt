@@ -943,11 +943,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     /**
      * Consumes an exact continued-answer handoff when the accepted loader proved that
-     * there is no next session. Unlike hard-cap completion, session absence cannot set
-     * [StudyRouteSnapshot.canComplete] until the old session is unmounted by the done
-     * renderer. Requiring that later evidence here creates a circular dependency:
-     * recovery cannot clear before completion, while completion cannot unmount the
-     * session before recovery clears.
+     * there is no next session. Unlike hard-cap completion, session absence must unmount
+     * the old session and reconcile its stale timer/target before
+     * [StudyRouteSnapshot.canComplete] can become true. Requiring that later evidence
+     * here creates a circular dependency: recovery cannot clear before completion, while
+     * terminal reconciliation cannot run before the exact recovery record clears.
      */
     internal fun clearAdvancingStudyRecoveryForSessionAbsence(
         expected: StoredPendingStudyRecovery,
@@ -964,7 +964,14 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         ) {
             return false
         }
-        return clearAdvancingStudyRecovery(expected, null)
+        if (!studySessionViewModel.isCurrentRoute(acceptedRoute)) {
+            return false
+        }
+        if (!clearAdvancingStudyRecovery(expected, null)) {
+            return false
+        }
+        studySessionTracker.reconcileTerminalSessionAbsence()
+        return true
     }
 
     internal fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? {
