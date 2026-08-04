@@ -140,9 +140,22 @@ MODULES="java.base java.datatransfer java.xml java.prefs java.desktop java.instr
 
 So provenance cannot be recovered from the artifact after the fact. It can only be
 established by checking the building JDK at the moment it builds, which is what `verify`
-does. A `verifyDesktopPackage` gate can assert the image's `JAVA_VERSION` and `MODULES`
-against the pin, and it must not claim to have verified the vendor from the image, because
-the image does not say.
+does.
+
+`verifyDesktopPackage` — the artifact-side gate, `tools/verify_desktop_package.py` — is
+scoped to exactly what the image does record. It asserts the launcher exists (through the
+smoke runner's own check, so both gates answer "is this a real installed image" the same
+way), the `JAVA_VERSION`, and the `MODULES` set in both directions: a missing module and an
+unpinned extra one both fail. It reports `runtime_vendor` as an explicit `null` with a note
+naming `KaniPackagingJdk` as the place vendor is checked. That is deliberate rather than
+lazy: a release record that simply omitted the field would read as though provenance had
+been verified end to end, and a gate that inferred vendor from a `legal/` file count would
+pass for a reason unrelated to what it claimed. `release` inside a shipped artifact is also
+the easiest thing in it to hand-edit, so even a future JDK that did stamp `IMPLEMENTOR`
+into the image would not be a better source than the JDK that ran the build.
+
+The division is therefore: **vendor and exact build at build time, version and module set
+from the artifact.** Both are required, and neither covers the other.
 
 ## Verified behavior
 

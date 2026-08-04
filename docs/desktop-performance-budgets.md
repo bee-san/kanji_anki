@@ -127,7 +127,7 @@ table with their own budgets, and extend
 Requires a built installed image and, on a headless Linux host, an X server.
 
 ```sh
-./gradlew :desktop-app:createDistributable
+./gradlew createDesktopDistributable
 xvfb-run -a python3 -m tools.measure_desktop_startup_budget \
   --image-root "$PWD/desktop-app/build/compose/binaries/main/app" \
   --json-out /tmp/kani-desktop-baseline.json
@@ -143,10 +143,11 @@ this gate: `:desktop-app:packageDeb` fails with jpackage's
 `Error: Invalid or unsupported type: [deb]` when `dpkg-deb` and `fakeroot` are
 absent, which was the case on the measurement host above. That is a host gap and
 not a Kani defect — the native `.deb` still builds on the workflow's
-`ubuntu-24.04` runner. The image, smoke, and budget gates all hang off
-`:desktop-app:createDistributable` rather than off the native package, so they
-can be run directly on such a host:
+`ubuntu-24.04` runner. The image, smoke, budget, and package-verification gates
+all hang off `createDesktopDistributable` rather than off the native package, so
+they can be run directly on such a host:
 
 ```sh
-xvfb-run -a ./gradlew smokeDesktopInstalledImage measureDesktopStartupBudget
+xvfb-run -a ./gradlew smokeDesktopInstalledImage measureDesktopStartupBudget \
+  verifyDesktopPackage
 ```

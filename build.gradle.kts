@@ -257,6 +257,7 @@ tasks.register<Exec>("testDesktopTooling") {
         "tools.test_module_boundaries",
         "tools.test_run_desktop_installed_image_smoke",
         "tools.test_shared_string_locales",
+        "tools.test_verify_desktop_package",
     )
 }
 
@@ -316,11 +317,60 @@ tasks.register("ciDesktop") {
 val desktopInstalledImageDirectory =
     layout.projectDirectory.dir("desktop-app/build/compose/binaries/main/app")
 
+// Stable names for the two Compose packaging steps (Goal 204). CI, the release runbook,
+// and the docs refer to these instead of to the plugin's own task names.
+//
+// The indirection is not ceremony: `createDistributable` and
+// `packageDistributionForCurrentOS` are the Compose plugin's names, and the plugin also
+// registers `createReleaseDistributable`/`packageReleaseDistributionForCurrentOS` (the
+// ProGuard-minified variants) whose names differ by an infix. A plugin upgrade that
+// renames or re-defaults either one turns every reference across three workflows and two
+// documents into a silent change of what gets built and verified. Delegating in one place
+// means a rename breaks here, once, loudly.
+//
+// The non-release variants are deliberate: Kani does not minify the desktop distribution,
+// and the smoke and budget gates must exercise the image users install.
+val createDesktopDistributable = tasks.register("createDesktopDistributable") {
+    group = "distribution"
+    description = "Builds the current-host installed desktop application image."
+    dependsOn(":desktop-app:createDistributable")
+}
+
+val packageDesktopCurrentOs = tasks.register("packageDesktopCurrentOs") {
+    group = "distribution"
+    description = "Builds the native desktop installer for the current host only."
+    // Only the current host's format, because desktop packaging is not
+    // cross-compilation: jpackage needs the target OS's own tooling (WiX on Windows,
+    // dpkg/fakeroot on Linux, Xcode CLI on macOS). Each format is built on its own
+    // runner; asking one host for all three fails on the tooling, not on Kani.
+    dependsOn(":desktop-app:packageDistributionForCurrentOS")
+    mustRunAfter(createDesktopDistributable)
+}
+
+val verifyDesktopPackage = tasks.register<Exec>("verifyDesktopPackage") {
+    group = "verification"
+    description = "Verifies the installed desktop image's identity, runtime version, and module set."
+    dependsOn(createDesktopDistributable)
+    mustRunAfter(packageDesktopCurrentOs)
+    inputs.file(layout.projectDirectory.file("tools/verify_desktop_package.py"))
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // A module, for the same reason as the budget gate: it imports the smoke runner's
+    // launcher check rather than keeping a second answer to "is this a real image".
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.verify_desktop_package",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
 val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImage") {
     group = "verification"
     description = "Runs the current-host installed desktop image in isolated temporary-data smoke mode."
-    dependsOn(":desktop-app:createDistributable")
-    mustRunAfter(":desktop-app:packageDistributionForCurrentOS")
+    dependsOn(createDesktopDistributable)
+    mustRunAfter(packageDesktopCurrentOs)
     inputs.file(
         layout.projectDirectory.file(
             "tools/run_desktop_installed_image_smoke.py",
@@ -339,10 +389,10 @@ val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImag
 val measureDesktopStartupBudget = tasks.register<Exec>("measureDesktopStartupBudget") {
     group = "verification"
     description = "Measures the installed desktop image against its startup and peak-memory budgets."
-    dependsOn(":desktop-app:createDistributable")
+    dependsOn(createDesktopDistributable)
     // After the smoke gate, not instead of it: the smoke gate answers "does the
     // packaged image work", and there is no point timing an image that does not.
-    mustRunAfter(smokeDesktopInstalledImage, ":desktop-app:packageDistributionForCurrentOS")
+    mustRunAfter(smokeDesktopInstalledImage, packageDesktopCurrentOs)
     inputs.file(
         layout.projectDirectory.file(
             "tools/measure_desktop_startup_budget.py",
@@ -363,11 +413,12 @@ val measureDesktopStartupBudget = tasks.register<Exec>("measureDesktopStartupBud
 
 tasks.register("ciDesktopPackage") {
     group = "verification"
-    description = "Builds the current-host desktop image and native package, then runs the installed-image smoke and performance-budget contracts."
+    description = "Builds the current-host desktop image and native package, then verifies the packaged runtime and runs the installed-image smoke and performance-budget contracts."
     dependsOn(
         measureDesktopStartupBudget,
-        ":desktop-app:packageDistributionForCurrentOS",
+        packageDesktopCurrentOs,
         smokeDesktopInstalledImage,
+        verifyDesktopPackage,
     )
 }
 

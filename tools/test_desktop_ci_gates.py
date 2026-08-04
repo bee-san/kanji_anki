@@ -100,6 +100,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 "tools.test_module_boundaries",
                 "tools.test_run_desktop_installed_image_smoke",
                 "tools.test_shared_string_locales",
+                "tools.test_verify_desktop_package",
             ),
             modules,
         )
@@ -114,7 +115,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
         smoke_block = kotlin_block(
             'tasks.register<Exec>("smokeDesktopInstalledImage")',
         )
-        self.assertIn('dependsOn(":desktop-app:createDistributable")', smoke_block)
+        self.assertIn("dependsOn(createDesktopDistributable)", smoke_block)
         self.assertIn('"--image-root"', smoke_block)
         self.assertIn(
             '"tools/run_desktop_installed_image_smoke.py"',
@@ -122,11 +123,61 @@ class DesktopRootGateContractTest(unittest.TestCase):
         )
 
         package_block = kotlin_block('tasks.register("ciDesktopPackage")')
+        self.assertIn("packageDesktopCurrentOs", package_block)
+        self.assertIn("smokeDesktopInstalledImage", package_block)
+        self.assertIn("verifyDesktopPackage", package_block)
+
+    def test_compose_packaging_task_names_are_reached_only_through_the_wrappers(
+        self,
+    ) -> None:
+        # Goal 204 asks for stable task names so CI does not depend on plugin task-name
+        # churn. That only holds if the plugin's names appear in exactly one place each:
+        # the wrapper that delegates to them. Anything else referring to
+        # `:desktop-app:createDistributable` directly reintroduces the coupling the
+        # wrappers exist to remove, and does it silently.
+        create_block = kotlin_block('tasks.register("createDesktopDistributable")')
+        self.assertIn('dependsOn(":desktop-app:createDistributable")', create_block)
+        package_block = kotlin_block('tasks.register("packageDesktopCurrentOs")')
         self.assertIn(
-            '":desktop-app:packageDistributionForCurrentOS"',
+            'dependsOn(":desktop-app:packageDistributionForCurrentOS")',
             package_block,
         )
-        self.assertIn("smokeDesktopInstalledImage", package_block)
+
+        self.assertEqual(1, ROOT_BUILD.count(':desktop-app:createDistributable"'))
+        self.assertEqual(
+            1,
+            ROOT_BUILD.count(':desktop-app:packageDistributionForCurrentOS"'),
+        )
+
+        # The non-minified variants, deliberately: Kani does not ProGuard the desktop
+        # distribution, and the gates must exercise the image users install. Matched as
+        # quoted task paths rather than as bare names, so the comment above that explains
+        # the choice does not count as making it.
+        for release_variant in (
+            '":desktop-app:createReleaseDistributable"',
+            '":desktop-app:packageReleaseDistributionForCurrentOS"',
+        ):
+            with self.subTest(release_variant=release_variant):
+                self.assertNotIn(release_variant, ROOT_BUILD)
+
+        # CI names the wrappers, not the plugin.
+        workflow = (ROOT / ".github/workflows/desktop-ci.yml").read_text(
+            encoding="utf-8",
+        )
+        self.assertNotIn("createDistributable", workflow)
+        self.assertNotIn("packageDistributionForCurrentOS", workflow)
+
+    def test_package_gate_verifies_the_shipped_runtime_from_the_built_image(self) -> None:
+        # Three defects in this area were each invisible to a green build and visible in
+        # the installed image: a missing `java.net.http`, a missing `jdk.accessibility`,
+        # and a runtime taken from whichever JDK ran the daemon. This gate reads the
+        # artifact, which is the only place any of them showed.
+        block = kotlin_block('tasks.register<Exec>("verifyDesktopPackage")')
+        self.assertIn("dependsOn(createDesktopDistributable)", block)
+        self.assertIn("mustRunAfter(packageDesktopCurrentOs)", block)
+        self.assertIn('"-m"', block)
+        self.assertIn('"tools.verify_desktop_package"', block)
+        self.assertIn('"--image-root"', block)
 
     def test_package_gate_measures_startup_and_memory_after_the_smoke_gate(self) -> None:
         # The performance budget rides the same installed image as the smoke gate,
@@ -135,7 +186,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
         budget_block = kotlin_block(
             'tasks.register<Exec>("measureDesktopStartupBudget")',
         )
-        self.assertIn('dependsOn(":desktop-app:createDistributable")', budget_block)
+        self.assertIn("dependsOn(createDesktopDistributable)", budget_block)
         self.assertIn("mustRunAfter(smokeDesktopInstalledImage", budget_block)
         # Invoked as a module, because this gate imports the smoke runner instead
         # of duplicating it and a path invocation cannot resolve that import.
