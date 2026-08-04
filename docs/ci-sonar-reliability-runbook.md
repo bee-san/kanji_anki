@@ -9,7 +9,7 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
 | Deterministic fast gate | `./gradlew ciFast` | `Fast confidence gate` in `.github/workflows/android-ci.yml` | Split in CI into JVM module tests, app unit tests, app lint/androidTest compile, and Python asset tests. |
 | Connected device smoke | targeted `connectedDebugAndroidTest` annotation run | `.github/workflows/android-device-smoke.yml` | PR/manual-only. Runs a compact API 26/35 matrix and adds an API 35 risk suite for product/provider/scheduler/database/UI changes. Documentation-only changes explicitly skip emulators. |
 | Sonar deterministic inputs | `./gradlew ciQuality` | `Build coverage and analyze` in `.github/workflows/sonarqube.yml` | Builds the complete bytecode and deterministic coverage set on every analysis. `sonarPreflight` fails closed if any expected class/report input is absent. Advisory on `main`; never blocks releases. |
-| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run creates an explicit `vMAJOR.MINOR.PATCH-beta` tag/APK, verifies it, and publishes a beta prerelease with no further gating. Manual tag/dispatch publishes deliberate stable releases after running the unit-test surface inline. |
+| Release confidence | `./gradlew ciRelease` | `.github/workflows/android-release.yml` | Auto path: a successful `Android CI` main-push run creates a legacy-compatible numeric `vMAJOR.MINOR.PATCH` tag/APK, verifies it, and publishes it as a beta prerelease with no further gating. Manual tag/dispatch publishes deliberate releases after running the unit-test surface inline. |
 | CodeQL extraction | Forced clean compile in `.github/workflows/codeql.yml` | `Analyze Java/Kotlin` | Advisory security scan on `main`; never blocks releases. Keep the clean, no-build-cache compile after CodeQL init so the extractor sees real compiler work. |
 | Live AnkiDroid fixture | workflow-dispatch/nightly Android instrumented workflow | `AnkiDroid provider fixture` | Nightly/dispatch only; deliberately removed from the release path because emulator/provider readiness flakes were the top cause of blocked releases. The local copied-user-collection gate remains the requirement for provider/sync release-risk changes. |
 
@@ -69,15 +69,18 @@ cannot be blocked by flaky or external gates:
   push (`workflow_run`), so the deterministic test surface is already green
   for the exact release commit. The release then tags, builds the signed APK,
   verifies signature/identity, and publishes a GitHub prerelease for opt-in beta
-  users. Its tag, APK `versionName`, and asset filename all carry the canonical
-  SemVer `-beta` suffix. Because prereleases are excluded from GitHub's `latest` endpoint,
-  stable users are unaffected. Target wall time is under ten minutes after CI.
+  users. Automatic beta tags, APK `versionName`s, and asset filenames use the
+  numeric `vMAJOR.MINOR.PATCH` form so legacy Kani 0.5.10/0.5.11 updaters can
+  discover them. Because GitHub prereleases are excluded from the `latest`
+  endpoint, stable users are unaffected. The parser also accepts explicit
+  `-beta` tags. Target wall time is under ten minutes after CI.
 - Manual tag pushes and `workflow_dispatch` releases run the deterministic
   unit-test surface inline in the validate job before assembling, because
   those events can target commits no CI run has vouched for.
-- Transition note (August 2026): the legacy `v0.5.11` beta updater cannot parse
-  the first suffixed `v0.5.12-beta` tag. Install that APK manually once;
-  subsequent beta releases resume normal in-app discovery.
+- Compatibility note (August 2026): Kani 0.5.10/0.5.11 cannot parse suffixed
+  beta tags, so automatic beta releases retain numeric tags and use GitHub's
+  prerelease flag to identify the channel. This allows those versions to
+  self-update without a one-time manual installation.
 - The release workflow never polls SonarQube or CodeQL check runs and never
   runs emulator jobs. `tools/test_release_workflows.py` fails if check-run
   polling, `REQUIRED_CHECKS`, or the AnkiDroid fixture reappear in

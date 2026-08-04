@@ -120,6 +120,21 @@ class KaniVersionTest(unittest.TestCase):
             metadata_lines("v2.7.9-beta", "abc123"),
         )
 
+    def test_numeric_metadata_can_be_published_as_a_legacy_compatible_prerelease(self) -> None:
+        self.assertEqual(
+            [
+                "release_tag=v2.7.9",
+                "release_name=v2.7.9",
+                "prerelease=true",
+                "build_sha=abc123",
+                "version_name=2.7.9",
+                "version_code=2007009",
+                "apk_name=kani-android-2.7.9.apk",
+                "checksum_name=kani-android-2.7.9.apk.sha256",
+            ],
+            metadata_lines("v2.7.9", "abc123", prerelease=True),
+        )
+
     def test_android_version_code_bound_is_enforced(self) -> None:
         with self.assertRaisesRegex(ValueError, "Android"):
             _ = Version(2_101, 0, 0).code

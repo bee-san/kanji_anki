@@ -42,12 +42,13 @@ assembling. `ciRelease` is the local gate, not the CI release build command.
 
 Beta releases are cut automatically: every successful `Android CI` run on a `main`
 push triggers `android-release.yml` through a `workflow_run` trigger, which
-computes the next `vMAJOR.MINOR.PATCH-beta` tag, builds an APK whose
-`versionName` and filename carry the same `-beta` suffix, verifies it at that CI
-run's commit, and publishes a GitHub prerelease (creating the tag at publish
-time). Stable users remain on GitHub's latest stable release; users who opt into
-beta builds in Kani receive the newest prerelease. Use SemVer's `-beta` form,
-never `_beta`. The release path is deliberately self-contained: it
+computes the next numeric `vMAJOR.MINOR.PATCH` tag, verifies the APK at that CI
+run's commit, and publishes it as a GitHub prerelease (creating the tag at
+publish time). Numeric tags preserve update discovery for Kani 0.5.10 and
+0.5.11; GitHub's prerelease flag, rather than a tag suffix, keeps stable users
+on the latest stable release. The parser still accepts explicit SemVer
+`vMAJOR.MINOR.PATCH-beta` tags for compatibility and deliberate manual beta
+releases. The release path is deliberately self-contained: it
 does not poll SonarQube/CodeQL check runs and it never runs emulator jobs.
 Those were the top causes of blocked, flaky, and multi-hour releases; SonarQube
 and CodeQL are advisory scans on `main`, and live AnkiDroid provider coverage

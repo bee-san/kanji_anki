@@ -131,13 +131,13 @@ def git_release_tags(repository: Path) -> list[str]:
     return completed.stdout.splitlines()
 
 
-def metadata_lines(tag: str, build_sha: str) -> list[str]:
+def metadata_lines(tag: str, build_sha: str, *, prerelease: bool = False) -> list[str]:
     version = parse_tag(tag)
     apk_name = f"kani-android-{version.name}.apk"
     return [
         f"release_tag={version.tag}",
         f"release_name={version.tag}",
-        f"prerelease={str(version.beta).lower()}",
+        f"prerelease={str(version.beta or prerelease).lower()}",
         f"build_sha={build_sha}",
         f"version_name={version.name}",
         f"version_code={version.code}",
@@ -169,6 +169,11 @@ def _parser() -> argparse.ArgumentParser:
     metadata = subparsers.add_parser("metadata", help="print GitHub-output metadata lines")
     metadata.add_argument("--tag", required=True)
     metadata.add_argument("--build-sha", required=True)
+    metadata.add_argument(
+        "--prerelease",
+        action="store_true",
+        help="publish a numeric compatibility tag as a GitHub prerelease",
+    )
     return parser
 
 
@@ -184,7 +189,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ignore_existing_exact=args.ignore_existing_exact,
             )
         else:
-            print("\n".join(metadata_lines(args.tag, args.build_sha)))
+            print("\n".join(metadata_lines(args.tag, args.build_sha, prerelease=args.prerelease)))
     except (OSError, subprocess.CalledProcessError, ValueError) as error:
         raise SystemExit(f"release version error: {error}") from error
     return 0
