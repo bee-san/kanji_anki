@@ -175,6 +175,17 @@ data class StudyKeystroke(
     /** True when no modifier is held, which is the only form a bare key binding takes. */
     val isPlain: Boolean
         get() = !ctrl && !shift && !alt && !meta
+
+    /**
+     * True when a focused text field swallows this keystroke instead of Kani acting on it.
+     *
+     * The precedence rule as a property of the keystroke, so [StudyKeyboardPolicy.claims]
+     * and anything that *advertises* a key answer it the same way. A control that printed
+     * "Submit (Space)" beside the typed card's answer box would be naming a key that types
+     * a space there — which is worse than advertising nothing.
+     */
+    val isClaimedByTextField: Boolean
+        get() = isPlain && key.isTextInput
 }
 
 /**
@@ -342,8 +353,7 @@ object StudyKeyboardPolicy {
         // again, and either would commit twice.
         if (!press.isKeyDown || press.isRepeat) return false
         if (context.modalActive || context.imeComposing) return false
-        val stroke = press.stroke
-        return !(context.textFieldFocused && stroke.isPlain && stroke.key.isTextInput)
+        return !(context.textFieldFocused && press.stroke.isClaimedByTextField)
     }
 
     /**

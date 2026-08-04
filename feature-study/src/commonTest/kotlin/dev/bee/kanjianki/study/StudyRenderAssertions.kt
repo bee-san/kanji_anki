@@ -12,6 +12,7 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.StudyFeedback
 import dev.bee.kanjianki.presentation.StudyFeedbackPhase
 import dev.bee.kanjianki.presentation.StudyOutcome
@@ -319,6 +320,124 @@ internal fun assertTypingAKeyIntoTheAnswerFieldDoesNotGradeTheCard() {
             "typing into the answer field must not grade: $recorded",
         )
     }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertEachControlAnnouncesTheKeyThatInvokesItWhereTheHostHasOne() {
+    // The accessible half of the accelerator work: a screen reader user is not in the menu
+    // bar, so each control has to name its own key. Compose's onClick action label is what
+    // is read as "double-tap to <label>", which is where the key belongs.
+    renderStudy(
+        content = {
+            StudySessionScreen(
+                session(StudySessionState.CARD, card = flashcard()).copy(undoable = true),
+                studyCopy(),
+                TestUiTextResolver,
+                dispatch = {},
+                keyboardPlatform = KeyboardPlatform.LINUX,
+            )
+        },
+    ) {
+        assertEquals("Space", onNodeWithTag(STUDY_REVEAL_TEST_TAG).clickLabelOrEmpty())
+        assertEquals("Ctrl+Z", onNodeWithTag(STUDY_UNDO_TEST_TAG).clickLabelOrEmpty())
+        onNodeWithTag(STUDY_REVEAL_TEST_TAG).performScrollTo().performClick()
+        // Announced only once the card is face up, because that is when the key works.
+        assertEquals("3", onNodeWithTag(STUDY_PASS_TEST_TAG).clickLabelOrEmpty())
+        assertEquals("1", onNodeWithTag(STUDY_FAIL_TEST_TAG).clickLabelOrEmpty())
+    }
+
+    // A host that routes no key events supplies no platform, and nothing is announced —
+    // telling TalkBack to press `3` on a phone would name a key that is not there.
+    renderStudy(
+        content = { StudySessionScreen(session(StudySessionState.CARD, card = flashcard()), studyCopy(), TestUiTextResolver, dispatch = {}) },
+    ) {
+        assertEquals("", onNodeWithTag(STUDY_REVEAL_TEST_TAG).clickLabelOrEmpty())
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAnAnnouncedKeyIsNeverOneAFocusedFieldWouldSwallow() {
+    // The typed card's answer box owns Space, so its submit button must announce Enter —
+    // the key that actually submits there. Announcing Space would name a key that types.
+    renderStudy(
+        content = {
+            StudySessionScreen(
+                session(StudySessionState.CARD, card = typedCard()),
+                studyCopy(),
+                TestUiTextResolver,
+                dispatch = {},
+                keyboardPlatform = KeyboardPlatform.LINUX,
+            )
+        },
+    ) {
+        assertEquals("Enter", onNodeWithTag(STUDY_TYPING_SUBMIT_TEST_TAG).clickLabelOrEmpty())
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertEachChoiceAnnouncesItsOwnPositionsDigit() {
+    // On a choice card the digits are positional — the policy resolves them ahead of the
+    // bindings — so each option announces its place, and picking it grades the card.
+    val recorded = mutableListOf<KaniAction>()
+    renderStudy(
+        content = {
+            StudySessionScreen(
+                session(StudySessionState.CARD, card = choiceCard()),
+                studyCopy(),
+                TestUiTextResolver,
+                dispatch = { recorded += it },
+                keyboardPlatform = KeyboardPlatform.LINUX,
+            )
+        },
+    ) {
+        val labels = choiceCard().choices.map { onNodeWithTag(studyChoiceTestTag(it.value)).clickLabelOrEmpty() }
+        assertEquals(List(labels.size) { (it + 1).toString() }, labels)
+        // And the announced key really picks that option: pressing 2 grades exactly what
+        // clicking the second choice grades.
+        val second = choiceCard().choices[1]
+        onNodeWithTag(studyChoiceTestTag(second.value)).performScrollTo().performClick()
+        val byClick = recorded.toList()
+        onNodeWithTag(STUDY_SESSION_TEST_TAG).requestFocus().performKeyInput { pressKey(Key.Two) }
+        assertEquals(
+            byClick + byClick,
+            recorded,
+            "the digit a choice announces must grade what clicking it grades: $recorded",
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAKeyAndAClickDispatchTheSameActionExactlyOnce() {
+    // Pointer/keyboard parity, as one comparison rather than two lists of assertions: the
+    // same card, graded once each way, must produce identical actions.
+    fun grade(byKey: Boolean): List<KaniAction> {
+        val recorded = mutableListOf<KaniAction>()
+        renderStudy(
+            content = {
+                StudySessionScreen(
+                    session(StudySessionState.CARD, card = flashcard(), feedback = StudyFeedback()),
+                    studyCopy(),
+                    TestUiTextResolver,
+                    dispatch = { recorded += it },
+                    keyboardPlatform = KeyboardPlatform.LINUX,
+                )
+            },
+        ) {
+            if (byKey) {
+                val session = onNodeWithTag(STUDY_SESSION_TEST_TAG).requestFocus()
+                session.performKeyInput { pressKey(Key.Spacebar) }
+                session.performKeyInput { pressKey(Key.Three) }
+            } else {
+                onNodeWithTag(STUDY_REVEAL_TEST_TAG).performScrollTo().performClick()
+                onNodeWithTag(STUDY_PASS_TEST_TAG).performScrollTo().performClick()
+            }
+        }
+        return recorded
+    }
+
+    val expected = listOf<KaniAction>(KaniAction.Study.Reveal, KaniAction.Study.Grade(rating = "good"))
+    assertEquals(expected, grade(byKey = false), "the pointer path must reveal then grade good, once each")
+    assertEquals(expected, grade(byKey = true), "the key path must dispatch exactly the same")
 }
 
 @OptIn(ExperimentalTestApi::class)

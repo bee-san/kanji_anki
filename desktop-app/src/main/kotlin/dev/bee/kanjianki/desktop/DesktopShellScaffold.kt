@@ -70,6 +70,7 @@ import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.RouteState
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.StudyInputContext
 import dev.bee.kanjianki.presentation.StudyKeybindings
 import dev.bee.kanjianki.data.desktop.DesktopBackupRestoreValidator
@@ -269,6 +270,7 @@ internal fun DesktopShellScaffold(
                 capabilities = shellState.capabilities,
                 dispatch = dispatch,
                 onStudyInputContextChange = { studyInputContext = it },
+                keyboardPlatform = container.keyboardPlatform,
             )
         }
     }
@@ -290,6 +292,7 @@ private fun DesktopRouteBody(
     capabilities: PlatformCapabilities,
     dispatch: (KaniAction) -> Unit,
     onStudyInputContextChange: (StudyInputContext) -> Unit,
+    keyboardPlatform: KeyboardPlatform,
 ) {
     ShellRouteContent(
         state = state,
@@ -320,6 +323,7 @@ private fun DesktopRouteBody(
                 content = content,
                 dispatch = dispatch,
                 onInputContextChange = onStudyInputContextChange,
+                keyboardPlatform = keyboardPlatform,
             )
             KaniDestination.Stats -> DesktopStatsRoute(
                 content = content,
@@ -497,6 +501,7 @@ private fun DesktopStudyRoute(
     content: DesktopRouteContent,
     dispatch: (KaniAction) -> Unit,
     onInputContextChange: (StudyInputContext) -> Unit,
+    keyboardPlatform: KeyboardPlatform,
 ) {
     val session = content.study ?: return
     Column(
@@ -512,6 +517,10 @@ private fun DesktopStudyRoute(
             // The menu bar's grade items follow the card's reveal state, which is the
             // surface's own local state; this is how it reaches the window.
             onInputContextChange = onInputContextChange,
+            // Supplied here and nowhere on Android: this host routes key events, so each
+            // control announces the key that invokes it. The menu bar advertises the same
+            // keys, and a screen reader user is not in the menu bar.
+            keyboardPlatform = keyboardPlatform,
         )
     }
 }

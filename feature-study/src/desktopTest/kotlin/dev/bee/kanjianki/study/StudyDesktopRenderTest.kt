@@ -102,6 +102,26 @@ class StudyDesktopRenderTest {
     }
 
     @Test
+    fun eachControlAnnouncesTheKeyThatInvokesItWhereTheHostHasOne() {
+        assertEachControlAnnouncesTheKeyThatInvokesItWhereTheHostHasOne()
+    }
+
+    @Test
+    fun anAnnouncedKeyIsNeverOneAFocusedFieldWouldSwallow() {
+        assertAnAnnouncedKeyIsNeverOneAFocusedFieldWouldSwallow()
+    }
+
+    @Test
+    fun eachChoiceAnnouncesItsOwnPositionsDigit() {
+        assertEachChoiceAnnouncesItsOwnPositionsDigit()
+    }
+
+    @Test
+    fun aKeyAndAClickDispatchTheSameActionExactlyOnce() {
+        assertAKeyAndAClickDispatchTheSameActionExactlyOnce()
+    }
+
+    @Test
     fun draggingCapturesANormalizedStroke() {
         assertDraggingCapturesANormalizedStroke()
     }

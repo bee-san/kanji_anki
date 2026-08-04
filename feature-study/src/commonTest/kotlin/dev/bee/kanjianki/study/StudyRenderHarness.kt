@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -146,3 +147,13 @@ internal fun SemanticsNodeInteraction.subtreeTextOrEmpty(): String {
 internal fun SemanticsNodeInteraction.contentDescriptionOrEmpty(): String =
     fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)
         ?.joinToString(" ").orEmpty()
+
+/**
+ * The node's click action label, or empty when it announces none.
+ *
+ * The label, not the action: a screen reader reads it as "double-tap to <label>", and the
+ * label is where a control names the key that invokes it. Empty rather than null because an
+ * unannounced control and one announcing nothing are the same thing to a caller.
+ */
+internal fun SemanticsNodeInteraction.clickLabelOrEmpty(): String =
+    fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick)?.label.orEmpty()

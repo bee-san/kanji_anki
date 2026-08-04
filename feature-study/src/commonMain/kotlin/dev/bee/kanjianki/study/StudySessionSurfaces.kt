@@ -32,7 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
+import dev.bee.kanjianki.presentation.KeyboardPlatform
+import dev.bee.kanjianki.presentation.StudyActionHints
 import dev.bee.kanjianki.presentation.StudyCard
+import dev.bee.kanjianki.presentation.StudyCommand
 import dev.bee.kanjianki.presentation.StudyInputContext
 import dev.bee.kanjianki.presentation.StudyKeybindings
 import dev.bee.kanjianki.presentation.StudySession
@@ -90,6 +93,16 @@ fun StudySessionScreen(
      * A no-op by default, so the Android host and every existing caller are unaffected.
      */
     onInputContextChange: (StudyInputContext) -> Unit = {},
+    /**
+     * The keyboard the host actually has, or null when it has none worth advertising.
+     *
+     * Supplied only by a host that routes key events, because this is what turns each
+     * visible control's accessible action into "Pass, 3": a screen reader user is not in the
+     * menu bar, so a shortcut the menu prints and the button does not announce is one they
+     * cannot discover. Null on Android, where there is no keyboard to name and TalkBack
+     * would otherwise be told to press a key that is not there.
+     */
+    keyboardPlatform: KeyboardPlatform? = null,
 ) {
     // The typed card's field holds focus while it is unanswered, which is exactly
     // when letter and space keys must reach the field instead of grading — so the
@@ -111,6 +124,10 @@ fun StudySessionScreen(
     LaunchedEffect(context) {
         onInputContextChange(context)
     }
+    // Derived from the same bindings and the same context the key handler reads, so a
+    // control cannot announce a key that would not fire — on the typed card the answer box
+    // owns Space, and the hints answer `Enter` for exactly that reason.
+    val hints = keyboardPlatform?.let { StudyActionHints.of(it, keybindings, context) }
     // A focus anchor so the shortcuts receive keys the moment the session appears,
     // without the user clicking first. The typed card's field takes focus for itself
     // when it mounts, so this only wins on the self-graded and choice cards — exactly
@@ -141,10 +158,10 @@ fun StudySessionScreen(
             StudySessionState.CARD -> {
                 StudyProgressBar(session, copy)
                 session.card?.let { card ->
-                    StudyCardSurface(card, session, copy, resolver, context, dispatchAndReveal)
+                    StudyCardSurface(card, session, copy, resolver, context, dispatchAndReveal, hints)
                 }
                 if (session.undoable) {
-                    StudyUndoRow(copy, dispatch)
+                    StudyUndoRow(copy, dispatch, hints?.accelerator(StudyCommand.UNDO))
                 }
             }
             StudySessionState.DONE -> StudyDone(copy, dispatch)
@@ -185,11 +202,13 @@ private fun StudyProgressBar(session: StudySession, copy: StudyCopy) {
 }
 
 @Composable
-private fun StudyUndoRow(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
+private fun StudyUndoRow(copy: StudyCopy, dispatch: (KaniAction) -> Unit, accelerator: String?) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         TextButton(
             onClick = { dispatch(KaniAction.Study.Undo) },
-            modifier = Modifier.testTag(STUDY_UNDO_TEST_TAG),
+            modifier = Modifier
+                .announcesKey(accelerator)
+                .testTag(STUDY_UNDO_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.undo)

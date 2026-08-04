@@ -24,7 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -32,10 +32,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.StudyActionHints
 import dev.bee.kanjianki.presentation.StudyAnswerDetails
 import dev.bee.kanjianki.presentation.StudyCard
 import dev.bee.kanjianki.presentation.StudyChoice
-import dev.bee.kanjianki.presentation.StudyFeedbackPhase
+import dev.bee.kanjianki.presentation.StudyCommand
 import dev.bee.kanjianki.presentation.StudyGradeAction
 import dev.bee.kanjianki.presentation.StudyInputContext
 import dev.bee.kanjianki.presentation.StudyOutcome
@@ -60,6 +61,24 @@ const val STUDY_TYPING_SUBMIT_TEST_TAG: String = "kani-study-typing-submit"
 fun studyChoiceTestTag(value: String): String = "kani-study-choice-$value"
 
 /**
+ * Announces the key that invokes this control, where the host has one.
+ *
+ * The accessible half of Goal 203's accelerator work. The native menu prints its
+ * accelerators, but a menu bar is not where a screen reader user is: without this, the
+ * shortcut is discoverable only by people who can see the menu. Compose's `onClick`
+ * action label is what a screen reader reads as "double-tap to <label>", so naming the key
+ * there is how "Pass" becomes "Pass, 3".
+ *
+ * A no-op when [accelerator] is null, which is the Android answer and also the answer for
+ * a command whose key a focused text field would swallow — see [StudyActionHints]. The
+ * action itself is deliberately not supplied here: the control's own `onClick` already
+ * runs it, and a semantics action with its own lambda would be a second path to the same
+ * dispatch, which on a grade means a second review.
+ */
+internal fun Modifier.announcesKey(accelerator: String?): Modifier =
+    if (accelerator == null) this else semantics { onClick(label = accelerator, action = null) }
+
+/**
  * The active card, dispatched by variant.
  *
  * Every branch is one card type Android chose by branching on `session.taskType`.
@@ -79,6 +98,7 @@ internal fun StudyCardSurface(
     resolver: UiTextResolver,
     context: StudyInputContext,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints? = null,
 ) {
     Column(
         modifier = Modifier
@@ -87,13 +107,15 @@ internal fun StudyCardSurface(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         when (card) {
-            is StudyCard.Flashcard -> FlashcardCard(card, session, copy, resolver, context, dispatch)
-            is StudyCard.Typed -> TypedCard(card, session, copy, resolver, dispatch)
-            is StudyCard.Choice -> ChoiceCard(card, session, copy, resolver, dispatch)
-            is StudyCard.Writing -> WritingCard(card, session, copy, resolver, dispatch)
+            is StudyCard.Flashcard -> FlashcardCard(card, session, copy, resolver, context, dispatch, hints)
+            is StudyCard.Typed -> TypedCard(card, session, copy, resolver, dispatch, hints)
+            is StudyCard.Choice -> ChoiceCard(card, session, copy, resolver, dispatch, hints)
+            is StudyCard.Writing -> WritingCard(card, session, copy, resolver, dispatch, hints)
         }
         if (session.acceptsContinue) {
-            ContinueButton(copy, dispatch)
+            // Continue is the primary command once feedback is applied, so it announces the
+            // primary's key — the same key the policy resolves to Continue there.
+            ContinueButton(copy, dispatch, hints?.accelerator(StudyCommand.PRIMARY))
         }
     }
 }
@@ -106,15 +128,18 @@ private fun FlashcardCard(
     resolver: UiTextResolver,
     context: StudyInputContext,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints?,
 ) {
     CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = card.emphasizeSubjectInPrompt)
     if (context.answerRevealed) {
         AnswerBlock(card.answer, card.details, resolver)
-        PassFailRow(card.pass, card.fail, saveHard = null, session, copy, resolver, dispatch)
+        PassFailRow(card.pass, card.fail, saveHard = null, session, copy, resolver, dispatch, hints)
     } else {
         Button(
             onClick = { dispatch(KaniAction.Study.Reveal) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_REVEAL_TEST_TAG),
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+                .announcesKey(hints?.accelerator(StudyCommand.PRIMARY))
+                .testTag(STUDY_REVEAL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.reveal, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
@@ -129,6 +154,7 @@ private fun TypedCard(
     copy: StudyCopy,
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints?,
 ) {
     var input by remember(card.subject) { mutableStateOf("") }
     val label = resolver.resolve(card.inputLabel)
@@ -150,7 +176,10 @@ private fun TypedCard(
         )
         Button(
             onClick = { submitIfAccepted(session, card.submit, dispatch) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_TYPING_SUBMIT_TEST_TAG),
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+                // Enter, not Space: the answer box owns Space here, and the hints know it.
+                .announcesKey(hints?.accelerator(StudyCommand.PRIMARY))
+                .testTag(STUDY_TYPING_SUBMIT_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.submit, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
@@ -165,10 +194,21 @@ private fun ChoiceCard(
     copy: StudyCopy,
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints?,
 ) {
     CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
-    for (choice in card.choices) {
-        ChoiceButton(choice, card.correct, session, resolver, dispatch)
+    card.choices.forEachIndexed { index, choice ->
+        // The digit is the option's place on screen, not a binding: the policy resolves
+        // digits positionally on a choice card, so the key announced has to be read off the
+        // same index the loop renders at.
+        ChoiceButton(
+            choice,
+            card.correct,
+            session,
+            resolver,
+            dispatch,
+            hints?.choiceAccelerator(index + 1),
+        )
     }
     if (session.feedback.visible) {
         AnswerBlock(UiText.EMPTY, card.details, resolver)
@@ -182,12 +222,13 @@ private fun WritingCard(
     copy: StudyCopy,
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints?,
 ) {
     // The ink surface is Goal 196's; this is the prompt and the grades the writing
     // rung offers. Pass/Fail only, plus the "Save hard" exception when the model
     // carries it — Hard and Easy are never user-selectable here.
     CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
-    PassFailRow(card.pass, card.fail, card.saveHard, session, copy, resolver, dispatch)
+    PassFailRow(card.pass, card.fail, card.saveHard, session, copy, resolver, dispatch, hints)
 }
 
 @Composable
@@ -272,6 +313,7 @@ private fun PassFailRow(
     copy: StudyCopy,
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
+    hints: StudyActionHints?,
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Save hard replaces Pass for a CLOSE ink attempt; when present, it is the
@@ -281,6 +323,9 @@ private fun PassFailRow(
         Button(
             onClick = { submitIfAccepted(session, primary, dispatch) },
             modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+                // Save hard announces the pass key too: the policy routes GRADE_PASS to
+                // whichever of the two the card carries, so the key is the same one.
+                .announcesKey(hints?.accelerator(StudyCommand.GRADE_PASS))
                 .testTag(if (saveHard != null) STUDY_SAVE_HARD_TEST_TAG else STUDY_PASS_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
             colors = ButtonDefaults.buttonColors(containerColor = KaniTheme.colors.teal),
@@ -289,7 +334,9 @@ private fun PassFailRow(
         }
         OutlinedButton(
             onClick = { submitIfAccepted(session, fail, dispatch) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_FAIL_TEST_TAG),
+            modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+                .announcesKey(hints?.accelerator(StudyCommand.GRADE_FAIL))
+                .testTag(STUDY_FAIL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
             border = BorderStroke(1.dp, KaniTheme.colors.coral),
         ) {
@@ -310,6 +357,7 @@ private fun ChoiceButton(
     session: StudySession,
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
+    accelerator: String?,
 ) {
     val label = resolver.resolve(choice.label).ifBlank { choice.value }
     // After an answer, the correct choice turns teal and the wrong pick turns coral;
@@ -325,7 +373,9 @@ private fun ChoiceButton(
     }
     OutlinedButton(
         onClick = { submitIfAccepted(session, choice.grade, dispatch) },
-        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(studyChoiceTestTag(choice.value)),
+        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+            .announcesKey(accelerator)
+            .testTag(studyChoiceTestTag(choice.value)),
         shape = KaniUiTokens.ButtonShape,
         border = BorderStroke(1.dp, accent ?: KaniTheme.colors.borderSoft),
     ) {
@@ -339,10 +389,12 @@ private fun ChoiceButton(
 }
 
 @Composable
-private fun ContinueButton(copy: StudyCopy, dispatch: (KaniAction) -> Unit) {
+private fun ContinueButton(copy: StudyCopy, dispatch: (KaniAction) -> Unit, accelerator: String?) {
     Button(
         onClick = { dispatch(KaniAction.Study.Continue) },
-        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT).testTag(STUDY_CONTINUE_TEST_TAG),
+        modifier = Modifier.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT)
+            .announcesKey(accelerator)
+            .testTag(STUDY_CONTINUE_TEST_TAG),
         shape = KaniUiTokens.ButtonShape,
     ) {
         Text(text = copy.cont, fontSize = KaniUiTokens.StudyActionTextSizeSp.sp, fontWeight = FontWeight.Bold)
