@@ -40,19 +40,30 @@ class KaniDesktopIdentityTest {
      * Pinned as an exact list rather than a containment check, because the failure this
      * guards is a module *disappearing*: the packaged app then launches, renders, and
      * throws `NoClassDefFoundError` on the first provider call, which is a defect only
-     * a real installed-image launch can see. `java.net.http` is called out by name
-     * because it is the entire desktop provider transport — without it Kani cannot
-     * reach Anki at all.
+     * a real installed-image launch can see. Two entries are called out by name because
+     * losing either is silent in a different way: `java.net.http` is the entire desktop
+     * provider transport, and `jdk.accessibility` is the Windows Java Access Bridge, so
+     * an image without it renders perfectly and reads as an empty window to NVDA and
+     * JAWS while every semantics assertion in the suite still passes.
      */
     @Test
     fun theRuntimeImageCarriesEveryModuleTheInstalledAppNeeds() {
         assertEquals(
-            listOf("java.instrument", "java.net.http", "jdk.unsupported"),
+            listOf(
+                "java.instrument",
+                "java.net.http",
+                "jdk.accessibility",
+                "jdk.unsupported",
+            ),
             KaniDesktopRuntimeModules.REQUIRED,
         )
         assertTrue(
             "The AnkiConnect transport needs java.net.http in the packaged runtime",
             "java.net.http" in KaniDesktopRuntimeModules.REQUIRED,
+        )
+        assertTrue(
+            "The Windows Java Access Bridge needs jdk.accessibility in the image",
+            "jdk.accessibility" in KaniDesktopRuntimeModules.REQUIRED,
         )
 
         val repositoryRoot = File(

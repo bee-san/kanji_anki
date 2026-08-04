@@ -29,16 +29,25 @@ object KaniDesktopIdentity {
  *  - `java.instrument` and `jdk.unsupported` are required by the Kotlin/Compose
  *    runtime stack rather than by Kani's own code, which is exactly why they cannot be
  *    reasoned about from Kani's sources and must be pinned from the dependency scan.
+ *  - `jdk.accessibility` is the Windows Java Access Bridge, which is how NVDA and JAWS
+ *    read a Compose window at all. Compose Multiplatform's own accessibility page
+ *    requires it in `nativeDistributions` for exactly this reason. It is the one entry
+ *    the dependency scan cannot find, because nothing on Kani's classpath references it
+ *    — the JDK loads it reflectively when the bridge is enabled — so an image built from
+ *    the scan alone ships a Windows build that is silent to a screen reader while every
+ *    semantics assertion in the suite still passes.
  *
  * Regenerate with `./gradlew :desktop-app:suggestRuntimeModules`, which reports the
  * modules the packaged classpath actually references. Add what it names rather than
  * guessing, and never remove an entry to make an image smaller: the cost of an extra
- * module is disk, and the cost of a missing one is a crash no unit test can see.
+ * module is disk, and the cost of a missing one is a crash — or a mute screen reader —
+ * that no unit test can see.
  */
 object KaniDesktopRuntimeModules {
     val REQUIRED: List<String> = listOf(
         "java.instrument",
         "java.net.http",
+        "jdk.accessibility",
         "jdk.unsupported",
     )
 }
