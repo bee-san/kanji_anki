@@ -941,6 +941,32 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         return clearAdvancingStudyRecovery(expected, activeSession)
     }
 
+    /**
+     * Consumes an exact continued-answer handoff when the accepted loader proved that
+     * there is no next session. Unlike hard-cap completion, session absence cannot set
+     * [StudyRouteSnapshot.canComplete] until the old session is unmounted by the done
+     * renderer. Requiring that later evidence here creates a circular dependency:
+     * recovery cannot clear before completion, while completion cannot unmount the
+     * session before recovery clears.
+     */
+    internal fun clearAdvancingStudyRecoveryForSessionAbsence(
+        expected: StoredPendingStudyRecovery,
+        acceptedRoute: StudyRouteSnapshot,
+    ): Boolean {
+        val activeToken = activeSession?.token ?: return false
+        if (
+            acceptedRoute.isComplete ||
+            (acceptedRoute.phase != StudySessionPhase.ADVANCING &&
+                acceptedRoute.phase != StudySessionPhase.LOADING) ||
+            acceptedRoute.sessionToken != activeToken ||
+            expected.snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
+            expected.snapshot.feedback.sessionToken != activeToken
+        ) {
+            return false
+        }
+        return clearAdvancingStudyRecovery(expected, null)
+    }
+
     internal fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? {
         val accepted = studySessionViewModel.acceptTerminalSessionAbsence(expectedRoute) ?: return null
         activeSimilarWritingRepair = null

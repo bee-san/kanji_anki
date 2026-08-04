@@ -482,6 +482,48 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun absentSessionHandoffClearsContinuedMarkerBeforeRouteCanComplete() {
+        val activity = createActivity()
+        val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)
+        preferences.edit().clear().commit()
+        val session = flashcardSession()
+        activity.activeSession = session
+        val feedback = activity.prepareStudyAnswerFeedback(session.token)
+        assertTrue(feedback.begin(StudyAnswerOutcome.CORRECT, StudyRatings.GOOD))
+        assertTrue(feedback.markApplied(session.token))
+        val recoveryStore = StudySessionRecoveryStore(preferences)
+        val applied = requireNotNull(
+            recoveryStore.replaceWithPending(
+                StudyPendingAnswerSnapshot(
+                    feedback = feedback.snapshot().copy(phase = StudyAnswerFeedbackPhase.APPLIED),
+                    kanji = requireNotNull(session.item).kanji,
+                    taskType = session.taskType,
+                    writingRequired = session.writingRequired,
+                    prompt = session.prompt,
+                ),
+            ),
+        )
+        val advancing = applied.copy(
+            snapshot = applied.snapshot.copy(
+                feedback = applied.snapshot.feedback.copy(phase = StudyAnswerFeedbackPhase.CONTINUED),
+            ),
+        )
+        activity.studySessionTracker.setTargetCount(2)
+        activity.studySessionTracker.markTaskCompleted(StudySessionTracker.sessionTaskKey(session))
+        assertTrue(feedback.tryContinue())
+        val incomplete = activity.studySessionViewModel.acceptedRouteSnapshot()
+        assertEquals(StudySessionPhase.ADVANCING, incomplete.phase)
+        assertEquals(session.token, incomplete.sessionToken)
+        assertFalse(incomplete.canComplete)
+
+        assertTrue(activity.clearAdvancingStudyRecoveryForSessionAbsence(advancing, incomplete))
+
+        assertNull(recoveryStore.readPending())
+        assertNull(activity.activeSession)
+        preferences.edit().clear().commit()
+    }
+
+    @Test
     fun finalCardContinueDoesNotRetryTheTerminalStudyRouteForever() {
         val activity = createActivity()
         val preferences = activity.getSharedPreferences("pending_study_answer", Context.MODE_PRIVATE)

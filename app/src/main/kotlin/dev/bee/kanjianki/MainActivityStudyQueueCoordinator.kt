@@ -899,11 +899,33 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val terminalEvidence = study.studySessionViewModel.acceptedRouteSnapshot()
         if (advancingRecovery == null) {
             render(terminalEvidence)
-        } else if (study.clearAdvancingStudyRecoveryForTerminal(advancingRecovery, terminalEvidence)) {
+        } else if (study.clearAdvancingRecoveryForTerminalBranch(
+                advancingRecovery,
+                terminalEvidence,
+                branch,
+            )
+        ) {
             render(study.studySessionViewModel.acceptedRouteSnapshot())
         } else {
             study.renderStudyRecoveryOnly()
         }
+    }
+
+    private fun MainActivityStudy.clearAdvancingRecoveryForTerminalBranch(
+        advancingRecovery: StoredPendingStudyRecovery,
+        terminalEvidence: StudyRouteSnapshot,
+        branch: StudyRouteComputationBranch,
+    ): Boolean = when (branch) {
+        StudyRouteComputationBranch.EMPTY_QUEUE,
+        StudyRouteComputationBranch.NO_SESSION,
+        StudyRouteComputationBranch.TARGET_UNAVAILABLE,
+        -> if (terminalEvidence.canComplete) {
+            clearAdvancingStudyRecoveryForTerminal(advancingRecovery, terminalEvidence)
+        } else {
+            clearAdvancingStudyRecoveryForSessionAbsence(advancingRecovery, terminalEvidence)
+        }
+
+        else -> clearAdvancingStudyRecoveryForTerminal(advancingRecovery, terminalEvidence)
     }
 }
 
