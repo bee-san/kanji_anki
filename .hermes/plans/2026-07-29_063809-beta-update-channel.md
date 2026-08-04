@@ -4,7 +4,7 @@
 
 **Goal:** Add an opt-in Kani beta update channel that downloads GitHub prereleases while stable users continue receiving only stable releases, and make every successful `main` push publish a prerelease beta build.
 
-**Architecture:** Persist a new `beta_updates_enabled` setting (default `false`). Centralize GitHub release endpoint and response-shape selection in `update-core`: stable uses GitHub's `/releases/latest` object endpoint, while beta uses `/releases?per_page=1` and selects the newest release, including prereleases. The release workflow keeps manual/tag releases stable but marks automatic successful-main releases as GitHub prereleases.
+**Architecture:** Persist a new `beta_updates_enabled` setting (default `false`). Centralize GitHub release endpoint and response-shape selection in `update-core`: stable uses GitHub's `/releases/latest` object endpoint, while beta selects the newest prerelease from the release list. Automatic successful-main releases use an explicit `vMAJOR.MINOR.PATCH-beta` tag and matching APK `versionName`; deliberate stable releases use the next unused numeric core without the suffix.
 
 **Tech Stack:** Kotlin/JVM, Android/Robolectric, Jetpack Compose, SQLite settings, Python `unittest`, GitHub Actions, GitHub CLI.
 
@@ -84,9 +84,9 @@
 - Modify: `AGENTS.md` release documentation if its stable-release description becomes inaccurate
 
 **Steps:**
-1. Add workflow tests proving `workflow_run` publishes with `--prerelease`, while manual/tag releases do not.
+1. Add workflow tests proving `workflow_run` generates a `-beta` tag, while the tag suffix controls `--prerelease` for every publication path.
 2. Run `python3 -m unittest tools.test_release_workflows.AndroidReleaseWorkflowTest` and confirm failure.
-3. Compute a prerelease flag for automatic `workflow_run` publication and pass `--prerelease` only on that path; retain unique patch tags and existing signed-APK verification.
+3. Compute the next explicit `vMAJOR.MINOR.PATCH-beta` tag for automatic `workflow_run` publication, derive `--prerelease` from that tag, and retain existing signed-APK verification.
 4. Update release-path documentation.
 5. Re-run the workflow tests.
 
@@ -106,5 +106,6 @@
 
 - GitHub's stable `/releases/latest` deliberately excludes prereleases; this is what protects stable users.
 - GitHub's releases list includes prereleases and drafts; unauthenticated app requests cannot see drafts, so the first visible entry is the newest published release.
-- Every automatic beta uses the next normal patch tag (for example `v0.5.6`) but is marked prerelease. A deliberate stable release can promote an existing tested prerelease or publish a later manual tag.
+- Every automatic beta consumes the next numeric patch and uses SemVer's explicit `-beta` suffix (for example `v0.5.6-beta`). A deliberate stable release uses a later numeric core so Android versionCode ordering stays monotonic.
 - The beta toggle defaults off and does not weaken APK checksum, package identity, or signing-certificate checks.
+- One-time migration: the legacy `v0.5.11` updater accepts numeric-only tags, so the first `v0.5.12-beta` APK must be installed manually. Its suffix-aware updater restores automatic beta updates for every later build.

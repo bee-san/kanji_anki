@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag, for example v0.4.34'
+        description: 'Release tag, for example v0.5.12 or v0.5.12-beta'
         required: true
         type: string
       allow_asset_overwrite:
@@ -30,7 +30,9 @@ on:
         type: boolean
 
 concurrency:
-  group: android-release-${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.event_name == 'workflow_run' && 'main-auto' || github.ref_name }}
+  # Serialize tag selection across automatic and manual releases so two events
+  # cannot claim stable/beta variants of the same Android versionCode.
+  group: android-release
   cancel-in-progress: false
 
 jobs:
@@ -43,6 +45,8 @@ jobs:
       contents: read
     outputs:
       release_tag: ${{ steps.meta.outputs.release_tag }}
+      release_name: ${{ steps.meta.outputs.release_name }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
       build_sha: ${{ steps.meta.outputs.build_sha }}
       version_name: ${{ steps.meta.outputs.version_name }}
       version_code: ${{ steps.meta.outputs.version_code }}
@@ -74,19 +78,35 @@ jobs:
 
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             release_tag="${RELEASE_TAG_INPUT}"
+            if ! git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
+              python3 ci/scripts/kani_version.py validate-new-tag --tag "${release_tag}"
+            fi
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            # Keep automatic beta tags numeric so Kani 0.5.10 and 0.5.11 can
+            # discover the release. GitHub prerelease metadata, not the tag
+            # suffix, keeps stable-channel users on /releases/latest.
             release_tag="$(python3 ci/scripts/kani_version.py next-tag)"
+            python3 ci/scripts/kani_version.py validate-new-tag --tag "${release_tag}"
             if git rev-parse -q --verify "refs/tags/${release_tag}" >/dev/null; then
               echo "::error::Computed auto-release tag ${release_tag} already exists."
               exit 1
             fi
           else
             release_tag="${GITHUB_REF_NAME}"
+            python3 ci/scripts/kani_version.py validate-new-tag \
+              --tag "${release_tag}" \
+              --ignore-existing-exact
           fi
 
-          python3 ci/scripts/kani_version.py metadata \
-            --tag "${release_tag}" \
-            --build-sha "${build_sha}" >> "${GITHUB_OUTPUT}"
+          metadata_args=(
+            metadata
+            --tag "${release_tag}"
+            --build-sha "${build_sha}"
+          )
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_run" ]]; then
+            metadata_args+=(--prerelease)
+          fi
+          python3 ci/scripts/kani_version.py "${metadata_args[@]}" >> "${GITHUB_OUTPUT}"
 
   validate:
     name: Validate and assemble release
@@ -248,7 +268,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_SHA: ${{ needs.metadata.outputs.build_sha }}
           ALLOW_ASSET_OVERWRITE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_asset_overwrite || false }}
-          AUTOMATIC_PRERELEASE: ${{ github.event_name == 'workflow_run' }}
+          RELEASE_NAME: ${{ needs.metadata.outputs.release_name }}
+          RELEASE_IS_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
         run: |
           set -euo pipefail
           release_tag='${{ needs.metadata.outputs.release_tag }}'
@@ -271,12 +292,12 @@ jobs:
               "${release_tag}"
               "${apk_path}"
               "${sha_path}"
-              --title "${release_tag}"
+              --title "${RELEASE_NAME}"
               --target "${BUILD_SHA}"
               --generate-notes
               --repo "${GITHUB_REPOSITORY}"
             )
-            if [[ "${AUTOMATIC_PRERELEASE}" == "true" ]]; then
+            if [[ "${RELEASE_IS_PRERELEASE}" == "true" ]]; then
               create_args+=(--prerelease)
             fi
             gh release create "${create_args[@]}"

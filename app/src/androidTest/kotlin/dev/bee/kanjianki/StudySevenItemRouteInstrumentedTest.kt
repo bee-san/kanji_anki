@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,6 +22,7 @@ import dev.bee.kanjianki.core.StudyReviewButtonCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
+import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -38,12 +40,18 @@ class StudySevenItemRouteInstrumentedTest {
     val composeRule = createEmptyComposeRule()
 
     private lateinit var context: Context
+    private val routeEvents = CopyOnWriteArrayList<StudyRouteLifecycleEvent>()
+    private val continueUiEvents = CopyOnWriteArrayList<StudyContinueUiEvent>()
 
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         KaniTestDatabase.delete(context)
         pendingAnswerPreferences().edit().clear().commit()
+        StudyRouteLifecycleDiagnostics.resetForTests()
+        StudyRouteLifecycleDiagnostics.setObserverForTests(routeEvents::add)
+        StudyContinueUiDiagnostics.resetForTests()
+        StudyContinueUiDiagnostics.setObserverForTests(continueUiEvents::add)
         MainActivityRuntimeOverrides.setAnkiDroidGateway(
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.study_seven_route"),
         )
@@ -57,6 +65,10 @@ class StudySevenItemRouteInstrumentedTest {
 
     @After
     fun tearDown() {
+        StudyRouteLifecycleDiagnostics.resetForTests()
+        routeEvents.clear()
+        StudyContinueUiDiagnostics.resetForTests()
+        continueUiEvents.clear()
         MainActivityRuntimeOverrides.setAnkiDroidGateway(null)
         MainActivityRuntimeOverrides.setCollectionGateway(null)
         MainActivityRuntimeOverrides.setWritingRecognizer(null)
@@ -69,7 +81,7 @@ class StudySevenItemRouteInstrumentedTest {
     }
 
     @Test
-    fun exactSevenTargetRequiresFinalContinueBeforeVersionMatchedDone() {
+    fun sevenCardUiCompletionReachesDoneWithoutTerminalRouteRetryOrChurn() {
         val sessions = (1..7).map(::session)
         LocalStore(context).use { store -> sessions.forEach { store.saveStudyItem(requireNotNull(it.item)) } }
         ActivityScenario.launch(SevenItemRouteActivity::class.java).use { scenario ->
@@ -153,6 +165,82 @@ class StudySevenItemRouteInstrumentedTest {
             }
             assertFrame(viewModel, visibleSnapshot, completed = 7, done = true)
             assertEquals(StudyRouteCompletionReason.HARD_CAP, visibleSnapshot.completionReason)
+            assertFinalContinueUiLifecycle(studyContinueTokenId(sessions.last().token))
+            assertTerminalRouteDidNotChurn()
+            assertDoneRouteRemainsResponsive(scenario)
+        }
+    }
+
+    private fun assertFinalContinueUiLifecycle(finalTokenId: String) {
+        val events = continueUiEvents.filter { it.tokenId == finalTokenId }
+        assertEquals(1, events.count { it.stage == StudyContinueUiStage.MOUNTED })
+        assertEquals(1, events.count { it.stage == StudyContinueUiStage.CLICK_ENTRY })
+        assertEquals(1, events.count { it.stage == StudyContinueUiStage.CLICK_COMPLETED })
+        assertEquals(1, events.map { it.mountId }.distinct().size)
+
+        val laidOutApplied = events.last {
+            (it.stage == StudyContinueUiStage.STATE_CHANGED ||
+                it.stage == StudyContinueUiStage.MOUNTED) &&
+                it.enabled &&
+                it.feedbackPhase == StudyAnswerFeedbackPhase.APPLIED &&
+                it.bounds != null
+        }
+        val bounds = requireNotNull(laidOutApplied.bounds)
+        assertTrue(bounds.right > bounds.left)
+        assertTrue(bounds.bottom > bounds.top)
+        assertEquals(StudySessionPhase.FEEDBACK, laidOutApplied.routePhase)
+        assertTrue(laidOutApplied.routeTokenMatches)
+
+        val clickEntry = events.single { it.stage == StudyContinueUiStage.CLICK_ENTRY }
+        assertEquals(StudyAnswerFeedbackPhase.APPLIED, clickEntry.feedbackPhase)
+        assertEquals(StudySessionPhase.FEEDBACK, clickEntry.routePhase)
+        assertEquals(StudyContinueUiOutcome.NONE, clickEntry.outcome)
+
+        val completed = events.single { it.stage == StudyContinueUiStage.CLICK_COMPLETED }
+        assertEquals(StudyContinueUiOutcome.ACCEPTED, completed.outcome)
+        assertFalse(
+            events.any {
+                it.outcome == StudyContinueUiOutcome.REJECTED ||
+                    it.outcome == StudyContinueUiOutcome.ERROR
+            },
+        )
+    }
+
+    private fun assertTerminalRouteDidNotChurn() {
+        val events = routeEvents.toList()
+        assertEquals(
+            "the final Continue should create one terminal load candidate",
+            1,
+            events.count { it.stage == StudyRouteLifecycleStage.CANDIDATE_CREATED },
+        )
+        assertEquals(
+            listOf(
+                StudyRouteLifecycleStage.CANDIDATE_CREATED,
+                StudyRouteLifecycleStage.COMPUTATION_PREPARED,
+                StudyRouteLifecycleStage.PUBLICATION_DECIDED,
+            ),
+            events.map { it.stage },
+        )
+        assertEquals(1, events.map { it.candidateId }.distinct().size)
+        val publication = events.single { it.stage == StudyRouteLifecycleStage.PUBLICATION_DECIDED }
+        assertEquals(StudyRouteComputationBranch.HARD_CAP, publication.branch)
+        assertTrue(publication.trackerStateEquivalent)
+        assertTrue(publication.terminalEligible)
+        assertTrue(
+            publication.outcome == StudyRouteLifecycleOutcome.ACCEPTED ||
+                publication.outcome == StudyRouteLifecycleOutcome.ACCEPTED_TERMINAL,
+        )
+        assertFalse(events.any { it.outcome == StudyRouteLifecycleOutcome.RETRY })
+        assertFalse(events.any { it.outcome == StudyRouteLifecycleOutcome.DROPPED_STALE })
+    }
+
+    private fun assertDoneRouteRemainsResponsive(scenario: ActivityScenario<SevenItemRouteActivity>) {
+        composeRule.onNodeWithText(StudyTextCopy.backHomeLabel())
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.waitUntil(timeoutMillis = 15_000L) {
+            activityState(scenario) { it.currentRoute == MainActivityBase.NAV_HOME_ROUTE }
         }
     }
 

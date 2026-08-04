@@ -138,6 +138,10 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             sessionToken = session.token,
             activeRecovery = activeUiRecovery,
             failureCauseState = failureCauseState,
+            continueAction = activity.studyContinueAction(feedback) {
+                activity.matchesMountedStudyRoute(session.token, activeUiRecovery) &&
+                    activity.continueAfterStudyAnswer()
+            },
             onReview = { source, rating ->
                 handleReviewAction(session, activeUiRecovery, failureCauseState, source, rating)
             },
@@ -367,10 +371,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             onReview = route.onReview,
             feedbackState = activity.studyAnswerFeedbackState,
             mnemonicNote = route.mnemonicNote,
-            onContinue = {
-                activity.matchesMountedStudyRoute(route.sessionToken, route.activeRecovery) &&
-                    activity.continueAfterStudyAnswer()
-            },
+            continueAction = route.continueAction,
         )
     }
 
@@ -420,6 +421,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val sessionToken: String,
         val activeRecovery: StoredActiveStudyRecovery?,
         val failureCauseState: RecognitionFailureCauseState,
+        val continueAction: StudyContinueAction,
         val onReview: (String, String) -> Boolean,
         val onFailureCause: (FailureKind, String) -> Unit,
     )

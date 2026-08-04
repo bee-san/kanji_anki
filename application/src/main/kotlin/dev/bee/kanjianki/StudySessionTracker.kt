@@ -90,6 +90,27 @@ class StudySessionTracker(
         return replaced
     }
 
+    fun hasSameStateAs(other: StudySessionTracker): Boolean {
+        val otherState = synchronized(other.lock) { other.stateLocked() }
+        return synchronized(lock) { stateLocked().hasSameStateAs(otherState) }
+    }
+
+    private fun State.hasSameStateAs(other: State): Boolean =
+        progressTracker.hasSameStateAs(other.progressTracker) &&
+            plannedSessionTaskKeys == other.plannedSessionTaskKeys &&
+            completedPlannedSessionTaskKeys == other.completedPlannedSessionTaskKeys &&
+            activeTask.hasSameStateAs(other.activeTask)
+
+    private fun ActiveStudyTask?.hasSameStateAs(other: ActiveStudyTask?): Boolean = when {
+        this == null || other == null -> this == null && other == null
+        else -> taskKey == other.taskKey &&
+            kanji == other.kanji &&
+            taskType == other.taskType &&
+            startedAtMillis == other.startedAtMillis &&
+            activeElapsedMillis == other.activeElapsedMillis &&
+            visibleSinceElapsedMillis == other.visibleSinceElapsedMillis
+    }
+
     private fun advanceRevisionLocked() {
         check(revision < Long.MAX_VALUE) { "Study-session tracker revision overflow" }
         revision++
@@ -153,6 +174,23 @@ class StudySessionTracker(
                     pendingPlannedSessionTaskKeysLocked().size +
                     normalizedRepeats.size,
             )
+            advanceRevisionLocked()
+        }
+        onChanged()
+    }
+
+    /**
+     * Finalizes progress after an accepted loader proves there is no next session.
+     * Completed task history stays intact for the done summary and Continue-all
+     * deduplication; only unservable planned work and a stale active timer are retired.
+     */
+    fun reconcileTerminalSessionAbsence() {
+        synchronized(lock) {
+            val reconciled = reconcileSessionTaskKeys(emptyList())
+            plannedSessionTaskKeys.clear()
+            plannedSessionTaskKeys.addAll(reconciled)
+            progressTracker.setTargetCount(progressTracker.completedCount())
+            activeTask = null
             advanceRevisionLocked()
         }
         onChanged()

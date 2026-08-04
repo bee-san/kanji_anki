@@ -29,6 +29,7 @@ internal fun MeaningChoiceResultActionBar(
         statusColor = result.statusColor,
         actionTone = result.actionTone,
         continueEnabled = model.feedbackState?.continueEnabled ?: true,
+        continueAction = model.continueAction,
         onNext = { model.onContinue.run() },
     )
 }
@@ -39,8 +40,21 @@ internal fun MeaningChoiceResultActionBar(
     statusColor: Int,
     actionTone: StudyActionTone,
     continueEnabled: Boolean = true,
+    continueAction: StudyContinueAction? = null,
     onNext: () -> Unit,
 ) {
+    val continueBinding = if (continueAction == null) {
+        null
+    } else {
+        rememberStudyContinueUiBinding(continueAction)
+    }
+    // Read the parameter, not `continueAction.feedbackState.continueEnabled`. The feedback
+    // state lives in `:application`, a plain JVM module with no Compose dependency, so its
+    // phase is an ordinary field rather than a `mutableStateOf` -- reading it here creates
+    // no subscription, and the button keeps whatever enablement it had at first
+    // composition. Every caller derives this parameter from the observable session model
+    // instead, which is what actually recomposes when the answer is applied.
+    val actionEnabled = continueEnabled
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -59,13 +73,14 @@ internal fun MeaningChoiceResultActionBar(
         )
         StudyPrimaryActionButton(
             label = dev.bee.kanjianki.core.StudyTextCopy.continueLabel(),
-            onClick = onNext,
+            onClick = continueBinding?.onClick ?: onNext,
             modifier = Modifier
                 .fillMaxWidth()
                 .semantics {
                     this[StudyExplicitContinueSemantics] = true
-                },
-            enabled = continueEnabled,
+                }
+                .then(continueBinding?.modifier ?: Modifier),
+            enabled = actionEnabled,
             tone = actionTone,
         )
     }

@@ -64,6 +64,21 @@ object SettingsAutomationTextCopy {
     }
 
     @JvmStatic
+    fun installedVersionLine(version: String?): String {
+        return localizedText("Installed: ", "インストール済み: ") + versionText(version)
+    }
+
+    @JvmStatic
+    fun latestVersionLine(version: String?): String {
+        val value = if (version == null || version.javaTrim().isEmpty()) {
+            localizedText("not checked yet", "未確認")
+        } else {
+            versionText(version)
+        }
+        return localizedText("Latest: ", "最新: ") + value
+    }
+
+    @JvmStatic
     fun autoUpdateLastCheckLine(lastCheckText: String?): String {
         return localizedText("Last check: ", "最終確認: ") + displayValue(lastCheckText, localizedText("not yet", "まだ"))
     }

@@ -47,6 +47,29 @@ class StudySessionTrackerTest {
     }
 
     @Test
+    fun stateEquivalenceIgnoresRevisionButDetectsMeaningfulChanges() {
+        val tracker = StudySessionTracker()
+        val completedKey = "session:kanji_meaning:裂:token"
+        tracker.setTargetCount(1)
+        tracker.markTaskCompleted(completedKey)
+        val staged = tracker.copyForStaging()
+
+        tracker.registerTaskShown(completedKey)
+
+        assertTrue("duplicate publication changes revision only", tracker.hasSameStateAs(staged))
+        staged.setTargetCount(2)
+        assertFalse("target reconciliation is meaningful state", tracker.hasSameStateAs(staged))
+
+        val active = StudySessionTracker()
+        active.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 10L, false)
+        val sameActive = active.copyForStaging()
+        assertTrue("identical active-task fields are equivalent", active.hasSameStateAs(sameActive))
+        val differentActive = StudySessionTracker()
+        differentActive.startActiveTask("task", "裂", BridgeScheduler.TASK_KANJI_MEANING, 11L, false)
+        assertFalse("active-task timing is meaningful state", active.hasSameStateAs(differentActive))
+    }
+
+    @Test
     fun stagedCommitCannotClobberCanonicalMutationWaitingToPublish() {
         val blockFirstPublication = AtomicBoolean(false)
         val mutationCommitted = CountDownLatch(1)
@@ -96,6 +119,33 @@ class StudySessionTrackerTest {
 
         tracker.abandonActiveTask()
         assertFalse(tracker.hasActiveTask())
+    }
+
+    @Test
+    fun terminalSessionAbsenceRetiresOnlyUnservableWork() {
+        val tracker = StudySessionTracker()
+        tracker.initializeSessionPlan(listOf("kanji_meaning:済", "word_reading:残"))
+        tracker.markTaskCompleted("session:kanji_meaning:済:completed-token")
+        tracker.markPlannedSessionTaskCompleted(StudyTaskTypes.KANJI_MEANING, "済")
+        tracker.startActiveTask(
+            "session:kanji_meaning:済:completed-token",
+            "済",
+            StudyTaskTypes.KANJI_MEANING,
+            10L,
+            false,
+        )
+
+        tracker.reconcileTerminalSessionAbsence()
+
+        assertEquals(1, tracker.completedCount())
+        assertEquals(1, tracker.targetCount())
+        assertFalse(tracker.hasActiveTask())
+        assertEquals("", tracker.nextPlannedSessionTaskKey())
+        assertEquals(1, tracker.completedTaskBreakdown().otherReviews)
+
+        tracker.initializeSessionPlan(listOf("kanji_meaning:済", "kanji_meaning:新"))
+
+        assertEquals("kanji_meaning:新", tracker.nextPlannedSessionTaskKey())
     }
 
     @Test

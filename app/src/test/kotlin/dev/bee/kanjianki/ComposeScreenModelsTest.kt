@@ -882,6 +882,8 @@ class ComposeScreenModelsTest {
                 title = "Updates",
                 statusLine = "Manual checks",
                 statusColor = 0xFF000000.toInt(),
+                installedVersionLine = "Installed: 0.4.33",
+                latestVersionLine = "Latest: not checked yet",
                 lastCheckLine = "Never checked",
                 lastResultLine = "No result",
                 installPermissionLine = "Allowed",
@@ -1349,6 +1351,8 @@ class ComposeScreenModelsTest {
             title = "App updates",
             statusLine = "Ready to install",
             statusColor = statusColor,
+            installedVersionLine = "Installed: 0.4.33",
+            latestVersionLine = "Latest: 0.4.34",
             lastCheckLine = "Checked today",
             lastResultLine = "No errors",
             installPermissionLine = "Permission granted",
@@ -1378,6 +1382,8 @@ class ComposeScreenModelsTest {
         assertEquals("App updates", panel.title)
         assertEquals("Ready to install", panel.statusLine)
         assertEquals(statusColor, panel.statusColor)
+        assertEquals("Installed: 0.4.33", panel.installedVersionLine)
+        assertEquals("Latest: 0.4.34", panel.latestVersionLine)
         assertEquals("Checked today", panel.lastCheckLine)
         assertEquals("No errors", panel.lastResultLine)
         assertEquals("Permission granted", panel.installPermissionLine)
@@ -1421,6 +1427,8 @@ class ComposeScreenModelsTest {
             title = "Automatic updates",
             statusLine = "On",
             statusColor = MainActivityUiSupport.TEAL,
+            installedVersionLine = "Installed: 0.4.33",
+            latestVersionLine = "Latest: not checked yet",
             lastCheckLine = "Never checked",
             lastResultLine = "No previous result",
             installPermissionLine = "Permission missing",

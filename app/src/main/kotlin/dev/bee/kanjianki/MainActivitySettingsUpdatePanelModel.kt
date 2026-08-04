@@ -4,6 +4,8 @@ data class SettingsUpdatePanelModel(
     val title: String,
     val statusLine: String,
     val statusColor: Int,
+    val installedVersionLine: String,
+    val latestVersionLine: String,
     val lastCheckLine: String,
     val lastResultLine: String,
     val installPermissionLine: String,
