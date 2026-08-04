@@ -83,4 +83,14 @@ class MissingKanjiAndroidRenderTest {
     fun aFailedOperationResultRenders() {
         assertAFailedOperationResultRenders()
     }
+
+    @Test
+    fun everyMissingKanjiControlIsBigEnoughToHit() {
+        assertEveryMissingKanjiControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun theOffReportControlsAreBigEnoughToHit() {
+        assertTheOffReportControlsAreBigEnoughToHit()
+    }
 }

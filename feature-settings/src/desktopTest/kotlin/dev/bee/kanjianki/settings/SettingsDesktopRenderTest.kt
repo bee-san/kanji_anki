@@ -84,4 +84,14 @@ class SettingsDesktopRenderTest {
     fun theSettingsTestTagsAreDistinct() {
         assertTheSettingsTestTagsAreDistinct()
     }
+
+    @Test
+    fun everySettingsControlIsBigEnoughToHit() {
+        assertEverySettingsControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun everyKeybindingChipIsBigEnoughToHit() {
+        assertEveryKeybindingChipIsBigEnoughToHit()
+    }
 }

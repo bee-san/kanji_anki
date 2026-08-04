@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
@@ -189,7 +190,9 @@ fun SyncProgressCard(
             )
             TextButton(
                 onClick = { dispatch(KaniAction.Provider.CancelSync) },
-                modifier = Modifier.testTag(SYNC_CANCEL_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = KaniUiTokens.MinTouchTarget)
+                    .testTag(SYNC_CANCEL_TEST_TAG),
                 shape = KaniUiTokens.ButtonShape,
             ) {
                 Text(text = copy.syncCancelAction)

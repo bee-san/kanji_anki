@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
@@ -123,7 +124,7 @@ private fun StatePanel(
 private fun PrimaryButton(screen: MissingKanjiScreen, copy: MissingKanjiCopy, dispatch: (KaniAction) -> Unit) {
     Button(
         onClick = { dispatch(screen.primaryAction) },
-        modifier = Modifier.testTag(MISSING_PRIMARY_TEST_TAG),
+        modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_PRIMARY_TEST_TAG),
         shape = KaniUiTokens.ButtonShape,
     ) {
         Text(text = screen.primaryActionLabel.ifBlank { copy.firstRunTitle })
@@ -147,7 +148,7 @@ private fun ScanningPanel(scanning: MissingKanjiContent.Scanning, copy: MissingK
             )
             TextButton(
                 onClick = { dispatch(KaniAction.MissingKanji.CancelScan) },
-                modifier = Modifier.testTag(MISSING_CANCEL_TEST_TAG),
+                modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_CANCEL_TEST_TAG),
                 shape = KaniUiTokens.ButtonShape,
             ) {
                 Text(text = copy.cancel)
@@ -194,14 +195,14 @@ private fun SelectionControls(
         Text(text = copy.selection(selected.size), color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp)
         TextButton(
             onClick = { onChange(report.rows.map { it.literal }.toSet()) },
-            modifier = Modifier.testTag(MISSING_SELECT_ALL_TEST_TAG),
+            modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_SELECT_ALL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.selectAll)
         }
         TextButton(
             onClick = { onChange(emptySet()) },
-            modifier = Modifier.testTag(MISSING_CLEAR_TEST_TAG),
+            modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_CLEAR_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.clear)
@@ -225,7 +226,7 @@ private fun DestinationRow(
             if (destinations.addToKaniEnabled) {
                 Button(
                     onClick = { dispatch(destinations.addAction(selected)) },
-                    modifier = Modifier.weight(1f).testTag(MISSING_ADD_TEST_TAG),
+                    modifier = Modifier.weight(1f).heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_ADD_TEST_TAG),
                     enabled = enabled,
                     shape = KaniUiTokens.ButtonShape,
                 ) {
@@ -235,7 +236,7 @@ private fun DestinationRow(
             if (destinations.createAnkiEnabled) {
                 OutlinedButton(
                     onClick = { dispatch(destinations.createAnkiAction(selected)) },
-                    modifier = Modifier.weight(1f).testTag(MISSING_CREATE_ANKI_TEST_TAG),
+                    modifier = Modifier.weight(1f).heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_CREATE_ANKI_TEST_TAG),
                     enabled = enabled,
                     shape = KaniUiTokens.ButtonShape,
                 ) {
@@ -245,7 +246,7 @@ private fun DestinationRow(
             if (destinations.csvExportEnabled) {
                 OutlinedButton(
                     onClick = { dispatch(destinations.exportCsvAction(selected)) },
-                    modifier = Modifier.weight(1f).testTag(MISSING_EXPORT_CSV_TEST_TAG),
+                    modifier = Modifier.weight(1f).heightIn(min = KaniUiTokens.MinTouchTarget).testTag(MISSING_EXPORT_CSV_TEST_TAG),
                     enabled = enabled,
                     shape = KaniUiTokens.ButtonShape,
                 ) {
@@ -287,6 +288,7 @@ private fun ReportRow(
             if (row.inKani && row.canRemove) {
                 TextButton(
                     onClick = { dispatch(row.removeAction) },
+                    modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget),
                     shape = KaniUiTokens.ButtonShape,
                 ) {
                     Text(text = "−", color = KaniTheme.colors.coral)
@@ -295,7 +297,9 @@ private fun ReportRow(
                 Checkbox(
                     checked = selected,
                     onCheckedChange = onToggle,
-                    modifier = Modifier.testTag(missingRowSelectTestTag(row.literal)),
+                    modifier = Modifier
+                        .size(KaniUiTokens.MinTouchTarget)
+                        .testTag(missingRowSelectTestTag(row.literal)),
                 )
             }
         }

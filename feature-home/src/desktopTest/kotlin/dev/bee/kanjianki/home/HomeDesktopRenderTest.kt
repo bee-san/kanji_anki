@@ -266,4 +266,18 @@ class HomeDesktopRenderTest {
         assertTheDetailTestTagsAreDistinctSoAssertionsCannotCollide()
     }
 
+    @Test
+    fun everyBrowseControlIsBigEnoughToHit() {
+        assertEveryBrowseControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun everyDashboardControlIsBigEnoughToHit() {
+        assertEveryDashboardControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun theSyncCancelIsBigEnoughToHit() {
+        assertTheSyncCancelIsBigEnoughToHit()
+    }
 }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -37,6 +38,15 @@ const val STATS_DONUT_CHART_TEST_TAG: String = "kani-stats-donut-chart"
 const val STATS_HEATMAP_TEST_TAG: String = "kani-stats-heatmap"
 
 /**
+ * The description an enclosing section lends a chart whose own summary is blank.
+ *
+ * A composition local rather than a parameter because the value is the same for every
+ * chart in a section and the section already has it: threading it through seven call
+ * sites would be seven chances to pass the wrong one, or to pass nothing.
+ */
+internal val LocalChartFallbackDescription = compositionLocalOf { "" }
+
+/**
  * The shared chart primitives, operating on the portable stats model.
  *
  * Ported from `:app/charts/KaniCharts`, with the `:core` axis/heatmap types replaced
@@ -50,7 +60,7 @@ internal fun StatsLineChartView(chart: StatsLineChart, colors: List<Color>, modi
         modifier = modifier
             .fillMaxWidth()
             .testTag(STATS_LINE_CHART_TEST_TAG)
-            .semantics { contentDescription = chart.accessibilitySummary },
+            .chartDescription(chart.accessibilitySummary),
     ) {
         PlotWithYAxis(chart.axis) {
             chart.series.forEachIndexed { i, series ->
@@ -73,7 +83,7 @@ internal fun StatsBarChartView(chart: StatsBarChart, accent: Color, modifier: Mo
         modifier = modifier
             .fillMaxWidth()
             .testTag(STATS_BAR_CHART_TEST_TAG)
-            .semantics { contentDescription = chart.accessibilitySummary },
+            .chartDescription(chart.accessibilitySummary),
     ) {
         PlotWithYAxis(chart.axis) {
             val count = chart.values.size
@@ -103,7 +113,7 @@ internal fun StatsDonutChartView(chart: StatsDistribution, colors: List<Color>, 
             .fillMaxWidth()
             .height(PLOT_HEIGHT)
             .testTag(STATS_DONUT_CHART_TEST_TAG)
-            .semantics { contentDescription = chart.accessibilitySummary },
+            .chartDescription(chart.accessibilitySummary),
     ) {
         var start = -90f
         val side = (minOf(size.width, size.height) - strokeDp.toPx()).coerceAtLeast(0f)
@@ -131,7 +141,7 @@ internal fun StatsHeatmapView(heatmap: ReviewHeatmap, accent: Color, modifier: M
         modifier = modifier
             .fillMaxWidth()
             .testTag(STATS_HEATMAP_TEST_TAG)
-            .semantics { contentDescription = heatmap.accessibilitySummary },
+            .chartDescription(heatmap.accessibilitySummary),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(HEATMAP_HEIGHT)) {
@@ -157,6 +167,36 @@ internal fun StatsHeatmapView(heatmap: ReviewHeatmap, accent: Color, modifier: M
             )
         }
     }
+}
+
+/**
+ * Labels a chart with [summary], or with the enclosing section's title when it is blank.
+ *
+ * A chart is drawn onto a `Canvas`, so its content is invisible to assistive technology
+ * and to every sighted assertion: an empty `contentDescription` renders exactly as
+ * correctly as a full one, and a screen reader reaches an unlabelled graphic with no
+ * indication that anything was lost. The blank case is not hypothetical — the summaries
+ * are built as literals in `:progress-core` and passed through `DesktopStatsModel` and
+ * every intermediate mapper without a single check on the way, so any one of them
+ * returning "" is a silent, untestable regression at the far end of the chain.
+ *
+ * The fallback is the section title rather than a stated "chart, no description
+ * available", because the title is true, is already translated, and tells the user what
+ * they are looking at. The apologetic version tells them only that Kani has a bug.
+ *
+ * It is a real fallback and not an assertion because losing a sentence of detail is a
+ * far better outcome for the user than a crash on the Stats screen; the tests are where
+ * the blank is meant to be caught.
+ */
+@Composable
+private fun Modifier.chartDescription(summary: String): Modifier {
+    val fallback = LocalChartFallbackDescription.current
+    val description = summary.ifBlank { fallback }
+    // An unlabelled graphic is better than one labelled with the empty string: a
+    // screen reader announces the former as an image it cannot describe, and skips
+    // straight past the latter as though there were nothing there at all.
+    if (description.isBlank()) return this
+    return semantics { contentDescription = description }
 }
 
 @Composable

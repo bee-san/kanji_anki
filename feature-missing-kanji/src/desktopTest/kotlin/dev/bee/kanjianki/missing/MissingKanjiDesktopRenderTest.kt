@@ -78,4 +78,14 @@ class MissingKanjiDesktopRenderTest {
     fun aFailedOperationResultRenders() {
         assertAFailedOperationResultRenders()
     }
+
+    @Test
+    fun everyMissingKanjiControlIsBigEnoughToHit() {
+        assertEveryMissingKanjiControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun theOffReportControlsAreBigEnoughToHit() {
+        assertTheOffReportControlsAreBigEnoughToHit()
+    }
 }

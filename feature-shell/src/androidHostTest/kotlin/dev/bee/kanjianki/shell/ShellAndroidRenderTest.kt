@@ -134,4 +134,14 @@ class ShellAndroidRenderTest {
     fun anUnavailableCapabilityIsExplainedRatherThanOffered() {
         assertAnUnavailableCapabilityIsExplainedRatherThanOffered()
     }
+
+    @Test
+    fun everyShellControlIsBigEnoughToHit() {
+        assertEveryShellControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun bothConfirmAnswersAreIndependentlyReachable() {
+        assertBothConfirmAnswersAreIndependentlyReachable()
+    }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -188,7 +189,9 @@ fun ShellFailureBanner(
                 if (failure.isRetryable) {
                     OutlinedButton(
                         onClick = { dispatch(KaniAction.Retry) },
-                        modifier = Modifier.testTag(SHELL_RETRY_TEST_TAG),
+                        modifier = Modifier
+                            .heightIn(min = KaniUiTokens.MinTouchTarget)
+                            .testTag(SHELL_RETRY_TEST_TAG),
                         shape = KaniUiTokens.ButtonShape,
                     ) {
                         Text(text = copy.retry)
@@ -196,7 +199,9 @@ fun ShellFailureBanner(
                 }
                 TextButton(
                     onClick = { dispatch(KaniAction.Consume.Failure) },
-                    modifier = Modifier.testTag(SHELL_DISMISS_FAILURE_TEST_TAG),
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(SHELL_DISMISS_FAILURE_TEST_TAG),
                     shape = KaniUiTokens.ButtonShape,
                 ) {
                     Text(text = copy.dismiss)

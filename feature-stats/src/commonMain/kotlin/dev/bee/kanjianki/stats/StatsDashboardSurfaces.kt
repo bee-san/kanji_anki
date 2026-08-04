@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -73,6 +74,14 @@ fun StatsDashboardScreen(
     }
 }
 
+/**
+ * One titled panel of the dashboard.
+ *
+ * The title is also published as [LocalChartFallbackDescription], so a chart in this
+ * section whose own summary came through blank is still announced as something — the
+ * panel it belongs to — rather than as an unlabelled graphic. Every chart on this screen
+ * is inside a section, which is what makes one wrapper enough for all of them.
+ */
 @Composable
 private fun StatsSection(tag: String, title: String, content: @Composable () -> Unit) {
     Surface(
@@ -91,7 +100,9 @@ private fun StatsSection(tag: String, title: String, content: @Composable () -> 
                 fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
                 fontWeight = FontWeight.Bold,
             )
-            content()
+            CompositionLocalProvider(LocalChartFallbackDescription provides title) {
+                content()
+            }
         }
     }
 }

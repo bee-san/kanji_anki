@@ -37,4 +37,24 @@ class StatsDesktopRenderTest {
     fun theStatsTestTagsAreDistinct() {
         assertTheStatsTestTagsAreDistinct()
     }
+
+    @Test
+    fun everyChartCarriesATextAlternative() {
+        assertEveryChartCarriesATextAlternative()
+    }
+
+    @Test
+    fun aChartWithNoSummaryFallsBackToItsSectionTitle() {
+        assertAChartWithNoSummaryFallsBackToItsSectionTitle()
+    }
+
+    @Test
+    fun aBlankSummaryChangesNothingThatIsVisible() {
+        assertABlankSummaryChangesNothingThatIsVisible()
+    }
+
+    @Test
+    fun everySectionTitleIsRealEnoughToBorrow() {
+        assertEverySectionTitleIsRealEnoughToBorrow()
+    }
 }

@@ -48,6 +48,22 @@ object KaniUiTokens {
     const val StudyFrontHeroTextSizeSp = 116
 
     /**
+     * The floor for anything the user can click, tap, or activate.
+     *
+     * Material's own `TextButton`, `OutlinedButton`, and chip defaults are 40dp tall,
+     * which is under every published minimum for a reliable pointer or touch target —
+     * comfortable with a mouse, awkward with a thumb, and genuinely hard with a
+     * trackpad on a laptop. A prominent action wants more than this and each feature
+     * sets its own larger value for those; this is the line below which a control is
+     * not reliably hittable at all, so it belongs to every module rather than to one.
+     *
+     * It lives here rather than in a feature because the defect it prevents was found
+     * in five modules at once, and a floor that each module spells for itself is a
+     * floor the sixth module will forget.
+     */
+    val MinTouchTarget = 44.dp
+
+    /**
      * Picks dark ink or white, whichever reads better on [background].
      *
      * Backgrounds passed here are saturated accents, so the answer does not

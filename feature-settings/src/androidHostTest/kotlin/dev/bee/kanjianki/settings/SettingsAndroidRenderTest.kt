@@ -83,4 +83,14 @@ class SettingsAndroidRenderTest {
     fun theSettingsTestTagsAreDistinct() {
         assertTheSettingsTestTagsAreDistinct()
     }
+
+    @Test
+    fun everySettingsControlIsBigEnoughToHit() {
+        assertEverySettingsControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun everyKeybindingChipIsBigEnoughToHit() {
+        assertEveryKeybindingChipIsBigEnoughToHit()
+    }
 }

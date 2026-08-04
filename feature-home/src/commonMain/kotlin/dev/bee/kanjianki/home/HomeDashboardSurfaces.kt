@@ -58,6 +58,11 @@ fun homeNoticeTestTag(notice: HomeNotice): String =
  * Android screen gave for its own `heightIn(min = …)` wrapper: the primary action must
  * not jump between shapes when the sync state flips, or a tap aimed at Sync lands on
  * whatever moved into its place.
+ *
+ * The floor is on the button as well as on the box. With it only on the box, the space
+ * was reserved but the button kept Material's 40dp default and the remaining 18dp was
+ * dead margin — a stable *layout* around an under-sized *target*, which is the half of
+ * the promise a user can actually feel.
  */
 @Composable
 fun HomePrimaryAction(
@@ -79,6 +84,7 @@ fun HomePrimaryAction(
             onClick = { dispatch(home.primaryAction) },
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = PRIMARY_ACTION_MIN_HEIGHT)
                 .testTag(HOME_PRIMARY_TEST_TAG),
             // Disabled rather than hidden while syncing, for the same reason the
             // onboarding button is: a control that vanishes mid-tap moves what is
@@ -253,7 +259,9 @@ fun HomeTodayCard(
             action?.let {
                 TextButton(
                     onClick = { dispatch(it) },
-                    modifier = Modifier.testTag(HOME_TODAY_ACTION_TEST_TAG),
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(HOME_TODAY_ACTION_TEST_TAG),
                     shape = KaniUiTokens.ButtonShape,
                 ) {
                     Text(text = actionLabel)

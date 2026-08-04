@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +37,7 @@ import dev.bee.kanjianki.presentation.UiTextResolver
 import dev.bee.kanjianki.feature.shell.generated.resources.Res
 import dev.bee.kanjianki.feature.shell.generated.resources.ic_arrow_back_24
 import dev.bee.kanjianki.ui.KaniTheme
+import dev.bee.kanjianki.ui.KaniUiTokens
 import org.jetbrains.compose.resources.painterResource
 
 const val SHELL_ROOT_TEST_TAG: String = "kani-shell"
@@ -238,6 +240,7 @@ private fun ShellBackButton(
     IconButton(
         onClick = { dispatch(KaniAction.Navigation.Back) },
         modifier = Modifier
+            .size(KaniUiTokens.MinTouchTarget)
             .testTag(SHELL_BACK_TEST_TAG)
             .semantics { contentDescription = description },
     ) {

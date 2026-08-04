@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -168,6 +169,7 @@ private fun BrowseToggle(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = KaniUiTokens.MinTouchTarget)
             .toggleable(value = checked, onValueChange = onChange)
             .testTag(testTag)
             .semantics { contentDescription = label },
@@ -205,14 +207,18 @@ private fun BrowseSelectionControls(
         // disappears at the extremes leaves the user hunting for the one they need.
         TextButton(
             onClick = { dispatch(results.setAllStudied(studied = true)) },
-            modifier = Modifier.testTag(BROWSE_SELECT_ALL_TEST_TAG),
+            modifier = Modifier
+                .heightIn(min = KaniUiTokens.MinTouchTarget)
+                .testTag(BROWSE_SELECT_ALL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.selectAll)
         }
         TextButton(
             onClick = { dispatch(results.setAllStudied(studied = false)) },
-            modifier = Modifier.testTag(BROWSE_DESELECT_ALL_TEST_TAG),
+            modifier = Modifier
+                .heightIn(min = KaniUiTokens.MinTouchTarget)
+                .testTag(BROWSE_DESELECT_ALL_TEST_TAG),
             shape = KaniUiTokens.ButtonShape,
         ) {
             Text(text = copy.deselectAll)
@@ -288,6 +294,7 @@ private fun BrowseKanjiRow(
                 checked = row.studied,
                 onCheckedChange = { dispatch(row.studiedAction(it)) },
                 modifier = Modifier
+                    .size(KaniUiTokens.MinTouchTarget)
                     .testTag(browseStudiedTestTag(row.kanji))
                     .semantics { contentDescription = copy.studiedToggle(row.kanji) },
             )

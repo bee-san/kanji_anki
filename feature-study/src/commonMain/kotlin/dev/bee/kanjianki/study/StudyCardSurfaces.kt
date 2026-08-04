@@ -425,10 +425,10 @@ private val HERO_MIN_HEIGHT = 160.dp
 /**
  * The floor for a control that is not a primary grade action.
  *
- * Material's own `TextButton` default is 40dp tall, which is under every published
- * minimum for a reliable pointer or touch target — comfortable with a mouse, awkward
- * with a thumb, and genuinely hard with a trackpad on a laptop. The grade actions clear
- * this by a wide margin at [ACTION_MIN_HEIGHT]; a secondary control does not need to be
- * that prominent, but it does need to be hittable.
+ * An alias for the shared [KaniUiTokens.MinTouchTarget], kept as a name because the
+ * Study surfaces read better against a local vocabulary that already has
+ * [ACTION_MIN_HEIGHT] and [HERO_MIN_HEIGHT]. The grade actions clear the floor by a
+ * wide margin; a secondary control does not need to be that prominent, but it does
+ * need to be hittable.
  */
-internal val SECONDARY_MIN_HEIGHT = 44.dp
+internal val SECONDARY_MIN_HEIGHT = KaniUiTokens.MinTouchTarget

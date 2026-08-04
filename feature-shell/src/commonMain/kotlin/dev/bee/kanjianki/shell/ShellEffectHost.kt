@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.shell
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -15,6 +16,7 @@ import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PendingEffect
 import dev.bee.kanjianki.presentation.UiTextResolver
+import dev.bee.kanjianki.ui.KaniUiTokens
 
 const val SHELL_CONFIRM_DIALOG_TEST_TAG: String = "kani-shell-confirm"
 const val SHELL_CONFIRM_ACCEPT_TEST_TAG: String = "kani-shell-confirm-accept"
@@ -171,7 +173,9 @@ private fun ShellConfirmDialog(
         confirmButton = {
             TextButton(
                 onClick = { answer(confirm.confirm) },
-                modifier = Modifier.testTag(SHELL_CONFIRM_ACCEPT_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = KaniUiTokens.MinTouchTarget)
+                    .testTag(SHELL_CONFIRM_ACCEPT_TEST_TAG),
             ) {
                 Text(text = resolver.resolve(confirm.confirmLabel))
             }
@@ -179,7 +183,9 @@ private fun ShellConfirmDialog(
         dismissButton = {
             TextButton(
                 onClick = { answer(null) },
-                modifier = Modifier.testTag(SHELL_CONFIRM_DISMISS_TEST_TAG),
+                modifier = Modifier
+                    .heightIn(min = KaniUiTokens.MinTouchTarget)
+                    .testTag(SHELL_CONFIRM_DISMISS_TEST_TAG),
             ) {
                 Text(text = resolver.resolve(confirm.dismissLabel))
             }

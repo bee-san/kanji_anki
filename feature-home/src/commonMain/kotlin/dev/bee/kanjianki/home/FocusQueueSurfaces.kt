@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Surface
@@ -76,7 +77,9 @@ fun FocusQueuePanel(
             if (queue.showsViewAll) {
                 TextButton(
                     onClick = { dispatch(queue.viewAllAction) },
-                    modifier = Modifier.testTag(FOCUS_QUEUE_VIEW_ALL_TEST_TAG),
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(FOCUS_QUEUE_VIEW_ALL_TEST_TAG),
                     shape = KaniUiTokens.ButtonShape,
                 ) {
                     Text(text = copy.focusQueueViewAll)

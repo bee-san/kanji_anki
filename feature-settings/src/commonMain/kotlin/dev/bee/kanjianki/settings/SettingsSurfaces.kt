@@ -252,6 +252,7 @@ private fun KeybindingChoiceChip(
     OutlinedButton(
         onClick = { dispatch(choice.action) },
         modifier = Modifier
+            .heightIn(min = KaniUiTokens.MinTouchTarget)
             .testTag(settingsKeybindingChoiceTestTag(choice.label))
             .semantics { contentDescription = description },
         enabled = choice.enabled,
@@ -276,6 +277,7 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
         is SettingsControl.Toggle -> Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = KaniUiTokens.MinTouchTarget)
                 .then(tag)
                 .toggleable(
                     value = control.checked,
@@ -297,6 +299,7 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
                     val selected = option.id == control.selectedId
                     OutlinedButton(
                         onClick = { dispatch(option.action) },
+                        modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget),
                         shape = KaniUiTokens.ButtonShape,
                         border = BorderStroke(1.dp, if (selected) KaniTheme.colors.primary else KaniTheme.colors.borderSoft),
                     ) {
@@ -320,7 +323,9 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
                     onClick = { dispatch(control.onChange(control.decremented())) },
                     enabled = control.canDecrement,
                     shape = KaniUiTokens.ButtonShape,
-                    modifier = Modifier.testTag(settingsStepperButtonTestTag(control.label, up = false)),
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(settingsStepperButtonTestTag(control.label, up = false)),
                 ) {
                     Text(text = "−", color = KaniTheme.colors.ink)
                 }
@@ -334,7 +339,9 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
                     onClick = { dispatch(control.onChange(control.incremented())) },
                     enabled = control.canIncrement,
                     shape = KaniUiTokens.ButtonShape,
-                    modifier = Modifier.testTag(settingsStepperButtonTestTag(control.label, up = true)),
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(settingsStepperButtonTestTag(control.label, up = true)),
                 ) {
                     Text(text = "+", color = KaniTheme.colors.ink)
                 }
