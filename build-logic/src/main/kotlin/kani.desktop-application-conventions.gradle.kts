@@ -79,21 +79,31 @@ compose.desktop {
             description = KaniDesktopIdentity.DESCRIPTION
             vendor = KaniDesktopIdentity.VENDOR
 
+            // Each platform's version grammar is mapped by exactly one pinned
+            // function, so the release tag remains the single source (Goal 202).
             macOS {
                 bundleID = KaniDesktopIdentity.DESKTOP_ID
                 packageVersion =
                     KaniDesktopPackageVersions.macOsJpackage(kaniVersionName)
+                // The bundle build version is the monotonic Kani version code, which
+                // is how macOS orders two builds sharing a short version.
+                packageBuildVersion =
+                    KaniDesktopPackageVersions.macOsBundleBuildVersion(kaniVersionName)
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.icns"),
                 )
             }
             windows {
                 upgradeUuid = KaniDesktopIdentity.WINDOWS_UPGRADE_UUID
+                msiPackageVersion =
+                    KaniDesktopPackageVersions.windowsMsi(kaniVersionName)
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.ico"),
                 )
             }
             linux {
+                debPackageVersion =
+                    KaniDesktopPackageVersions.linuxDeb(kaniVersionName)
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.png"),
                 )
