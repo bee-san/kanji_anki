@@ -151,7 +151,20 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             matrix_job,
         )
         self.assertIn("distribution: temurin", matrix_job)
-        self.assertIn("java-version: '17'", matrix_job)
+        # The exact patch, not the feature version. This JDK's runtime is copied into the
+        # installed application by jpackage, so `java-version: '17'` would let a runner
+        # image bump ship users a different JVM than the tested one, silently -- which is
+        # reproducibly what happened before the pin (docs/desktop-packaging-jdk.md).
+        self.assertIn("java-version: '17.0.19+10'", matrix_job)
+        # Kept in lockstep with the build-side pin, so the workflow and
+        # `KaniPackagingJdk` cannot disagree about which JDK ships.
+        packaging_jdk = (
+            ROOT
+            / "build-logic/src/main/kotlin/dev/bee/kanjianki/buildlogic"
+            / "KaniPackagingJdk.kt"
+        ).read_text(encoding="utf-8")
+        self.assertIn('JAVA_VERSION: String = "17.0.19"', packaging_jdk)
+        self.assertIn('BUILD: String = "10"', packaging_jdk)
         self.assertIn("cache-disabled: true", matrix_job)
         self.assertNotIn("cache-encryption-key:", matrix_job)
         self.assertNotIn("actions/cache@", matrix_job)
