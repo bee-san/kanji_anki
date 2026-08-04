@@ -6,6 +6,7 @@ import json
 import re
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from tools.run_desktop_installed_image_smoke import DesktopInstalledImageSmokeError
@@ -13,6 +14,8 @@ from tools.verify_desktop_package import (
     EXPECTED_JAVA_VERSION,
     EXPECTED_MODULES,
     DesktopPackageVerificationError,
+    application_jar_directory,
+    find_shadowed_classes,
     format_report,
     main,
     runtime_release_file,
@@ -26,6 +29,33 @@ PACKAGING_JDK = BUILD_LOGIC_MAIN / "dev/bee/kanjianki/buildlogic/KaniPackagingJd
 DESKTOP_IDENTITY = BUILD_LOGIC_MAIN / "dev/bee/kanjianki/buildlogic/KaniDesktopIdentity.kt"
 
 
+def write_jar(path: Path, entries: dict[str, str]) -> None:
+    """Writes a jar containing exactly these entries."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, content in entries.items():
+            archive.writestr(name, content)
+
+
+# The default bundled jars: two artifacts whose classes are disjoint, plus the
+# empty-redirect-stub pattern Compose 1.11 really does ship (see
+# `find_shadowed_classes`), so the happy path exercises the case that must be
+# tolerated rather than only the trivial one.
+DEFAULT_JARS = {
+    "runtime-desktop-1.11.2-abc.jar": {
+        "androidx/compose/runtime/Composer.class": "x",
+        "META-INF/versions/9/module-info.class": "x",
+    },
+    "runtime-desktop-1.11.1-def.jar": {
+        "META-INF/MANIFEST.MF": "Manifest-Version: 1.0\n",
+    },
+    "desktop-app-123.jar": {
+        "dev/bee/kanjianki/desktop/MainKt.class": "x",
+        "META-INF/versions/9/module-info.class": "x",
+    },
+}
+
+
 def write_image(
     root: Path,
     *,
@@ -34,6 +64,7 @@ def write_image(
     modules: tuple[str, ...] = EXPECTED_MODULES,
     with_launcher: bool = True,
     with_release: bool = True,
+    jars: dict[str, dict[str, str]] | None = None,
 ) -> Path:
     """Builds a fake installed image with the real per-host layout."""
     launchers = {
@@ -54,6 +85,9 @@ def write_image(
             f'MODULES="{" ".join(modules)}"\n',
             encoding="utf-8",
         )
+    jar_directory = application_jar_directory(root, platform)
+    for name, entries in (DEFAULT_JARS if jars is None else jars).items():
+        write_jar(jar_directory / name, entries)
     return root
 
 
@@ -173,6 +207,66 @@ class DesktopPackageVerificationTest(unittest.TestCase):
         verification = verify_installed_package(self.root, platform="linux")
 
         self.assertEqual(EXPECTED_JAVA_VERSION, verification["java_version"])
+
+    def test_a_class_shadowed_across_two_bundled_jars_fails(self) -> None:
+        # jpackage builds a flat classpath from one directory, so two jars carrying the
+        # same class means the JVM loads whichever comes first and nothing says so: the
+        # build passes, the app starts, and the wrong implementation is live. This is
+        # only findable in the artifact -- the dependency graph shows two coordinates,
+        # which is also what the harmless stub case looks like.
+        jars = {
+            "alpha-1.0.jar": {"dev/bee/Shared.class": "x"},
+            "beta-2.0.jar": {"dev/bee/Shared.class": "y"},
+        }
+        write_image(self.root, jars=jars)
+
+        with self.assertRaises(DesktopPackageVerificationError) as raised:
+            verify_installed_package(self.root, platform="linux")
+
+        message = str(raised.exception)
+        self.assertIn("dev/bee/Shared.class", message)
+        self.assertIn("alpha-1.0.jar", message)
+        self.assertIn("beta-2.0.jar", message)
+
+    def test_the_empty_redirect_stubs_compose_ships_are_tolerated(self) -> None:
+        # Kani's real image bundles four artifacts at two versions each, because Compose
+        # 1.11 moved them from `org.jetbrains.compose` to `androidx.compose` and
+        # publishes the old coordinates as classless stubs. Measured against the real
+        # built image: 0 shared classes across all four pairs. The gate must pass here
+        # for that reason, not by ignoring duplicate versions by name -- which would also
+        # have ignored a genuine conflict between the same two coordinates.
+        jars = {
+            "runtime-desktop-1.11.2-abc.jar": {"androidx/compose/Composer.class": "x"},
+            "runtime-desktop-1.11.1-def.jar": {"META-INF/MANIFEST.MF": "x"},
+        }
+        write_image(self.root, jars=jars)
+
+        verification = verify_installed_package(self.root, platform="linux")
+
+        self.assertEqual(2, verification["bundled_jar_count"])
+
+    def test_multi_release_module_descriptors_do_not_count_as_shadowing(self) -> None:
+        # `META-INF/versions/9/module-info.class` repeats across many jars in the real
+        # image (measured: it is the only repeated entry at all). A flat-classpath launch
+        # never loads it, so counting it would make the gate fail permanently on a
+        # correct image -- and a permanently-failing gate gets disabled.
+        jars = {
+            "one.jar": {"META-INF/versions/9/module-info.class": "x", "a/A.class": "x"},
+            "two.jar": {"META-INF/versions/9/module-info.class": "y", "b/B.class": "y"},
+        }
+        write_image(self.root, jars=jars)
+
+        self.assertEqual({}, find_shadowed_classes(application_jar_directory(self.root, "linux")))
+
+    def test_an_image_with_no_bundled_jars_fails_rather_than_passing_vacuously(self) -> None:
+        # An empty jar directory would otherwise report "no class shadowed" -- true, and
+        # completely uninformative, for an image that cannot launch.
+        write_image(self.root, jars={})
+
+        with self.assertRaises(DesktopPackageVerificationError) as raised:
+            verify_installed_package(self.root, platform="linux")
+
+        self.assertIn("no bundled application jars", str(raised.exception))
 
     def test_the_vendor_is_reported_as_unverifiable_rather_than_as_verified(self) -> None:
         # The packaged jlink image records no IMPLEMENTOR, so this gate genuinely cannot

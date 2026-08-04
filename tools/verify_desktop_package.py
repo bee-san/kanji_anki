@@ -11,8 +11,9 @@ the Gradle build green and the packaged image wrong.
 What this gate can and cannot establish, stated because the difference matters:
 
   - It **can** verify the launcher, the app identity, the shipped `JAVA_VERSION`,
-    and the exact `MODULES` set, because the `jlink` image's `release` file
-    records those and the app layout is on disk.
+    the exact `MODULES` set, and that no class is shadowed across the bundled
+    jars, because the `jlink` image's `release` file records the first three and
+    the jars themselves answer the last.
   - It **cannot** verify the runtime's *vendor*. The packaged `release` file
     contains only `JAVA_VERSION` and `MODULES` -- no `IMPLEMENTOR` -- and nothing
     under `conf/` or `legal/` names a distribution either. Vendor provenance is
@@ -30,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -102,6 +104,59 @@ def runtime_release_file(image_root: Path, platform: str) -> Path:
     return image_root.resolve() / RUNTIME_RELEASE_PATHS[normalized_platform(platform)]
 
 
+# Where jpackage puts the bundled application jars, per host. Same layout split as
+# the runtime paths above.
+APPLICATION_JAR_PATHS = {
+    "linux": Path(APPLICATION_NAME, "lib", "app"),
+    "windows": Path(APPLICATION_NAME, "app"),
+    "macos": Path(f"{APPLICATION_NAME}.app", "Contents", "app"),
+}
+
+# Multi-release module descriptors legitimately repeat across jars: they live under
+# `META-INF/versions/`, and a flat classpath launch never loads them at all (the JVM
+# reads them only when the jar is on the module path). Every *other* repeated class
+# is a real shadowing hazard.
+IGNORED_DUPLICATE_CLASS_PREFIX = "META-INF/versions/"
+
+
+def application_jar_directory(image_root: Path, platform: str) -> Path:
+    """The directory holding the bundled application jars for this host."""
+    return image_root.resolve() / APPLICATION_JAR_PATHS[normalized_platform(platform)]
+
+
+def find_shadowed_classes(jar_directory: Path) -> dict[str, list[str]]:
+    """Finds classes present in more than one bundled jar, with their jars.
+
+    jpackage puts every jar in one directory and the launcher builds a flat
+    classpath from it, so when two jars carry the same class the JVM silently loads
+    whichever the classpath reaches first. Nothing reports this: the build passes,
+    the app starts, and the wrong implementation is live.
+
+    Kani's image really does bundle four artifacts at two versions each --
+    `runtime-desktop` 1.11.1 and 1.11.2, and three more like it -- because Compose
+    1.11 moved these artifacts from `org.jetbrains.compose` to `androidx.compose`
+    and publishes the old coordinates as empty redirect stubs. That is harmless,
+    but only because the stubs contain no classes, and a file listing cannot tell
+    an empty stub apart from a genuine duplicate. This measures the classes.
+    """
+    if not jar_directory.is_dir():
+        raise DesktopPackageVerificationError(
+            f"the image has no bundled application jars: {jar_directory}",
+        )
+    owners: dict[str, list[str]] = {}
+    for jar in sorted(jar_directory.glob("*.jar")):
+        with zipfile.ZipFile(jar) as archive:
+            for entry in archive.namelist():
+                if not entry.endswith(".class"):
+                    continue
+                if entry.startswith(IGNORED_DUPLICATE_CLASS_PREFIX):
+                    continue
+                owners.setdefault(entry, []).append(jar.name)
+    return {
+        entry: jars for entry, jars in owners.items() if len(jars) > 1
+    }
+
+
 def read_release_properties(release_file: Path) -> dict[str, str]:
     """Parses a JDK `release` file, stripping the quotes it uses inconsistently."""
     if not release_file.is_file():
@@ -167,6 +222,21 @@ def verify_installed_package(
                 "this gate together, deliberately",
             )
 
+    jar_directory = application_jar_directory(image_root, platform)
+    shadowed = find_shadowed_classes(jar_directory)
+    if shadowed:
+        sample = sorted(shadowed)[:3]
+        detail = "; ".join(
+            f"{entry} in {', '.join(shadowed[entry])}" for entry in sample
+        )
+        problems.append(
+            f"{len(shadowed)} class(es) are present in more than one bundled jar, "
+            "so the flat classpath decides which one loads: "
+            f"{detail}",
+        )
+
+    bundled_jars = sorted(jar.name for jar in jar_directory.glob("*.jar"))
+
     if problems:
         raise DesktopPackageVerificationError("; ".join(problems))
 
@@ -175,6 +245,7 @@ def verify_installed_package(
         "launcher": str(launcher),
         "java_version": java_version,
         "modules": list(modules),
+        "bundled_jar_count": len(bundled_jars),
         # Recorded as an explicit null rather than omitted, so a release record
         # shows that vendor was not checked here instead of leaving it ambiguous.
         "runtime_vendor": None,
@@ -191,6 +262,8 @@ def format_report(verification: Mapping[str, object]) -> str:
             f"host={verification['host']}",
             f"java_version={verification['java_version']}",
             f"modules={' '.join(verification['modules'])}",  # type: ignore[arg-type]
+            f"bundled_jars={verification['bundled_jar_count']} "
+            "(no class shadowed across them)",
             f"runtime_vendor=unverifiable-from-image "
             f"({verification['runtime_vendor_note']})",
         ),
