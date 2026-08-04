@@ -78,6 +78,18 @@ fun StudySessionScreen(
      * load resolved, so the keyboard and the editor row cannot disagree.
      */
     keybindings: StudyKeybindings = StudyKeybindings.DEFAULT,
+    /**
+     * Reports what currently holds the keyboard, whenever it changes.
+     *
+     * The reveal state is local UI state — the reducer deliberately does not reload for a
+     * reveal — but a native menu outside this surface has to honour the same guard: an
+     * enabled "Pass" in the menu bar while the card is face down would be a way to grade
+     * an answer the user has not seen. Reporting the context outward is how the menu stays
+     * the *same* decision rather than a second one.
+     *
+     * A no-op by default, so the Android host and every existing caller are unaffected.
+     */
+    onInputContextChange: (StudyInputContext) -> Unit = {},
 ) {
     // The typed card's field holds focus while it is unanswered, which is exactly
     // when letter and space keys must reach the field instead of grading — so the
@@ -96,6 +108,9 @@ fun StudySessionScreen(
         textFieldFocused = textFieldFocused,
         answerRevealed = revealed || session.feedback.visible,
     )
+    LaunchedEffect(context) {
+        onInputContextChange(context)
+    }
     // A focus anchor so the shortcuts receive keys the moment the session appears,
     // without the user clicking first. The typed card's field takes focus for itself
     // when it mounts, so this only wins on the self-graded and choice cards — exactly

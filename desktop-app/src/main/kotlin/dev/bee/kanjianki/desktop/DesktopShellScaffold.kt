@@ -35,6 +35,8 @@ import dev.bee.kanjianki.games.GamesScreenView
 import dev.bee.kanjianki.games.rememberGamesCopy
 import dev.bee.kanjianki.hostpresentation.DesktopDetailModel
 import dev.bee.kanjianki.hostpresentation.DesktopHomeModels
+import dev.bee.kanjianki.hostpresentation.DesktopMenuBar
+import dev.bee.kanjianki.hostpresentation.DesktopMenuModel
 import dev.bee.kanjianki.hostpresentation.HostProviderStatus
 import dev.bee.kanjianki.hostpresentation.DesktopGamesModel
 import dev.bee.kanjianki.hostpresentation.DesktopSettingsModel
@@ -68,6 +70,8 @@ import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.RouteState
+import dev.bee.kanjianki.presentation.StudyInputContext
+import dev.bee.kanjianki.presentation.StudyKeybindings
 import dev.bee.kanjianki.data.desktop.DesktopBackupRestoreValidator
 import dev.bee.kanjianki.data.desktop.DesktopBackupSnapshotter
 import dev.bee.kanjianki.data.desktop.DesktopStagedRestoreApplier
@@ -126,7 +130,19 @@ private const val MINUTE_MILLIS = 60_000L
  * would change the shipped app's appearance.
  */
 @Composable
-internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
+internal fun DesktopShellScaffold(
+    container: DesktopKaniContainer,
+    /**
+     * Receives the window's menu bar, and the dispatcher to send its actions to.
+     *
+     * The menu is `Window`-scoped in Compose Desktop and this is not — but every input the
+     * menu needs (the shell state, the visible session, the loaded keybindings, and the
+     * one `dispatch`) is here. Handing the built bar and that same dispatcher outward is
+     * what makes a menu choice indistinguishable from a click on the equivalent control;
+     * a window holding its own copy of the host would be a second path into the reducer.
+     */
+    onMenuBarChange: (DesktopMenuBar, (KaniAction) -> Unit) -> Unit = { _, _ -> },
+) {
     val scope = rememberCoroutineScope()
     val provider = remember(container) {
         DesktopProviderProbe.forLoopbackEndpoint(container.secretStore)
@@ -214,6 +230,24 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
         dispatch(KaniAction.Lifecycle.Entered)
     }
 
+    // What holds the keyboard on the Study route, reported by the surface itself. The
+    // menu's grade items must be inert while a card is face down, and the reveal state is
+    // the surface's local state — so it is read from there rather than guessed at here.
+    var studyInputContext by remember { mutableStateOf(StudyInputContext()) }
+    val content = routeState.content.valueOrNull
+    val menuBar = DesktopMenuModel.bar(
+        shell = shellState,
+        // Only on the Study route: elsewhere there is no visible card, so a grade item
+        // that resolved off a stale session would grade a card the user cannot see.
+        session = content?.study?.takeIf { shellState.current is KaniDestination.Study },
+        bindings = content?.studyKeybindings ?: StudyKeybindings.DEFAULT,
+        platform = container.keyboardPlatform,
+        context = studyInputContext,
+    )
+    LaunchedEffect(menuBar) {
+        onMenuBarChange(menuBar, dispatch)
+    }
+
     val effectHandler = remember(container, provider) {
         desktopEffectHandler(container = container, provider = provider)
     }
@@ -234,6 +268,7 @@ internal fun DesktopShellScaffold(container: DesktopKaniContainer) {
                 state = routeState,
                 capabilities = shellState.capabilities,
                 dispatch = dispatch,
+                onStudyInputContextChange = { studyInputContext = it },
             )
         }
     }
@@ -254,6 +289,7 @@ private fun DesktopRouteBody(
     state: RouteState<DesktopRouteContent>,
     capabilities: PlatformCapabilities,
     dispatch: (KaniAction) -> Unit,
+    onStudyInputContextChange: (StudyInputContext) -> Unit,
 ) {
     ShellRouteContent(
         state = state,
@@ -283,6 +319,7 @@ private fun DesktopRouteBody(
             KaniDestination.Study -> DesktopStudyRoute(
                 content = content,
                 dispatch = dispatch,
+                onInputContextChange = onStudyInputContextChange,
             )
             KaniDestination.Stats -> DesktopStatsRoute(
                 content = content,
@@ -459,6 +496,7 @@ private fun DesktopDetailRoute(
 private fun DesktopStudyRoute(
     content: DesktopRouteContent,
     dispatch: (KaniAction) -> Unit,
+    onInputContextChange: (StudyInputContext) -> Unit,
 ) {
     val session = content.study ?: return
     Column(
@@ -471,6 +509,9 @@ private fun DesktopStudyRoute(
             resolver = LiteralUiTextResolver,
             dispatch = dispatch,
             keybindings = content.studyKeybindings,
+            // The menu bar's grade items follow the card's reveal state, which is the
+            // surface's own local state; this is how it reaches the window.
+            onInputContextChange = onInputContextChange,
         )
     }
 }

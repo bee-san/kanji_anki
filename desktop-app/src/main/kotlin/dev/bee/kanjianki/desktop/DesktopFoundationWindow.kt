@@ -22,9 +22,11 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import dev.bee.kanjianki.hostpresentation.DesktopMenuBar
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.desktop.DesktopDeviceSettingsStore
 import dev.bee.kanjianki.platform.desktop.DesktopLogger
+import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.shell.DESKTOP_MINIMUM_WINDOW_HEIGHT
 import dev.bee.kanjianki.shell.DESKTOP_MINIMUM_WINDOW_WIDTH
 import java.awt.Dimension
@@ -117,7 +119,23 @@ private fun runWindow(
                     DESKTOP_MINIMUM_WINDOW_WIDTH.value.toInt(),
                     DESKTOP_MINIMUM_WINDOW_HEIGHT.value.toInt(),
                 )
-                KaniDesktopFoundation(container = container)
+                // The menu is built inside the shell — where the shell state, the visible
+                // session, the loaded keybindings, and the one dispatcher already are — and
+                // handed back out to here, because `MenuBar` is window-scoped and the shell
+                // is not. Held as state rather than passed down so the window renders the
+                // menu without the shell knowing anything about AWT.
+                var menuBar by remember { mutableStateOf<DesktopMenuBar?>(null) }
+                var menuDispatch by remember { mutableStateOf<((KaniAction) -> Unit)?>(null) }
+                menuBar?.let { bar ->
+                    menuDispatch?.let { dispatch -> KaniMenuBar(bar = bar, dispatch = dispatch) }
+                }
+                KaniDesktopFoundation(
+                    container = container,
+                    onMenuBarChange = { bar, dispatch ->
+                        menuBar = bar
+                        menuDispatch = dispatch
+                    },
+                )
                 if (smokeTest) {
                     LaunchedEffect(dataRoot) {
                         repeat(SMOKE_RENDER_FRAME_COUNT) {
@@ -241,6 +259,9 @@ private val INITIAL_WINDOW_HEIGHT = 800.dp
  * table. That table is the part Goals 194+ replace one route at a time.
  */
 @Composable
-internal fun KaniDesktopFoundation(container: DesktopKaniContainer) {
-    DesktopShellScaffold(container = container)
+internal fun KaniDesktopFoundation(
+    container: DesktopKaniContainer,
+    onMenuBarChange: (DesktopMenuBar, (KaniAction) -> Unit) -> Unit = { _, _ -> },
+) {
+    DesktopShellScaffold(container = container, onMenuBarChange = onMenuBarChange)
 }
