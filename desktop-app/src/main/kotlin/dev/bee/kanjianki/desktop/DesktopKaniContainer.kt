@@ -20,6 +20,7 @@ import dev.bee.kanjianki.platform.desktop.DesktopDeviceSettingsStore
 import dev.bee.kanjianki.platform.desktop.DesktopFileAccess
 import dev.bee.kanjianki.platform.desktop.DesktopSecretStore
 import dev.bee.kanjianki.platform.desktop.DesktopShutdownCoordinator
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import java.nio.file.Path
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -63,6 +64,17 @@ internal class DesktopKaniContainer(
         DesktopDeviceSettingsStore.open(
             profileDir.resolve(DesktopDeviceSettingsStore.FILE_NAME),
         )
+
+    /**
+     * This machine's keyboard conventions, for labelling bindings and for the
+     * reserved-chord list.
+     *
+     * Detected from the running JVM rather than stored, deliberately: the same profile
+     * directory can be opened on a different OS (a synced home directory, a portable
+     * install), and a Mac's `⌘` notation shown on Windows would name a key that is not
+     * on the keyboard.
+     */
+    val keyboardPlatform: KeyboardPlatform = KeyboardPlatform.of(System.getProperty("os.name"))
 
     /**
      * Session-only unless a qualified OS vault is wired.
@@ -112,6 +124,7 @@ internal class DesktopKaniContainer(
         settingsUseCases = settingsUseCases,
         deviceSettings = { deviceSettingsStore.snapshot() },
         annotateCapabilities = { items -> runBlocking { homeUseCases.annotateCapabilities(items) } },
+        keyboardPlatform = keyboardPlatform,
     )
 
     override val userIoExecutor: ExecutorService =

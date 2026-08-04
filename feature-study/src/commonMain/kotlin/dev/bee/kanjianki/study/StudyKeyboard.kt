@@ -178,13 +178,14 @@ internal fun Modifier.studyKeyboardShortcuts(
     session: StudySession,
     context: StudyInputContext,
     dispatch: (KaniAction) -> Unit,
+    bindings: StudyKeybindings = StudyKeybindings.DEFAULT,
 ): Modifier {
     val repeats = remember { StudyKeyRepeatFilter() }
     return onPreviewKeyEvent { event ->
         // Every event updates the held-key set, including ones no binding wants, or a
         // key-up outside the mapping would leave its key stuck as held.
         val isRepeat = repeats.isRepeat(event.key, event.type == KeyEventType.KeyDown)
-        val action = StudyKeyboardAdapter.actionFor(event, session, context, isRepeat)
+        val action = StudyKeyboardAdapter.actionFor(event, session, context, isRepeat, bindings)
         if (action != null) {
             dispatch(action)
             true

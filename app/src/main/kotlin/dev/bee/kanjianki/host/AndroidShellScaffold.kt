@@ -189,7 +189,13 @@ private fun AndroidRouteBody(
             }
             KaniDestination.Study -> content.study?.let { session ->
                 ScrollColumn {
-                    StudySessionScreen(session = session, copy = rememberStudyCopy(), resolver = LiteralUiTextResolver, dispatch = dispatch)
+                    StudySessionScreen(
+                        session = session,
+                        copy = rememberStudyCopy(),
+                        resolver = LiteralUiTextResolver,
+                        dispatch = dispatch,
+                        keybindings = content.studyKeybindings,
+                    )
                 }
             }
             KaniDestination.Stats -> content.stats?.let { dashboard ->

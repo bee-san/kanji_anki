@@ -8,10 +8,16 @@ import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsSectionContent
 import dev.bee.kanjianki.presentation.SettingsSection
+import dev.bee.kanjianki.presentation.StudyCommand
+import dev.bee.kanjianki.presentation.StudyKeybindings
+import dev.bee.kanjianki.presentation.StudyKeybindingsCodec
+import dev.bee.kanjianki.presentation.label
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -26,7 +32,7 @@ import org.junit.Test
  */
 class DesktopSettingsModelTest {
     @Test
-    fun theRootBuildsTheFiveCategoryMenu() {
+    fun theRootBuildsTheSixCategoryMenu() {
         val screen = DesktopSettingsModel.screen(SettingsSection.ROOT, snapshot())
 
         assertEquals(SettingsSection.ROOT, screen.section)
@@ -36,6 +42,11 @@ class DesktopSettingsModelTest {
             listOf(
                 SettingsSection.IMPORT_SYNC,
                 SettingsSection.STUDY_BEHAVIOR,
+                // The keybinding editor is a root category, not a child of study
+                // behaviour: the shared Settings surface has no sub-category control
+                // inside a section's controls panel, so a card on the root menu is the
+                // only way a user reaches it.
+                SettingsSection.KEYBINDINGS,
                 SettingsSection.AUTOMATION,
                 SettingsSection.APPEARANCE,
                 SettingsSection.DISPLAY_DATA,
@@ -70,6 +81,7 @@ class DesktopSettingsModelTest {
             SettingsSection.APPEARANCE,
             SettingsSection.STUDY_BEHAVIOR,
             SettingsSection.IMPORT_SYNC,
+            SettingsSection.KEYBINDINGS,
         )
         for (section in SettingsSection.entries.filter { it !in ported }) {
             val screen = DesktopSettingsModel.screen(section, snapshot())
@@ -235,6 +247,129 @@ class DesktopSettingsModelTest {
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetNumber("unknown_key", 1), current))
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.SetToggle("unknown_key", enabled = true), current))
         assertNull(DesktopSettingsModel.settingsCommandFor(KaniAction.Settings.Command("reset_ladder"), current))
+    }
+
+    @Test
+    fun theKeybindingEditorNamesEveryCommandAndTheKeysItHolds() {
+        val screen = DesktopSettingsModel.screen(
+            section = SettingsSection.KEYBINDINGS,
+            snapshot = snapshot(),
+            bindings = StudyKeybindings.DEFAULT,
+            platform = KeyboardPlatform.LINUX,
+        )
+
+        val content = screen.content as SettingsSectionContent.Keybindings
+        assertEquals(StudyCommand.entries.size, content.rows.size)
+        // Named the way the Study buttons name them, not by wire id.
+        assertEquals(
+            listOf("Show answer / continue", "Pass", "Fail", "Undo"),
+            content.rows.map { it.label },
+        )
+        assertEquals("3, Numpad 3, P", content.rows.first { it.label == "Pass" }.accelerator)
+        assertEquals(
+            KaniAction.Settings.Command("study_keybindings.reset"),
+            content.reset.action,
+        )
+    }
+
+    @Test
+    fun anUnavailableKeyStaysListedWithTheReasonItCannotBeChosen() {
+        val screen = DesktopSettingsModel.screen(
+            section = SettingsSection.KEYBINDINGS,
+            snapshot = snapshot(),
+            bindings = StudyKeybindings.DEFAULT,
+            platform = KeyboardPlatform.WINDOWS,
+        )
+
+        val content = screen.content as SettingsSectionContent.Keybindings
+        val pass = content.rows.first { it.label == "Pass" }
+        // `1` belongs to Fail, and the reason names the command that holds it, so the
+        // user is told where the key went rather than finding the row inert.
+        assertEquals("Already Fail", pass.candidates.first { it.label == "1" }.unavailableReason)
+        // An OS chord is refused with the OS action, and both refusals disable the chip.
+        val ctrlC = pass.candidates.first { it.label == "Ctrl+C" }
+        assertEquals("Used by the system: Copy", ctrlC.unavailableReason)
+        assertFalse(ctrlC.enabled)
+        // Kani's own undo chord reports the command that holds it, not an OS reservation.
+        assertEquals("Already Undo", pass.candidates.first { it.label == "Ctrl+Z" }.unavailableReason)
+        // A free key and a free chord are both offered.
+        assertTrue(pass.candidates.first { it.label == "G" }.enabled)
+        assertTrue(pass.candidates.first { it.label == "Ctrl+G" }.enabled)
+    }
+
+    @Test
+    fun aKeybindingEditRoundTripsThroughStorageAndRefusesWhatWouldNotStick() {
+        val stored = StudyKeybindingsCodec.encode(StudyKeybindings.DEFAULT)
+        val bindPassG = (
+            DesktopSettingsModel.screen(
+                section = SettingsSection.KEYBINDINGS,
+                snapshot = snapshot(),
+                bindings = StudyKeybindings.DEFAULT,
+                platform = KeyboardPlatform.LINUX,
+            ).content as SettingsSectionContent.Keybindings
+            )
+            .rows.first { it.label == "Pass" }
+            .candidates.first { it.label == "G" }
+            .action as KaniAction.Settings
+
+        val next = DesktopSettingsModel.keybindingEditFor(bindPassG, stored, KeyboardPlatform.LINUX)
+        assertNotNull("binding a free key must produce storable state", next)
+        val decoded = StudyKeybindingsCodec.decode(next)
+        assertEquals("3, Numpad 3, P, G", decoded.strokesFor(StudyCommand.GRADE_PASS).joinToString(", ") { it.label(KeyboardPlatform.LINUX) })
+
+        // Re-applying the same bind changes nothing, and null is how "do not write" is
+        // said — otherwise a repeated click would churn the settings file.
+        assertNull(DesktopSettingsModel.keybindingEditFor(bindPassG, next, KeyboardPlatform.LINUX))
+        // Not a keybinding edit at all, and an id this build cannot read: both ignored
+        // rather than guessed at.
+        assertNull(DesktopSettingsModel.keybindingEditFor(KaniAction.Settings.SetNumber("k", 1), stored, KeyboardPlatform.LINUX))
+        assertNull(DesktopSettingsModel.keybindingEditFor(KaniAction.Settings.Command("reset_ladder"), stored, KeyboardPlatform.LINUX))
+        assertNull(
+            DesktopSettingsModel.keybindingEditFor(
+                KaniAction.Settings.Command("study_keybindings.bind:grade_pass:Nonsense"),
+                stored,
+                KeyboardPlatform.LINUX,
+            ),
+        )
+        // A host that dispatched a reserved chord anyway still cannot store a dead
+        // binding: apply re-gates it rather than trusting the greyed-out chip.
+        assertNull(
+            DesktopSettingsModel.keybindingEditFor(
+                KaniAction.Settings.Command("study_keybindings.bind:grade_pass:ctrl+c"),
+                stored,
+                KeyboardPlatform.WINDOWS,
+            ),
+        )
+    }
+
+    @Test
+    fun unbindingAndResettingAreEditsLikeAnyOther() {
+        val stored = StudyKeybindingsCodec.encode(StudyKeybindings.DEFAULT)
+        val pass = (
+            DesktopSettingsModel.screen(
+                section = SettingsSection.KEYBINDINGS,
+                snapshot = snapshot(),
+                bindings = StudyKeybindings.DEFAULT,
+                platform = KeyboardPlatform.LINUX,
+            ).content as SettingsSectionContent.Keybindings
+            ).rows.first { it.label == "Pass" }
+
+        val removeP = pass.unbind.first { it.label == "Remove P" }.action as KaniAction.Settings
+        val withoutP = DesktopSettingsModel.keybindingEditFor(removeP, stored, KeyboardPlatform.LINUX)
+        assertEquals(
+            "3, Numpad 3",
+            StudyKeybindingsCodec.decode(withoutP).strokesFor(StudyCommand.GRADE_PASS)
+                .joinToString(", ") { it.label(KeyboardPlatform.LINUX) },
+        )
+
+        // Reset from an edited set restores the reviewed defaults; reset from the
+        // defaults is a no-op and writes nothing.
+        val reset = KaniAction.Settings.Command("study_keybindings.reset")
+        assertEquals(stored, DesktopSettingsModel.keybindingEditFor(reset, withoutP, KeyboardPlatform.LINUX))
+        assertNull(DesktopSettingsModel.keybindingEditFor(reset, stored, KeyboardPlatform.LINUX))
+        // Unreadable stored state is read as the defaults, so reset from garbage is also
+        // a no-op rather than a write of the same value.
+        assertNull(DesktopSettingsModel.keybindingEditFor(reset, "not a binding set", KeyboardPlatform.LINUX))
     }
 
     private fun snapshot(theme: KaniThemeChoice = KaniThemeChoice.GIRLYPOP): SettingsSnapshot = SettingsSnapshot(

@@ -9,15 +9,19 @@ import dev.bee.kanjianki.core.FocusQueuePolicy
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.StudyQueueSnapshot
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.presentation.BrowseResults
 import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KanjiDetail
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.StatsDashboard
+import dev.bee.kanjianki.presentation.StudyKeybindings
+import dev.bee.kanjianki.presentation.StudyKeybindingsCodec
 import dev.bee.kanjianki.progress.progressAnalyticsSnapshot
 
 private const val MINUTE_MILLIS = 60_000L
@@ -54,6 +58,12 @@ class KaniRouteLoader(
     private val settingsUseCases: SettingsUseCases,
     private val deviceSettings: () -> DeviceSettingsReader,
     private val annotateCapabilities: (List<dev.bee.kanjianki.core.RecordsStudyModels.StudyItem>) -> List<dev.bee.kanjianki.core.RecordsStudyModels.StudyItem>,
+    /**
+     * The host's keyboard conventions, for labelling bindings and for the reserved-chord
+     * list. Defaults to [KeyboardPlatform.LINUX], which is also the right answer for
+     * Android: Ctrl-primary notation, and no OS chord set to avoid.
+     */
+    private val keyboardPlatform: KeyboardPlatform = KeyboardPlatform.LINUX,
 ) {
     suspend fun load(
         destination: KaniDestination,
@@ -146,10 +156,27 @@ class KaniRouteLoader(
             stats = loadStats(destination, nowMillis),
             games = gamesRender?.let(DesktopGamesModel::screen),
             settings = (destination as? KaniDestination.Settings)?.let {
-                DesktopSettingsModel.screen(it.section, snapshot.settings)
+                DesktopSettingsModel.screen(
+                    section = it.section,
+                    snapshot = snapshot.settings,
+                    bindings = studyKeybindings(),
+                    platform = keyboardPlatform,
+                )
             },
+            studyKeybindings = studyKeybindings(),
         )
     }
+
+    /**
+     * The user's Study keybindings, or the reviewed defaults.
+     *
+     * Read on every route load rather than cached, because the Settings editor writes
+     * them through the device-settings store and the very next load has to show — and
+     * study with — what was just saved. Malformed stored state falls open to the whole
+     * default set; see `StudyKeybindingsCodec.decode`.
+     */
+    private fun studyKeybindings(): StudyKeybindings =
+        StudyKeybindingsCodec.decode(deviceSettings().read(DeviceSettingKeys.studyKeybindings))
 
     private suspend fun loadBrowse(destination: KaniDestination): BrowseResults {
         val browse = destination as? KaniDestination.Browse ?: return BrowseResults()

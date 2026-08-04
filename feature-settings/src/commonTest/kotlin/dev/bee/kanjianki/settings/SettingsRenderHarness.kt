@@ -24,6 +24,8 @@ import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsChoiceOption
 import dev.bee.kanjianki.presentation.SettingsControl
+import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
+import dev.bee.kanjianki.presentation.SettingsKeybindingRow
 import dev.bee.kanjianki.presentation.SettingsRoot
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.SettingsSection
@@ -103,6 +105,47 @@ internal fun controlsScreen(): SettingsScreen = SettingsScreen(
                 label = "Database version",
                 value = "31",
             ),
+        ),
+    ),
+)
+
+/**
+ * The keybinding editor, with a bound command, an unbound one, and both refusal reasons.
+ *
+ * Small on purpose: the real screen offers ~50 candidates per command, and the point
+ * under test is that a row shows what it holds, offers what can be chosen, and states
+ * why the rest cannot — not that fifty chips lay out.
+ */
+internal fun keybindingsScreen(): SettingsScreen = SettingsScreen(
+    section = SettingsSection.KEYBINDINGS,
+    content = SettingsSectionContent.Keybindings(
+        title = "Keyboard shortcuts",
+        rows = listOf(
+            SettingsKeybindingRow(
+                label = "Pass",
+                accelerator = "3, Numpad 3, P",
+                unbind = listOf(
+                    SettingsKeybindingChoice("Remove P", KaniAction.Settings.Command("study_keybindings.unbind:P")),
+                ),
+                candidates = listOf(
+                    SettingsKeybindingChoice("G", KaniAction.Settings.Command("study_keybindings.bind:grade_pass:G")),
+                    SettingsKeybindingChoice(
+                        label = "1",
+                        action = KaniAction.Settings.Command("study_keybindings.bind:grade_pass:1"),
+                        unavailableReason = "Already Fail",
+                    ),
+                    SettingsKeybindingChoice(
+                        label = "Ctrl+Z",
+                        action = KaniAction.Settings.Command("study_keybindings.bind:grade_pass:Ctrl+Z"),
+                        unavailableReason = "Used by the system: Undo",
+                    ),
+                ),
+            ),
+            SettingsKeybindingRow(label = "Undo", accelerator = "No key"),
+        ),
+        reset = SettingsControl.ActionButton(
+            label = "Reset to defaults",
+            action = KaniAction.Settings.Command("study_keybindings.reset"),
         ),
     ),
 )

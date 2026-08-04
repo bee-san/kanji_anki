@@ -23,6 +23,17 @@ class DeviceSettingsStoreTest {
     }
 
     @Test
+    fun studyKeybindingsAreDeviceLocalSoAMacChordCannotArriveOnWindows() {
+        // The reason this key is device-local rather than portable state: a restore must
+        // not hand a Windows user the ⌘Z their Mac profile stored.
+        assertEquals(DeviceSettingValueType.STRING, DeviceSettingKeys.studyKeybindings.valueType)
+        assertTrue(
+            DeviceSettingKeys.portableExclusionStorageNames
+                .contains(DeviceSettingKeys.studyKeybindings.storageName),
+        )
+    }
+
+    @Test
     fun storeContractSupportsAtomicTypedEditsAndRemoval() {
         val store = InMemoryDeviceSettingsStore()
 

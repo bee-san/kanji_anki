@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.SettingsImportTextCopy
+import dev.bee.kanjianki.core.SettingsKeybindingTextCopy
 import dev.bee.kanjianki.core.SettingsInputRules
 import dev.bee.kanjianki.core.SettingsSectionTextCopy
 import dev.bee.kanjianki.core.SettingsStudyBehaviorTextCopy
@@ -12,13 +13,21 @@ import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsChoiceOption
 import dev.bee.kanjianki.presentation.SettingsControl
+import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
+import dev.bee.kanjianki.presentation.SettingsKeybindingRow
 import dev.bee.kanjianki.presentation.SettingsRoot
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.SettingsSection
 import dev.bee.kanjianki.presentation.SettingsSectionContent
+import dev.bee.kanjianki.presentation.StudyKeybindingCommands
+import dev.bee.kanjianki.presentation.StudyKeybindingIssue
+import dev.bee.kanjianki.presentation.StudyKeybindingScreen
+import dev.bee.kanjianki.presentation.StudyKeybindings
+import dev.bee.kanjianki.presentation.StudyKeybindingsCodec
 
 /**
  * Maps a [SettingsSection] to the portable [SettingsScreen] the shared surface renders.
@@ -55,7 +64,12 @@ object DesktopSettingsModel {
         RecordsBase.NEW_CARD_SORT_KANI_WEAKNESS,
     )
 
-    fun screen(section: SettingsSection, snapshot: SettingsSnapshot): SettingsScreen = when (section) {
+    fun screen(
+        section: SettingsSection,
+        snapshot: SettingsSnapshot,
+        bindings: StudyKeybindings = StudyKeybindings.DEFAULT,
+        platform: KeyboardPlatform = KeyboardPlatform.LINUX,
+    ): SettingsScreen = when (section) {
         SettingsSection.ROOT -> SettingsScreen(section = section, root = root())
         SettingsSection.APPEARANCE ->
             SettingsScreen(section = section, content = appearance(snapshot.themeChoice))
@@ -63,7 +77,66 @@ object DesktopSettingsModel {
             SettingsScreen(section = section, content = studyBehavior(snapshot))
         SettingsSection.IMPORT_SYNC ->
             SettingsScreen(section = section, content = importSync(snapshot))
+        SettingsSection.KEYBINDINGS ->
+            SettingsScreen(section = section, content = keybindings(bindings, platform))
         else -> SettingsScreen(section = section)
+    }
+
+    /**
+     * The Study keybinding editor for [bindings], as read on [platform].
+     *
+     * The rules — what conflicts, what the platform reserves, how a chord is written —
+     * are [StudyKeybindingScreen]'s, in `:presentation-api`, so both hosts get the same
+     * editor and the validation is assertable without a screen. This is only the copy:
+     * command names from [SettingsKeybindingTextCopy], and each refusal turned into the
+     * sentence the row shows.
+     *
+     * Every candidate is listed even when it cannot be chosen, with its reason. Hiding
+     * an unavailable key leaves the user hunting for a row that is not there; "Already
+     * Fail" answers the question instead.
+     */
+    private fun keybindings(
+        bindings: StudyKeybindings,
+        platform: KeyboardPlatform,
+    ): SettingsSectionContent.Keybindings {
+        val screen = StudyKeybindingScreen.of(bindings, platform)
+        return SettingsSectionContent.Keybindings(
+            title = SettingsKeybindingTextCopy.keybindingsTitle(),
+            rows = screen.rows.map { row ->
+                SettingsKeybindingRow(
+                    label = SettingsKeybindingTextCopy.commandLabel(row.command.id),
+                    accelerator = row.acceleratorLabel.ifBlank {
+                        SettingsKeybindingTextCopy.unboundLabel()
+                    },
+                    unbind = row.bound.map { bound ->
+                        SettingsKeybindingChoice(
+                            label = SettingsKeybindingTextCopy.removeKeyLabel(bound.label),
+                            action = bound.unbindAction,
+                        )
+                    },
+                    candidates = row.candidates.map { candidate ->
+                        SettingsKeybindingChoice(
+                            label = candidate.label,
+                            action = candidate.bindAction(row.command),
+                            unavailableReason = candidate.issue?.let(::issueReason),
+                        )
+                    },
+                )
+            },
+            reset = SettingsControl.ActionButton(
+                label = SettingsKeybindingTextCopy.resetLabel(),
+                action = KaniAction.Settings.Command(StudyKeybindingCommands.RESET),
+            ),
+        )
+    }
+
+    /** The sentence a refusal reads as on a row. */
+    private fun issueReason(issue: StudyKeybindingIssue): String = when (issue) {
+        is StudyKeybindingIssue.Conflict -> SettingsKeybindingTextCopy.conflictReason(
+            SettingsKeybindingTextCopy.commandLabel(issue.command.id),
+        )
+        is StudyKeybindingIssue.Reserved ->
+            SettingsKeybindingTextCopy.reservedReason(issue.reservedFor)
     }
 
     /**
@@ -255,6 +328,33 @@ object DesktopSettingsModel {
         }
 
     /**
+     * The encoded keybinding string a settings [action] should store, or null to store
+     * nothing.
+     *
+     * The keybinding editor's own persistence path, separate from [settingsCommandFor]
+     * because bindings are device-local (`DeviceSettingKeys.studyKeybindings`) rather
+     * than portable collection settings — a Mac user's `⌘Z` must not restore onto their
+     * Windows install. Kept a pure String-in/String-out function so the host's only job
+     * is one `edit { put(…) }`, and every rule is testable without a store.
+     *
+     * Null means "do not write": the action was not a keybinding edit, this build cannot
+     * read the id, the platform or another command holds the key, or it was already the
+     * state. Writing on a no-op would rewrite the settings file every time the editor
+     * re-renders a row the user did not change.
+     */
+    fun keybindingEditFor(
+        action: KaniAction.Settings,
+        stored: String?,
+        platform: KeyboardPlatform,
+    ): String? {
+        val command = action as? KaniAction.Settings.Command ?: return null
+        val edit = StudyKeybindingCommands.parse(command.id) ?: return null
+        val current = StudyKeybindingsCodec.decode(stored)
+        val next = StudyKeybindingCommands.apply(edit, current, platform) ?: return null
+        return StudyKeybindingsCodec.encode(next)
+    }
+
+    /**
      * The current import filters as a full [SettingsSaveCommand.ImportFilters], with one
      * field changed by [mutate].
      *
@@ -298,6 +398,11 @@ object DesktopSettingsModel {
                 section = SettingsSection.STUDY_BEHAVIOR,
                 title = SettingsSectionTextCopy.settingsStudyBehaviorTitle(),
                 summary = SettingsSectionTextCopy.settingsStudyBehaviorBody(),
+            ),
+            SettingsCategory(
+                section = SettingsSection.KEYBINDINGS,
+                title = SettingsKeybindingTextCopy.keybindingsTitle(),
+                summary = SettingsKeybindingTextCopy.keybindingsSummary(),
             ),
             SettingsCategory(
                 section = SettingsSection.AUTOMATION,

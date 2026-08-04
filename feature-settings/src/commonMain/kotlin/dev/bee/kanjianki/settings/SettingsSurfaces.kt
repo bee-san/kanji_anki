@@ -3,6 +3,8 @@ package dev.bee.kanjianki.settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -26,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsControl
+import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
+import dev.bee.kanjianki.presentation.SettingsKeybindingRow
 import dev.bee.kanjianki.presentation.SettingsRoot
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.SettingsSectionContent
@@ -36,12 +40,23 @@ const val SETTINGS_SCREEN_TEST_TAG: String = "kani-settings"
 const val SETTINGS_ROOT_TEST_TAG: String = "kani-settings-root"
 const val SETTINGS_CONTROLS_TEST_TAG: String = "kani-settings-controls"
 const val SETTINGS_PLACEHOLDER_TEST_TAG: String = "kani-settings-placeholder"
+const val SETTINGS_KEYBINDINGS_TEST_TAG: String = "kani-settings-keybindings"
 
 /** One root category card, tagged by its section route. */
 fun settingsCategoryTestTag(route: String): String = "kani-settings-category-$route"
 
 /** One control, tagged by its label. */
 fun settingsControlTestTag(label: String): String = "kani-settings-control-$label"
+
+/** One keybinding row, tagged by its command label. */
+fun settingsKeybindingRowTestTag(label: String): String = "kani-settings-keybinding-$label"
+
+/** A keybinding row's current-accelerator line, tagged by its command label. */
+fun settingsKeybindingAcceleratorTestTag(label: String): String =
+    "kani-settings-keybinding-accelerator-$label"
+
+/** One bind/unbind key chip, tagged by its own label. */
+fun settingsKeybindingChoiceTestTag(label: String): String = "kani-settings-keybinding-key-$label"
 
 /** A stepper's decrement/increment button, tagged by its control label and direction. */
 fun settingsStepperButtonTestTag(label: String, up: Boolean): String =
@@ -75,6 +90,7 @@ fun SettingsScreenView(
         when (val content = screen.content) {
             SettingsSectionContent.Placeholder -> if (root == null) PlaceholderPanel(copy)
             is SettingsSectionContent.Controls -> ControlsPanel(content, dispatch)
+            is SettingsSectionContent.Keybindings -> KeybindingsPanel(content, dispatch)
         }
     }
 }
@@ -138,6 +154,118 @@ private fun ControlsPanel(content: SettingsSectionContent.Controls, dispatch: (K
                 ControlRow(control, dispatch)
             }
         }
+    }
+}
+
+/**
+ * The Study keybinding editor: one row per command, its keys, and a reset.
+ *
+ * The candidate keys are laid out as a wrapping row of buttons rather than a dropdown,
+ * because there are ~50 of them and a Compose Multiplatform menu is the least
+ * keyboard-accessible control available — an editor a user cannot reach by keyboard is a
+ * poor joke. A candidate the platform or another command holds is rendered disabled with
+ * its reason as its accessible description, so a screen reader reaches the same answer
+ * the sighted user does.
+ */
+@Composable
+private fun KeybindingsPanel(
+    content: SettingsSectionContent.Keybindings,
+    dispatch: (KaniAction) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_KEYBINDINGS_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = content.title,
+                modifier = Modifier.semantics { heading() },
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            for (row in content.rows) {
+                KeybindingRow(row, dispatch)
+            }
+            ControlRow(content.reset, dispatch)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KeybindingRow(row: SettingsKeybindingRow, dispatch: (KaniAction) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(settingsKeybindingRowTestTag(row.label)),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = row.label,
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                // The row's own accelerator line is the answer to "what is this bound to
+                // now", so it is read out with the command rather than left to the
+                // per-key buttons below.
+                text = row.accelerator,
+                modifier = Modifier
+                    .testTag(settingsKeybindingAcceleratorTestTag(row.label))
+                    .semantics { contentDescription = "${row.label}: ${row.accelerator}" },
+                color = KaniTheme.colors.muted,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+            )
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (bound in row.unbind) {
+                KeybindingChoiceChip(bound, bound.label, dispatch)
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (candidate in row.candidates) {
+                KeybindingChoiceChip(
+                    choice = candidate,
+                    description = candidate.unavailableReason
+                        ?.let { "${candidate.label}. $it" }
+                        ?: "${row.label}: ${candidate.label}",
+                    dispatch = dispatch,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeybindingChoiceChip(
+    choice: SettingsKeybindingChoice,
+    description: String,
+    dispatch: (KaniAction) -> Unit,
+) {
+    OutlinedButton(
+        onClick = { dispatch(choice.action) },
+        modifier = Modifier
+            .testTag(settingsKeybindingChoiceTestTag(choice.label))
+            .semantics { contentDescription = description },
+        enabled = choice.enabled,
+        shape = KaniUiTokens.ButtonShape,
+        border = BorderStroke(
+            1.dp,
+            if (choice.enabled) KaniTheme.colors.borderSoft else KaniTheme.colors.panelSoft,
+        ),
+    ) {
+        Text(
+            text = choice.label,
+            color = if (choice.enabled) KaniTheme.colors.ink else KaniTheme.colors.muted,
+            fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
+        )
     }
 }
 

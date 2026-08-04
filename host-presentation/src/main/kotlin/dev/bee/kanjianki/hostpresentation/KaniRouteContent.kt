@@ -9,6 +9,7 @@ import dev.bee.kanjianki.presentation.OnboardingPlan
 import dev.bee.kanjianki.presentation.OnboardingStep
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.StatsDashboard
+import dev.bee.kanjianki.presentation.StudyKeybindings
 import dev.bee.kanjianki.presentation.StudySession
 
 /**
@@ -46,4 +47,13 @@ data class KaniRouteContent(
     val stats: StatsDashboard? = null,
     val games: GamesScreen? = null,
     val settings: SettingsScreen? = null,
+    /**
+     * The Study keybindings in force, for the Study surface and native accelerators.
+     *
+     * On the content rather than read separately by the Study route, so the keyboard a
+     * card is graded with and the editor row that shows it come from the same load — a
+     * remap takes effect on the next route load, and nothing can render one binding
+     * while the shortcut handler uses another.
+     */
+    val studyKeybindings: StudyKeybindings = StudyKeybindings.DEFAULT,
 )

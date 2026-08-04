@@ -108,6 +108,16 @@ object DeviceSettingKeys {
     val desktopInstallationChannel = stringKey("desktop_installation_channel")
 
     /**
+     * The user's Study keybindings, encoded by `StudyKeybindingsCodec`.
+     *
+     * Device-local by nature, and that is the whole reason it is here rather than in the
+     * portable database: a macOS user binds `⌘Z`, and restoring that profile onto
+     * Windows must not hand them a Super chord the shell eats. A restore resets this,
+     * and the reader falls open to the reviewed defaults.
+     */
+    val studyKeybindings = stringKey("study_keybindings")
+
+    /**
      * The versioned allowlist of device-local settings storage names that must
      * never be published into a portable backup and must be reset on the
      * destination during a cross-platform restore. Covers the legacy
@@ -165,6 +175,7 @@ object DeviceSettingKeys {
         hostProfilePath.storageName,
         hostBackupPath.storageName,
         desktopInstallationChannel.storageName,
+        studyKeybindings.storageName,
     )
 
     private fun booleanKey(name: String) =

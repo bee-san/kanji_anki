@@ -34,6 +34,7 @@ import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.StudyCard
 import dev.bee.kanjianki.presentation.StudyInputContext
+import dev.bee.kanjianki.presentation.StudyKeybindings
 import dev.bee.kanjianki.presentation.StudySession
 import dev.bee.kanjianki.presentation.StudySessionState
 import dev.bee.kanjianki.presentation.UiTextResolver
@@ -69,6 +70,14 @@ fun StudySessionScreen(
     resolver: UiTextResolver,
     dispatch: (KaniAction) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * The keys in force, defaulting to the reviewed set.
+     *
+     * Passed in rather than read here, because the host owns the device-settings store
+     * and the Settings editor writes through it — the surface renders whatever the route
+     * load resolved, so the keyboard and the editor row cannot disagree.
+     */
+    keybindings: StudyKeybindings = StudyKeybindings.DEFAULT,
 ) {
     // The typed card's field holds focus while it is unanswered, which is exactly
     // when letter and space keys must reach the field instead of grading — so the
@@ -108,7 +117,7 @@ fun StudySessionScreen(
             .fillMaxWidth()
             .focusRequester(focusRequester)
             .focusable()
-            .studyKeyboardShortcuts(session, context, dispatchAndReveal)
+            .studyKeyboardShortcuts(session, context, dispatchAndReveal, keybindings)
             .testTag(STUDY_SESSION_TEST_TAG),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

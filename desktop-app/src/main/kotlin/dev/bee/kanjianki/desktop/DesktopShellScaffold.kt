@@ -71,6 +71,7 @@ import dev.bee.kanjianki.presentation.RouteState
 import dev.bee.kanjianki.data.desktop.DesktopBackupRestoreValidator
 import dev.bee.kanjianki.data.desktop.DesktopBackupSnapshotter
 import dev.bee.kanjianki.data.desktop.DesktopStagedRestoreApplier
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.desktop.DesktopClipboardService
 import dev.bee.kanjianki.platform.desktop.DesktopFilePicker
 import dev.bee.kanjianki.platform.desktop.DesktopExternalNavigator
@@ -469,6 +470,7 @@ private fun DesktopStudyRoute(
             copy = rememberStudyCopy(),
             resolver = LiteralUiTextResolver,
             dispatch = dispatch,
+            keybindings = content.studyKeybindings,
         )
     }
 }
@@ -706,6 +708,21 @@ private suspend fun persistSettings(
     container: DesktopKaniContainer,
     action: KaniAction.Settings,
 ) {
+    // Keybindings are device-local, not portable collection settings, so they take the
+    // device-settings store rather than a SettingsSaveCommand. A null edit means the
+    // platform or another command holds the key, or nothing would change — either way
+    // there is nothing to write, and the reload re-renders the unchanged set.
+    val keybindings = DesktopSettingsModel.keybindingEditFor(
+        action = action,
+        stored = container.deviceSettingsStore.read(DeviceSettingKeys.studyKeybindings),
+        platform = container.keyboardPlatform,
+    )
+    if (keybindings != null) {
+        container.deviceSettingsStore.edit {
+            put(DeviceSettingKeys.studyKeybindings, keybindings)
+        }
+        return
+    }
     // The current snapshot resolves paired commands (a ladder threshold carries both
     // values, so the untouched one is read here rather than clobbered).
     val current = container.settingsUseCases.load()

@@ -58,6 +58,55 @@ sealed interface SettingsSectionContent {
         val title: String,
         val controls: List<SettingsControl>,
     ) : SettingsSectionContent
+
+    /**
+     * The Study keybinding editor: one row per command, plus a reset.
+     *
+     * Its own content shape rather than a list of [SettingsControl]s because a command
+     * holds a *set* of keystrokes, not one value — a [SettingsControl.Choice] would
+     * force the editor to claim a command has exactly one key, and remapping `3` would
+     * appear to unbind `P`. Every string is already resolved by the host mapper, as
+     * everywhere else here, so the surface renders without knowing what a keybinding is.
+     */
+    data class Keybindings(
+        val title: String,
+        val rows: List<SettingsKeybindingRow>,
+        val reset: SettingsControl.ActionButton,
+    ) : SettingsSectionContent
+}
+
+/**
+ * One command's editor row: what it is bound to, and what it could be bound to.
+ *
+ * [accelerator] is the row's current bindings as one readable line, and blank when the
+ * command has no key — a state the editor shows rather than prevents, because every
+ * action stays reachable at a visible control. [unbind] carries one entry per bound
+ * keystroke so a user can drop a single key rather than the whole row.
+ */
+data class SettingsKeybindingRow(
+    val label: String,
+    val accelerator: String,
+    val unbind: List<SettingsKeybindingChoice> = emptyList(),
+    val candidates: List<SettingsKeybindingChoice> = emptyList(),
+)
+
+/**
+ * One keystroke a row offers, with the reason it cannot be chosen.
+ *
+ * [unavailableReason] is non-null when the platform or another command holds the key.
+ * The candidate is still listed: hiding it leaves the user hunting for a row that is not
+ * there, whereas "already Fail" or "Copy" answers the question. A host renders it
+ * disabled with its reason and must not dispatch [action] — and the host dispatch
+ * refuses the edit again anyway, so the disabled state is a courtesy, not the gate.
+ */
+data class SettingsKeybindingChoice(
+    val label: String,
+    val action: KaniAction,
+    val unavailableReason: String? = null,
+) {
+    /** Whether a host may offer this keystroke. */
+    val enabled: Boolean
+        get() = unavailableReason == null
 }
 
 /**

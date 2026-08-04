@@ -208,6 +208,16 @@ enum class SettingsSection(val route: String) {
     ROOT("settings"),
     IMPORT_SYNC("settings/import-sync"),
     STUDY_BEHAVIOR("settings/study-behavior"),
+
+    /**
+     * The Study keyboard-shortcut editor.
+     *
+     * A root-level section rather than a child of [STUDY_BEHAVIOR], because that is how
+     * the user reaches it: the shared Settings surface has no sub-category control inside
+     * a section's controls panel, so its category card sits on the root menu — and back
+     * has to return where the user came from.
+     */
+    KEYBINDINGS("settings/keybindings"),
     AUTOMATION("settings/automation"),
     APPEARANCE("settings/appearance"),
     DISPLAY_DATA("settings/display-data"),
@@ -220,7 +230,7 @@ enum class SettingsSection(val route: String) {
     val parent: SettingsSection?
         get() = when (this) {
             ROOT -> null
-            IMPORT_SYNC, STUDY_BEHAVIOR, AUTOMATION, APPEARANCE, DISPLAY_DATA -> ROOT
+            IMPORT_SYNC, STUDY_BEHAVIOR, KEYBINDINGS, AUTOMATION, APPEARANCE, DISPLAY_DATA -> ROOT
             UPDATE -> AUTOMATION
             LICENSES, HOW_IT_WORKS -> DISPLAY_DATA
         }

@@ -152,6 +152,54 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun aKeybindingRowShowsWhatItHoldsAndWhatCanReplaceIt() {
+        val section = SettingsSectionContent.Keybindings(
+            title = "Keyboard shortcuts",
+            rows = listOf(
+                SettingsKeybindingRow(
+                    label = "Pass",
+                    accelerator = "3, Numpad 3, P",
+                    unbind = listOf(
+                        SettingsKeybindingChoice("Remove P", KaniAction.Settings.Command("study_keybindings.unbind:P")),
+                    ),
+                    candidates = listOf(
+                        SettingsKeybindingChoice("G", KaniAction.Settings.Command("study_keybindings.bind:grade_pass:G")),
+                        SettingsKeybindingChoice(
+                            label = "1",
+                            action = KaniAction.Settings.Command("study_keybindings.bind:grade_pass:1"),
+                            unavailableReason = "Already Fail",
+                        ),
+                    ),
+                ),
+                // A command may hold nothing; the row still exists, so the editor never
+                // hides an action the user could bind.
+                SettingsKeybindingRow(label = "Undo", accelerator = "No key"),
+            ),
+            reset = SettingsControl.ActionButton(
+                label = "Reset to defaults",
+                action = KaniAction.Settings.Command("study_keybindings.reset"),
+            ),
+        )
+        assertEquals("Keyboard shortcuts", section.title)
+        assertEquals(listOf("Pass", "Undo"), section.rows.map { it.label })
+        assertEquals("study_keybindings.reset", (section.reset.action as KaniAction.Settings.Command).id)
+
+        val pass = section.rows.first()
+        assertEquals("3, Numpad 3, P", pass.accelerator)
+        assertEquals("Remove P", pass.unbind.single().label)
+        assertTrue(pass.unbind.single().enabled)
+        // A refused candidate stays listed and carries its reason, rather than vanishing:
+        // a hidden key leaves the user hunting for why it will not take.
+        val (offered, refused) = pass.candidates.partition { it.enabled }
+        assertEquals(listOf("G"), offered.map { it.label })
+        assertEquals(listOf("Already Fail"), refused.map { it.unavailableReason })
+
+        val undo = section.rows.last()
+        assertTrue(undo.unbind.isEmpty())
+        assertTrue(undo.candidates.isEmpty())
+    }
+
+    @Test
     fun theSettingsActionsGuardTheirKeys() {
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetToggle(" ", enabled = true) }
         assertFailsWith<IllegalArgumentException> { KaniAction.Settings.SetChoice(" ", "x") }

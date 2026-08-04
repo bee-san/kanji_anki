@@ -143,6 +143,72 @@ internal fun assertAnInfoRowShowsItsLabelAndValueWithNoAction() {
 }
 
 @OptIn(ExperimentalTestApi::class)
+internal fun assertAKeybindingRowReadsOutTheKeysItsCommandHolds() {
+    renderSettings(
+        content = { SettingsScreenView(keybindingsScreen(), settingsCopy(), dispatch = {}) },
+    ) {
+        onNodeWithTag(SETTINGS_KEYBINDINGS_TEST_TAG).performScrollTo()
+        // The accelerator line is the answer to "what is this bound to now", so a screen
+        // reader must get it with the command name rather than having to walk the chips.
+        assertEquals(
+            "Pass: 3, Numpad 3, P",
+            onNodeWithTag(settingsKeybindingAcceleratorTestTag("Pass")).performScrollTo().contentDescriptionOrEmpty(),
+        )
+        // A command holding nothing still shows a row and says so.
+        assertEquals(
+            "Undo: No key",
+            onNodeWithTag(settingsKeybindingAcceleratorTestTag("Undo")).performScrollTo().contentDescriptionOrEmpty(),
+        )
+        val row = onNodeWithTag(settingsKeybindingRowTestTag("Pass")).subtreeTextOrEmpty()
+        assertTrue(row.contains("Pass"), "command must name itself: $row")
+        assertTrue(row.contains("3, Numpad 3, P"), "bound keys must show: $row")
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertBindingAndUnbindingDispatchTheKeyTheyWereShownOn() {
+    val recorded = mutableListOf<KaniAction>()
+    renderSettings(
+        content = { SettingsScreenView(keybindingsScreen(), settingsCopy(), dispatch = { recorded += it }) },
+    ) {
+        onNodeWithTag(settingsKeybindingChoiceTestTag("G")).performScrollTo().performClick()
+        onNodeWithTag(settingsKeybindingChoiceTestTag("Remove P")).performScrollTo().performClick()
+        onNodeWithTag(settingsControlTestTag("Reset to defaults")).performScrollTo().performClick()
+        assertEquals(
+            listOf<KaniAction>(
+                KaniAction.Settings.Command("study_keybindings.bind:grade_pass:G"),
+                KaniAction.Settings.Command("study_keybindings.unbind:P"),
+                KaniAction.Settings.Command("study_keybindings.reset"),
+            ),
+            recorded,
+        )
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
+internal fun assertAnUnavailableKeyStatesItsReasonAndDispatchesNothing() {
+    val recorded = mutableListOf<KaniAction>()
+    renderSettings(
+        content = { SettingsScreenView(keybindingsScreen(), settingsCopy(), dispatch = { recorded += it }) },
+    ) {
+        // Refused keys stay on screen with their reason rather than vanishing: a hidden
+        // key leaves the user hunting for why the remap will not take.
+        onNodeWithTag(settingsKeybindingChoiceTestTag("1")).performScrollTo().assertIsNotEnabled()
+        assertEquals(
+            "1. Already Fail",
+            onNodeWithTag(settingsKeybindingChoiceTestTag("1")).contentDescriptionOrEmpty(),
+        )
+        assertEquals(
+            "Ctrl+Z. Used by the system: Undo",
+            onNodeWithTag(settingsKeybindingChoiceTestTag("Ctrl+Z")).performScrollTo().contentDescriptionOrEmpty(),
+        )
+        onNodeWithTag(settingsKeybindingChoiceTestTag("1")).performClick()
+        onNodeWithTag(settingsKeybindingChoiceTestTag("Ctrl+Z")).performClick()
+        assertEquals(emptyList<KaniAction>(), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
 internal fun assertAnUnportedSectionNamesItselfRatherThanBlank() {
     val copy = settingsCopy()
     renderSettings(
@@ -173,12 +239,17 @@ internal fun assertTheSettingsTestTagsAreDistinct() {
         SETTINGS_ROOT_TEST_TAG,
         SETTINGS_CONTROLS_TEST_TAG,
         SETTINGS_PLACEHOLDER_TEST_TAG,
+        SETTINGS_KEYBINDINGS_TEST_TAG,
     ) + SettingsSection.entries.map { settingsCategoryTestTag(it.route) } +
         listOf("Import weak cards", "New card order").map(::settingsControlTestTag) +
         listOf(
             settingsStepperButtonTestTag("Promotion interval", up = true),
             settingsStepperButtonTestTag("Promotion interval", up = false),
-        )
+        ) +
+        listOf("Pass", "Undo").flatMap {
+            listOf(settingsKeybindingRowTestTag(it), settingsKeybindingAcceleratorTestTag(it))
+        } +
+        listOf("G", "Ctrl+Z", "Remove P").map(::settingsKeybindingChoiceTestTag)
     assertEquals(tags.size, tags.distinct().size, "tags must be unique: $tags")
     assertEquals("kani-settings-category-settings/appearance", settingsCategoryTestTag(SettingsSection.APPEARANCE.route))
 }

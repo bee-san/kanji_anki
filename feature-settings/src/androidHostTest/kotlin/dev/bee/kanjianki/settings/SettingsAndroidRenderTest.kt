@@ -55,6 +55,21 @@ class SettingsAndroidRenderTest {
     }
 
     @Test
+    fun aKeybindingRowReadsOutTheKeysItsCommandHolds() {
+        assertAKeybindingRowReadsOutTheKeysItsCommandHolds()
+    }
+
+    @Test
+    fun bindingAndUnbindingDispatchTheKeyTheyWereShownOn() {
+        assertBindingAndUnbindingDispatchTheKeyTheyWereShownOn()
+    }
+
+    @Test
+    fun anUnavailableKeyStatesItsReasonAndDispatchesNothing() {
+        assertAnUnavailableKeyStatesItsReasonAndDispatchesNothing()
+    }
+
+    @Test
     fun anUnportedSectionNamesItselfRatherThanBlank() {
         assertAnUnportedSectionNamesItselfRatherThanBlank()
     }

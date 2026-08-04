@@ -136,6 +136,18 @@ enum class StudyKey(val token: String, val digit: Int? = null) {
     val isTextInput: Boolean
         get() = this != ENTER && this != NUMPAD_ENTER
 
+    /**
+     * True for the twenty-six letter keys.
+     *
+     * The editor offers a primary-modifier chord for these and not for the digits,
+     * numpad keys, Space, or Enter: `Ctrl+3` and `Ctrl+Space` are chords no platform
+     * documents and several IMEs claim, so listing them would offer bindings that may
+     * never arrive. Derived from [digit] and the token length rather than a second hand-
+     * kept list, so a new key cannot be added to one and forgotten in the other.
+     */
+    val isLetter: Boolean
+        get() = digit == null && token.length == 1
+
     companion object {
         /** The key a stored token names, or null for an absent or unknown one. */
         fun fromToken(token: String?): StudyKey? {
