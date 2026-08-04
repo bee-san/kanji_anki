@@ -215,4 +215,217 @@ class KaniDesktopIdentityTest {
                 .toSet(),
         )
     }
+
+    /**
+     * The Windows package installs per-user and needs no administrator.
+     *
+     * This is the substantive choice in the MSI, and it follows from where Kani keeps
+     * user data: `%LOCALAPPDATA%\Kani` and `%APPDATA%\Kani`. A per-machine install would
+     * demand elevation for every update while still writing per-user data, so it would
+     * gain nothing and cost a UAC prompt per release — and an uninstall removing
+     * per-machine program files could not be reasoned about against a per-user profile
+     * as cleanly. Pinned here because `perUserInstall` defaults to `false`: losing the
+     * line is a silent switch back to an elevated install, visible only to a user on a
+     * machine where they are not an administrator.
+     */
+    @Test
+    fun theWindowsPackageInstallsPerUserWithoutElevation() {
+        val convention = conventionSource()
+
+        assertTrue(
+            "the MSI must install per-user so updates need no administrator",
+            convention.contains("perUserInstall = true"),
+        )
+        assertTrue(
+            "the MSI must create a Start-menu entry",
+            convention.contains("menu = true"),
+        )
+        assertTrue(
+            "the MSI must place its entry in the pinned menu group",
+            convention.contains("menuGroup = KaniDesktopIdentity.MENU_GROUP"),
+        )
+        assertTrue(
+            "the MSI must offer a desktop shortcut",
+            convention.contains("shortcut = true"),
+        )
+        assertTrue(
+            "a per-user install must let the user choose the directory",
+            convention.contains("dirChooser = true"),
+        )
+        // A GUI application must not attach a console window to a double-click launch.
+        assertTrue(
+            "the Windows package must not be a console application",
+            convention.contains("console = false"),
+        )
+    }
+
+    /**
+     * The DEB carries a launcher entry, a category, and a maintainer.
+     *
+     * `packageName` is the load-bearing one: `dpkg` rejects an uppercase package name, so
+     * without the lowercase override jpackage derives `Kani` from the application name
+     * and the build fails during packaging — on a host that has the DEB tooling, which is
+     * not the host this work is developed on. That makes it exactly the kind of defect
+     * that first appears in CI or in a release.
+     */
+    @Test
+    fun theDebianPackageIsInstallableAndAppearsInTheApplicationMenu() {
+        val convention = conventionSource()
+
+        assertEquals("kani", KaniDesktopIdentity.LINUX_PACKAGE_NAME)
+        assertTrue(
+            "the Debian package name must be dpkg-legal lowercase",
+            KaniDesktopIdentity.LINUX_PACKAGE_NAME
+                .matches(Regex("[a-z0-9][a-z0-9+.-]+")),
+        )
+        assertTrue(
+            "the DEB must override the package name for dpkg",
+            convention.contains(
+                "packageName = KaniDesktopIdentity.LINUX_PACKAGE_NAME",
+            ),
+        )
+        assertTrue(
+            "the DEB must install a desktop entry",
+            convention.contains("shortcut = true"),
+        )
+        assertTrue(
+            "the DEB must declare a freedesktop category",
+            convention.contains(
+                "appCategory = KaniDesktopIdentity.LINUX_APP_CATEGORY",
+            ),
+        )
+        assertEquals("Education", KaniDesktopIdentity.LINUX_APP_CATEGORY)
+        assertTrue(
+            "a Debian control file requires a maintainer",
+            convention.contains(
+                "debMaintainer = KaniDesktopIdentity.LINUX_DEB_MAINTAINER",
+            ),
+        )
+        assertTrue(
+            "the maintainer field must carry a contact address",
+            KaniDesktopIdentity.LINUX_DEB_MAINTAINER.matches(
+                Regex(""".+ <[^@\s]+@[^@\s]+>"""),
+            ),
+        )
+    }
+
+    /**
+     * The macOS bundle declares its minimum system and is ready to be signed.
+     *
+     * `minimumSystemVersion` becomes `LSMinimumSystemVersion`, which makes the support
+     * claim enforceable at launch: an older system refuses to open the bundle instead of
+     * opening it and failing inside Skiko, where the cause is unrecoverable from a user's
+     * report. Kani is not signed yet, and the entitlements files exist so that enabling
+     * signing later is a credential change rather than a behavioral one — a missing JVM
+     * entitlement is invisible until the first signed build, i.e. until a release.
+     */
+    @Test
+    fun theMacOsBundleDeclaresItsMinimumSystemAndIsSigningReady() {
+        val convention = conventionSource()
+
+        assertEquals("13.0", KaniDesktopIdentity.MACOS_MINIMUM_SYSTEM_VERSION)
+        assertTrue(
+            "the bundle must declare its minimum macOS version",
+            convention.contains(
+                "minimumSystemVersion = KaniDesktopIdentity.MACOS_MINIMUM_SYSTEM_VERSION",
+            ),
+        )
+        assertTrue(
+            "the bundle must declare an application category",
+            convention.contains(
+                "appCategory = KaniDesktopIdentity.MACOS_APP_CATEGORY",
+            ),
+        )
+        assertTrue(
+            "the app bundle must have hardened-runtime entitlements",
+            convention.contains("entitlementsFile.set("),
+        )
+        assertTrue(
+            "the embedded JDK runtime is signed separately and needs its own file",
+            convention.contains("runtimeEntitlementsFile.set("),
+        )
+    }
+
+    /**
+     * The entitlements the JVM needs under the hardened runtime are present, and the
+     * sandbox entitlements that would misrepresent Kani are not.
+     *
+     * Read as files rather than asserted from the convention, because their *content* is
+     * the contract. A signed, notarized Kani missing `allow-jit` crashes at launch on a
+     * user's machine while every unsigned local build works, and nothing before the first
+     * signed release would say so.
+     */
+    @Test
+    fun theHardenedRuntimeEntitlementsGrantWhatTheJvmNeedsAndNothingMisleading() {
+        val required = listOf(
+            "com.apple.security.cs.allow-jit",
+            "com.apple.security.cs.allow-unsigned-executable-memory",
+            "com.apple.security.cs.disable-library-validation",
+        )
+        val application = packagingFile("macos/kani.entitlements")
+        val runtime = packagingFile("macos/kani-runtime.entitlements")
+
+        for (entitlement in required) {
+            assertTrue(
+                "the app bundle needs $entitlement under the hardened runtime",
+                application.contains(entitlement),
+            )
+            assertTrue(
+                "the embedded runtime needs $entitlement",
+                runtime.contains(entitlement),
+            )
+        }
+        // The launcher, not the runtime, sets the JVM's DYLD variables.
+        assertTrue(
+            "the app launcher sets JVM environment variables",
+            application.contains("com.apple.security.cs.allow-dyld-environment-variables"),
+        )
+
+        // Kani is not sandboxed. A sandbox entitlement without `app-sandbox` has no
+        // effect at all, so listing one would read as though Kani's loopback AnkiConnect
+        // access or its file picker had been granted here, when they work because the
+        // process is unsandboxed. The narrower runtime file must also stay narrower:
+        // making the two identical widens the signed surface for no gain, invisibly.
+        for (file in listOf(application, runtime)) {
+            assertTrue(
+                "Kani is not sandboxed; app-sandbox must not be claimed",
+                !file.contains("<key>com.apple.security.app-sandbox</key>"),
+            )
+            assertTrue(
+                "a sandbox network entitlement without app-sandbox does nothing",
+                !file.contains("<key>com.apple.security.network.client</key>"),
+            )
+        }
+        val runtimeHasDyld =
+            runtime.contains("<key>com.apple.security.cs.allow-dyld-environment-variables</key>")
+        assertTrue(
+            "the embedded runtime must stay narrower than the application",
+            !runtimeHasDyld,
+        )
+    }
+
+    @Test
+    fun everyInstallerCarriesTheSameCopyrightLine() {
+        val convention = conventionSource()
+
+        assertEquals("Copyright (c) bee-san", KaniDesktopIdentity.COPYRIGHT)
+        assertTrue(
+            "the distribution must set a copyright line for all three installers",
+            convention.contains("copyright = KaniDesktopIdentity.COPYRIGHT"),
+        )
+    }
+
+    private fun repositoryRoot(): File =
+        File(requireNotNull(System.getProperty("kani.repositoryRoot")))
+
+    private fun conventionSource(): String = File(
+        repositoryRoot(),
+        "build-logic/src/main/kotlin/" +
+            "kani.desktop-application-conventions.gradle.kts",
+    ).readText()
+
+    private fun packagingFile(relativePath: String): String = File(
+        repositoryRoot(),
+        "desktop-app/${KaniDesktopIdentity.PACKAGING_DIRECTORY}/$relativePath",
+    ).readText()
 }

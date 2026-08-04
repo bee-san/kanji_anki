@@ -142,6 +142,7 @@ compose.desktop {
             packageVersion = kaniVersionName
             description = KaniDesktopIdentity.DESCRIPTION
             vendor = KaniDesktopIdentity.VENDOR
+            copyright = KaniDesktopIdentity.COPYRIGHT
 
             // The packaged runtime image is minimal, and a module missing from it
             // fails in the installed app rather than in this build. See
@@ -158,6 +159,30 @@ compose.desktop {
                 // is how macOS orders two builds sharing a short version.
                 packageBuildVersion =
                     KaniDesktopPackageVersions.macOsBundleBuildVersion(kaniVersionName)
+
+                // The deployment target, written to `LSMinimumSystemVersion`. This makes
+                // the support claim enforceable at launch: an older system refuses to
+                // open the bundle, rather than opening it and failing somewhere inside
+                // Skiko where the cause is unrecoverable from a user's report.
+                minimumSystemVersion = KaniDesktopIdentity.MACOS_MINIMUM_SYSTEM_VERSION
+                appCategory = KaniDesktopIdentity.MACOS_APP_CATEGORY
+
+                // Hardened-runtime-ready entitlements, applied whenever signing happens.
+                // Kani is not signed or notarized yet (no Developer ID is configured),
+                // and these files exist so that enabling signing is a credential change
+                // rather than a behavioral one — the JVM entitlements below are the part
+                // that is easy to get wrong long after the fact.
+                entitlementsFile.set(
+                    project.file(
+                        "${KaniDesktopIdentity.PACKAGING_DIRECTORY}/macos/kani.entitlements",
+                    ),
+                )
+                runtimeEntitlementsFile.set(
+                    project.file(
+                        "${KaniDesktopIdentity.PACKAGING_DIRECTORY}/macos/kani-runtime.entitlements",
+                    ),
+                )
+
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.icns"),
                 )
@@ -166,6 +191,33 @@ compose.desktop {
                 upgradeUuid = KaniDesktopIdentity.WINDOWS_UPGRADE_UUID
                 msiPackageVersion =
                     KaniDesktopPackageVersions.windowsMsi(kaniVersionName)
+
+                // Per-user, so installing and updating Kani never asks for elevation.
+                // This is the substantive choice in the Windows package, and it is
+                // driven by where Kani keeps user data: `%LOCALAPPDATA%\Kani` and
+                // `%APPDATA%\Kani` (`DesktopStorageLayout`). A per-machine install
+                // would need an administrator for every update while still writing its
+                // data per-user, so it would buy nothing and cost the user a UAC prompt
+                // on each release. It also keeps two accounts on one machine genuinely
+                // independent, and it means an uninstall that removes program files
+                // cannot reach a profile it never owned.
+                perUserInstall = true
+
+                // A Start-menu entry under one shallow group, and a desktop shortcut.
+                // `dirChooser` lets the user place the install directory themselves,
+                // which per-user installs otherwise bury under
+                // `%LOCALAPPDATA%\Programs`.
+                menu = true
+                menuGroup = KaniDesktopIdentity.MENU_GROUP
+                shortcut = true
+                dirChooser = true
+
+                // No console window. Kani is a GUI application; `--smoke-test` and the
+                // other CLI paths write to the inherited stdout when launched from a
+                // terminal, and a console flag would attach a second black window to
+                // every normal double-click launch.
+                console = false
+
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.ico"),
                 )
@@ -173,6 +225,23 @@ compose.desktop {
             linux {
                 debPackageVersion =
                     KaniDesktopPackageVersions.linuxDeb(kaniVersionName)
+
+                // The Debian binary package name. Lowercase and hyphen-free, because
+                // `dpkg` rejects uppercase in a package name outright — jpackage would
+                // otherwise derive `Kani` from `packageName` and fail late, during
+                // packaging, on a host that has the DEB tooling.
+                packageName = KaniDesktopIdentity.LINUX_PACKAGE_NAME
+
+                // Desktop entry plus application-menu group, so Kani appears in GNOME's
+                // and KDE's launchers rather than only as an installed binary.
+                shortcut = true
+                menuGroup = KaniDesktopIdentity.MENU_GROUP
+                appCategory = KaniDesktopIdentity.LINUX_APP_CATEGORY
+
+                // `Maintainer:` is mandatory in a Debian control file. jpackage
+                // substitutes a placeholder when it is unset, and lintian flags it.
+                debMaintainer = KaniDesktopIdentity.LINUX_DEB_MAINTAINER
+
                 iconFile.set(
                     project.file("${KaniDesktopIdentity.ICON_DIRECTORY}/kani.png"),
                 )

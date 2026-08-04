@@ -7,7 +7,64 @@ object KaniDesktopIdentity {
     const val WINDOWS_UPGRADE_UUID = "C972670E-BCCD-4D5E-9ACC-2C8877ABA799"
     const val DESCRIPTION = "Kanji study companion for Anki"
     const val VENDOR = "bee-san"
-    const val ICON_DIRECTORY = "src/main/packaging/icons"
+    const val PACKAGING_DIRECTORY = "src/main/packaging"
+    const val ICON_DIRECTORY = "$PACKAGING_DIRECTORY/icons"
+
+    /**
+     * The Start-menu / application-menu group the installers place Kani under.
+     *
+     * One shallow group named for the application rather than a category: a category
+     * group ("Education") would collide with other vendors' groups and make an
+     * uninstall's leftovers ambiguous.
+     */
+    const val MENU_GROUP = "Kani"
+
+    /**
+     * The copyright line shown by the Windows installer, macOS bundle, and DEB control
+     * file. Not a license grant — see `docs/desktop-native-packaging.md` for the
+     * still-open licensing item.
+     */
+    const val COPYRIGHT = "Copyright (c) bee-san"
+
+    /**
+     * The Debian binary package name.
+     *
+     * Lowercase, because `dpkg` rejects an uppercase package name. jpackage otherwise
+     * derives it from `packageName` (`Kani`) and fails during packaging, on a host that
+     * has the DEB tooling — which is not the host most of this work happens on.
+     */
+    const val LINUX_PACKAGE_NAME = "kani"
+
+    /**
+     * The freedesktop menu category. `Education` is the registered main category that
+     * matches a study application; the additional `Languages` category would need a
+     * hand-written desktop entry, which jpackage does not expose.
+     */
+    const val LINUX_APP_CATEGORY = "Education"
+
+    /**
+     * The Debian `Maintainer:` field, which is mandatory in a control file. jpackage
+     * substitutes a placeholder when it is unset and lintian flags that.
+     */
+    const val LINUX_DEB_MAINTAINER = "bee-san <bee@bee.gg>"
+
+    /**
+     * The oldest macOS release Kani's package is qualified for.
+     *
+     * Pinned at 13 (Ventura) per Goal 204, which also requires that the floor be raised
+     * to the oldest version *actually tested* if a real qualification gate is not
+     * available. It is not yet: this value is a declared deployment target, and
+     * `docs/desktop-native-packaging.md` records that the macOS 13 hardware run has not
+     * happened. `LSMinimumSystemVersion` makes the claim enforceable at launch — an
+     * older system refuses to open the app instead of failing somewhere inside Skiko.
+     */
+    const val MACOS_MINIMUM_SYSTEM_VERSION = "13.0"
+
+    /**
+     * The macOS App Store category. Kani is not distributed through the App Store, but
+     * `LSApplicationCategoryType` is also read by Finder and by Launchpad grouping.
+     */
+    const val MACOS_APP_CATEGORY = "public.app-category.education"
 }
 
 /**

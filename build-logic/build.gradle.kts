@@ -42,4 +42,16 @@ tasks.withType<Test>().configureEach {
     inputs.file(rootProject.projectDir.parentFile.resolve("settings.gradle.kts"))
     inputs.file(rootProject.projectDir.parentFile.resolve("build.gradle.kts"))
     inputs.file(rootProject.projectDir.parentFile.resolve("app/build.gradle.kts"))
+    // The convention script and the packaging resources are read as *files* by the
+    // desktop identity tests, not consumed as compiled code, so Gradle cannot infer
+    // them. Without these an edit to an entitlements file leaves the test UP-TO-DATE
+    // and the assertion about its content unrun.
+    inputs.file(
+        layout.projectDirectory.file(
+            "src/main/kotlin/kani.desktop-application-conventions.gradle.kts",
+        ),
+    )
+    inputs.dir(
+        rootProject.projectDir.parentFile.resolve("desktop-app/src/main/packaging"),
+    )
 }
