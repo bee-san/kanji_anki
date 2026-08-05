@@ -20,8 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import dev.bee.kanjianki.data.desktop.DesktopWindowBoundsPolicy
 import dev.bee.kanjianki.hostpresentation.DesktopMenuBar
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.desktop.DesktopDeviceSettingsStore
@@ -103,13 +106,40 @@ private fun runWindow(
     application(exitProcessOnExit = false) {
         var showWindow by remember { mutableStateOf(true) }
         if (showWindow) {
+            // Screens are read once per window, not per frame: enumerating displays is
+            // an X/Win32 round trip, and the set only changes on a monitor event, which
+            // `persist` re-reads for anyway.
+            val screens = remember { DesktopWindowGeometry.attachedScreens() }
+            val placement = remember {
+                DesktopWindowBoundsPolicy.restore(
+                    stored = DesktopWindowGeometry.storedWindow(container.deviceSettingsStore),
+                    screens = screens,
+                )
+            }
             val windowState = rememberWindowState(
-                width = INITIAL_WINDOW_WIDTH,
-                height = INITIAL_WINDOW_HEIGHT,
-                placement = WindowPlacement.Floating,
+                width = placement.bounds.width.dp,
+                height = placement.bounds.height.dp,
+                position = WindowPosition(placement.bounds.x.dp, placement.bounds.y.dp),
+                placement = if (placement.maximized) {
+                    WindowPlacement.Maximized
+                } else {
+                    WindowPlacement.Floating
+                },
             )
             Window(
                 onCloseRequest = {
+                    // Captured before the window goes away, because a closing window
+                    // reports its bounds as the toolkit is already tearing them down.
+                    // Validation lives in the policy, so an unreachable or degenerate
+                    // geometry leaves the last good one stored instead of overwriting it.
+                    rememberedGeometry(windowState)?.let { (bounds, maximized) ->
+                        DesktopWindowGeometry.persist(
+                            settings = container.deviceSettingsStore,
+                            bounds = bounds,
+                            maximized = maximized,
+                            screens = DesktopWindowGeometry.attachedScreens(),
+                        )
+                    }
                     showWindow = false
                 },
                 title = FOUNDATION_TITLE,
@@ -247,8 +277,25 @@ private fun debugLoggingEnabled(profileDir: Path): Boolean = runCatching {
 private const val SMOKE_RENDER_FRAME_COUNT = 3
 private const val SMOKE_SETTLE_MILLIS = 250L
 private const val LOG_FILE_NAME = "kani-desktop.log"
-private val INITIAL_WINDOW_WIDTH = 1280.dp
-private val INITIAL_WINDOW_HEIGHT = 800.dp
+
+/**
+ * Reads [state] into the plain values [DesktopWindowGeometry.reportedGeometry]
+ * filters, keeping AWT/Compose types out of the tested boundary.
+ */
+private fun rememberedGeometry(
+    state: WindowState,
+): Pair<DesktopWindowBoundsPolicy.WindowBounds, Boolean>? {
+    val size = state.size
+    val position = state.position
+    val bounds = DesktopWindowGeometry.reportedGeometry(
+        x = position.x.value,
+        y = position.y.value,
+        width = size.width.value,
+        height = size.height.value,
+        positionSpecified = position.isSpecified,
+    ) ?: return null
+    return bounds to (state.placement == WindowPlacement.Maximized)
+}
 
 /**
  * Kani's shared shell, over a live desktop container.
