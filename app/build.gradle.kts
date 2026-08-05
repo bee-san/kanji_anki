@@ -143,6 +143,13 @@ android {
             applicationIdSuffix = ".smoke"
             versionNameSuffix = "-smoke"
             signingConfig = signingConfigs.getByName("debug")
+            // `minifiedSmoke` exists only here, so every library module the app depends
+            // on must be told which of its own variants to serve. `initWith(release)`
+            // copies this build type's settings but not its variant-matching rules, and
+            // without the fallback AGP fails resolution outright ("No matching variant of
+            // project :automation-android"). Fall back to `release` so the smoke APK
+            // exercises the same minified library code the real release ships.
+            matchingFallbacks += "release"
             ndk {
                 abiFilters.clear()
                 abiFilters += "x86_64"

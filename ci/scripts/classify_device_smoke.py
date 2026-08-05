@@ -77,6 +77,7 @@ FULL_ANDROID_TEST_FILES = frozenset(
         "app/src/androidTest/kotlin/dev/bee/kanjianki/backup/DatabaseBackupWorkerInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/data/LocalStoreInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/sync/ManualSyncEngineInstrumentedTest.kt",
+        "app/src/androidTest/kotlin/dev/bee/kanjianki/update/UpdateFixtureIsolationInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/update/UpdateFlowInstrumentedTest.kt",
         "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidCrossProviderConformanceInstrumentedTest.kt",
         "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",

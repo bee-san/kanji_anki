@@ -198,9 +198,21 @@ class DesktopCiWorkflowContractTest(unittest.TestCase):
             diagnostics,
         )
         self.assertIn("desktop-app/build/compose/logs/", diagnostics)
-        self.assertIn("build-logic/build/test-results/test/", diagnostics)
-        self.assertIn("core/build/test-results/test/", diagnostics)
-        self.assertIn("core/build/reports/tests/test/", diagnostics)
+        # Test artifacts upload for every module, not a named subset. This step is
+        # the only diagnostic for a failure on a host that cannot be reproduced
+        # locally, and a named subset silently uploads nothing when the failure is
+        # in a module nobody thought to list -- which is exactly what happened to
+        # the Windows `DesktopProfileRepositoriesTest` and
+        # `DedicatedWriterSqlDatabaseTest` failures, diagnosed from a truncated
+        # console log because the list named only `core` and `build-logic`.
+        self.assertIn("**/build/test-results/test/", diagnostics)
+        self.assertIn("**/build/reports/tests/test/", diagnostics)
+        for path in re.findall(r"^\s+(\S*build/(?:test-results|reports)\S*)$", diagnostics, flags=re.MULTILINE):
+            with self.subTest(path=path):
+                self.assertTrue(
+                    path.startswith("**/"),
+                    f"{path} narrows test diagnostics to one module",
+                )
         self.assertIn("if-no-files-found: warn", diagnostics)
         self.assertIn("retention-days: 7", diagnostics)
         self.assertEqual(1, matrix_job.count("retention-days: 7"))
