@@ -46,7 +46,7 @@ class DedicatedWriterSqlDatabaseTest {
         assertEquals(1, driver.connections.size)
         assertEquals(listOf(SqlConnectionMode.READ_WRITE), driver.connectionModes)
         assertSame(callbackThreads[0], callbackThreads[1])
-        assertEquals("test-sql-writer", callbackThreads[0].name)
+        assertEquals("test-sql-writer", undecoratedName(callbackThreads[0]))
         assertEquals(
             listOf(
                 "pragma:busy_timeout=41",
@@ -417,6 +417,47 @@ class DedicatedWriterSqlDatabaseTest {
             SqlDatabaseConfiguration().synchronousMode,
         )
     }
+
+    @Test
+    fun theWriterThreadIsNamedFromTheConfigurationEvenUnderCoroutineDebug() {
+        // Read from inside the write, where the decoration is present if debug mode is
+        // on at all. The assertion above reads from outside, after the writer has
+        // unwound, so on its own it would pass on a run where debug mode was off and
+        // prove nothing about the stripping -- and that is the run this suite had for
+        // months before Windows CI lost the race.
+        val database = database(RecordingDriver())
+        val insideName = runBlocking {
+            database.write { Thread.currentThread().name }
+        }
+
+        assertEquals("test-sql-writer", insideName.substringBefore(" @"))
+        // Only meaningful while debug mode is on, which is why it is not asserted: the
+        // point is that the configured name survives either way.
+        assertTrue(
+            "unexpected writer thread name: $insideName",
+            insideName == "test-sql-writer" || insideName.startsWith("test-sql-writer @"),
+        )
+    }
+
+    /**
+     * A thread's configured name, with any coroutine debug decoration removed.
+     *
+     * Gradle runs tests with `-ea`, which switches `kotlinx.coroutines` into debug
+     * mode, and debug mode appends ` @coroutine#N` to the name of whichever thread a
+     * coroutine is currently running on, restoring it afterwards. Reading `name` from
+     * the test thread therefore races that restore: it returns the bare name only if
+     * the writer has already finished unwinding. It usually has, which is exactly what
+     * makes this worth stripping rather than retrying — the suite failed on Windows CI
+     * with `test-sql-writer @coroutine#1` after passing everywhere for months, and a
+     * 2000-iteration loop on Linux reproduces it about twice.
+     *
+     * The name is what this test is about (the writer runs on one thread the operator
+     * can find in a thread dump), and the decoration does not change that, so drop it
+     * rather than asserting on a prefix — a prefix assertion would also accept
+     * `test-sql-writer-2`, which would mean a second writer thread.
+     */
+    private fun undecoratedName(thread: Thread): String =
+        thread.name.substringBefore(" @")
 
     private fun database(driver: RecordingDriver): DedicatedWriterSqlDatabase =
         DedicatedWriterSqlDatabase(

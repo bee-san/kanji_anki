@@ -135,9 +135,8 @@ jobs:
           name: desktop-diagnostics-${{ matrix.host_id }}
           path: |
             desktop-app/build/compose/logs/
-            build-logic/build/test-results/test/
-            core/build/test-results/test/
-            core/build/reports/tests/test/
+            **/build/test-results/test/
+            **/build/reports/tests/test/
           if-no-files-found: warn
           retention-days: 7
 

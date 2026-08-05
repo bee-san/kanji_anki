@@ -85,7 +85,17 @@ class DesktopProfileRepositoriesTest {
             assertEquals(0, repositories.schema.fromVersion)
             assertTrue(repositories.schema.toVersion > 0)
             assertFalse(repositories.schema.isDowngrade)
-            assertTrue(repositories.hardened)
+            // POSIX-conditional, because `hardened` reports whether owner-only
+            // permission bits were applied and Windows has no POSIX attribute view to
+            // apply them through. There the profile's privacy comes from its location
+            // under the per-user `LOCALAPPDATA` root instead, so `false` is the correct
+            // report and not a weaker one.
+            //
+            // Asserted as an equality against the filesystem's own answer rather than
+            // skipped with `assumeTrue`: the bundle must not claim hardening it did not
+            // perform, and a skip on Windows would leave that unchecked on the one host
+            // where the claim would be false.
+            assertEquals(posixSupported(), repositories.hardened)
         }
     }
 
@@ -163,6 +173,9 @@ class DesktopProfileRepositoriesTest {
         assertTrue("expected Opened but was $result", result is DesktopProfileOpener.Result.Opened)
         return result as DesktopProfileOpener.Result.Opened
     }
+
+    private fun posixSupported(): Boolean =
+        java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")
 
     private fun tempRoot(): Path {
         val directory = Files.createTempDirectory("kani-desktop-repositories-")
