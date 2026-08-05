@@ -27,6 +27,7 @@ import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.KaniTestDatabase
+import dev.bee.kanjianki.KaniTestDeviceSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.updatecore.SigningCertificateInfo
@@ -66,6 +67,11 @@ class UpdateFlowInstrumentedTest {
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         KaniTestDatabase.delete(context)
+        // Update state lives in SharedPreferences, not the database, so it survives the
+        // delete above and the whole instrumentation run. Without this every test that
+        // asserts an update default is order-dependent on its siblings -- see
+        // UpdateFixtureIsolationInstrumentedTest, which fails without this line.
+        KaniTestDeviceSettings.clearUpdateState(context)
         clearUpdatesCache()
         UpdateNotifier.cancelPendingUpdate(context)
     }
@@ -74,6 +80,7 @@ class UpdateFlowInstrumentedTest {
     fun tearDown() {
         UpdateNotifier.cancelPendingUpdate(context)
         KaniTestDatabase.delete(context)
+        KaniTestDeviceSettings.clearUpdateState(context)
         clearUpdatesCache()
     }
 
