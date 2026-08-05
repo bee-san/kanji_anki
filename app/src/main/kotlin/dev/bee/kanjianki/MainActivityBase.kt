@@ -40,6 +40,7 @@ import dev.bee.kanjianki.core.study.WritingAnalysis
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.StudyQueueSnapshot
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.platform.FilePickerPurpose
 import dev.bee.kanjianki.platform.FilePickerRequest
@@ -888,14 +889,18 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
     ) : FocusQueuePolicy.QueueEntry(row, item)
 
     companion object {
-        const val ACTION_OPEN_STUDY = "dev.bee.kanjianki.action.OPEN_STUDY"
-        const val ACTION_OPEN_BROWSE = "dev.bee.kanjianki.action.OPEN_BROWSE"
-        const val ACTION_OPEN_GAMES = "dev.bee.kanjianki.action.OPEN_GAMES"
-        const val EXTRA_OPEN_HOME = "dev.bee.kanjianki.extra.OPEN_HOME"
-        const val EXTRA_OPEN_UPDATE = "dev.bee.kanjianki.extra.OPEN_UPDATE"
-        const val EXTRA_OPEN_STUDY = "dev.bee.kanjianki.extra.OPEN_STUDY"
-        const val EXTRA_OPEN_STATS = "dev.bee.kanjianki.extra.OPEN_STATS"
-        const val EXTRA_OPEN_KANJI_DETAIL = "dev.bee.kanjianki.extra.OPEN_KANJI_DETAIL"
+        // The durable launch-intent strings now live in KaniLaunchIntents, which outlives this
+        // chain. Aliased rather than moved wholesale so the ~30 existing references (widgets,
+        // reminders, update notifier, instrumentation) keep compiling while the chain is
+        // deleted, and so there is exactly one definition of each value in the process.
+        const val ACTION_OPEN_STUDY = KaniLaunchIntents.ACTION_OPEN_STUDY
+        const val ACTION_OPEN_BROWSE = KaniLaunchIntents.ACTION_OPEN_BROWSE
+        const val ACTION_OPEN_GAMES = KaniLaunchIntents.ACTION_OPEN_GAMES
+        const val EXTRA_OPEN_HOME = KaniLaunchIntents.EXTRA_OPEN_HOME
+        const val EXTRA_OPEN_UPDATE = KaniLaunchIntents.EXTRA_OPEN_UPDATE
+        const val EXTRA_OPEN_STUDY = KaniLaunchIntents.EXTRA_OPEN_STUDY
+        const val EXTRA_OPEN_STATS = KaniLaunchIntents.EXTRA_OPEN_STATS
+        const val EXTRA_OPEN_KANJI_DETAIL = KaniLaunchIntents.EXTRA_OPEN_KANJI_DETAIL
         const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
         const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
         const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"

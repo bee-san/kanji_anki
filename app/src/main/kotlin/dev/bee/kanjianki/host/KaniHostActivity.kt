@@ -4,8 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import dev.bee.kanjianki.MainActivityStartup
 import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.presentation.KaniLaunchCodec
 import dev.bee.kanjianki.presentation.KaniLaunchRequest
 import dev.bee.kanjianki.presentation.PlatformCapabilities
@@ -89,7 +89,7 @@ internal class KaniHostActivity : ComponentActivity() {
         )
 
         hostState = AndroidHostState(
-            initialLaunch = decodeLaunch(intent),
+            initialLaunch = decodeKaniLaunch(intent),
             restored = AndroidHostSavedState.readDestination(savedInstanceState),
         )
 
@@ -146,21 +146,44 @@ internal class KaniHostActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        hostState.warmLaunch(decodeLaunch(intent))
+        hostState.warmLaunch(decodeKaniLaunch(intent))
     }
 
-    /** The launch request [intent] encodes, or null for an ordinary launch. */
-    private fun decodeLaunch(intent: Intent?): KaniLaunchRequest? {
-        val target = KaniLaunchCodec.resolve(
-            MainActivityStartup.launchTargetsPresentIn(intent ?: return null),
-        ) ?: return null
-        val kanji = if (target == KaniLaunchCodec.Target.KANJI_DETAIL) {
-            intent.getStringExtra(dev.bee.kanjianki.MainActivityBase.EXTRA_OPEN_KANJI_DETAIL)
-        } else {
-            null
-        }
-        return KaniLaunchCodec.request(target, kanji)
-    }
+}
+
+/**
+ * The launch request [intent] encodes, or null for an ordinary launch.
+ *
+ * A pure function of the intent, and a top-level one so it can be tested without an
+ * activity: every branch below is a decision about untrusted, *durable* input — extras
+ * written by a widget the user placed months ago — and each is a wrong-screen bug rather
+ * than a crash, which is the kind that ships.
+ *
+ * Two things happen here that the shared codec cannot do, and both are load-bearing:
+ *
+ * The kanji is **normalized** before the codec sees it. [KaniLaunchCodec] documents that
+ * it does not — `TextUtil` lives in `:core`, which `:presentation-api` cannot see — so the
+ * host normalizes first. Without this the codec happily builds `Detail("not-a-kanji")` and
+ * the user lands on a detail screen for a card that does not exist.
+ *
+ * A [KaniLaunchCodec.Target.KANJI_DETAIL] whose glyph is unusable falls back to **Home, not
+ * to null**. Null means "ordinary launch", and an ordinary launch resumes the study session
+ * the user abandoned yesterday — so returning it here would answer a tap on a kanji widget
+ * with a study session. The tap was still deliberate; only its argument was bad. This
+ * mirrors the old host's `renderLaunchTarget`, which read `suppressesStudyResume` off the
+ * *target* precisely so the invalid-glyph path could not disagree with the happy one, and
+ * it works here for the same reason: `Target.HOME.suppressesStudyResume` is true.
+ */
+internal fun decodeKaniLaunch(intent: Intent?): KaniLaunchRequest? {
+    val target = KaniLaunchCodec.resolve(KaniLaunchIntents.targetsIn(intent)) ?: return null
+    // Read only for the one target that carries it, so a stale kanji extra riding along
+    // with an OPEN_STATS intent cannot end up as the destination's argument.
+    val kanji = KaniLaunchIntents.kanjiIn(intent)
+        .takeIf { target == KaniLaunchCodec.Target.KANJI_DETAIL }
+        ?.let(TextUtil::normalizeSingleKanji)
+        ?.takeIf(String::isNotEmpty)
+    return KaniLaunchCodec.request(target, kanji)
+        ?: KaniLaunchCodec.request(KaniLaunchCodec.Target.HOME)
 }
 
 /**

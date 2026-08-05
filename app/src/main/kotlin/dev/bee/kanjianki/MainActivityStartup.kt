@@ -8,13 +8,14 @@ import java.util.concurrent.TimeUnit
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.presentation.KaniLaunchCodec
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
 import dev.bee.kanjianki.fsrs.FsrsFitScheduler
 
 internal fun focusKanjiDetailFromIntent(intent: Intent?): String? = TextUtil.normalizeSingleKanji(
-    runCatching { intent?.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) }.getOrNull(),
+    KaniLaunchIntents.kanjiIn(intent),
 ).takeIf(String::isNotEmpty)
 
 internal class MainActivityStartup(private val activity: MainActivityBase) {
@@ -281,35 +282,13 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
         /**
          * The targets [intent] names, for the codec to arbitrate between.
          *
-         * A set rather than a single value because an `Intent` can carry several
-         * extras at once, and which one wins is the codec's decision, not this
-         * reader's. On the companion because it reads only the intent — nothing
-         * about the activity — which also makes the mapping directly testable.
+         * Delegates to [KaniLaunchIntents], which owns the durable wire format for both
+         * hosts. Kept as a named entry point because the instrumentation suite drives it,
+         * and because two readers of the same extras would be free to disagree about which
+         * ones count.
          */
-        internal fun launchTargetsPresentIn(intent: Intent?): Set<KaniLaunchCodec.Target> {
-            intent ?: return emptySet()
-            return buildSet {
-                // `hasExtra`, not a parsed glyph: an unusable kanji is still a
-                // request to open a card, and it must fall back to Home rather than
-                // resuming study as an ordinary launch would.
-                if (intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL)) {
-                    add(KaniLaunchCodec.Target.KANJI_DETAIL)
-                }
-                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false)) {
-                    add(KaniLaunchCodec.Target.STUDY)
-                }
-                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_UPDATE, false)) {
-                    add(KaniLaunchCodec.Target.UPDATE)
-                }
-                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false)) {
-                    add(KaniLaunchCodec.Target.STATS)
-                }
-                if (intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_HOME, false)) {
-                    add(KaniLaunchCodec.Target.HOME)
-                }
-                launcherShortcutTarget(intent.action)?.let(::add)
-            }
-        }
+        internal fun launchTargetsPresentIn(intent: Intent?): Set<KaniLaunchCodec.Target> =
+            KaniLaunchIntents.targetsIn(intent)
 
         internal fun backgroundStartupTasksAllowed(intent: Intent?): Boolean {
             return intent?.getStringExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
@@ -326,11 +305,5 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
  * caller-controlled, so only these three actions may pick a screen, and everything
  * else — including `ACTION_MAIN` — falls through to the ordinary launch path.
  */
-internal fun launcherShortcutTarget(action: String?): KaniLaunchCodec.Target? {
-    return when (action) {
-        MainActivityBase.ACTION_OPEN_STUDY -> KaniLaunchCodec.Target.STUDY
-        MainActivityBase.ACTION_OPEN_BROWSE -> KaniLaunchCodec.Target.BROWSE
-        MainActivityBase.ACTION_OPEN_GAMES -> KaniLaunchCodec.Target.GAMES
-        else -> null
-    }
-}
+internal fun launcherShortcutTarget(action: String?): KaniLaunchCodec.Target? =
+    KaniLaunchIntents.shortcutTarget(action)
