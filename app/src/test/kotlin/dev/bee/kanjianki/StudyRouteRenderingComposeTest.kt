@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import dev.bee.kanjianki.core.StudyTextCopy
 import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -135,6 +136,57 @@ class StudyRouteRenderingComposeTest {
         }
 
         composeRule.onNode(SemanticsMatcher.expectValue(StudyExplicitContinueSemantics, true))
+            .assertIsEnabled()
+    }
+
+    /**
+     * Continue *visibility* follows the observable snapshot, not the feedback object.
+     *
+     * Same root cause as [continueEnablementFollowsTheObservableParameterNotTheFeedbackField]
+     * one branch earlier, and strictly worse: `feedbackVisible` gated the whole feedback
+     * arm of the action bar, so a lost subscription did not leave a stale *disabled*
+     * button, it left no button at all. That is how the seven-card route test failed --
+     * `assertIsDisplayed()` reports "is not displayed" when zero nodes match, so the
+     * message read like a layout problem while the node had simply never been composed.
+     *
+     * The holder here is deliberately stale: it stays UNANSWERED forever, so
+     * `feedbackVisible` is permanently false and only the observable snapshot can move the
+     * bar into its feedback arm.
+     */
+    @Test
+    fun continueVisibilityFollowsTheObservableSnapshotNotTheFeedbackField() {
+        val stale = StudyAnswerFeedbackState("session-token")
+        var feedback by mutableStateOf(stale.snapshot())
+        val continueTag = studyActionButtonTestTag(StudyTextCopy.continueLabel())
+
+        composeRule.setContent {
+            StudyFlashcardActionBar(
+                revealed = true,
+                onReveal = {},
+                onFail = {},
+                onPass = {},
+                feedbackState = stale,
+                feedback = feedback,
+            )
+        }
+
+        composeRule.onNodeWithTag(continueTag).assertDoesNotExist()
+
+        composeRule.runOnIdle {
+            feedback = feedback.copy(
+                phase = StudyAnswerFeedbackPhase.SUBMITTING,
+                outcome = StudyAnswerOutcome.CORRECT,
+            )
+        }
+        composeRule.onNodeWithTag(continueTag)
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
+
+        composeRule.runOnIdle {
+            feedback = feedback.copy(phase = StudyAnswerFeedbackPhase.APPLIED)
+        }
+        composeRule.onNodeWithTag(continueTag)
+            .assertIsDisplayed()
             .assertIsEnabled()
     }
 

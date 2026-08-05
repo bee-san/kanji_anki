@@ -550,7 +550,14 @@ class MainActivityStudyFlashcardComposeUnitTest {
                 onReveal = {},
                 onFail = {},
                 onPass = {},
-                feedbackState = StudyAnswerFeedbackState.restore(renderedFeedback.value),
+                // Pass the live holder plus the observable snapshot, exactly as the
+                // production caller does. This used to hand the bar a fresh
+                // `StudyAnswerFeedbackState.restore(...)` per recomposition, which made the
+                // non-observable phase field look observable and hid the visibility bug
+                // pinned by
+                // `StudyRouteRenderingComposeTest.continueVisibilityFollowsTheObservableSnapshotNotTheFeedbackField`.
+                feedbackState = feedback,
+                feedback = renderedFeedback.value,
                 mnemonicNote = BrowseMnemonicNoteModel(
                     title = "My mnemonic",
                     fieldLabel = "Mnemonic note",

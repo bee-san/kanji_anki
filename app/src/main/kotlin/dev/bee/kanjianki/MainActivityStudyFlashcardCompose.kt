@@ -327,6 +327,7 @@ internal fun StudyFlashcardActionBar(
     mnemonicNote: BrowseMnemonicNoteModel? = null,
     onContinue: () -> Unit = {},
     continueAction: StudyContinueAction? = null,
+    feedback: StudyAnswerFeedbackSnapshot? = feedbackState?.snapshot(),
 ) {
     val submitReview: (String, String) -> Boolean = { source, rating ->
         submitFlashcardReview(onReview, onFail, onPass, source, rating)
@@ -340,9 +341,18 @@ internal fun StudyFlashcardActionBar(
         if (revealed || undoMessage != null) {
             StudyUndoSlot(undoMessage = undoMessage, onUndo = onUndo)
         }
-        if (feedbackState?.feedbackVisible == true) {
+        // Gate on the snapshot parameter, never on `feedbackState.feedbackVisible`.
+        // `StudyAnswerFeedbackState` lives in `:application`, a plain JVM module with no
+        // Compose dependency, so its phase is an ordinary field: reading it here
+        // subscribes to nothing, and this branch keeps whichever arm it chose at first
+        // composition. Because it is the *visibility* gate, losing the subscription does
+        // not merely leave the Continue button stale -- the button is never composed at
+        // all, and a test looking for it fails with "is not displayed" for a node that
+        // does not exist. Production callers pass the snapshot the state machine
+        // publishes into `studySessionUiState`, which is genuinely observable.
+        if (feedback != null && feedback.phase != StudyAnswerFeedbackPhase.UNANSWERED) {
             mnemonicNote?.let { StudyMnemonicNoteAction(it) }
-            StudyFlashcardFeedbackActions(feedbackState, onContinue, continueAction)
+            StudyFlashcardFeedbackActions(feedback, onContinue, continueAction)
         } else if (!revealed) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -390,16 +400,18 @@ private fun StudyMnemonicNoteAction(model: BrowseMnemonicNoteModel) {
 
 @Composable
 private fun StudyFlashcardFeedbackActions(
-    feedbackState: StudyAnswerFeedbackState,
+    feedback: StudyAnswerFeedbackSnapshot,
     onContinue: () -> Unit,
     continueAction: StudyContinueAction?,
 ) {
-    val correct = feedbackState.outcome == StudyAnswerOutcome.CORRECT
+    val correct = feedback.outcome == StudyAnswerOutcome.CORRECT
     MeaningChoiceResultActionBar(
         status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
         statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
         actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
-        continueEnabled = feedbackState.continueEnabled,
+        // Same reason as the visibility gate above: derive enablement from the observed
+        // snapshot, not from `feedbackState.continueEnabled`.
+        continueEnabled = feedback.phase == StudyAnswerFeedbackPhase.APPLIED,
         continueAction = continueAction,
         onNext = onContinue,
     )

@@ -3,6 +3,8 @@ package dev.bee.kanjianki
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
@@ -219,7 +221,19 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                     )
                 }
             },
-            actionBar = { MeaningChoiceResultActionBar(model = model, state = state) },
+            actionBar = {
+                // Collect the published snapshot rather than letting the bar read
+                // `model.feedbackState`. That holder lives in `:application`, a plain JVM
+                // module with no Compose dependency, so its phase is an ordinary field and
+                // reading it here subscribes to nothing -- the Continue button would stay
+                // disabled forever and the session would strand.
+                val studyState by home.studySessionUiState.collectAsState()
+                MeaningChoiceResultActionBar(
+                    model = model,
+                    state = state,
+                    feedback = studyState.feedback?.takeIf { it.sessionToken == expectedToken },
+                )
+            },
         )
     }
 
@@ -535,6 +549,9 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
             selected = MainActivityBase.NAV_STUDY,
             studySessionActive = true,
             content = {
+                // Same reason as the meaning-choice action bar: only this StateFlow makes
+                // the Continue button enable once the answer applies.
+                val studyState by home.studySessionUiState.collectAsState()
                 Column {
                     ChoiceStudyTopBar(routeSnapshot)
                     SimilarChoiceSessionCard(
@@ -542,6 +559,7 @@ internal class MainActivityStudyChoiceSessions(private val home: MainActivityStu
                         modifier = Modifier.padding(top = 6.dp, bottom = 12.dp),
                         showInlineChoices = true,
                         detailsExpandedByDefault = false,
+                        feedback = studyState.feedback?.takeIf { it.sessionToken == expectedToken },
                         onExploreDifferences = Runnable {
                             if (home.matchesMountedStudyRoute(expectedToken, expectedRecovery)) {
                                 renderSimilarDifferenceRoute(

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -355,6 +357,13 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     @Composable
     private fun ComposeFlashcardActionBar(route: ComposeFlashcardRouteModel) {
         val undoMessage = activity.studyUndoState.undoMessageOrNull()
+        // Collect the feedback snapshot here rather than letting the action bar read it
+        // off `studyAnswerFeedbackState`. That object is a plain-field holder in
+        // `:application`, so reading its phase creates no Compose subscription; this
+        // StateFlow is what the state machine publishes on every feedback change, and it
+        // is what makes the Continue button appear once the answer applies.
+        val studyState by activity.studySessionUiState.collectAsState()
+        val feedback = studyState.feedback?.takeIf { it.sessionToken == route.sessionToken }
         StudyFlashcardActionBar(
             revealed = route.actionBarState.revealed,
             onReveal = { route.actionBarState.onReveal.run() },
@@ -372,6 +381,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             feedbackState = activity.studyAnswerFeedbackState,
             mnemonicNote = route.mnemonicNote,
             continueAction = route.continueAction,
+            feedback = feedback,
         )
     }
 

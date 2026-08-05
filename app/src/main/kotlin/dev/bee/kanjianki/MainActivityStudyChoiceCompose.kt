@@ -109,6 +109,11 @@ internal fun SimilarChoiceSessionCard(
     detailsExpandedByDefault: Boolean = showInlineChoices,
     onExploreDifferences: Runnable? = null,
     state: SimilarChoiceSessionState = rememberSimilarChoiceSessionState(model),
+    // Observable feedback for this route. The default keeps test callers compiling; a
+    // production caller must pass the snapshot it collected from `studySessionUiState`,
+    // because `model.feedbackState` is a plain-field holder in `:application` and reading
+    // its phase from a composable subscribes to nothing.
+    feedback: StudyAnswerFeedbackSnapshot? = model.feedbackState?.snapshot(),
 ) {
     var detailsExpanded by rememberSaveable(model.question, showInlineChoices, detailsExpandedByDefault) {
         mutableStateOf(detailsExpandedByDefault)
@@ -124,6 +129,7 @@ internal fun SimilarChoiceSessionCard(
             detailsExpanded = detailsExpanded,
             onToggleDetails = { detailsExpanded = !detailsExpanded },
             onExploreDifferences = onExploreDifferences,
+            feedback = feedback,
         )
     }
 }
@@ -250,6 +256,7 @@ private fun SimilarChoiceInsetPanel(
     detailsExpanded: Boolean,
     onToggleDetails: () -> Unit,
     onExploreDifferences: Runnable? = null,
+    feedback: StudyAnswerFeedbackSnapshot?,
 ) {
     Surface(
         modifier = Modifier
@@ -280,7 +287,7 @@ private fun SimilarChoiceInsetPanel(
             }
             if (showChoices) {
                 SimilarChoiceGrid(model.gridModel, state)
-                SimilarChoiceResultBar(model, state)
+                SimilarChoiceResultBar(model, state, feedback)
             }
         }
     }
@@ -294,6 +301,7 @@ private fun SimilarChoiceInsetPanel(
 private fun SimilarChoiceResultBar(
     model: SimilarChoiceSessionModel,
     state: SimilarChoiceSessionState,
+    feedback: StudyAnswerFeedbackSnapshot?,
 ) {
     val selectedChoice = state.selectedChoice ?: return
     val correctChoice = model.gridModel.correctChoice ?: return
@@ -309,7 +317,7 @@ private fun SimilarChoiceResultBar(
             status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.similarKanjiWrongChoiceResult(correctChoice),
             statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
             actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
-            continueEnabled = model.feedbackState?.continueEnabled ?: true,
+            continueEnabled = feedback?.let { it.phase == StudyAnswerFeedbackPhase.APPLIED } ?: true,
             continueAction = model.continueAction,
             onNext = { model.onContinue.run() },
         )

@@ -21,6 +21,11 @@ import androidx.compose.ui.unit.sp
 internal fun MeaningChoiceResultActionBar(
     model: MeaningChoiceSessionModel,
     state: MeaningChoiceSessionState,
+    // Observable feedback for this route, or null when the caller has none to observe.
+    // Defaulting to `model.feedbackState?.snapshot()` keeps test callers compiling, but a
+    // production caller must pass the snapshot it collected from `studySessionUiState`:
+    // see the comment on the parameter read below.
+    feedback: StudyAnswerFeedbackSnapshot? = model.feedbackState?.snapshot(),
 ) {
     val selectedChoice = state.selectedChoice ?: return
     val result = model.resultResolver?.resultForChoice(selectedChoice) ?: return
@@ -28,7 +33,7 @@ internal fun MeaningChoiceResultActionBar(
         status = result.status,
         statusColor = result.statusColor,
         actionTone = result.actionTone,
-        continueEnabled = model.feedbackState?.continueEnabled ?: true,
+        continueEnabled = feedback?.let { it.phase == StudyAnswerFeedbackPhase.APPLIED } ?: true,
         continueAction = model.continueAction,
         onNext = { model.onContinue.run() },
     )

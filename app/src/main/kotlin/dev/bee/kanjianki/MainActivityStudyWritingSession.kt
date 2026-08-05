@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -206,14 +208,20 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                     }
                 },
             )
-            val feedback = route.continueAction.feedbackState
-            if (feedback.feedbackVisible) {
+            // Observe the published snapshot, not `continueAction.feedbackState`. That
+            // holder lives in `:application`, a plain JVM module with no Compose
+            // dependency, so its phase is an ordinary field: reading `feedbackVisible`
+            // here subscribes to nothing, and because it gates *visibility* the feedback
+            // bar would never compose at all once the answer applied.
+            val studyState by home.studySessionUiState.collectAsState()
+            val feedback = studyState.feedback?.takeIf { it.sessionToken == route.sessionToken }
+            if (feedback != null && feedback.phase != StudyAnswerFeedbackPhase.UNANSWERED) {
                 val correct = feedback.outcome == StudyAnswerOutcome.CORRECT
                 MeaningChoiceResultActionBar(
                     status = if (correct) StudyTextCopy.answerCorrectFeedback() else StudyTextCopy.answerIncorrectFeedback(),
                     statusColor = if (correct) MainActivityBase.TEAL else MainActivityBase.CORAL,
                     actionTone = if (correct) StudyActionTone.PASS else StudyActionTone.FAIL,
-                    continueEnabled = feedback.continueEnabled,
+                    continueEnabled = feedback.phase == StudyAnswerFeedbackPhase.APPLIED,
                     continueAction = route.continueAction,
                     onNext = {},
                 )
