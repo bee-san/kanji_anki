@@ -1,8 +1,11 @@
 package dev.bee.kanjianki.hostpresentation
 
+import dev.bee.kanjianki.core.AttributionCopy
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
+import dev.bee.kanjianki.core.HowKaniWorksCopy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.SettingsReferenceDataTextCopy
 import dev.bee.kanjianki.core.SettingsImportTextCopy
 import dev.bee.kanjianki.core.SettingsKeybindingTextCopy
 import dev.bee.kanjianki.core.SettingsInputRules
@@ -13,12 +16,14 @@ import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsChoiceOption
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
 import dev.bee.kanjianki.presentation.SettingsKeybindingRow
+import dev.bee.kanjianki.presentation.SettingsProseBlock
 import dev.bee.kanjianki.presentation.SettingsRoot
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.SettingsSection
@@ -69,6 +74,7 @@ object DesktopSettingsModel {
         snapshot: SettingsSnapshot,
         bindings: StudyKeybindings = StudyKeybindings.DEFAULT,
         platform: KeyboardPlatform = KeyboardPlatform.LINUX,
+        attribution: AttributionTexts = AttributionTexts.UNAVAILABLE,
     ): SettingsScreen = when (section) {
         SettingsSection.ROOT -> SettingsScreen(section = section, root = root())
         SettingsSection.APPEARANCE ->
@@ -79,8 +85,115 @@ object DesktopSettingsModel {
             SettingsScreen(section = section, content = importSync(snapshot))
         SettingsSection.KEYBINDINGS ->
             SettingsScreen(section = section, content = keybindings(bindings, platform))
+        SettingsSection.DISPLAY_DATA ->
+            SettingsScreen(section = section, content = displayData())
+        SettingsSection.HOW_IT_WORKS ->
+            SettingsScreen(section = section, content = howItWorks())
+        SettingsSection.LICENSES ->
+            SettingsScreen(section = section, content = licenses(attribution))
         else -> SettingsScreen(section = section)
     }
+
+    /**
+     * The attribution bodies a host has already read, for the licences page.
+     *
+     * Passed in rather than read here because each host keeps them somewhere different —
+     * Android in `res/raw`, desktop on the classpath — while the *formatting* is
+     * [AttributionCopy]'s in `:core` and shared. A host reads bytes; this decides nothing
+     * about wording.
+     *
+     * Each field falls back to [AttributionCopy]'s own fallback text when a host cannot
+     * read its source, so a missing file yields a named credit rather than a blank
+     * section. Dropping a credit silently is the one outcome this must not have: the
+     * attributions are a licence obligation, not a nicety.
+     */
+    data class AttributionTexts(
+        val dictionary: String,
+        val strokes: String,
+        val fonts: String,
+    ) {
+        companion object {
+            /**
+             * The stated-fallback texts, for a host that has not wired its sources yet.
+             *
+             * Not blank strings: an unwired host shows the same "credits unavailable"
+             * wording a read failure produces, which is honest, rather than a page that
+             * looks as though nothing needs crediting.
+             */
+            val UNAVAILABLE: AttributionTexts = AttributionTexts(
+                dictionary = AttributionCopy.dictionaryFallback(),
+                strokes = AttributionCopy.kanjiVgFallback(),
+                fonts = AttributionCopy.kanjiVgFallback(),
+            )
+        }
+    }
+
+    /**
+     * Display & data: the two pages this section is a doorway to.
+     *
+     * Buttons rather than category cards because those belong to
+     * [SettingsSection.ROOT]'s menu, and these are one level down. Both children are
+     * prose, so this section carries no state of its own and takes no snapshot: the
+     * frequency-rank editor that also lives under this heading on Android stays
+     * unported for now, which the missing control says plainly rather than a disabled
+     * one implying it is coming.
+     */
+    private fun displayData(): SettingsSectionContent.Controls = SettingsSectionContent.Controls(
+        title = SettingsSectionTextCopy.settingsReferenceDataTitle(),
+        controls = listOf(
+            SettingsControl.ActionButton(
+                label = HowKaniWorksCopy.pageTitle(),
+                action = KaniAction.Navigation.Open(
+                    KaniDestination.Settings(SettingsSection.HOW_IT_WORKS),
+                ),
+            ),
+            SettingsControl.ActionButton(
+                label = SettingsReferenceDataTextCopy.openDataLicensesLabel(),
+                action = KaniAction.Navigation.Open(
+                    KaniDestination.Settings(SettingsSection.LICENSES),
+                ),
+            ),
+        ),
+    )
+
+    /**
+     * The "How Kani works" explainer: [HowKaniWorksCopy]'s sections, verbatim.
+     *
+     * Verbatim matters here. The first section states what Kani reads from AnkiDroid and
+     * that the only writes are manual-confirm-only note tags — a promise about the
+     * user's collection, reviewed as copy in `:core`. This maps it to prose blocks and
+     * changes not a word of it.
+     */
+    private fun howItWorks(): SettingsSectionContent.Prose = SettingsSectionContent.Prose(
+        title = HowKaniWorksCopy.pageTitle(),
+        blocks = HowKaniWorksCopy.sections().map { SettingsProseBlock(title = it.title, body = it.body) },
+    )
+
+    /**
+     * The offline-data credits: dictionary, stroke, and font attributions.
+     *
+     * Every source gets a block whether or not its text was readable, because the
+     * headings themselves record what Kani ships. A section that vanished when its file
+     * failed to load would make an unmet licence obligation invisible.
+     */
+    private fun licenses(attribution: AttributionTexts): SettingsSectionContent.Prose =
+        SettingsSectionContent.Prose(
+            title = SettingsReferenceDataTextCopy.dataLicensesTitle(),
+            blocks = listOf(
+                SettingsProseBlock(
+                    title = SettingsReferenceDataTextCopy.dictionaryDataTitle(),
+                    body = attribution.dictionary,
+                ),
+                SettingsProseBlock(
+                    title = SettingsReferenceDataTextCopy.strokeDataTitle(),
+                    body = attribution.strokes,
+                ),
+                SettingsProseBlock(
+                    title = SettingsReferenceDataTextCopy.fontsTitle(),
+                    body = attribution.fonts,
+                ),
+            ),
+        )
 
     /**
      * The Study keybinding editor for [bindings], as read on [platform].

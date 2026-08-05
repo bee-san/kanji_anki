@@ -1,13 +1,16 @@
 package dev.bee.kanjianki.hostpresentation
 
+import dev.bee.kanjianki.core.HowKaniWorksCopy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.SettingsReferenceDataTextCopy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsSectionContent
@@ -82,12 +85,100 @@ class DesktopSettingsModelTest {
             SettingsSection.STUDY_BEHAVIOR,
             SettingsSection.IMPORT_SYNC,
             SettingsSection.KEYBINDINGS,
+            SettingsSection.DISPLAY_DATA,
+            SettingsSection.HOW_IT_WORKS,
+            SettingsSection.LICENSES,
         )
         for (section in SettingsSection.entries.filter { it !in ported }) {
             val screen = DesktopSettingsModel.screen(section, snapshot())
             assertEquals(section, screen.section)
             assertNull("a leaf section has no root menu", screen.root)
             assertEquals(SettingsSectionContent.Placeholder, screen.content)
+        }
+    }
+
+    @Test
+    fun displayDataOpensItsTwoChildPagesRatherThanDeadEnding() {
+        val content = DesktopSettingsModel.screen(SettingsSection.DISPLAY_DATA, snapshot()).content
+        val opened = (content as SettingsSectionContent.Controls).controls
+            .filterIsInstance<SettingsControl.ActionButton>()
+            .map { it.action }
+
+        // Both prose pages hang off this section, so if it offered no way in they would be
+        // reachable only by deep link -- which is how they would silently stop existing.
+        assertTrue(
+            opened.contains(
+                KaniAction.Navigation.Open(KaniDestination.Settings(SettingsSection.HOW_IT_WORKS)),
+            ),
+        )
+        assertTrue(
+            opened.contains(
+                KaniAction.Navigation.Open(KaniDestination.Settings(SettingsSection.LICENSES)),
+            ),
+        )
+    }
+
+    @Test
+    fun howItWorksCarriesEveryExplainerSectionVerbatim() {
+        val content = DesktopSettingsModel.screen(SettingsSection.HOW_IT_WORKS, snapshot()).content
+
+        val prose = content as SettingsSectionContent.Prose
+        assertEquals(HowKaniWorksCopy.pageTitle(), prose.title)
+        // Verbatim, not paraphrased: the first section is Kani's stated promise about what
+        // it reads from and writes to the user's collection. Reviewed as copy in `:core`,
+        // so a mapping that trimmed or reworded it would be changing a promise.
+        assertEquals(
+            HowKaniWorksCopy.sections().map { it.title to it.body },
+            prose.blocks.map { it.title to it.body },
+        )
+    }
+
+    @Test
+    fun licensesCreditEverySourceEvenWhenAHostCannotReadOne() {
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.LICENSES,
+            snapshot(),
+            attribution = DesktopSettingsModel.AttributionTexts.UNAVAILABLE,
+        ).content
+
+        val prose = content as SettingsSectionContent.Prose
+        // Three blocks whatever happened: attribution is a licence obligation, so a
+        // section that disappeared when its file failed to load would hide an unmet one.
+        assertEquals(
+            listOf(
+                SettingsReferenceDataTextCopy.dictionaryDataTitle(),
+                SettingsReferenceDataTextCopy.strokeDataTitle(),
+                SettingsReferenceDataTextCopy.fontsTitle(),
+            ),
+            prose.blocks.map { it.title },
+        )
+        assertTrue("an unreadable source still states something", prose.blocks.all { it.body.isNotBlank() })
+    }
+
+    @Test
+    fun licensesShowTheTextsTheHostActuallyRead() {
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.LICENSES,
+            snapshot(),
+            attribution = DesktopSettingsModel.AttributionTexts(
+                dictionary = "JMdict, CC BY-SA 4.0",
+                strokes = "KanjiVG, CC BY-SA 3.0",
+                fonts = "Noto Sans JP, SIL OFL 1.1",
+            ),
+        ).content
+
+        assertEquals(
+            listOf("JMdict, CC BY-SA 4.0", "KanjiVG, CC BY-SA 3.0", "Noto Sans JP, SIL OFL 1.1"),
+            (content as SettingsSectionContent.Prose).blocks.map { it.body },
+        )
+    }
+
+    @Test
+    fun aProsePageDispatchesNothing() {
+        for (section in listOf(SettingsSection.HOW_IT_WORKS, SettingsSection.LICENSES)) {
+            val screen = DesktopSettingsModel.screen(section, snapshot())
+            assertNull("a prose page is a leaf, not a menu", screen.root)
+            assertTrue(screen.content is SettingsSectionContent.Prose)
         }
     }
 

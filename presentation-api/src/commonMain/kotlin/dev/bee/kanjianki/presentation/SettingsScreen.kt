@@ -73,7 +73,38 @@ sealed interface SettingsSectionContent {
         val rows: List<SettingsKeybindingRow>,
         val reset: SettingsControl.ActionButton,
     ) : SettingsSectionContent
+
+    /**
+     * An explanatory or attribution page: a title and titled paragraphs.
+     *
+     * Its own content shape rather than a list of [SettingsControl.Info] rows because
+     * `Info` is a label/value *row* — a right-aligned muted column meant for "Version
+     * 0.3.6". A six-paragraph explainer or a licence text rendered that way would put
+     * 600 characters of prose in a value column, which is why the shape is different
+     * rather than the styling. Nothing here dispatches: a prose page has no controls, and
+     * the pages that *do* pair prose with an action keep using [Controls].
+     *
+     * [blocks] carries titled paragraphs rather than one string so a host renders section
+     * headings as headings — a screen reader can then skip between them, which one long
+     * blob would not allow.
+     */
+    data class Prose(
+        val title: String,
+        val blocks: List<SettingsProseBlock>,
+    ) : SettingsSectionContent
 }
+
+/**
+ * One titled paragraph of a [SettingsSectionContent.Prose] page.
+ *
+ * [title] is optional because attribution text arrives as one already-formatted body
+ * with no heading of its own, while an explainer's sections each have one. A blank
+ * title renders as body text alone rather than an empty heading.
+ */
+data class SettingsProseBlock(
+    val title: String = "",
+    val body: String,
+)
 
 /**
  * One command's editor row: what it is bound to, and what it could be bound to.

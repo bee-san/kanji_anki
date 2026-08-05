@@ -209,6 +209,27 @@ internal fun assertAnUnavailableKeyStatesItsReasonAndDispatchesNothing() {
 }
 
 @OptIn(ExperimentalTestApi::class)
+internal fun assertAProsePageShowsEveryBlockAndDispatchesNothing() {
+    val recorded = mutableListOf<KaniAction>()
+    renderSettings(
+        content = { SettingsScreenView(proseScreen(), settingsCopy(), dispatch = { recorded += it }) },
+    ) {
+        val panel = onNodeWithTag(SETTINGS_PROSE_TEST_TAG).performScrollTo()
+        val text = panel.subtreeTextOrEmpty()
+        // Every block's body, because a dropped licence credit is an unmet obligation and a
+        // dropped explainer paragraph is a promise about the user's collection going missing.
+        assertTrue(text.contains("What Kani reads"), "a block title must show: $text")
+        assertTrue(text.contains("AnkiDroid's provider"), "a titled body must show: $text")
+        assertTrue(text.contains("JMdict, CC BY-SA 4.0."), "an untitled body must show: $text")
+        // The page title and the one block that has a title, and nothing else: a heading
+        // emitted for the untitled block would announce an empty stop to a screen reader.
+        assertEquals(listOf("How Kani works", "What Kani reads"), panel.subtreeHeadingTexts())
+        panel.performClick()
+        assertEquals(emptyList<KaniAction>(), recorded)
+    }
+}
+
+@OptIn(ExperimentalTestApi::class)
 internal fun assertAnUnportedSectionNamesItselfRatherThanBlank() {
     val copy = settingsCopy()
     renderSettings(
@@ -240,6 +261,7 @@ internal fun assertTheSettingsTestTagsAreDistinct() {
         SETTINGS_CONTROLS_TEST_TAG,
         SETTINGS_PLACEHOLDER_TEST_TAG,
         SETTINGS_KEYBINDINGS_TEST_TAG,
+        SETTINGS_PROSE_TEST_TAG,
     ) + SettingsSection.entries.map { settingsCategoryTestTag(it.route) } +
         listOf("Import weak cards", "New card order").map(::settingsControlTestTag) +
         listOf(

@@ -70,6 +70,11 @@ class SettingsAndroidRenderTest {
     }
 
     @Test
+    fun aProsePageShowsEveryBlockAndDispatchesNothing() {
+        assertAProsePageShowsEveryBlockAndDispatchesNothing()
+    }
+
+    @Test
     fun anUnportedSectionNamesItselfRatherThanBlank() {
         assertAnUnportedSectionNamesItselfRatherThanBlank()
     }

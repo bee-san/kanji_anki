@@ -26,6 +26,7 @@ import dev.bee.kanjianki.presentation.SettingsChoiceOption
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
 import dev.bee.kanjianki.presentation.SettingsKeybindingRow
+import dev.bee.kanjianki.presentation.SettingsProseBlock
 import dev.bee.kanjianki.presentation.SettingsRoot
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.SettingsSection
@@ -150,6 +151,28 @@ internal fun keybindingsScreen(): SettingsScreen = SettingsScreen(
     ),
 )
 
+/**
+ * A prose page: one titled explainer block, and one untitled attribution body.
+ *
+ * Both shapes in one fixture because they are the two real callers — the explainer's
+ * sections each have a heading, while an attribution arrives as a single already-formatted
+ * body with none, and the untitled case is the one that could silently render an empty
+ * heading.
+ */
+internal fun proseScreen(): SettingsScreen = SettingsScreen(
+    section = SettingsSection.HOW_IT_WORKS,
+    content = SettingsSectionContent.Prose(
+        title = "How Kani works",
+        blocks = listOf(
+            SettingsProseBlock(
+                title = "What Kani reads",
+                body = "Kani reads your notes and cards through AnkiDroid's provider.",
+            ),
+            SettingsProseBlock(body = "JMdict, CC BY-SA 4.0."),
+        ),
+    ),
+)
+
 private val WINDOW_WIDTH: Dp = 411.dp
 private val WINDOW_HEIGHT: Dp = 891.dp
 
@@ -185,6 +208,26 @@ internal fun SemanticsNodeInteraction.subtreeTextOrEmpty(): String {
         node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } +
             node.children.flatMap(::collect)
     return collect(fetchSemanticsNode()).joinToString(" ")
+}
+
+/**
+ * The text of every node in the subtree marked as a heading.
+ *
+ * Assistive technology navigates a long page by its headings, so what counts is not that
+ * a title is on screen but that it is *announced as* a heading. This is also the only way
+ * to catch the opposite failure — a heading emitted for a block that has no title, which
+ * a screen reader reads out as an empty stop.
+ */
+internal fun SemanticsNodeInteraction.subtreeHeadingTexts(): List<String> {
+    fun collect(node: SemanticsNode): List<String> {
+        val own = if (node.config.getOrNull(SemanticsProperties.Heading) != null) {
+            listOf(node.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" ") { it.text })
+        } else {
+            emptyList()
+        }
+        return own + node.children.flatMap(::collect)
+    }
+    return collect(fetchSemanticsNode())
 }
 
 internal fun SemanticsNodeInteraction.contentDescriptionOrEmpty(): String =

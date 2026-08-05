@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.OutlinedButton
@@ -41,6 +42,7 @@ const val SETTINGS_ROOT_TEST_TAG: String = "kani-settings-root"
 const val SETTINGS_CONTROLS_TEST_TAG: String = "kani-settings-controls"
 const val SETTINGS_PLACEHOLDER_TEST_TAG: String = "kani-settings-placeholder"
 const val SETTINGS_KEYBINDINGS_TEST_TAG: String = "kani-settings-keybindings"
+const val SETTINGS_PROSE_TEST_TAG: String = "kani-settings-prose"
 
 /** One root category card, tagged by its section route. */
 fun settingsCategoryTestTag(route: String): String = "kani-settings-category-$route"
@@ -91,6 +93,7 @@ fun SettingsScreenView(
             SettingsSectionContent.Placeholder -> if (root == null) PlaceholderPanel(copy)
             is SettingsSectionContent.Controls -> ControlsPanel(content, dispatch)
             is SettingsSectionContent.Keybindings -> KeybindingsPanel(content, dispatch)
+            is SettingsSectionContent.Prose -> ProsePanel(content)
         }
     }
 }
@@ -375,6 +378,56 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
         ) {
             Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
             Text(text = control.value, color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+        }
+    }
+}
+
+/**
+ * An explainer or attribution page: the page title, then titled paragraphs.
+ *
+ * Selectable text, because this is the one Settings surface a user has a reason to copy
+ * out of — a licence obligation is only satisfiable if the credit can be quoted, and a
+ * user reporting a problem tends to paste an explainer line back at us.
+ *
+ * A block's title is rendered as a heading so assistive technology can jump between
+ * sections; a blank one is skipped rather than emitted as an empty heading, which would
+ * announce a heading that is not there.
+ */
+@Composable
+private fun ProsePanel(content: SettingsSectionContent.Prose) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_PROSE_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        SelectionContainer {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = content.title,
+                    modifier = Modifier.semantics { heading() },
+                    color = KaniTheme.colors.ink,
+                    fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                for (block in content.blocks) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (block.title.isNotBlank()) {
+                            Text(
+                                text = block.title,
+                                modifier = Modifier.semantics { heading() },
+                                color = KaniTheme.colors.ink,
+                                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Text(
+                            text = block.body,
+                            color = KaniTheme.colors.muted,
+                            fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -71,6 +71,11 @@ class SettingsDesktopRenderTest {
     }
 
     @Test
+    fun aProsePageShowsEveryBlockAndDispatchesNothing() {
+        assertAProsePageShowsEveryBlockAndDispatchesNothing()
+    }
+
+    @Test
     fun anUnportedSectionNamesItselfRatherThanBlank() {
         assertAnUnportedSectionNamesItselfRatherThanBlank()
     }
