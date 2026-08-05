@@ -23,6 +23,7 @@ import dev.bee.kanjianki.StudyRouteRender
 import dev.bee.kanjianki.StudyRuntime
 import dev.bee.kanjianki.hostpresentation.HostProviderStatus
 import dev.bee.kanjianki.hostpresentation.KaniRouteContent
+import dev.bee.kanjianki.hostpresentation.UNLOADED_ONBOARDING
 import dev.bee.kanjianki.home.BrowseScreen
 import dev.bee.kanjianki.home.FocusQueuePanel
 import dev.bee.kanjianki.home.HomeDeckOverview
@@ -39,6 +40,7 @@ import dev.bee.kanjianki.home.rememberBrowseCopy
 import dev.bee.kanjianki.home.rememberDashboardCopy
 import dev.bee.kanjianki.home.rememberHomeCopy
 import dev.bee.kanjianki.home.rememberHomeCountedCopy
+import dev.bee.kanjianki.home.rememberSyncConfirmCopy
 import dev.bee.kanjianki.games.GamesScreenView
 import dev.bee.kanjianki.games.rememberGamesCopy
 import dev.bee.kanjianki.settings.SettingsScreenView
@@ -117,6 +119,14 @@ internal fun AndroidShellScaffold(
     val shellState = remember(revision) { shellHost.shell }
     val routeState = remember(revision) { shellHost.route(shellState.current) }
 
+    // Resolved here rather than inside the Home route: the confirmation is what the
+    // *dispatcher* needs, and a sync can be requested from a shortcut or a warm-launch
+    // intent while Home is not the visible route.
+    val syncConfirmCopy = rememberSyncConfirmCopy(
+        plan = routeState.content.valueOrNull?.onboarding ?: UNLOADED_ONBOARDING,
+        copy = rememberHomeCopy(),
+    )
+
     val dispatch: (KaniAction) -> Unit = { action ->
         val listed = routeState.content.valueOrNull?.browse?.rows.orEmpty().map { it.kanji }
         val pending = shellHost.dispatch(action)
@@ -125,7 +135,8 @@ internal fun AndroidShellScaffold(
         // returns no intent for one, so it has to run outside the `pending` branch below
         // or the onboarding buttons would do nothing at all.
         if (action is KaniAction.Provider) {
-            host.driveProvider(action)
+            host.driveProvider(action, syncConfirmCopy)?.let(shellHost::enqueue)
+            revision++
         }
         if (pending != null) {
             scope.launch {

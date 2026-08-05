@@ -65,6 +65,25 @@ class KaniShellHost<T>(
     }
 
     /**
+     * Queues [effect] for the shell to deliver, for one a reducer cannot build.
+     *
+     * The narrow case this exists for is the sync confirmation. Its wording comes from a
+     * host's Compose resources — `HomeCopy` needs `stringResource`, which a pure reducer
+     * cannot call — so `ShellReducer` deliberately leaves
+     * [KaniAction.Provider.RequestSync] alone and the host supplies the built
+     * [KaniEffect.Confirm] instead.
+     *
+     * Note what this does *not* let a host do: it cannot invent a confirm action, because
+     * the only producer of [KaniAction.Provider.ConfirmSync] is
+     * [OnboardingPolicy.syncConfirmation]. So routing the effect through here keeps the
+     * dialog in the shared queue — one place that renders it, one place that consumes it —
+     * without giving a host a way around the confirmation gate itself.
+     */
+    fun enqueue(effect: KaniEffect) {
+        shell = shell.copy(effects = shell.effects.enqueue(effect))
+    }
+
+    /**
      * Performs [pending] and records its outcome.
      *
      * A thrown exception becomes a [PresentationFailure] rather than propagating: a

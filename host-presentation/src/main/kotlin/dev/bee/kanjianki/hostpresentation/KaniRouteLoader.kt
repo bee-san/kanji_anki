@@ -71,6 +71,16 @@ class KaniRouteLoader(
         nowMillis: Long,
         studyRender: StudyRouteRender?,
         gamesRender: GamesRender?,
+        /**
+         * Whether a sync is running right now, from the host's [HostSyncDriver].
+         *
+         * A parameter rather than something read out of the snapshot, because a sync in
+         * flight is host state and not persisted data: the engine has not committed
+         * anything yet, so no repository can answer this. Defaulted to false so a caller
+         * with no driver — a test, or a host before its engine is wired — reads the
+         * honest value rather than being forced to invent one.
+         */
+        syncing: Boolean = false,
     ): KaniRouteContent {
         val snapshot = homeUseCases.loadRoute(nowMillis)
         val study = snapshot.study
@@ -130,9 +140,7 @@ class KaniRouteLoader(
                 annotate = annotateCapabilities,
                 nowMillis = nowMillis,
             ),
-            // No host observes an in-flight sync engine from this path yet (Goal 202
-            // on desktop; Android's sync runs elsewhere), so False is the honest value.
-            syncing = false,
+            syncing = syncing,
         )
 
         return KaniRouteContent(

@@ -37,10 +37,7 @@ data class KaniRouteContent(
     val dueCount: Int,
     val themeChoice: dev.bee.kanjianki.core.KaniThemeChoice,
     val home: HomeDashboard = HomeDashboard(),
-    val onboarding: OnboardingPlan = OnboardingPlan(
-        step = OnboardingStep.CONNECT_PROVIDER,
-        binding = CollectionBinding(noteType = ""),
-    ),
+    val onboarding: OnboardingPlan = UNLOADED_ONBOARDING,
     val browse: BrowseResults = BrowseResults(),
     val detail: KanjiDetail? = null,
     val study: StudySession? = null,
@@ -56,4 +53,17 @@ data class KaniRouteContent(
      * while the shortcut handler uses another.
      */
     val studyKeybindings: StudyKeybindings = StudyKeybindings.DEFAULT,
+)
+
+/**
+ * The onboarding plan for content that has not loaded yet.
+ *
+ * Named rather than inline so a host can resolve confirmation copy before its first
+ * load completes without inventing a plan of its own: "no provider, no note type" is
+ * the honest reading of "we have not asked yet", and it is the same plan the default
+ * argument produces.
+ */
+val UNLOADED_ONBOARDING: OnboardingPlan = OnboardingPlan(
+    step = OnboardingStep.CONNECT_PROVIDER,
+    binding = CollectionBinding(noteType = ""),
 )

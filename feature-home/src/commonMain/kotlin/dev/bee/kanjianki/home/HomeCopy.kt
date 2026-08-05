@@ -374,6 +374,23 @@ fun rememberHomeCountedCopy(plan: OnboardingPlan): HomeCountedCopy {
     }
 }
 
+/**
+ * The sync confirmation for [plan], with its repaired-tagging count already selected.
+ *
+ * Resolved by a composable and handed to the host because that is the only way round:
+ * the dialog's wording lives in this module's resources and its count needs the host's
+ * plural rules, so `ShellReducer` cannot build the effect and the host cannot invent the
+ * words. Both hosts call this and pass the result to their sync driver, which is what
+ * keeps one confirmation — and one stated count — behind both.
+ */
+@Composable
+fun rememberSyncConfirmCopy(plan: OnboardingPlan, copy: HomeCopy): SyncConfirmCopy {
+    val counted = rememberHomeCountedCopy(plan)
+    return remember(plan.binding, counted.repairedTaggingLine, copy) {
+        copy.syncConfirmation(plan.binding, counted.repairedTaggingLine)
+    }
+}
+
 /** The picker row label for [option], with its field count pluralized. */
 @Composable
 fun rememberNoteTypeLabel(option: NoteTypeOption, copy: HomeCopy): String {

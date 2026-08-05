@@ -148,6 +148,62 @@ class KaniShellHostTest {
         assertTrue(host.route(KaniDestination.Home).content is Loadable.Loaded)
     }
 
+    @Test
+    fun aHostBuiltConfirmationIsDeliveredThroughTheSharedQueue() {
+        val host = hostWith()
+        val confirm = OnboardingPolicy.syncConfirmation(
+            SyncConfirmCopy(
+                title = UiText.Literal("Sync cards"),
+                body = UiText.Literal("Import from AnkiDroid. 12 notes will be tagged."),
+                confirmLabel = UiText.Literal("Sync"),
+                dismissLabel = UiText.Literal("Cancel"),
+            ),
+        )
+
+        host.enqueue(confirm)
+
+        // The confirmation the user answers is the one the host built, wording and all:
+        // the count in the body is what makes the tag write-back confirmed rather than
+        // merely disclosed, and it must not be re-derived on the way through.
+        assertEquals(confirm, assertNotNull(host.shell.effects.head).effect)
+    }
+
+    @Test
+    fun anEnqueuedEffectIsConsumedLikeAReducerBuiltOne() {
+        val host = hostWith()
+        host.enqueue(KaniEffect.ShowMessage(UiText.Literal("Synced.")))
+        val queued = assertNotNull(host.shell.effects.head)
+
+        host.dispatch(KaniAction.Consume.Effect(queued.id))
+
+        assertTrue(host.shell.effects.isEmpty)
+    }
+
+    @Test
+    fun enqueueingTwiceKeepsBothInOrderAndGivesThemDistinctIds() {
+        val host = hostWith()
+
+        host.enqueue(KaniEffect.ShowMessage(UiText.Literal("first")))
+        host.enqueue(KaniEffect.ShowMessage(UiText.Literal("second")))
+
+        val queued = host.shell.effects.pending
+        assertEquals(2, queued.size)
+        assertEquals(KaniEffect.ShowMessage(UiText.Literal("first")), queued.first().effect)
+        assertTrue(queued.first().id != queued.last().id)
+    }
+
+    @Test
+    fun anEnqueuedEffectSurvivesNavigatingAwayFromTheRouteThatRaisedIt() {
+        val host = hostWith()
+        host.enqueue(KaniEffect.ShowMessage(UiText.Literal("Synced.")))
+
+        // Route effects are cleared on exit; the shell's are not. A sync started from
+        // Home that finishes after the user opened Stats still has something to say.
+        host.dispatch(KaniAction.Navigation.Open(KaniDestination.Stats))
+
+        assertEquals(1, host.shell.effects.pending.size)
+    }
+
     private fun hostWith(
         launch: KaniLaunchRequest? = null,
         capabilities: PlatformCapabilities = PlatformCapabilities.NONE,

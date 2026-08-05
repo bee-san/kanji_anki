@@ -31,7 +31,14 @@ internal fun interface AndroidContainerProvider {
 internal class AndroidKaniContainer(
     context: Context,
 ) : KaniContainer {
-    private val appContext = context.applicationContext
+    /**
+     * The process context, for the platform adapters that genuinely need one.
+     *
+     * Visible rather than private because sync composition needs it: asset readers, the
+     * reminder re-arm, and the widget refresh are all `Context`-shaped, and the host that
+     * builds a sync engine holds this container and no Activity.
+     */
+    val appContext: Context = context.applicationContext
 
     val localStore: LocalStore = AppLocalStoreFactory.create(appContext)
     val ankiDroidGateway = AnkiDroidGateway(appContext)
