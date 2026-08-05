@@ -16,6 +16,7 @@ import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KanjiDetail
 import dev.bee.kanjianki.presentation.KeyboardPlatform
+import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.ProviderReadiness
 import dev.bee.kanjianki.presentation.SettingsScreen
@@ -39,6 +40,25 @@ data class HostProviderStatus(
     val message: String,
     val isReady: Boolean,
     val capabilities: Set<PlatformCapability>,
+)
+
+/**
+ * The Automation facts no store holds, which the host has to answer for itself.
+ *
+ * The device-settings store covers everything the user chose; these three are observed
+ * rather than chosen. [notificationsBlocked] is what the OS says right now, and
+ * [automaticBackupCount]/[lastAutomaticBackupAtMillis] come from counting files in the
+ * host's own backup directory — neither is something Settings may write, and both are
+ * stale the moment they are read, which is why they arrive per route load.
+ *
+ * Every field defaults to the honest "nothing observed" value, so a host that has not
+ * wired its notifier or its backup directory yet reports no backups and unblocked
+ * notifications rather than inventing either.
+ */
+data class HostAutomationRuntime(
+    val notificationsBlocked: Boolean = false,
+    val lastAutomaticBackupAtMillis: Long? = null,
+    val automaticBackupCount: Int = 0,
 )
 
 /**
@@ -81,6 +101,12 @@ class KaniRouteLoader(
          * honest value rather than being forced to invent one.
          */
         syncing: Boolean = false,
+        /**
+         * The Automation facts the host observes rather than stores; see
+         * [HostAutomationRuntime]. Defaulted so every caller that never opens Automation
+         * — which is every caller on every other route — passes nothing.
+         */
+        automationRuntime: HostAutomationRuntime = HostAutomationRuntime(),
     ): KaniRouteContent {
         val snapshot = homeUseCases.loadRoute(nowMillis)
         val study = snapshot.study
@@ -169,6 +195,8 @@ class KaniRouteLoader(
                     snapshot = snapshot.settings,
                     bindings = studyKeybindings(),
                     platform = keyboardPlatform,
+                    automation = automationState(automationRuntime),
+                    capabilities = PlatformCapabilities(status.capabilities),
                 )
             },
             studyKeybindings = studyKeybindings(),
@@ -185,6 +213,21 @@ class KaniRouteLoader(
      */
     private fun studyKeybindings(): StudyKeybindings =
         StudyKeybindingsCodec.decode(deviceSettings().read(DeviceSettingKeys.studyKeybindings))
+
+    /**
+     * The stored automation settings, plus the facts only the host can observe.
+     *
+     * Read on every load for the same reason keybindings are: the Automation editor writes
+     * straight to the device store, so the next load is what has to show the new value.
+     */
+    private fun automationState(
+        runtime: HostAutomationRuntime,
+    ): DesktopSettingsModel.AutomationState =
+        AutomationSettingsStore.read(deviceSettings()).copy(
+            notificationsBlocked = runtime.notificationsBlocked,
+            lastAutomaticBackupAtMillis = runtime.lastAutomaticBackupAtMillis,
+            automaticBackupCount = runtime.automaticBackupCount,
+        )
 
     private suspend fun loadBrowse(destination: KaniDestination): BrowseResults {
         val browse = destination as? KaniDestination.Browse ?: return BrowseResults()

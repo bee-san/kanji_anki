@@ -25,9 +25,6 @@ import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.ProviderReadiness
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -181,10 +178,4 @@ class KaniRouteLoaderTest {
             lastStudyAtMillis = 0L,
         )
     }
-}
-
-private fun <T> runSync(block: suspend () -> T): T {
-    var outcome: Result<T>? = null
-    block.startCoroutine(Continuation(EmptyCoroutineContext) { outcome = it })
-    return requireNotNull(outcome) { "loader did not complete synchronously" }.getOrThrow()
 }

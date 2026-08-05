@@ -172,6 +172,10 @@ sealed interface SettingsControl {
      * setting's bounds — it steps by [step] and hands the result back, and this decides
      * what that value means. The controls that would step past a bound are the surface's
      * to disable, from [value] against [min]/[max].
+     *
+     * [valueLabel] overrides how [value] reads, for a number that is not the thing to
+     * show: a reminder time is stored as a minute of day, and "1320 minutes" is not what
+     * a user set. Blank means render the number and [unit], which is the ordinary case.
      */
     data class Stepper(
         override val label: String,
@@ -180,6 +184,7 @@ sealed interface SettingsControl {
         val max: Int,
         val step: Int = 1,
         val unit: String = "",
+        val valueLabel: String = "",
         val onChange: (Int) -> KaniAction,
     ) : SettingsControl {
         init {
@@ -198,6 +203,14 @@ sealed interface SettingsControl {
 
         /** Whether the value can still go up; the surface disables the control otherwise. */
         val canIncrement: Boolean get() = value < max
+
+        /** What the surface shows for the current value: [valueLabel], else number + [unit]. */
+        val displayValue: String
+            get() = when {
+                valueLabel.isNotBlank() -> valueLabel
+                unit.isBlank() -> "$value"
+                else -> "$value $unit"
+            }
     }
 
     data class ActionButton(

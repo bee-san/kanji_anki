@@ -1,10 +1,16 @@
 package dev.bee.kanjianki.hostpresentation
 
 import dev.bee.kanjianki.core.AttributionCopy
+import dev.bee.kanjianki.core.BackupExportPolicy
+import dev.bee.kanjianki.core.DateTextPolicy
+import dev.bee.kanjianki.core.DebugLogTextCopy
 import dev.bee.kanjianki.core.DeckLimitsSettingsPolicy
 import dev.bee.kanjianki.core.HowKaniWorksCopy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
+import dev.bee.kanjianki.core.ReminderSettingsSavePolicy
+import dev.bee.kanjianki.core.SettingsAutomationTextCopy
 import dev.bee.kanjianki.core.SettingsReferenceDataTextCopy
 import dev.bee.kanjianki.core.SettingsImportTextCopy
 import dev.bee.kanjianki.core.SettingsKeybindingTextCopy
@@ -13,13 +19,17 @@ import dev.bee.kanjianki.core.SettingsSectionTextCopy
 import dev.bee.kanjianki.core.SettingsStudyBehaviorTextCopy
 import dev.bee.kanjianki.core.SettingsThemeTextCopy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
+import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KeyboardPlatform
+import dev.bee.kanjianki.presentation.PlatformCapabilities
+import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.SettingsCategory
 import dev.bee.kanjianki.presentation.SettingsChoiceOption
+import dev.bee.kanjianki.presentation.SettingsCommands
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
 import dev.bee.kanjianki.presentation.SettingsKeybindingRow
@@ -60,6 +70,34 @@ object DesktopSettingsModel {
     private const val IMPORT_SUSPENDED_KEY = "import_suspended_cards"
     private const val IMPORT_WEAK_KEY = "import_weak_cards"
 
+    // The Automation keys. Namespaced apart from the portable settings keys above
+    // because they persist somewhere else entirely — `DeviceSettingKeys`, never the
+    // collection database — and `automationEditFor` is what maps them, not
+    // `settingsCommandFor`. A key that ended up in both mappers would write twice.
+    private const val REMINDER_ENABLED_KEY = "automation.reminder_enabled"
+    private const val REMINDER_TIME_KEY = "automation.reminder_time"
+    private const val REMINDER_MAX_PER_DAY_KEY = "automation.reminder_max_per_day"
+    private const val REMINDER_QUIET_START_KEY = "automation.reminder_quiet_start"
+    private const val REMINDER_QUIET_END_KEY = "automation.reminder_quiet_end"
+    private const val AUTO_SYNC_ENABLED_KEY = "automation.auto_sync_enabled"
+    private const val AUTO_SYNC_TIME_KEY = "automation.auto_sync_time"
+    private const val DEBUG_LOG_ENABLED_KEY = "automation.debug_log_enabled"
+
+    // The backup commands raise a host file picker rather than persisting anything, so
+    // their ids live in `presentation-api` beside the reducer that turns them into a
+    // `KaniEffect.PickFile`. Aliased here only so the section reads like the rest of it.
+    private val BACKUP_EXPORT_COMMAND = SettingsCommands.BACKUP_EXPORT
+    private val BACKUP_RESTORE_COMMAND = SettingsCommands.BACKUP_RESTORE
+
+    // A scheduled time is edited as one minute-of-day value rather than an hour control
+    // and a minute control. Two steppers would need two distinct labels, and a label is
+    // what a control's test tag is derived from, so the pair would either collide or need
+    // copy that does not exist. The presets do the coarse jumping; the stepper's quarter
+    // hour is the fine adjustment, which is the granularity the Android presets used.
+    private const val TIME_STEP_MINUTES = 15
+    private const val QUIET_STEP_MINUTES = 30
+    private const val MINUTES_PER_DAY = 24 * 60
+
     // The new-card sort modes, in the order the section lists them.
     private val NEW_CARD_SORT_MODES: List<String> = listOf(
         RecordsBase.NEW_CARD_SORT_BALANCED_PRIORITY,
@@ -75,6 +113,8 @@ object DesktopSettingsModel {
         bindings: StudyKeybindings = StudyKeybindings.DEFAULT,
         platform: KeyboardPlatform = KeyboardPlatform.LINUX,
         attribution: AttributionTexts = AttributionTexts.UNAVAILABLE,
+        automation: AutomationState = AutomationState(),
+        capabilities: PlatformCapabilities = PlatformCapabilities.NONE,
     ): SettingsScreen = when (section) {
         SettingsSection.ROOT -> SettingsScreen(section = section, root = root())
         SettingsSection.APPEARANCE ->
@@ -85,6 +125,8 @@ object DesktopSettingsModel {
             SettingsScreen(section = section, content = importSync(snapshot))
         SettingsSection.KEYBINDINGS ->
             SettingsScreen(section = section, content = keybindings(bindings, platform))
+        SettingsSection.AUTOMATION ->
+            SettingsScreen(section = section, content = automation(automation, capabilities))
         SettingsSection.DISPLAY_DATA ->
             SettingsScreen(section = section, content = displayData())
         SettingsSection.HOW_IT_WORKS ->
@@ -92,6 +134,153 @@ object DesktopSettingsModel {
         SettingsSection.LICENSES ->
             SettingsScreen(section = section, content = licenses(attribution))
         else -> SettingsScreen(section = section)
+    }
+
+    /**
+     * The device-local automation state a host has read, for [SettingsSection.AUTOMATION].
+     *
+     * Its own holder rather than fields on [SettingsSnapshot] because every value here is
+     * device-local (`DeviceSettingKeys`) and deliberately excluded from portable backups:
+     * restoring a phone's profile onto a laptop must not tell the laptop it has a
+     * pending update or a 19:00 alarm the OS never armed. Read by the host from its
+     * device store, mapped here, and written back through [automationEditFor].
+     *
+     * The defaults are the reviewed ones from `:core` rather than zeros, so an install
+     * that has never touched Automation renders the same 19:00 the schedulers assume
+     * instead of a midnight the user did not choose.
+     */
+    data class AutomationState(
+        val reminderEnabled: Boolean = false,
+        val reminderHour: Int = TimeOfDaySettingsPolicy.DEFAULT_REMINDER_HOUR,
+        val reminderMinute: Int = TimeOfDaySettingsPolicy.DEFAULT_REMINDER_MINUTE,
+        val reminderMaxPerDay: Int = ReminderAntiSpamPolicy.DEFAULT_MAX_PER_DAY,
+        val reminderQuietStartMinute: Int = ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE,
+        val reminderQuietEndMinute: Int = ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE,
+        /**
+         * Whether the OS is currently refusing Kani's notifications.
+         *
+         * Runtime state the host asks its notifier for, not a [PlatformCapabilities] entry:
+         * "the user revoked the permission" and "this host has no OS-scheduled notifier"
+         * are different facts with different remedies, and only the first is something the
+         * user can fix. Desktop leaves this false — its reminders do fire, in-window.
+         */
+        val notificationsBlocked: Boolean = false,
+        val autoSyncConfigured: Boolean = false,
+        val autoSyncEnabled: Boolean = false,
+        val autoSyncHour: Int = TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_HOUR,
+        val autoSyncMinute: Int = TimeOfDaySettingsPolicy.DEFAULT_AUTO_SYNC_MINUTE,
+        val autoSyncLastSuccessAtMillis: Long = 0L,
+        val autoSyncLastAttemptAtMillis: Long = 0L,
+        val autoSyncNextRunAtMillis: Long = 0L,
+        val debugLogEnabled: Boolean = false,
+        val lastAutomaticBackupAtMillis: Long? = null,
+        val automaticBackupCount: Int = 0,
+    )
+
+    /**
+     * One device-local automation write, or null when the action is not one.
+     *
+     * The [AutomationState] the store should hold after [action], already normalized: the
+     * reminder through `ReminderSettingsSavePolicy`, the schedule through
+     * `TimeOfDaySettingsPolicy.normalizeAutoSync`, the anti-spam knobs through
+     * `ReminderAntiSpamPolicy`. Normalizing here rather than at the store means a control
+     * cannot persist a value the policy would clamp on the way back out, which is how a
+     * setting comes to read differently from what was saved.
+     *
+     * Its own mapper rather than a [SettingsSaveCommand] branch, mirroring
+     * [keybindingEditFor], because these keys live in `DeviceSettingKeys` and are on
+     * `portableExclusionStorageNames` — restoring a phone's backup onto a laptop must not
+     * hand the laptop a 19:00 alarm no OS armed. A key in both mappers would be written
+     * twice, so the automation keys are namespaced apart to make that impossible.
+     *
+     * Null covers "not an automation edit" *and* "nothing would change": rewriting the
+     * store on every re-render of an untouched section is how a settings file churns.
+     * The backup commands deliberately map to null — they persist nothing and are the
+     * host's cue to raise `KaniEffect.PickFile`.
+     */
+    fun automationEditFor(
+        action: KaniAction.Settings,
+        current: AutomationState,
+    ): AutomationState? {
+        val next = when (action) {
+            is KaniAction.Settings.SetToggle -> when (action.key) {
+                REMINDER_ENABLED_KEY -> current.copy(reminderEnabled = action.enabled)
+                AUTO_SYNC_ENABLED_KEY ->
+                    // Refused outright while unconfigured rather than normalized to false:
+                    // the control is disabled there, so an arriving edit is not a user
+                    // choice, and writing the zeroed value would still churn the store.
+                    if (current.autoSyncConfigured) {
+                        current.copy(autoSyncEnabled = action.enabled)
+                    } else {
+                        return null
+                    }
+                DEBUG_LOG_ENABLED_KEY -> current.copy(debugLogEnabled = action.enabled)
+                else -> return null
+            }
+            is KaniAction.Settings.SetNumber -> when (action.key) {
+                REMINDER_TIME_KEY -> current.copy(
+                    reminderHour = action.value.floorDiv(60),
+                    reminderMinute = action.value.mod(60),
+                )
+                AUTO_SYNC_TIME_KEY -> current.copy(
+                    autoSyncHour = action.value.floorDiv(60),
+                    autoSyncMinute = action.value.mod(60),
+                )
+                REMINDER_MAX_PER_DAY_KEY -> current.copy(reminderMaxPerDay = action.value)
+                REMINDER_QUIET_START_KEY -> current.copy(reminderQuietStartMinute = action.value)
+                REMINDER_QUIET_END_KEY -> current.copy(reminderQuietEndMinute = action.value)
+                else -> return null
+            }
+            is KaniAction.Settings.SetChoice -> return null
+            is KaniAction.Settings.Command -> return null
+        }
+        val normalized = normalizeAutomation(next)
+        return if (normalized == current) null else normalized
+    }
+
+    /**
+     * [state] with every field put through the `:core` policy that owns it.
+     *
+     * One place, used by both the mapper and any host reading a store that predates a
+     * bound: a reminder hour of 31 or a quiet boundary of -1 comes back as the reviewed
+     * default rather than being rendered as though the user chose it.
+     */
+    fun normalizeAutomation(state: AutomationState): AutomationState {
+        val reminder = ReminderSettingsSavePolicy.fields(
+            state.reminderEnabled,
+            state.reminderHour,
+            state.reminderMinute,
+        )
+        val autoSync = TimeOfDaySettingsPolicy.normalizeAutoSync(
+            state.autoSyncConfigured,
+            state.autoSyncEnabled,
+            state.autoSyncHour,
+            state.autoSyncMinute,
+            state.autoSyncLastAttemptAtMillis,
+            state.autoSyncLastSuccessAtMillis,
+            state.autoSyncNextRunAtMillis,
+        )
+        return state.copy(
+            reminderEnabled = reminder.enabled,
+            reminderHour = reminder.hour,
+            reminderMinute = reminder.minute,
+            reminderMaxPerDay = ReminderAntiSpamPolicy.normalizeMaxPerDay(state.reminderMaxPerDay),
+            reminderQuietStartMinute = ReminderAntiSpamPolicy.normalizeMinuteOfDay(
+                state.reminderQuietStartMinute,
+                ReminderAntiSpamPolicy.DEFAULT_QUIET_START_MINUTE,
+            ),
+            reminderQuietEndMinute = ReminderAntiSpamPolicy.normalizeMinuteOfDay(
+                state.reminderQuietEndMinute,
+                ReminderAntiSpamPolicy.DEFAULT_QUIET_END_MINUTE,
+            ),
+            autoSyncConfigured = autoSync.configured,
+            autoSyncEnabled = autoSync.enabled,
+            autoSyncHour = autoSync.hour,
+            autoSyncMinute = autoSync.minute,
+            autoSyncLastAttemptAtMillis = autoSync.lastAttemptAtMillis,
+            autoSyncLastSuccessAtMillis = autoSync.lastSuccessAtMillis,
+            autoSyncNextRunAtMillis = autoSync.nextRunAtMillis,
+        )
     }
 
     /**
@@ -127,6 +316,264 @@ object DesktopSettingsModel {
             )
         }
     }
+
+    /**
+     * The Automation section: reminders, daily sync, backups, and the debug log.
+     *
+     * Every value is device-local, and that shapes the whole section. The times are
+     * steppers rather than a native time picker because a picker is a per-host dialog
+     * and the shared surface has no such control; a 15-minute stepper reaches every
+     * time the presets offered and is keyboard-operable, which the Android dialog was
+     * not.
+     *
+     * Three truths are stated rather than hidden. The reminder reports blocked when the
+     * host says its notifications are off ([AutomationState.notificationsBlocked]) —
+     * runtime state, not a missing capability, because a host without
+     * [PlatformCapability.NOTIFICATIONS] still evaluates reminders in-window and saying
+     * "blocked" there would be wrong. Daily sync stays disabled until a sync has actually
+     * run ([AutomationState.autoSyncConfigured]) — `TimeOfDaySettingsPolicy` zeroes
+     * `enabled` when unconfigured anyway, so a toggle that appeared to take would be
+     * lying — and its status line says why. Backup export/restore is gated on
+     * [PlatformCapability.BACKUP_RESTORE], because a host that cannot take a live
+     * snapshot cannot honour the atomic-publication contract and must not offer a button
+     * that implies it can.
+     *
+     * The reminder's own scheduling limit is not restated here: the root menu already
+     * carries [REMINDER_NOTICE] on the Automation card, which is where the user meets it.
+     */
+    private fun automation(
+        state: AutomationState,
+        capabilities: PlatformCapabilities,
+    ): SettingsSectionContent.Controls = SettingsSectionContent.Controls(
+        title = SettingsSectionTextCopy.settingsAutomationTitle(),
+        controls = buildList {
+            add(
+                SettingsControl.Toggle(
+                    label = SettingsAutomationTextCopy.dailyReminderTitle(),
+                    checked = state.reminderEnabled,
+                    onChange = { KaniAction.Settings.SetToggle(REMINDER_ENABLED_KEY, it) },
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = SettingsAutomationTextCopy.dailyReminderTitle(),
+                    value = SettingsAutomationTextCopy.reminderStatus(
+                        enabled = state.reminderEnabled,
+                        blocked = state.notificationsBlocked,
+                        displayTime = SettingsAutomationTextCopy.reminderTime(
+                            state.reminderHour,
+                            state.reminderMinute,
+                        ),
+                    ),
+                ),
+            )
+            add(
+                timeStepper(
+                    label = SettingsAutomationTextCopy.reminderTimeButtonLabel(
+                        state.reminderHour,
+                        state.reminderMinute,
+                    ),
+                    minuteOfDay = state.reminderHour * 60 + state.reminderMinute,
+                    key = REMINDER_TIME_KEY,
+                ),
+            )
+            addAll(reminderPresets(REMINDER_TIME_KEY))
+            add(
+                SettingsControl.Stepper(
+                    label = SettingsAutomationTextCopy.reminderMaxPerDayLabel(state.reminderMaxPerDay),
+                    value = state.reminderMaxPerDay,
+                    min = ReminderAntiSpamPolicy.MIN_MAX_PER_DAY,
+                    max = ReminderAntiSpamPolicy.MAX_MAX_PER_DAY,
+                    onChange = { KaniAction.Settings.SetNumber(REMINDER_MAX_PER_DAY_KEY, it) },
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = SettingsAutomationTextCopy.reminderQuietHoursLabel(
+                        state.reminderQuietStartMinute,
+                        state.reminderQuietEndMinute,
+                    ),
+                    value = SettingsAutomationTextCopy.reminderQuietHoursBody(),
+                ),
+            )
+            add(
+                quietStepper(
+                    label = SettingsAutomationTextCopy.reminderQuietStartButtonLabel(
+                        state.reminderQuietStartMinute,
+                    ),
+                    minuteOfDay = state.reminderQuietStartMinute,
+                    key = REMINDER_QUIET_START_KEY,
+                ),
+            )
+            add(
+                quietStepper(
+                    label = SettingsAutomationTextCopy.reminderQuietEndButtonLabel(
+                        state.reminderQuietEndMinute,
+                    ),
+                    minuteOfDay = state.reminderQuietEndMinute,
+                    key = REMINDER_QUIET_END_KEY,
+                ),
+            )
+            add(
+                SettingsControl.Toggle(
+                    label = SettingsAutomationTextCopy.dailyAnkiSyncTitle(),
+                    checked = state.autoSyncEnabled,
+                    // Never operable before the first real sync: the policy zeroes
+                    // `enabled` while unconfigured, so a toggle that appeared to take
+                    // would silently revert on the reload.
+                    enabled = state.autoSyncConfigured,
+                    onChange = { KaniAction.Settings.SetToggle(AUTO_SYNC_ENABLED_KEY, it) },
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = SettingsAutomationTextCopy.autoSyncStatus(
+                        configured = state.autoSyncConfigured,
+                        enabled = state.autoSyncEnabled,
+                        displayTime = SettingsAutomationTextCopy.reminderTime(
+                            state.autoSyncHour,
+                            state.autoSyncMinute,
+                        ),
+                    ),
+                    value = SettingsAutomationTextCopy.autoSyncDetail(
+                        configured = state.autoSyncConfigured,
+                        enabled = state.autoSyncEnabled,
+                        lastSuccessText = shortDateTimeOrBlank(state.autoSyncLastSuccessAtMillis),
+                        // Only when it differs from the last success, matching the Android
+                        // panel: repeating one timestamp under two labels reads as two
+                        // separate events.
+                        lastAttemptText = if (
+                            state.autoSyncLastAttemptAtMillis != state.autoSyncLastSuccessAtMillis
+                        ) {
+                            shortDateTimeOrBlank(state.autoSyncLastAttemptAtMillis)
+                        } else {
+                            ""
+                        },
+                        nextRunText = shortDateTimeOrBlank(state.autoSyncNextRunAtMillis),
+                    ),
+                ),
+            )
+            add(
+                timeStepper(
+                    label = SettingsAutomationTextCopy.dailyAnkiSyncTitle(),
+                    minuteOfDay = state.autoSyncHour * 60 + state.autoSyncMinute,
+                    key = AUTO_SYNC_TIME_KEY,
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = BackupExportPolicy.panelTitle(),
+                    value = BackupExportPolicy.lastBackupLine(state.lastAutomaticBackupAtMillis),
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = BackupExportPolicy.panelBody(),
+                    value = BackupExportPolicy.archiveCountLine(state.automaticBackupCount),
+                ),
+            )
+            val backupSupported = capabilities.supports(PlatformCapability.BACKUP_RESTORE)
+            add(
+                SettingsControl.ActionButton(
+                    label = BackupExportPolicy.exportNowLabel(),
+                    action = KaniAction.Settings.Command(BACKUP_EXPORT_COMMAND),
+                    enabled = backupSupported,
+                ),
+            )
+            add(
+                SettingsControl.ActionButton(
+                    label = BackupExportPolicy.restoreFromBackupLabel(),
+                    action = KaniAction.Settings.Command(BACKUP_RESTORE_COMMAND),
+                    // Destructive: a restore replaces this device's whole database. The
+                    // confirmation and validation are the restore flow's own, raised by
+                    // the host effect; this only makes the button look like what it does.
+                    destructive = true,
+                    enabled = backupSupported,
+                ),
+            )
+            add(
+                SettingsControl.Toggle(
+                    label = DebugLogTextCopy.debugLogToggleLabel(state.debugLogEnabled),
+                    checked = state.debugLogEnabled,
+                    onChange = { KaniAction.Settings.SetToggle(DEBUG_LOG_ENABLED_KEY, it) },
+                ),
+            )
+            add(
+                SettingsControl.Info(
+                    label = DebugLogTextCopy.debugLogStatus(state.debugLogEnabled),
+                    value = DebugLogTextCopy.debugLogDetail(state.debugLogEnabled),
+                ),
+            )
+        },
+    )
+
+    /**
+     * One scheduled time, edited as a minute of day and read as a clock time.
+     *
+     * A stepper rather than a native time picker: a picker is a per-host dialog the shared
+     * surface has no control for, and the Android one was not keyboard-reachable. The
+     * quarter-hour step is the fine adjustment; [reminderPresets] does the coarse jumping,
+     * so nobody presses `+` ninety times.
+     *
+     * [SettingsControl.Stepper.valueLabel] is what makes this legible — the stored value
+     * is 1,140, and "1140 minutes" is not a time anyone set.
+     */
+    private fun timeStepper(label: String, minuteOfDay: Int, key: String): SettingsControl =
+        SettingsControl.Stepper(
+            label = label,
+            value = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - TIME_STEP_MINUTES),
+            min = 0,
+            max = MINUTES_PER_DAY - TIME_STEP_MINUTES,
+            step = TIME_STEP_MINUTES,
+            valueLabel = minuteOfDayLabel(minuteOfDay),
+            onChange = { KaniAction.Settings.SetNumber(key, it) },
+        )
+
+    /**
+     * The four one-tap reminder times, carried over from the Android panel unchanged.
+     *
+     * The same hours a user already knows (Morning 8:00, Lunch 12:30, Evening 19:00,
+     * Night 21:00), so an install that syncs its device settings across hosts finds the
+     * times where it left them.
+     */
+    private fun reminderPresets(key: String): List<SettingsControl> = listOf(
+        Triple(SettingsAutomationTextCopy.morningReminderPresetLabel(), 8, 0),
+        Triple(SettingsAutomationTextCopy.lunchReminderPresetLabel(), 12, 30),
+        Triple(SettingsAutomationTextCopy.eveningReminderPresetLabel(), 19, 0),
+        Triple(SettingsAutomationTextCopy.nightReminderPresetLabel(), 21, 0),
+    ).map { (label, hour, minute) ->
+        SettingsControl.ActionButton(
+            label = SettingsAutomationTextCopy.reminderPresetButtonLabel(label, hour, minute),
+            action = KaniAction.Settings.SetNumber(key, hour * 60 + minute),
+        )
+    }
+
+    /** One quiet-hour boundary, stepped by a half hour and read as a clock time. */
+    private fun quietStepper(label: String, minuteOfDay: Int, key: String): SettingsControl =
+        SettingsControl.Stepper(
+            label = label,
+            value = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - QUIET_STEP_MINUTES),
+            min = 0,
+            max = MINUTES_PER_DAY - QUIET_STEP_MINUTES,
+            step = QUIET_STEP_MINUTES,
+            valueLabel = minuteOfDayLabel(minuteOfDay),
+            onChange = { KaniAction.Settings.SetNumber(key, it) },
+        )
+
+    /** A minute of day as `HH:mm`, clamped so a stored out-of-range value still reads. */
+    private fun minuteOfDayLabel(minuteOfDay: Int): String {
+        val safe = minuteOfDay.coerceIn(0, MINUTES_PER_DAY - 1)
+        return TimeOfDaySettingsPolicy.displayTime(safe / 60, safe % 60)
+    }
+
+    /**
+     * A timestamp as a short date-time, or blank when it never happened.
+     *
+     * Blank rather than an epoch date: `autoSyncDetail` drops an empty part entirely, so
+     * a sync that has never run shows no "Last sync" line instead of 1970.
+     */
+    private fun shortDateTimeOrBlank(millis: Long): String =
+        if (millis > 0L) DateTextPolicy.shortDateTime(millis) else ""
 
     /**
      * Display & data: the two pages this section is a doorway to.

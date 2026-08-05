@@ -105,8 +105,23 @@ object ShellReducer {
          * re-derived from `:application`; the shell's back stack and tabs are untouched.
          * A command that ends up navigating (a restore that restarts the app) does so
          * through the host's effect, not by this reducer moving the stack.
+         *
+         * The exception is a [SettingsCommands] picker: backup export and restore are a
+         * host file dialog, so they become a queued [KaniEffect.PickFile] here for the
+         * same reason [KaniAction.RequestCopy] does — a section reaching for a file
+         * chooser itself would need a picker per host, and Android's arrives back as an
+         * activity result after a possible process death. Every other settings command
+         * falls through to the persistence mappers untouched.
          */
-        is KaniAction.Settings -> state
+        is KaniAction.Settings -> {
+            val purpose = (action as? KaniAction.Settings.Command)
+                ?.let { SettingsCommands.filePurposeFor(it.id) }
+            if (purpose == null) {
+                state
+            } else {
+                state.copy(effects = state.effects.enqueue(KaniEffect.PickFile(purpose)))
+            }
+        }
     }
 
     /**

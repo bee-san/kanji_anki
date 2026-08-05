@@ -3,6 +3,7 @@ package dev.bee.kanjianki.hostpresentation
 import dev.bee.kanjianki.core.HowKaniWorksCopy
 import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
 import dev.bee.kanjianki.core.SettingsReferenceDataTextCopy
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
@@ -12,6 +13,8 @@ import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KeyboardPlatform
+import dev.bee.kanjianki.presentation.PlatformCapabilities
+import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.SettingsControl
 import dev.bee.kanjianki.presentation.SettingsSectionContent
 import dev.bee.kanjianki.presentation.SettingsSection
@@ -85,6 +88,7 @@ class DesktopSettingsModelTest {
             SettingsSection.STUDY_BEHAVIOR,
             SettingsSection.IMPORT_SYNC,
             SettingsSection.KEYBINDINGS,
+            SettingsSection.AUTOMATION,
             SettingsSection.DISPLAY_DATA,
             SettingsSection.HOW_IT_WORKS,
             SettingsSection.LICENSES,
@@ -180,6 +184,205 @@ class DesktopSettingsModelTest {
             assertNull("a prose page is a leaf, not a menu", screen.root)
             assertTrue(screen.content is SettingsSectionContent.Prose)
         }
+    }
+
+    @Test
+    fun automationRendersEveryDeviceLocalValueItWasGiven() {
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            automation = automation(),
+            capabilities = PlatformCapabilities.of(PlatformCapability.BACKUP_RESTORE),
+        ).content as SettingsSectionContent.Controls
+
+        val steppers = content.controls.filterIsInstance<SettingsControl.Stepper>()
+        // A stored time reads as a clock time, not as the minute count it is: 07:30 rather
+        // than "450", which is the whole reason `valueLabel` exists.
+        assertTrue("the reminder time reads as a clock", steppers.any { it.displayValue == "07:30" })
+        assertTrue("the quiet start reads as a clock", steppers.any { it.displayValue == "23:00" })
+        assertTrue("the quiet end reads as a clock", steppers.any { it.displayValue == "06:00" })
+        // Both status lines are present and truthful about the values given.
+        val infoText = content.controls.filterIsInstance<SettingsControl.Info>()
+            .joinToString(" ") { "${it.label} ${it.value}" }
+        assertTrue("the reminder status names its time: $infoText", infoText.contains("07:30"))
+        assertTrue("the sync status names its time: $infoText", infoText.contains("09:15"))
+    }
+
+    @Test
+    fun anUnconfiguredDailySyncCannotBeTurnedOnFromTheControlOrTheMapper() {
+        val unconfigured = automation(autoSyncConfigured = false)
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            automation = unconfigured,
+        ).content as SettingsSectionContent.Controls
+
+        // The toggle is inoperable, and the status says why rather than just looking broken.
+        val syncToggle = content.controls.filterIsInstance<SettingsControl.Toggle>()
+            .first { it.label.contains("sync", ignoreCase = true) }
+        assertFalse("an unconfigured daily sync is not operable", syncToggle.enabled)
+        val statuses = content.controls.filterIsInstance<SettingsControl.Info>().map { it.label }
+        assertTrue(
+            "the status explains the disabled toggle: $statuses",
+            statuses.any { it.contains("Sync once", ignoreCase = true) },
+        )
+        // And the mapper refuses it too: the disabled control is a courtesy, not the gate.
+        // Otherwise a deep-linked or replayed action would write an enabled flag the
+        // policy zeroes on read, so the setting would show off after saving on.
+        assertNull(
+            DesktopSettingsModel.automationEditFor(
+                KaniAction.Settings.SetToggle("automation.auto_sync_enabled", enabled = true),
+                unconfigured,
+            ),
+        )
+    }
+
+    @Test
+    fun backupActionsAreOfferedOnlyWhereTheHostCanHonourThem() {
+        val withBackup = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            capabilities = PlatformCapabilities.of(PlatformCapability.BACKUP_RESTORE),
+        ).content as SettingsSectionContent.Controls
+        val withoutBackup = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            capabilities = PlatformCapabilities.NONE,
+        ).content as SettingsSectionContent.Controls
+
+        fun backupButtons(content: SettingsSectionContent.Controls) =
+            content.controls.filterIsInstance<SettingsControl.ActionButton>()
+                .filter { it.action is KaniAction.Settings.Command }
+
+        // Both listed either way — a host that cannot snapshot should say so, not hide the
+        // feature — but only operable where the atomic-publication contract holds.
+        assertEquals(2, backupButtons(withBackup).size)
+        assertEquals(2, backupButtons(withoutBackup).size)
+        assertTrue(backupButtons(withBackup).all { it.enabled })
+        assertTrue(backupButtons(withoutBackup).none { it.enabled })
+        // Restore replaces the whole database, so it is marked destructive and export is not.
+        val restore = backupButtons(withBackup)
+            .first { it.action == KaniAction.Settings.Command("automation.backup_restore") }
+        val export = backupButtons(withBackup)
+            .first { it.action == KaniAction.Settings.Command("automation.backup_export") }
+        assertTrue("a whole-database restore is destructive", restore.destructive)
+        assertFalse("an export changes nothing", export.destructive)
+    }
+
+    @Test
+    fun aBlockedReminderSaysBlockedRatherThanOffOrOn() {
+        fun status(state: DesktopSettingsModel.AutomationState): String =
+            (
+                DesktopSettingsModel.screen(SettingsSection.AUTOMATION, snapshot(), automation = state)
+                    .content as SettingsSectionContent.Controls
+                )
+                .controls.filterIsInstance<SettingsControl.Info>().first().value
+
+        // Blocked outranks both on and off: a reminder the OS is refusing is not "Daily
+        // around 07:30", and telling the user it is armed is the one wrong answer here.
+        assertTrue(status(automation(notificationsBlocked = true)).contains("Blocked"))
+        assertTrue(status(automation(reminderEnabled = true)).contains("07:30"))
+        assertFalse(status(automation(reminderEnabled = false)).contains("07:30"))
+    }
+
+    @Test
+    fun aReminderPresetSetsTheTimeItsLabelAdvertises() {
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            automation = automation(),
+        ).content as SettingsSectionContent.Controls
+
+        // The label and the action have to agree: a button reading "Evening 19:00" that
+        // set some other minute would be the kind of bug nobody thinks to check for.
+        val evening = content.controls.filterIsInstance<SettingsControl.ActionButton>()
+            .first { it.label.contains("19:00") }
+        assertEquals(
+            KaniAction.Settings.SetNumber("automation.reminder_time", 19 * 60),
+            evening.action,
+        )
+    }
+
+    @Test
+    fun anAutomationEditNormalizesThroughTheCorePolicyThatOwnsIt() {
+        val current = automation()
+
+        // A minute of day splits back into the hour/minute the schedulers read.
+        val timed = DesktopSettingsModel.automationEditFor(
+            KaniAction.Settings.SetNumber("automation.reminder_time", 21 * 60 + 45),
+            current,
+        )
+        assertEquals(21, timed!!.reminderHour)
+        assertEquals(45, timed.reminderMinute)
+
+        // Out-of-range values are clamped by the policy, not stored raw: a max-per-day of 9
+        // would otherwise be written and then read back as 3, so Settings would show a
+        // number the user never chose.
+        val clamped = DesktopSettingsModel.automationEditFor(
+            KaniAction.Settings.SetNumber("automation.reminder_max_per_day", 9),
+            current,
+        )
+        assertEquals(ReminderAntiSpamPolicy.MAX_MAX_PER_DAY, clamped!!.reminderMaxPerDay)
+    }
+
+    @Test
+    fun anAutomationEditThatChangesNothingWritesNothing() {
+        val current = automation()
+
+        // Same value in, null out: the section re-renders on every reload, and a mapper
+        // that returned an edit for an unchanged control would rewrite the device store
+        // each time — churn on a file that also holds the restore-safety state.
+        assertNull(
+            DesktopSettingsModel.automationEditFor(
+                KaniAction.Settings.SetNumber("automation.reminder_max_per_day", current.reminderMaxPerDay),
+                current,
+            ),
+        )
+        assertNull(
+            DesktopSettingsModel.automationEditFor(
+                KaniAction.Settings.SetToggle("automation.debug_log_enabled", current.debugLogEnabled),
+                current,
+            ),
+        )
+    }
+
+    @Test
+    fun theBackupCommandsPersistNothingBecauseTheyRaiseAPicker() {
+        val current = automation()
+
+        // Null from both mappers, which is what tells the host to raise
+        // `KaniEffect.PickFile` instead. A command that produced an edit here would write a
+        // device setting *and* open a dialog.
+        for (id in listOf("automation.backup_export", "automation.backup_restore")) {
+            val command = KaniAction.Settings.Command(id)
+            assertNull(DesktopSettingsModel.automationEditFor(command, current))
+            assertNull(DesktopSettingsModel.settingsCommandFor(command, snapshot()))
+        }
+    }
+
+    @Test
+    fun theTwoPersistencePathsShareNoKey() {
+        // The device-local keys are namespaced apart from the portable collection keys, so
+        // one edit can never take both paths and be written twice. Proven by asking the
+        // portable mapper about every automation key the section dispatches.
+        val content = DesktopSettingsModel.screen(
+            SettingsSection.AUTOMATION,
+            snapshot(),
+            automation = automation(),
+        ).content as SettingsSectionContent.Controls
+        val dispatched = content.controls.flatMap { control ->
+            when (control) {
+                is SettingsControl.Toggle -> listOf(control.onChange(true))
+                is SettingsControl.Stepper -> listOf(control.onChange(control.value))
+                is SettingsControl.ActionButton -> listOf(control.action)
+                else -> emptyList()
+            }
+        }.filterIsInstance<KaniAction.Settings>()
+        assertTrue("the section dispatches something", dispatched.isNotEmpty())
+        assertTrue(
+            "no automation edit is also a portable settings command",
+            dispatched.all { DesktopSettingsModel.settingsCommandFor(it, snapshot()) == null },
+        )
     }
 
     @Test
@@ -463,17 +666,32 @@ class DesktopSettingsModelTest {
         assertNull(DesktopSettingsModel.keybindingEditFor(reset, "not a binding set", KeyboardPlatform.LINUX))
     }
 
-    private fun snapshot(theme: KaniThemeChoice = KaniThemeChoice.GIRLYPOP): SettingsSnapshot = SettingsSnapshot(
-        sync = RecordsSyncModels.Settings.kikuDefaults(),
-        tagRepairedCards = false,
-        adaptiveWorkload = AdaptiveWorkloadSnapshot(workPercent = 100, maxItems = 40, mode = "balanced"),
-        studyAheadMinutes = 0,
-        studyLadder = RecordsBase.StudyLadderSettings.defaults(),
-        schedulerParameters = RecordsSchedulerModels.SchedulerParameters.defaults(),
-        schedulerFsrsWeights = null,
-        learningSteps = RecordsSchedulerModels.LearningStepSettings.defaults(),
-        themeChoice = theme,
-        fsrsPersonalizationEnabled = false,
-        fsrsFitSummaryJson = "",
+    private fun snapshot(theme: KaniThemeChoice = KaniThemeChoice.GIRLYPOP): SettingsSnapshot =
+        SettingsSnapshotFixtures.blank(theme)
+
+    /**
+     * Automation state with every value deliberately off its default.
+     *
+     * 07:30/09:15/23:00–06:00 rather than the reviewed 19:00/22:00–08:00 defaults, so a
+     * mapping that ignored the state it was handed and rendered the default would fail
+     * instead of passing by coincidence.
+     */
+    private fun automation(
+        reminderEnabled: Boolean = true,
+        notificationsBlocked: Boolean = false,
+        autoSyncConfigured: Boolean = true,
+    ): DesktopSettingsModel.AutomationState = DesktopSettingsModel.AutomationState(
+        reminderEnabled = reminderEnabled,
+        reminderHour = 7,
+        reminderMinute = 30,
+        reminderMaxPerDay = 1,
+        reminderQuietStartMinute = 23 * 60,
+        reminderQuietEndMinute = 6 * 60,
+        notificationsBlocked = notificationsBlocked,
+        autoSyncConfigured = autoSyncConfigured,
+        autoSyncEnabled = autoSyncConfigured,
+        autoSyncHour = 9,
+        autoSyncMinute = 15,
+        debugLogEnabled = false,
     )
 }

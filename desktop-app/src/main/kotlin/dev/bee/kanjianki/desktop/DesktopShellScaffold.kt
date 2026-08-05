@@ -42,6 +42,7 @@ import dev.bee.kanjianki.hostpresentation.DesktopGamesModel
 import dev.bee.kanjianki.hostpresentation.DesktopSettingsModel
 import dev.bee.kanjianki.hostpresentation.DesktopStatsModel
 import dev.bee.kanjianki.hostpresentation.DesktopStudyModel
+import dev.bee.kanjianki.hostpresentation.SettingsEditWriter
 import dev.bee.kanjianki.settings.SettingsScreenView
 import dev.bee.kanjianki.settings.rememberSettingsCopy
 import dev.bee.kanjianki.stats.StatsDashboardScreen
@@ -748,36 +749,22 @@ private suspend fun persistBrowseChoice(
 /**
  * Persists a settings edit before the section reloads.
  *
- * The action carries a stable key/id; [DesktopSettingsModel.settingsCommandFor] maps it
- * to the concrete `SettingsSaveCommand`. Only edits the desktop app currently ports map
- * to a command — an un-ported edit produces null and is ignored, which cannot happen in
- * practice because only ported sections render a control that dispatches one. Kani-side
- * device state; nothing here reaches the collection.
+ * The fan-out across the three destinations — device-local keybindings, device-local
+ * automation, portable collection settings — is [SettingsEditWriter]'s, shared with the
+ * Android host so both agree on which store an edit belongs in. Nothing about that
+ * decision is desktop-specific, and a host that got the order wrong would write an
+ * automation time into the collection database.
  */
 private suspend fun persistSettings(
     container: DesktopKaniContainer,
     action: KaniAction.Settings,
 ) {
-    // Keybindings are device-local, not portable collection settings, so they take the
-    // device-settings store rather than a SettingsSaveCommand. A null edit means the
-    // platform or another command holds the key, or nothing would change — either way
-    // there is nothing to write, and the reload re-renders the unchanged set.
-    val keybindings = DesktopSettingsModel.keybindingEditFor(
+    SettingsEditWriter.write(
         action = action,
-        stored = container.deviceSettingsStore.read(DeviceSettingKeys.studyKeybindings),
-        platform = container.keyboardPlatform,
+        deviceSettings = container.deviceSettingsStore,
+        settingsUseCases = container.settingsUseCases,
+        keyboardPlatform = container.keyboardPlatform,
     )
-    if (keybindings != null) {
-        container.deviceSettingsStore.edit {
-            put(DeviceSettingKeys.studyKeybindings, keybindings)
-        }
-        return
-    }
-    // The current snapshot resolves paired commands (a ladder threshold carries both
-    // values, so the untouched one is read here rather than clobbered).
-    val current = container.settingsUseCases.load()
-    val command = DesktopSettingsModel.settingsCommandFor(action, current) ?: return
-    container.settingsUseCases.save(command)
 }
 
 /**

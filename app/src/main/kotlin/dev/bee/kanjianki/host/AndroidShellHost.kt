@@ -13,9 +13,11 @@ import dev.bee.kanjianki.hostpresentation.HostSyncDriver
 import dev.bee.kanjianki.hostpresentation.HostSyncEngine
 import dev.bee.kanjianki.hostpresentation.KaniRouteContent
 import dev.bee.kanjianki.hostpresentation.KaniRouteLoader
+import dev.bee.kanjianki.hostpresentation.SettingsEditWriter
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniEffect
+import dev.bee.kanjianki.presentation.KeyboardPlatform
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.PresentationFailure
@@ -68,12 +70,24 @@ internal class AndroidShellHost(
     )
     val gamesRuntime: GamesRuntime = GamesRuntime(container.homeUseCases)
 
+    /**
+     * The keyboard conventions Android labels bindings with.
+     *
+     * [KeyboardPlatform.LINUX] is the right answer here and not a placeholder: Ctrl-primary
+     * notation, and no OS-reserved chord set to route around, because Android has no
+     * system-wide accelerators an attached keyboard would lose. Named once and handed to
+     * both the loader and [persistSettings], so the editor cannot label a binding one way
+     * and validate it another.
+     */
+    private val keyboardPlatform: KeyboardPlatform = KeyboardPlatform.LINUX
+
     private val routeLoader = KaniRouteLoader(
         homeUseCases = container.homeUseCases,
         statsUseCases = container.statsUseCases,
         settingsUseCases = container.settingsUseCases,
         deviceSettings = { container.deviceSettingsStore.snapshot() },
         annotateCapabilities = { items -> runBlocking { container.homeUseCases.annotateCapabilities(items) } },
+        keyboardPlatform = keyboardPlatform,
     )
 
     fun now(): Long = clock()
@@ -227,10 +241,20 @@ internal class AndroidShellHost(
         val MAIN_HANDLER: Handler = Handler(Looper.getMainLooper())
     }
 
+    /**
+     * Persists a settings edit before the section reloads.
+     *
+     * Delegated to [SettingsEditWriter] rather than reaching straight for
+     * `settingsCommandFor`, which is what this did and why a keybinding or reminder edit
+     * made on Android was accepted by the UI and then silently dropped: both are
+     * device-local, and neither maps to a `SettingsSaveCommand`.
+     */
     suspend fun persistSettings(action: KaniAction.Settings) {
-        val current = container.settingsUseCases.load()
-        val command = dev.bee.kanjianki.hostpresentation.DesktopSettingsModel.settingsCommandFor(action, current)
-            ?: return
-        container.settingsUseCases.save(command)
+        SettingsEditWriter.write(
+            action = action,
+            deviceSettings = container.deviceSettingsStore,
+            settingsUseCases = container.settingsUseCases,
+            keyboardPlatform = keyboardPlatform,
+        )
     }
 }

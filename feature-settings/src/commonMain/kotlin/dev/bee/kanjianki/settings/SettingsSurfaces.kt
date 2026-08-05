@@ -333,7 +333,7 @@ private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit)
                     Text(text = "−", color = KaniTheme.colors.ink)
                 }
                 Text(
-                    text = if (control.unit.isBlank()) "${control.value}" else "${control.value} ${control.unit}",
+                    text = control.displayValue,
                     color = KaniTheme.colors.ink,
                     fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
                     fontWeight = FontWeight.Medium,
