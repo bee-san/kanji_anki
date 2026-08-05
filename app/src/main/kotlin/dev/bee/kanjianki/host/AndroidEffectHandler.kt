@@ -13,13 +13,17 @@ import dev.bee.kanjianki.shell.ShellEffectHandler
  * The Android host's [ShellEffectHandler]: clipboard and external URLs over the
  * framework, mirroring desktop's AWT adapter.
  *
- * The file picker is a no-op for now, exactly as desktop's is: the backup/CSV
- * consumers that give a picked file somewhere to go are Goal 200, and a picker that
- * opens and cannot deliver is worse than a button the capability gate keeps disabled.
+ * [pickFile] delegates to the activity's [AndroidHostLaunchers], because the Storage
+ * Access Framework needs an `ActivityResultLauncher` registered before STARTED and a
+ * handler holding only a `Context` cannot have one. It stays nullable so a
+ * non-activity context (a test, a preview) gets the previous no-op instead of a crash.
  * Focus targets are registered by the feature composables that own the fields; an
  * unknown target is a no-op by contract.
  */
-internal class AndroidEffectHandler(private val context: Context) : ShellEffectHandler {
+internal class AndroidEffectHandler(
+    private val context: Context,
+    private val launchers: AndroidHostLaunchers? = null,
+) : ShellEffectHandler {
     override fun openUrl(url: String) {
         // Only http/https reach an external handler, the same allowlist desktop uses:
         // an arbitrary scheme handed to ACTION_VIEW is a launch surface, not a link.
@@ -37,7 +41,9 @@ internal class AndroidEffectHandler(private val context: Context) : ShellEffectH
         runCatching { clipboard.setPrimaryClip(ClipData.newPlainText("Kani", text)) }
     }
 
-    override fun pickFile(purpose: KaniEffect.PickFile) = Unit
+    override fun pickFile(purpose: KaniEffect.PickFile) {
+        launchers?.pickFile(purpose)
+    }
 
     override fun requestFocus(target: String) = Unit
 

@@ -11,7 +11,6 @@ import dev.bee.kanjianki.hostpresentation.KaniRouteContent
 import dev.bee.kanjianki.hostpresentation.KaniRouteLoader
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
-import dev.bee.kanjianki.presentation.KaniLaunchRequest
 import dev.bee.kanjianki.presentation.PlatformCapabilities
 import dev.bee.kanjianki.presentation.PlatformCapability
 import dev.bee.kanjianki.presentation.PresentationFailure
@@ -38,7 +37,14 @@ internal class AndroidShellHost(
     private val providerProbe: AndroidProviderProbe,
     val effectHandler: ShellEffectHandler,
     val capabilities: PlatformCapabilities,
-    val launch: KaniLaunchRequest? = null,
+    /**
+     * The host-owned state the composition reads and writes: the launch/restored
+     * destination it starts from, warm-launch intents, and the current destination it
+     * publishes back for saved instance state.
+     */
+    val hostState: AndroidHostState = AndroidHostState(),
+    /** The OS requests only a live Activity can make; see [AndroidHostRequests]. */
+    private val requests: AndroidHostRequests = AndroidHostRequests.None,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     val studyRuntime: StudyRuntime = StudyRuntime(
@@ -113,6 +119,31 @@ internal class AndroidShellHost(
         container.homeUseCases.setLocalSuspension(
             SetLocalSuspensionCommand(kanji = kanji, suspended = !studied, updatedAtMillis = now()),
         )
+    }
+
+    /**
+     * Performs the provider actions that are OS requests rather than data work.
+     *
+     * `Connect` and `Authorize` are the two onboarding buttons whose remedy is
+     * platform-specific: on Android, "no provider" means AnkiDroid is not installed (open
+     * its download page) and "not authorized" means the database permission was never
+     * granted (ask for it). Both are named for the *state* in `OnboardingStep`, so the
+     * host is the right place to decide the fix — desktop maps the same two actions to
+     * starting Anki and to the AnkiConnect key.
+     *
+     * The remaining `Provider` actions are sync, which the Goal 199 host does not own yet;
+     * they are matched explicitly so adding one to the shared graph fails to compile here
+     * rather than silently doing nothing on Android.
+     */
+    fun driveProvider(action: KaniAction.Provider) {
+        when (action) {
+            KaniAction.Provider.Connect -> effectHandler.openUrl(AndroidHostRequests.PROVIDER_INSTALL_URL)
+            KaniAction.Provider.Authorize -> requests.requestProviderPermission()
+            KaniAction.Provider.RequestSync,
+            KaniAction.Provider.ConfirmSync,
+            KaniAction.Provider.CancelSync,
+            -> Unit
+        }
     }
 
     suspend fun persistSettings(action: KaniAction.Settings) {

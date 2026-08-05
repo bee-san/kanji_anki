@@ -97,7 +97,8 @@ internal fun AndroidShellScaffold(
 
     val shellHost = remember(host) {
         KaniShellHost<KaniRouteContent>(
-            launch = host.launch,
+            launch = host.hostState.initialLaunch,
+            restored = host.hostState.restored,
             capabilities = host.capabilities,
             classifyFailure = host::classifyFailure,
             loadRoute = { destination ->
@@ -120,6 +121,12 @@ internal fun AndroidShellScaffold(
         val listed = routeState.content.valueOrNull?.browse?.rows.orEmpty().map { it.kanji }
         val pending = shellHost.dispatch(action)
         revision++
+        // A provider action is an OS request, not a load: `RouteReducer` deliberately
+        // returns no intent for one, so it has to run outside the `pending` branch below
+        // or the onboarding buttons would do nothing at all.
+        if (action is KaniAction.Provider) {
+            host.driveProvider(action)
+        }
         if (pending != null) {
             scope.launch {
                 when (action) {
@@ -138,6 +145,33 @@ internal fun AndroidShellScaffold(
 
     LaunchedEffect(shellState.current) {
         dispatch(KaniAction.Lifecycle.Entered)
+    }
+
+    // Saved instance state is read from the activity's `onSaveInstanceState`, which runs
+    // outside composition and cannot ask a composable what is on screen. Publishing it on
+    // every shell change -- rather than only on navigation -- means a process death at any
+    // moment finds the destination the user was actually looking at.
+    host.hostState.current = shellState.current
+
+    // A warm-launch intent (`onNewIntent`) arrives after this composition exists, so it
+    // navigates rather than seeding the shell. Keyed on the sequence, not the request, so
+    // tapping the same notification twice navigates twice.
+    val pendingLaunch = host.hostState.pendingLaunch
+    LaunchedEffect(pendingLaunch?.sequence) {
+        val launch = pendingLaunch ?: return@LaunchedEffect
+        dispatch(KaniAction.Navigation.Open(launch.request.destination))
+        host.hostState.consume(launch)
+    }
+
+    // A host result the composition cannot see -- a granted AnkiDroid permission -- reloads
+    // whatever route is visible. Zero is the initial value and means "nothing has happened
+    // yet", so it must not reload: `Lifecycle.Entered` above already loaded this route, and
+    // a Refresh here would make every fresh composition load twice.
+    val refreshRequest = host.hostState.refreshRequest
+    LaunchedEffect(refreshRequest) {
+        if (refreshRequest > 0L) {
+            dispatch(KaniAction.Lifecycle.Refresh)
+        }
     }
 
     KaniTheme(theme = KaniThemeId.fromStorageKey(routeState.content.valueOrNull?.themeChoice?.storageKey)) {
