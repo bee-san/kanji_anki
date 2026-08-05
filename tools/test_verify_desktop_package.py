@@ -4,12 +4,16 @@ import contextlib
 import io
 import json
 import re
+import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
 
-from tools.run_desktop_installed_image_smoke import DesktopInstalledImageSmokeError
+from tools.run_desktop_installed_image_smoke import (
+    DesktopInstalledImageSmokeError,
+    normalized_platform,
+)
 from tools.verify_desktop_package import (
     EXPECTED_JAVA_VERSION,
     EXPECTED_MODULES,
@@ -24,6 +28,9 @@ from tools.verify_desktop_package import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# Resolved through the tool's own normalizer rather than by matching `sys.platform`
+# here, so this cannot disagree with the layout the code under test will look for.
+HOST_PLATFORM = normalized_platform(sys.platform)
 BUILD_LOGIC_MAIN = ROOT / "build-logic/src/main/kotlin"
 PACKAGING_JDK = BUILD_LOGIC_MAIN / "dev/bee/kanjianki/buildlogic/KaniPackagingJdk.kt"
 DESKTOP_IDENTITY = BUILD_LOGIC_MAIN / "dev/bee/kanjianki/buildlogic/KaniDesktopIdentity.kt"
@@ -302,7 +309,13 @@ class DesktopPackageVerificationTest(unittest.TestCase):
         self.assertIsNone(verification["runtime_vendor"])
 
     def test_the_cli_writes_a_release_record_and_reports_failure_as_nonzero(self) -> None:
-        write_image(self.root)
+        # Written for the *host*, not for Linux. `main` takes no --platform flag: it
+        # verifies the image on the machine it is running on, resolving the layout from
+        # `sys.platform`. A Linux-layout fixture therefore passes this test on Linux and
+        # fails it on Windows and macOS with "installed-image launcher is missing",
+        # which is what happened -- the Linux desktop lane was green while both other
+        # lanes failed on a fixture bug rather than on anything about the packaging.
+        write_image(self.root, platform=HOST_PLATFORM)
         record = self.root / "verification.json"
 
         # Captured so this test does not print a verification report into the Gradle
@@ -320,7 +333,13 @@ class DesktopPackageVerificationTest(unittest.TestCase):
         self.assertIsNone(recorded["runtime_vendor"])
 
         with tempfile.TemporaryDirectory() as directory:
-            broken = write_image(Path(directory), java_version="21.0.11")
+            # Host layout again, so the non-zero exit is earned by the wrong JDK version
+            # this half is about rather than by a launcher the host never had.
+            broken = write_image(
+                Path(directory),
+                platform=HOST_PLATFORM,
+                java_version="21.0.11",
+            )
             failure = io.StringIO()
             with contextlib.redirect_stderr(failure):
                 self.assertEqual(1, main(["--image-root", str(broken)]))

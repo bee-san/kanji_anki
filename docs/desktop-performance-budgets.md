@@ -86,6 +86,33 @@ earlier attempt to do so by differencing reported ~0 MiB and would have passed
 any regression smaller than the warm-up peak. It includes the Xvfb server, so it
 overstates Kani's own footprint. For a ceiling, over-reporting is the safe error.
 
+The figures above were recorded on the Linux host described earlier, so they are
+unaffected by the two portability defects found later while getting the Windows
+and macOS lanes to run this gate at all.
+
+### Peak memory is not measured identically on every host
+
+| Host | Peak memory | Why |
+| --- | --- | --- |
+| Linux | Enforced; `ru_maxrss` in kilobytes | The recorded baseline host. |
+| macOS | Enforced; `ru_maxrss` in **bytes** | Same counter, different unit. Dividing by 1024 as though it were kilobytes over-reported a real 245 MiB launch as 251,136 MiB, so the macOS lane could only ever breach the 768 MiB budget. `ru_maxrss_per_mib` picks the divisor per host. |
+| Windows | **Not enforced** | Python's `resource` module is Unix-only, so there is no tree-wide high-water mark to read. Recorded as `null` with a note, never as `0.0`, and reported as `unmeasured` rather than as a number. |
+
+The startup budget is enforced on all three hosts.
+
+`null` is load-bearing. A zero would compare fine against every budget forever,
+which turns a missing measurement into a permanently passing check, and a release
+record showing `0.0 MiB` would read later as evidence the image was inside its
+memory budget on Windows. It is evidence of nothing on that axis. For the same
+reason the exemption is keyed to Windows specifically and re-checked when a
+recorded measurement is verified: if "absent" alone bought the exemption, a future
+breakage of the read on Linux or macOS would quietly stop enforcing the budget
+there instead of failing.
+
+Measuring peak memory on Windows needs a different counter than this gate has
+(`GetProcessMemoryInfo` over the process tree, via `psutil` or `ctypes`). It is
+left unmeasured rather than approximated.
+
 ### Why the budgets are loose
 
 They are ~9.6x and ~3.1x the measured medians, and that is deliberate. This is a

@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import resource
 import statistics
 import subprocess
 import sys
@@ -55,6 +54,18 @@ from tools.run_desktop_installed_image_smoke import (
     verify_result_file,
 )
 
+try:
+    # Unix-only stdlib. Imported lazily-by-guard rather than at the top because a
+    # bare `import resource` fails the *whole module import* on Windows, and this
+    # module is imported by `tools.test_measure_desktop_startup_budget`, which
+    # `testDesktopTooling` runs on all three hosts. The Windows and macOS desktop
+    # lanes were failing with `ModuleNotFoundError: No module named 'resource'`
+    # before a single test ran, which reads as a broken gate rather than as the
+    # one honest fact it is: this host cannot supply a tree-wide peak.
+    import resource
+except ModuleNotFoundError:  # pragma: no cover - only reachable on Windows
+    resource = None  # type: ignore[assignment]
+
 
 # Measured on the recorded baseline host: 3.131s median startup and 245.5 MiB peak
 # (docs/desktop-performance-budgets.md). The budgets are ~9.6x and ~3.1x those,
@@ -74,14 +85,49 @@ DEFAULT_MEASURED_ROUNDS = 3
 DEFAULT_TIMEOUT_SECONDS = 180
 
 KIB_PER_MIB = 1024.0
+BYTES_PER_MIB = 1024.0 * 1024.0
+
+# The one host allowed to report no peak at all. Named, and checked at both the
+# measuring and the verifying end, so "unmeasurable" cannot quietly spread to a
+# host that *can* measure and take the memory budget out of enforcement there.
+HOST_WITHOUT_PEAK_MEMORY = "windows"
+
+PEAK_MEMORY_UNMEASURED_NOTE = (
+    "peak memory not measured: this host has no `resource` module, so there is no "
+    "tree-wide high-water mark to read. The memory budget is NOT enforced here; "
+    "the startup budget still is. Linux and macOS enforce both."
+)
 
 
 class DesktopStartupBudgetError(RuntimeError):
     """Raised when the installed image misses its startup or memory budget."""
 
 
-def peak_child_memory_mib() -> float:
+def ru_maxrss_per_mib(platform: str = sys.platform) -> float:
+    """The divisor that converts this host's `ru_maxrss` into MiB.
+
+    `ru_maxrss` units are platform-dependent: Linux reports kilobytes, macOS
+    reports **bytes**. A single `/1024` therefore over-reported every macOS peak by
+    1024x — a real 245 MiB launch recorded as 251,136 MiB — so the macOS lane could
+    only ever breach the 768 MiB budget, no matter how small the image's real
+    footprint was.
+
+    That is a false failure rather than a missed regression, which is the less
+    dangerous direction but not a harmless one: a gate that fails for a reason that
+    is not Kani's is the gate this module's own header says gets bumped or deleted,
+    and the tempting "fix" is to raise the memory budget past 251,136 MiB, which
+    would un-enforce it everywhere.
+    """
+    return BYTES_PER_MIB if normalized_platform(platform) == "macos" else KIB_PER_MIB
+
+
+def peak_child_memory_mib(platform: str = sys.platform) -> float | None:
     """Peak resident memory of every child this process has waited on, in MiB.
+
+    Returns `None` when the host cannot supply the figure at all (Windows, which
+    has no `resource` module). `None` means *unmeasured*, and is deliberately not
+    `0.0`: a zero compares fine against every budget forever, which turns a
+    missing measurement into a permanently passing check.
 
     `ru_maxrss` for `RUSAGE_CHILDREN` is a tree-wide high-water mark that never
     decreases, and that shape decides how it can honestly be used. It cannot be
@@ -97,7 +143,10 @@ def peak_child_memory_mib() -> float:
     the number. That overstates Kani's own footprint and is kept anyway: for a
     ceiling, over-reporting is the safe direction to be wrong in.
     """
-    return resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / KIB_PER_MIB
+    if resource is None:
+        return None
+    peak = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+    return peak / ru_maxrss_per_mib(platform)
 
 
 def launch_once(
@@ -155,7 +204,7 @@ def measure_installed_image(
     base_environment: Mapping[str, str] = os.environ,
     process_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     monotonic: Callable[[], float] = time.monotonic,
-    peak_memory: Callable[[], float] = peak_child_memory_mib,
+    peak_memory: Callable[[], float | None] | None = None,
 ) -> dict[str, object]:
     """Launches the image `warmup + measured` times and reports the medians."""
     if measured_rounds < 1:
@@ -166,6 +215,10 @@ def measure_installed_image(
     launcher = installed_image_launcher(image_root, platform)
     verify_render_environment(platform, base_environment)
     host = normalized_platform(platform)
+    # Bound to the platform being measured rather than defaulted in the signature,
+    # so the unit conversion follows the host under measurement instead of whatever
+    # `sys.platform` happened to be at import time.
+    read_peak = peak_memory or (lambda: peak_child_memory_mib(platform))
 
     seconds: list[float] = []
     for round_index in range(warmup_rounds + measured_rounds):
@@ -183,14 +236,27 @@ def measure_installed_image(
         if round_index >= warmup_rounds:
             seconds.append(elapsed)
 
-    return {
+    peak = read_peak()
+    if peak is None and host != HOST_WITHOUT_PEAK_MEMORY:
+        # A host that should be able to measure but did not is a broken gate, not a
+        # host limitation, and must not be recorded as one — that is precisely how a
+        # budget stops being enforced without anyone deciding to stop enforcing it.
+        raise DesktopStartupBudgetError(
+            f"host {host} reported no peak memory, but only "
+            f"{HOST_WITHOUT_PEAK_MEMORY} is unable to measure it",
+        )
+
+    measurement: dict[str, object] = {
         "host": host,
         "warmup_rounds": warmup_rounds,
         "measured_rounds": measured_rounds,
         "startup_seconds": [round(value, 3) for value in seconds],
         "startup_seconds_median": round(statistics.median(seconds), 3),
-        "peak_memory_mib": round(peak_memory(), 1),
+        "peak_memory_mib": None if peak is None else round(peak, 1),
     }
+    if peak is None:
+        measurement["peak_memory_note"] = PEAK_MEMORY_UNMEASURED_NOTE
+    return measurement
 
 
 def verify_budgets(
@@ -206,15 +272,26 @@ def verify_budgets(
     """
     breaches: list[str] = []
     startup = float(measurement["startup_seconds_median"])  # type: ignore[arg-type]
-    memory = float(measurement["peak_memory_mib"])  # type: ignore[arg-type]
+    recorded_memory = measurement["peak_memory_mib"]
     if startup > startup_budget_seconds:
         breaches.append(
             f"startup median {startup:.3f}s exceeds the "
             f"{startup_budget_seconds:.3f}s budget",
         )
-    if memory > peak_memory_budget_mib:
+    if recorded_memory is None:
+        # Only the host that genuinely cannot measure may skip this check. Verified
+        # here as well as at measurement time because a measurement can arrive from a
+        # recorded baseline file, and a `null` peak with the wrong host on it would
+        # otherwise silently buy an exemption for a host that has none.
+        host = str(measurement.get("host", ""))
+        if host != HOST_WITHOUT_PEAK_MEMORY:
+            breaches.append(
+                f"peak memory is missing for host {host!r}, which is expected to "
+                "measure it",
+            )
+    elif float(recorded_memory) > peak_memory_budget_mib:  # type: ignore[arg-type]
         breaches.append(
-            f"peak memory {memory:.1f} MiB exceeds the "
+            f"peak memory {float(recorded_memory):.1f} MiB exceeds the "
             f"{peak_memory_budget_mib:.1f} MiB budget",
         )
     if breaches:
@@ -228,7 +305,17 @@ def format_report(
     peak_memory_budget_mib: float,
 ) -> str:
     startup = float(measurement["startup_seconds_median"])  # type: ignore[arg-type]
-    memory = float(measurement["peak_memory_mib"])  # type: ignore[arg-type]
+    recorded_memory = measurement["peak_memory_mib"]
+    # Reported as the word "unmeasured", not as a number, so a release record from
+    # the Windows lane cannot be read later as evidence the image was inside its
+    # memory budget on Windows. It is evidence of nothing on that axis.
+    memory_line = (
+        f"peak_memory_mib=unmeasured budget={peak_memory_budget_mib:.1f} "
+        "(not enforced on this host)"
+        if recorded_memory is None
+        else f"peak_memory_mib={float(recorded_memory):.1f} "  # type: ignore[arg-type]
+        f"budget={peak_memory_budget_mib:.1f} (all launches, whole tree)"
+    )
     return "\n".join(
         (
             f"host={measurement['host']} "
@@ -236,8 +323,7 @@ def format_report(
             f"measured={measurement['measured_rounds']}",
             f"startup_seconds={measurement['startup_seconds']} "
             f"median={startup:.3f} budget={startup_budget_seconds:.3f}",
-            f"peak_memory_mib={memory:.1f} "
-            f"budget={peak_memory_budget_mib:.1f} (all launches, whole tree)",
+            memory_line,
         ),
     )
 

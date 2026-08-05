@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -59,16 +60,27 @@ class FakeLaunches:
         )
 
 
-def linux_image() -> tempfile.TemporaryDirectory[str]:
-    class LinuxImage(tempfile.TemporaryDirectory[str]):
+def image_for(relative_launcher: str) -> tempfile.TemporaryDirectory[str]:
+    class Image(tempfile.TemporaryDirectory[str]):
         def __enter__(self) -> Path:
             root = Path(super().__enter__())
-            launcher = root / "Kani/bin/Kani"
-            launcher.parent.mkdir(parents=True)
+            launcher = root / relative_launcher
+            launcher.parent.mkdir(parents=True, exist_ok=True)
             launcher.touch(mode=0o700)
             return root
 
-    return LinuxImage(prefix="kani-budget-image-")
+    return Image(prefix="kani-budget-image-")
+
+
+def linux_image() -> tempfile.TemporaryDirectory[str]:
+    return image_for("Kani/bin/Kani")
+
+
+def windows_image() -> tempfile.TemporaryDirectory[str]:
+    # A Windows-layout fixture, because the launcher path is per-host: measuring
+    # `platform="win32"` against a Linux image fails on the launcher rather than on
+    # the memory semantics the test is about.
+    return image_for("Kani/Kani.exe")
 
 
 LINUX_ENVIRONMENT = {"DISPLAY": ":99", "PATH": "/reviewed/path"}
@@ -230,6 +242,207 @@ class StartupMeasurementTest(unittest.TestCase):
                             process_runner=FakeLaunches([1.0], [1.0]).run,
                             **rounds,
                         )
+
+
+class PeakMemoryPortabilityTest(unittest.TestCase):
+    """The peak-memory read must be portable, and honest where it cannot be taken.
+
+    Two defects live here, and neither one fails loudly on its own:
+
+      - `import resource` at module top level is Unix-only, so the Windows and
+        macOS desktop lanes died with `ModuleNotFoundError` before running a
+        single test -- `testDesktopTooling` imports this module on all three hosts.
+      - `ru_maxrss` is in kilobytes on Linux and in **bytes** on macOS, so one
+        `/1024` over-reported every macOS peak by 1024x: a real 245 MiB launch
+        recorded as 251,136 MiB, which cannot pass a 768 MiB budget at any real
+        footprint.
+    """
+
+    def test_the_module_imports_on_a_host_with_no_resource_module(self) -> None:
+        # Reproduces the Windows failure by importing with `resource` blocked,
+        # rather than by trusting the guard's shape by reading it.
+        script = (
+            "import sys\n"
+            "sys.modules['resource'] = None\n"
+            "import importlib\n"
+            "module = importlib.import_module('tools.measure_desktop_startup_budget')\n"
+            "assert module.peak_child_memory_mib('win32') is None\n"
+            "print('imported')\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=str(Path(__file__).resolve().parents[1]),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("imported", result.stdout)
+
+    def test_macos_ru_maxrss_is_read_as_bytes_and_linux_as_kilobytes(self) -> None:
+        self.assertEqual(1024.0, budget.ru_maxrss_per_mib("linux"))
+        self.assertEqual(1024.0 * 1024.0, budget.ru_maxrss_per_mib("darwin"))
+        self.assertEqual(1024.0, budget.ru_maxrss_per_mib("win32"))
+
+    def test_the_same_launch_measures_the_same_on_linux_and_macos(self) -> None:
+        # One physical 245 MiB launch, as each kernel reports it. The conversion is
+        # correct exactly when both land on the same number; under the old single
+        # `/1024` the macOS figure was 251,136 MiB and could not pass any budget.
+        mib = 245.25
+        linux_raw = mib * 1024  # kilobytes
+        macos_raw = mib * 1024 * 1024  # bytes
+
+        self.assertAlmostEqual(mib, linux_raw / budget.ru_maxrss_per_mib("linux"))
+        self.assertAlmostEqual(mib, macos_raw / budget.ru_maxrss_per_mib("darwin"))
+
+        # And the old conversion, kept explicit so the regression is recognisable.
+        self.assertEqual(251136.0, macos_raw / 1024)
+        with self.assertRaises(budget.DesktopStartupBudgetError) as raised:
+            budget.verify_budgets(
+                {
+                    "host": "macos",
+                    "startup_seconds_median": 1.0,
+                    "peak_memory_mib": macos_raw / 1024,
+                },
+                startup_budget_seconds=30.0,
+                peak_memory_budget_mib=768.0,
+            )
+        self.assertIn("251136.0 MiB exceeds", str(raised.exception))
+
+        # The corrected figure passes, because 245 MiB genuinely is inside budget.
+        budget.verify_budgets(
+            {
+                "host": "macos",
+                "startup_seconds_median": 1.0,
+                "peak_memory_mib": macos_raw / budget.ru_maxrss_per_mib("darwin"),
+            },
+            startup_budget_seconds=30.0,
+            peak_memory_budget_mib=768.0,
+        )
+
+    def test_a_real_macos_regression_still_fails_after_the_unit_fix(self) -> None:
+        # The fix must not become a way of making macOS pass: a genuine 4 GiB peak
+        # is over five times the budget and must still breach it.
+        four_gib_in_bytes = 4 * 1024 * 1024 * 1024
+        as_reported = four_gib_in_bytes / budget.ru_maxrss_per_mib("darwin")
+
+        self.assertEqual(4096.0, as_reported)
+        with self.assertRaises(budget.DesktopStartupBudgetError):
+            budget.verify_budgets(
+                {
+                    "host": "macos",
+                    "startup_seconds_median": 1.0,
+                    "peak_memory_mib": as_reported,
+                },
+                startup_budget_seconds=30.0,
+                peak_memory_budget_mib=768.0,
+            )
+
+    def test_an_unmeasured_peak_is_recorded_as_null_with_a_note_not_as_zero(self) -> None:
+        # Zero would compare fine against every budget forever, so a missing
+        # measurement would read as a passing one.
+        with windows_image() as image_root:
+            launches = FakeLaunches([1.0, 2.0], [0.0, 0.0])
+            measurement = budget.measure_installed_image(
+                image_root,
+                platform="win32",
+                base_environment={"PATH": "/reviewed/path"},
+                process_runner=launches.run,
+                monotonic=launches.monotonic,
+                peak_memory=lambda: None,
+                warmup_rounds=1,
+                measured_rounds=1,
+            )
+
+            self.assertEqual("windows", measurement["host"])
+            self.assertIsNone(measurement["peak_memory_mib"])
+            self.assertIn("NOT enforced", str(measurement["peak_memory_note"]))
+            # The startup budget is still enforced on that host.
+            self.assertEqual(2.0, measurement["startup_seconds_median"])
+
+    def test_a_host_that_should_measure_but_did_not_fails_rather_than_being_excused(
+        self,
+    ) -> None:
+        # The exemption is for the one host that cannot measure. If it applied
+        # wherever the figure is absent, then any future breakage of the read on
+        # Linux or macOS would silently take the memory budget out of enforcement
+        # there -- the failure mode this whole gate is supposed to prevent.
+        with linux_image() as image_root:
+            launches = FakeLaunches([1.0], [0.0])
+            with self.assertRaises(budget.DesktopStartupBudgetError) as raised:
+                budget.measure_installed_image(
+                    image_root,
+                    platform="linux",
+                    base_environment=LINUX_ENVIRONMENT,
+                    process_runner=launches.run,
+                    monotonic=launches.monotonic,
+                    peak_memory=lambda: None,
+                    warmup_rounds=0,
+                    measured_rounds=1,
+                )
+            self.assertIn("linux", str(raised.exception))
+            self.assertIn("no peak memory", str(raised.exception))
+
+    def test_a_recorded_null_peak_cannot_buy_an_exemption_for_the_wrong_host(
+        self,
+    ) -> None:
+        # A measurement can arrive from a baseline JSON file rather than from a live
+        # run, so the verifying end checks the host too.
+        with self.assertRaises(budget.DesktopStartupBudgetError) as raised:
+            budget.verify_budgets(
+                {
+                    "host": "macos",
+                    "startup_seconds_median": 1.0,
+                    "peak_memory_mib": None,
+                },
+                startup_budget_seconds=30.0,
+                peak_memory_budget_mib=768.0,
+            )
+        self.assertIn("expected to measure it", str(raised.exception))
+
+    def test_the_windows_report_says_unmeasured_rather_than_showing_a_number(
+        self,
+    ) -> None:
+        # A release record must not be readable later as evidence the image was
+        # inside its memory budget on a host that never measured it.
+        report = budget.format_report(
+            {
+                "host": "windows",
+                "warmup_rounds": 1,
+                "measured_rounds": 3,
+                "startup_seconds": [1.0],
+                "startup_seconds_median": 1.0,
+                "peak_memory_mib": None,
+            },
+            startup_budget_seconds=30.0,
+            peak_memory_budget_mib=768.0,
+        )
+
+        self.assertIn("peak_memory_mib=unmeasured", report)
+        self.assertIn("not enforced on this host", report)
+        self.assertNotIn("0.0", report.split("peak_memory_mib=")[1].split()[0])
+
+    def test_windows_still_passes_its_startup_budget_with_no_peak(self) -> None:
+        budget.verify_budgets(
+            {
+                "host": "windows",
+                "startup_seconds_median": 1.0,
+                "peak_memory_mib": None,
+            },
+            startup_budget_seconds=30.0,
+            peak_memory_budget_mib=768.0,
+        )
+        with self.assertRaises(budget.DesktopStartupBudgetError) as raised:
+            budget.verify_budgets(
+                {
+                    "host": "windows",
+                    "startup_seconds_median": 99.0,
+                    "peak_memory_mib": None,
+                },
+                startup_budget_seconds=30.0,
+                peak_memory_budget_mib=768.0,
+            )
+        self.assertIn("startup median", str(raised.exception))
 
 
 class BudgetVerdictTest(unittest.TestCase):
