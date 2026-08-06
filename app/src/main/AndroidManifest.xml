@@ -22,8 +22,21 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/AppTheme"
         tools:targetApi="tiramisu">
+        <!--
+            The thin shared-graph host (Goal 199) is now the launcher. It owns the four
+            host responsibilities and hands navigation, content, and effects to the shared
+            graph both hosts run.
+
+            singleTop is load-bearing and not stylistic: every deep link into the app —
+            reminder notification, widget tap, launcher shortcut — is delivered to the
+            running instance through onNewIntent, and without it each one would stack a
+            second copy of the app over the first.
+
+            The shortcuts meta-data stays on whichever activity is the launcher, because
+            that is where the system reads the static shortcut definitions from.
+        -->
         <activity
-            android:name=".MainActivity"
+            android:name=".host.KaniHostActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
@@ -36,14 +49,15 @@
                 android:resource="@xml/shortcuts" />
         </activity>
         <!--
-            The thin shared-graph host (Goal 199), running in parallel with MainActivity
-            until the instrumented gate vouches for it. Not exported and not the
-            launcher: it is reached only by an explicit in-app/instrumentation intent,
-            so the shipping entry point is unchanged while the new host is validated.
+            The pre-Goal-199 host, kept declared but no longer the entry point while its
+            ~170-file inheritance chain is removed in its own commit. Not exported: nothing
+            outside the app may start it, and nothing inside does either now that the
+            notification/widget/shortcut intents name the host above.
         -->
         <activity
-            android:name=".host.KaniHostActivity"
+            android:name=".MainActivity"
             android:exported="false"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize" />
         <!--
             Kani initializes scheduler/update work explicitly from MainActivityStartup,

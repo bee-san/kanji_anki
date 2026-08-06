@@ -9,24 +9,53 @@ import org.w3c.dom.Element
 
 class LauncherShortcutsManifestTest {
     @Test
-    fun manifestPublishesStaticShortcutsFromSingleTopMainActivity() {
+    fun theLauncherIsTheSingleTopThinHostAndItPublishesTheStaticShortcuts() {
         val manifest = xmlFile("src/main/AndroidManifest.xml")
-        val activities = manifest.documentElement.getElementsByTagName("activity")
-        val mainActivity = (0 until activities.length)
-            .map { activities.item(it) as Element }
-            .first { it.androidAttribute("name") == ".MainActivity" }
+        val activities = (0 until manifest.documentElement.getElementsByTagName("activity").length)
+            .map { manifest.documentElement.getElementsByTagName("activity").item(it) as Element }
 
-        assertEquals("singleTop", mainActivity.androidAttribute("launchMode"))
+        // Exactly one launcher, found by its filter rather than by name, so the assertion is
+        // about what the system will launch rather than about what a name suggests.
+        val launchers = activities.filter { activity ->
+            (0 until activity.getElementsByTagName("category").length)
+                .map { activity.getElementsByTagName("category").item(it) as Element }
+                .any { it.androidAttribute("name") == "android.intent.category.LAUNCHER" }
+        }
+        assertEquals(1, launchers.size)
+        val launcher = launchers.single()
+        assertEquals(THIN_HOST_RELATIVE, launcher.androidAttribute("name"))
+        assertEquals("true", launcher.androidAttribute("exported"))
 
-        val shortcutMetadata = (0 until mainActivity.getElementsByTagName("meta-data").length)
-            .map { mainActivity.getElementsByTagName("meta-data").item(it) as Element }
+        // singleTop is what makes every deep link — notification, widget, shortcut — arrive
+        // at the running instance through onNewIntent instead of stacking a second copy.
+        assertEquals("singleTop", launcher.androidAttribute("launchMode"))
+
+        // The shortcuts meta-data has to be on the launcher: that is where the system reads
+        // the static definitions from, so leaving it behind publishes nothing.
+        val shortcutMetadata = (0 until launcher.getElementsByTagName("meta-data").length)
+            .map { launcher.getElementsByTagName("meta-data").item(it) as Element }
             .firstOrNull { it.androidAttribute("name") == "android.app.shortcuts" }
         assertNotNull(shortcutMetadata)
         assertEquals("@xml/shortcuts", shortcutMetadata!!.androidAttribute("resource"))
     }
 
     @Test
-    fun staticShortcutsTargetAllowlistedMainActivityActions() {
+    fun theOldHostIsDeclaredButNoLongerReachableFromOutside() {
+        val manifest = xmlFile("src/main/AndroidManifest.xml")
+        val activities = (0 until manifest.documentElement.getElementsByTagName("activity").length)
+            .map { manifest.documentElement.getElementsByTagName("activity").item(it) as Element }
+        val old = activities.firstOrNull { it.androidAttribute("name") == ".MainActivity" }
+            ?: return // Already deleted; nothing left to constrain.
+
+        // Kept declared while its inheritance chain is removed separately, but not exported:
+        // an entry point that still answers an implicit intent would leave two live hosts,
+        // and a user could land on the unported one from a stale launcher entry.
+        assertEquals("false", old.androidAttribute("exported"))
+        assertEquals(0, old.getElementsByTagName("intent-filter").length)
+    }
+
+    @Test
+    fun staticShortcutsTargetAllowlistedActionsOnTheLauncher() {
         val shortcutsDocument = xmlFile("src/main/res/xml/shortcuts.xml")
         val shortcutNodes = shortcutsDocument.documentElement.getElementsByTagName("shortcut")
         val shortcuts = (0 until shortcutNodes.length)
@@ -101,7 +130,10 @@ class LauncherShortcutsManifestTest {
         val intent = shortcut.getElementsByTagName("intent").item(0) as Element
         assertEquals(action, intent.androidAttribute("action"))
         assertEquals("dev.bee.kanjianki", intent.androidAttribute("targetPackage"))
-        assertEquals("dev.bee.kanjianki.MainActivity", intent.androidAttribute("targetClass"))
+        // A static shortcut names its target class outright, so this file has to move with
+        // the launcher. Left behind, every shortcut would open the unported host — or
+        // nothing at all once that class is deleted.
+        assertEquals(THIN_HOST_CLASS, intent.androidAttribute("targetClass"))
     }
 
     private fun stringResources(path: String): Map<String, String> {
@@ -120,5 +152,15 @@ class LauncherShortcutsManifestTest {
 
     private companion object {
         const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
+
+        /**
+         * The launcher, spelled both ways the two files spell it.
+         *
+         * The manifest uses a package-relative name and `shortcuts.xml` needs the fully
+         * qualified one; naming both here is what makes a half-done rename — one file moved,
+         * the other not — a failure rather than a shortcut that opens the wrong host.
+         */
+        const val THIN_HOST_RELATIVE = ".host.KaniHostActivity"
+        const val THIN_HOST_CLASS = "dev.bee.kanjianki.host.KaniHostActivity"
     }
 }

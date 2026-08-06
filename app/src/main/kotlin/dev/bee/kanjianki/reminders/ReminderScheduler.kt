@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
-import dev.bee.kanjianki.MainActivity
+import dev.bee.kanjianki.host.KaniHostActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.requireKaniContainer
@@ -367,7 +367,7 @@ object ReminderScheduler {
             reminderOpenIntent(context, plan.family),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val studyIntent = Intent(context, MainActivity::class.java)
+        val studyIntent = Intent(context, KaniHostActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
         val studyPendingIntent = PendingIntent.getActivity(
@@ -424,7 +424,7 @@ object ReminderScheduler {
 
     @JvmStatic
     fun reminderOpenIntent(context: Context, family: String?): Intent {
-        return Intent(context, MainActivity::class.java)
+        return Intent(context, KaniHostActivity::class.java)
             .apply {
                 if (family != ReminderFamily.SYNC.name) {
                     putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)

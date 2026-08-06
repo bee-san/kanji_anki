@@ -44,7 +44,7 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.unit.ColorProvider
-import dev.bee.kanjianki.MainActivity
+import dev.bee.kanjianki.host.KaniHostActivity
 import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.WidgetTextCopy
@@ -521,7 +521,7 @@ private fun KaniWidgetColorRole.toProvider(): ColorProvider = ColorProvider(day 
  * point is reachable from the widget.
  */
 internal fun kaniWidgetHomeIntent(context: Context): Intent =
-    Intent(context, MainActivity::class.java).apply {
+    Intent(context, KaniHostActivity::class.java).apply {
         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 
