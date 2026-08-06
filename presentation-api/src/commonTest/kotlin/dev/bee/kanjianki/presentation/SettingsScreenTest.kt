@@ -3,6 +3,7 @@ package dev.bee.kanjianki.presentation
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -197,6 +198,64 @@ class SettingsScreenTest {
         val undo = section.rows.last()
         assertTrue(undo.unbind.isEmpty())
         assertTrue(undo.candidates.isEmpty())
+    }
+
+    @Test
+    fun aProsePageCarriesTitledBlocksAndAnUntitledOneIsBodyAlone() {
+        val page = SettingsSectionContent.Prose(
+            title = "How Kani works",
+            blocks = listOf(
+                SettingsProseBlock(title = "The ladder", body = "Ten rungs, one at a time."),
+                // An untitled block is the attribution case: one already-formatted body
+                // with no heading of its own, which must render as body rather than as an
+                // empty heading followed by text.
+                SettingsProseBlock(body = "Licensed under Apache 2.0."),
+            ),
+        )
+
+        assertEquals("How Kani works", page.title)
+        assertEquals(listOf("The ladder", ""), page.blocks.map { it.title })
+        assertEquals("Licensed under Apache 2.0.", page.blocks.last().body)
+        // Blocks rather than one string so a screen reader can skip between headings;
+        // a page that collapsed to a single body would lose that and still look right.
+        assertEquals(2, page.blocks.size)
+    }
+
+    @Test
+    fun theHostCommandsAreTheOnesNoMapperMayPersist() {
+        // Both file commands resolve to their purpose, and are host commands too: the
+        // narrower question is "does this raise a picker", the wider one is "is this
+        // anybody's to persist", and the writer asks the wider one.
+        assertEquals(
+            KaniEffect.FilePurpose.BACKUP_EXPORT,
+            SettingsCommands.filePurposeFor(SettingsCommands.BACKUP_EXPORT),
+        )
+        assertEquals(
+            KaniEffect.FilePurpose.BACKUP_RESTORE,
+            SettingsCommands.filePurposeFor(SettingsCommands.BACKUP_RESTORE),
+        )
+        for (id in listOf(SettingsCommands.BACKUP_EXPORT, SettingsCommands.BACKUP_RESTORE)) {
+            assertTrue(SettingsCommands.isPickerCommand(id))
+            assertTrue(SettingsCommands.isHostCommand(id))
+        }
+        // The update commands are host work but not file dialogs, so they are host
+        // commands and not pickers. A writer that only asked `isPickerCommand` would fall
+        // through to the collection mapper on these.
+        for (id in listOf(
+            SettingsCommands.UPDATE_CHECK,
+            SettingsCommands.UPDATE_INSTALL,
+            SettingsCommands.UPDATE_PERMISSION,
+            SettingsCommands.UPDATE_BACKGROUND_SETUP,
+        )) {
+            assertNull(SettingsCommands.filePurposeFor(id))
+            assertTrue(SettingsCommands.isHostCommand(id), id)
+        }
+        // Fail-closed both ways: an id from a build that knows a flow this one does not is
+        // neither performed nor persisted-as-unknown.
+        assertFalse(SettingsCommands.isHostCommand("update.teleport"))
+        assertFalse(SettingsCommands.isHostCommand("study_keybindings.reset"))
+        // Whitespace is tolerated, because these ids cross a wire format.
+        assertTrue(SettingsCommands.isHostCommand("  ${SettingsCommands.UPDATE_CHECK}  "))
     }
 
     @Test

@@ -174,7 +174,14 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "sync-api": frozenset({"core", "sync-domain"}),
     "application": frozenset({"data-api", "platform-contracts", "sync-engine"}),
     "host-presentation": frozenset(
-        {"application", "presentation-api", "core", "data-api", "progress-core"},
+        {
+            "application",
+            "presentation-api",
+            "core",
+            "data-api",
+            "progress-core",
+            "update-core",
+        },
     ),
     "sync-engine": frozenset(
         {
@@ -268,7 +275,14 @@ FINAL_PROJECT_DEPENDENCIES = {
     "backup-core": frozenset({"data-api", "platform-contracts"}),
     "progress-core": frozenset({"core", "data-api"}),
     "host-presentation": frozenset(
-        {"application", "presentation-api", "core", "data-api", "progress-core"},
+        {
+            "application",
+            "presentation-api",
+            "core",
+            "data-api",
+            "progress-core",
+            "update-core",
+        },
     ),
     "reference-assets": frozenset({"dictionary-core", "writing-core"}),
     "presentation-api": frozenset(),
@@ -386,6 +400,7 @@ EDGE_RATIONALES = {
     ("host-presentation", "core"): "Host mappers apply scheduler and copy policy.",
     ("host-presentation", "data-api"): "Host mappers read repository snapshot types.",
     ("host-presentation", "progress-core"): "Host mappers map analytics state to the stats dashboard.",
+    ("host-presentation", "update-core"): "The Update section reports through the update status policies.",
     ("app", "host-presentation"): "Android maps its snapshots to shared presentation DTOs.",
     ("desktop-app", "host-presentation"): "Desktop maps its snapshots to shared presentation DTOs.",
     ("ui-common", "presentation-api"): "Shared UI renders portable presentation DTOs.",
