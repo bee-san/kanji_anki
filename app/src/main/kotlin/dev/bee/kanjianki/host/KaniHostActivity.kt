@@ -47,6 +47,15 @@ internal class KaniHostActivity : ComponentActivity() {
     private lateinit var launchers: AndroidHostLaunchers
 
     /**
+     * The shell host, held because the lifecycle callbacks need its study runtime.
+     *
+     * A field rather than a `setContent` local only for [onPause]/[onResume]: the
+     * active-task timer lives in the shared runtime, and pausing it is the activity's
+     * job because only the activity is told the app went away.
+     */
+    private lateinit var host: AndroidShellHost
+
+    /**
      * A reminder change waiting on POST_NOTIFICATIONS, surviving process death.
      *
      * Held here rather than in [AndroidHostState] because it is not presentation state:
@@ -124,7 +133,7 @@ internal class KaniHostActivity : ComponentActivity() {
             restored = AndroidHostSavedState.readDestination(savedInstanceState),
         )
 
-        val host = AndroidShellHost(
+        host = AndroidShellHost(
             container = container,
             providerProbe = AndroidProviderProbe.of { gateway.status() },
             effectHandler = AndroidEffectHandler(this, launchers),
@@ -150,6 +159,29 @@ internal class KaniHostActivity : ComponentActivity() {
         setContent {
             AndroidShellScaffold(host = host)
         }
+    }
+
+    /**
+     * Freezes the visible study task's timer.
+     *
+     * The one piece of the old host's `onPause` that is now portable: the shared
+     * [dev.bee.kanjianki.StudyRuntime] owns the active-task timer, so time spent with the
+     * app backgrounded is excluded from the card's active elapsed measure rather than
+     * counted as time spent studying it.
+     *
+     * Deliberately not a partial port of the rest. `MainActivityBase.onPause` also flushes
+     * Study recovery, which the shared runtime has no store for yet — see the KDoc above —
+     * and a half-restored Study task is worse than a cold-started route.
+     */
+    override fun onPause() {
+        host.studyRuntime.pauseTask()
+        super.onPause()
+    }
+
+    /** Resumes the visible study task's timer; the mirror of [onPause]. */
+    override fun onResume() {
+        super.onResume()
+        host.studyRuntime.resumeTask()
     }
 
     /**

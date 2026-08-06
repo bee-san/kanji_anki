@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.data.ReviewCommitCommand
 import dev.bee.kanjianki.data.ReviewCommitDisposition
 import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTaskTiming
 
 /**
  * The portable review-commit boundary, shared by both hosts.
@@ -31,6 +32,16 @@ object StudyReviewCommit {
         writer: ReviewWriter,
         recorder: ReviewOutcomeRecorder,
         marker: StudyRunMarker,
+        /**
+         * The frozen active-task timing, in this review's own transaction.
+         *
+         * Part of the same commit rather than a following write, because CLAUDE.md puts
+         * review evidence and task timing in one transaction: a second write could be
+         * lost to process death and leave a review with no record of how long it took.
+         * Null is legitimate — a host with no task timer, or a card mounted before the
+         * timer started — and commits the review alone rather than a zero duration.
+         */
+        taskTiming: ReviewTaskTiming? = null,
     ): ReviewCommitResult {
         val commit = writer.commitReview(
             ReviewCommitCommand(
@@ -39,6 +50,7 @@ object StudyReviewCommit {
                 appliedRating = result.appliedRating,
                 reviewedAtMillis = reviewedAt,
                 beforeReview = beforeReview,
+                taskTiming = taskTiming,
             ),
         )
         val committedItem = commit.item

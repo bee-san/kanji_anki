@@ -51,6 +51,21 @@ class StudyRuntime(
      * card stays studyable, so a writing-only due card is not selected-then-skipped.
      */
     private val writingRecognitionAvailable: Boolean = true,
+    /**
+     * The active-task timer, whose frozen reading rides in the review transaction.
+     *
+     * Owned here rather than by a host because the runtime is what knows when a task
+     * becomes visible ([mount]) and when it is answered ([grade]), and because
+     * `ReviewCommitCommand.taskTiming` has to be part of the *same* transaction as the
+     * review — CLAUDE.md's persistence contract. A host that timed tasks itself would
+     * either commit timing in a second transaction or lose it whenever the runtime
+     * advanced a card on its own.
+     *
+     * Injectable so a test can supply a deterministic elapsed clock; the default is the
+     * monotonic one, because a wall clock moving backwards would produce negative
+     * durations in stats.
+     */
+    private val tracker: StudySessionTracker = StudySessionTracker(),
 ) {
     private val selector = StudySessionSelector()
     private val meaningKanjiPlanner = MeaningKanjiChoicePlanner()
@@ -145,11 +160,22 @@ class StudyRuntime(
             return render()
         }
 
+        // Freeze the timer before the transaction, commit it inside, and settle the
+        // tracker on the disposition: `prepareActiveTask` mutates no progress, so a
+        // stale commit rolls back to a still-running timer and the card stays retryable
+        // with its elapsed time intact.
+        val prepared = tracker.prepareActiveTask(
+            key = current.token,
+            outcome = result.appliedRating,
+            answeredAt = nowMillis,
+            countProgress = true,
+        )
         val commit = StudyReviewCommit.saveAppliedReview(
             request = request,
             result = result,
             beforeReview = item,
             reviewedAt = nowMillis,
+            taskTiming = prepared?.timing,
             writer = { command -> useCases.commitReview(command) },
             recorder = { _, _, _, _ -> },
             marker = { },
@@ -158,10 +184,12 @@ class StudyRuntime(
         if (!commit.applied() || committed == null) {
             // A stale or duplicate commit changed nothing: reset so the card is
             // retryable rather than stranded mid-submit.
+            tracker.rollbackPreparedTask(prepared)
             gate.resetForRetry(current.token)
             phase = StudySessionPhase.ACTIVE
             return render()
         }
+        tracker.commitPreparedTask(prepared)
         gate.markApplied(current.token)
         phase = StudySessionPhase.FEEDBACK
         lastApplied = AppliedReviewSnapshot(current.token, item, committed)
@@ -208,6 +236,37 @@ class StudyRuntime(
         choicePrompt = next?.let { buildChoicePrompt(it, nowMillis) }
         feedback = next?.let { StudyAnswerFeedbackState(it.token) }
         phase = if (next != null) StudySessionPhase.ACTIVE else StudySessionPhase.COMPLETE
+        // The timer starts when the card is mounted, not when the host draws it: the
+        // runtime is the only thing that knows a card was replaced, and a task whose
+        // timer started at first paint would miss every card the host re-rendered.
+        // `resumeImmediately` because a mounted card is visible — the runtime has no
+        // window concept, and a host that is backgrounded pauses through [pauseTask].
+        if (next != null) {
+            tracker.startActiveTask(
+                key = next.token,
+                kanji = next.item?.kanji,
+                taskType = next.taskType,
+                startedAt = nowMillis,
+                resumeImmediately = true,
+            )
+        }
+    }
+
+    /**
+     * Freezes the visible task's timer, for a host going to the background.
+     *
+     * Idempotent and safe with no active task, so a host may call it from `onPause`
+     * without asking whether a card is up. Without it, time spent with the app closed is
+     * counted as time spent studying the card, which is exactly what
+     * `StudyTaskTimingPolicy`'s active-elapsed measure exists to exclude.
+     */
+    fun pauseTask() {
+        tracker.pauseActiveTask()
+    }
+
+    /** Resumes the visible task's timer, for a host returning to the foreground. */
+    fun resumeTask() {
+        tracker.resumeActiveTask()
     }
 
     /**

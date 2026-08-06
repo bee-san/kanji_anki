@@ -9,6 +9,7 @@ import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.data.AdaptiveWorkloadSnapshot
 import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.ReviewTaskTiming
 import dev.bee.kanjianki.data.ReviewTokenStatus
 import dev.bee.kanjianki.data.StoreResult
 import dev.bee.kanjianki.data.StudyChoiceDataSnapshot
@@ -230,6 +231,86 @@ class StudyRuntimeTest {
         assertEquals(0, loaded.routeSnapshot.progress.targetCount)
     }
 
+    @Test
+    fun aGradedCardCommitsItsTaskTimingInTheReviewsOwnTransaction() = runTest {
+        val store = InMemoryStudyStore(items = listOf(dueItem("脱")))
+        var elapsed = UPTIME
+        val runtime = StudyRuntime(
+            StudyUseCases(store.repository),
+            tracker = StudySessionTracker(elapsedRealtime = { elapsed }),
+        )
+
+        runtime.load(NOW)
+        elapsed = UPTIME + 4_000L
+        runtime.grade("good", NOW)
+
+        // One commit, and it carried the timing: not a following write, which process
+        // death could lose while leaving the review itself persisted.
+        val timing = store.committedTimings.single()
+        assertNotNull("the review transaction carried no task timing", timing)
+        assertEquals(4_000L, timing?.activeElapsedMillis)
+        assertEquals("脱", timing?.kanji)
+        assertEquals("good", timing?.outcome)
+    }
+
+    @Test
+    fun timeSpentWithTheAppAwayIsNotCountedAsTimeSpentStudying() = runTest {
+        val store = InMemoryStudyStore(items = listOf(dueItem("脱")))
+        var elapsed = UPTIME
+        val runtime = StudyRuntime(
+            StudyUseCases(store.repository),
+            tracker = StudySessionTracker(elapsedRealtime = { elapsed }),
+        )
+
+        runtime.load(NOW)
+        elapsed = UPTIME + 1_000L
+        runtime.pauseTask()
+        // An hour backgrounded. The card was on screen for none of it.
+        elapsed = UPTIME + 3_601_000L
+        runtime.resumeTask()
+        elapsed = UPTIME + 3_603_000L
+        runtime.grade("good", NOW)
+
+        // 1s before pausing plus 2s after resuming. Counting the hour would report the
+        // user as having stared at one card all afternoon, which is what the active
+        // elapsed measure exists to prevent.
+        assertEquals(3_000L, store.committedTimings.single()?.activeElapsedMillis)
+    }
+
+    @Test
+    fun aStaleCommitLeavesTheCardRetryableWithItsTimerStillRunning() = runTest {
+        val store = InMemoryStudyStore(items = listOf(dueItem("脱")))
+        var elapsed = UPTIME
+        val runtime = StudyRuntime(
+            StudyUseCases(store.repository),
+            tracker = StudySessionTracker(elapsedRealtime = { elapsed }),
+        )
+
+        val loaded = runtime.load(NOW)
+        elapsed = UPTIME + 2_000L
+        // A competing path consumed the token, so this commit changes nothing.
+        store.forceConsume(loaded.session!!.token)
+        runtime.grade("good", NOW)
+
+        // The duplicate short-circuits before any commit, so nothing was written at all.
+        assertTrue(store.committedTimings.isEmpty())
+        assertEquals(0, store.reviewLog.size)
+    }
+
+    @Test
+    fun pausingWithNoCardMountedIsSafe() = runTest {
+        val store = InMemoryStudyStore(items = emptyList())
+        val runtime = StudyRuntime(StudyUseCases(store.repository))
+
+        runtime.load(NOW)
+        // A host calls these from its own lifecycle without knowing whether a card is up,
+        // so both have to be no-ops on an empty queue rather than throwing on a null task.
+        runtime.pauseTask()
+        runtime.resumeTask()
+
+        assertTrue(store.committedTimings.isEmpty())
+    }
+
     private fun dueItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.KANJI_MEANING)
 
     private fun meaningKanjiItem(kanji: String) = itemOnRung(kanji, RecordsBase.LadderRung.MEANING_KANJI)
@@ -252,6 +333,17 @@ class StudyRuntimeTest {
 
     private companion object {
         const val NOW = 1_800_000_000_000L
+
+        /**
+         * A nonzero monotonic base for the task timer.
+         *
+         * Not zero: `ActiveStudyTask` uses a visible-since of 0 as its "paused" sentinel,
+         * so a timer started at elapsed 0 reads as never having been visible and every
+         * duration comes out 0. Real `elapsedRealtimeNanos` is device uptime and is never
+         * 0 by the time a card is on screen, so this is the realistic case rather than a
+         * workaround.
+         */
+        const val UPTIME = 60_000L
     }
 }
 
@@ -271,6 +363,16 @@ private class InMemoryStudyStore(
     val reviewLog = mutableListOf<String>()
     private val forcedTokens = mutableSetOf<String>()
 
+    /**
+     * The task timing each commit carried, in commit order.
+     *
+     * Captured off `ReviewCommitCommand` rather than off `recordTaskTiming`, because the
+     * contract being tested is that timing rides in the *review's own transaction* — a
+     * timing that arrived by a separate write would satisfy a `recordTaskTiming` spy and
+     * still violate it.
+     */
+    val committedTimings = mutableListOf<ReviewTaskTiming?>()
+
     val repository = FakeStudyRepository().apply {
         loadQueueHandler = { StoreResult.ok(snapshot()) }
         tokenHandler = { query ->
@@ -282,6 +384,7 @@ private class InMemoryStudyStore(
             )
         }
         commitReviewHandler = { command ->
+            committedTimings += command.taskTiming
             if (command.request.token in reviewLog) {
                 StoreResult.ok(ReviewCommitResult.duplicate())
             } else {
