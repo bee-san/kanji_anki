@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -156,7 +157,12 @@ private fun TypedCard(
     dispatch: (KaniAction) -> Unit,
     hints: StudyActionHints?,
 ) {
-    var input by remember(card.subject) { mutableStateOf("") }
+    // Saveable, not remembered: a half-typed answer must survive a rotation and a
+    // process death, which is what the old Android host persisted per keystroke. Keyed on
+    // the subject so advancing to the next card clears the field rather than offering the
+    // previous card's answer, and restoring after a kill re-keys to the same subject
+    // because the route restores the same card.
+    var input by rememberSaveable(card.subject) { mutableStateOf("") }
     val label = resolver.resolve(card.inputLabel)
     CardHero(prompt = card.prompt, resolver = resolver, emphasizeSubject = false)
     if (session.feedback.visible) {

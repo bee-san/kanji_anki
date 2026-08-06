@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,7 +118,12 @@ fun StudySessionScreen(
     // the reveal key must turn the card over as the button does. Local UI state — the
     // reducer deliberately does not reload for a reveal — keyed on the card so the next
     // one starts face down.
-    var revealed by remember(session.card) { mutableStateOf(false) }
+    //
+    // Saveable because a rotation must not turn a revealed card back over: the user has
+    // already seen the answer, and re-hiding it invites them to grade their recall of a
+    // card they just read. Keyed on the card, which is a data class, so the key is stable
+    // across the recreation rather than a new identity that would reset the state anyway.
+    var revealed by rememberSaveable(session.card) { mutableStateOf(false) }
     val context = StudyInputContext(
         textFieldFocused = textFieldFocused,
         answerRevealed = revealed || session.feedback.visible,
