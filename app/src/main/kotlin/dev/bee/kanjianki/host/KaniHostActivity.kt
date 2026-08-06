@@ -5,7 +5,13 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import dev.bee.kanjianki.AndroidKaniContainer
+import dev.bee.kanjianki.MainActivityStartup
+import dev.bee.kanjianki.canRequestPackageInstalls
+import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.update.GitHubUpdater
+import dev.bee.kanjianki.update.ResumeUpdateInstaller
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.core.TextUtil
@@ -56,6 +62,42 @@ internal class KaniHostActivity : ComponentActivity() {
     private lateinit var host: AndroidShellHost
 
     /**
+     * The container, for the executor the resume work dispatches to.
+     *
+     * Read once in `onCreate` rather than per call: `requireKaniContainer` walks to the
+     * Application and would throw during teardown, which is exactly when a late lifecycle
+     * callback can arrive.
+     */
+    private lateinit var container: AndroidKaniContainer
+
+    /**
+     * Whether this resume owes reminder work, and whether it is throttled.
+     *
+     * Stateful across resumes — it holds the last re-arm time — so it is a field rather
+     * than something built per callback.
+     */
+    private val resume = AndroidHostResume(
+        backgroundWorkAllowed = { MainActivityStartup.backgroundStartupTasksAllowed(intent) },
+    )
+
+    /**
+     * Installs an already-downloaded, verified update when the user returns.
+     *
+     * Reused unchanged from the old host: it was already Activity-free, taking its
+     * permission check, status read, executor, and install call as lambdas, so the thin
+     * host shares the install policy rather than reimplementing it.
+     */
+    private val resumeUpdateInstaller by lazy {
+        ResumeUpdateInstaller(
+            { canRequestPackageInstalls(this) },
+            { container.localStore.autoUpdateStatus() },
+            container.maintenanceExecutor,
+        ) {
+            GitHubUpdater(this).installCachedPendingUpdate(GitHubUpdater.UpdateSource.CACHED)
+        }
+    }
+
+    /**
      * A reminder change waiting on POST_NOTIFICATIONS, surviving process death.
      *
      * Held here rather than in [AndroidHostState] because it is not presentation state:
@@ -75,7 +117,7 @@ internal class KaniHostActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val container = requireKaniContainer()
+        container = requireKaniContainer()
         val gateway = container.ankiDroidGateway
         pendingReminder = AndroidHostSavedState.readPendingReminder(savedInstanceState)
 
@@ -178,10 +220,32 @@ internal class KaniHostActivity : ComponentActivity() {
         super.onPause()
     }
 
-    /** Resumes the visible study task's timer; the mirror of [onPause]. */
+    /**
+     * Resumes the study timer, then does the background work a return to the app owes.
+     *
+     * The order matters: the timer resumes first because it is the user-visible one, and
+     * the reminder work below dispatches to a background executor. [AndroidHostResume]
+     * decides *whether* — the throttle and the screenshot/benchmark-harness gate — and this
+     * only performs it, so those rules are assertable without an alarm manager.
+     *
+     * The pending-update check comes from [ResumeUpdateInstaller] unchanged; it was already
+     * Activity-free, so the thin host reuses the same class the old one did rather than a
+     * second copy of the install policy.
+     */
     override fun onResume() {
         super.onResume()
         host.studyRuntime.resumeTask()
+        val actions = resume.onResume()
+        if (actions.cancelPostedReminder) {
+            // Opening the app is the user acknowledging the reminder.
+            ReminderScheduler.cancelPostedNotification(this)
+        }
+        if (actions.rearmReminder) {
+            container.maintenanceExecutor.execute {
+                runCatching { ReminderScheduler.schedule(this) }
+            }
+        }
+        resumeUpdateInstaller.onResume()
     }
 
     /**

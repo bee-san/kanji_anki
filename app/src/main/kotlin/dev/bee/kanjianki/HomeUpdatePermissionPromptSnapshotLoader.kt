@@ -1,11 +1,19 @@
 package dev.bee.kanjianki
 
+import android.content.Context
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 
-/** Reports install permission while honoring the test override seam. */
-internal fun canRequestPackageInstalls(activity: MainActivityBase): Boolean {
+/**
+ * Reports install permission while honoring the test override seam.
+ *
+ * Takes a [Context] rather than a `MainActivityBase`: `packageManager` is all it ever
+ * used, and Goal 199 requires that no production helper accept an Activity subclass — the
+ * thin host is a plain `ComponentActivity` and would otherwise have to reimplement this
+ * along with its override seam.
+ */
+internal fun canRequestPackageInstalls(context: Context): Boolean {
     MainActivityRuntimeOverrides.installPermission?.let { return it }
-    return activity.packageManager.canRequestPackageInstalls()
+    return context.packageManager.canRequestPackageInstalls()
 }
 
 /**
