@@ -14,6 +14,7 @@ import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -141,7 +142,7 @@ class ReminderReceiverInstrumentedTest {
     fun reminderOpenIntentRoutesDueWorkToStudy() {
         val intent = ReminderScheduler.reminderOpenIntent(context, "DUE")
 
-        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
+        assertTrue(intent.getBooleanExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, false))
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
     }
 

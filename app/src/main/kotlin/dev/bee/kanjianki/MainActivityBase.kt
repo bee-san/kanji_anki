@@ -901,13 +901,13 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
         const val EXTRA_OPEN_STUDY = KaniLaunchIntents.EXTRA_OPEN_STUDY
         const val EXTRA_OPEN_STATS = KaniLaunchIntents.EXTRA_OPEN_STATS
         const val EXTRA_OPEN_KANJI_DETAIL = KaniLaunchIntents.EXTRA_OPEN_KANJI_DETAIL
-        const val EXTRA_SCREENSHOT_ROUTE = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
-        const val EXTRA_SCREENSHOT_THEME = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
-        const val EXTRA_SCREENSHOT_LOCALE = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
+        const val EXTRA_SCREENSHOT_ROUTE = KaniLaunchIntents.EXTRA_SCREENSHOT_ROUTE
+        const val EXTRA_SCREENSHOT_THEME = KaniLaunchIntents.EXTRA_SCREENSHOT_THEME
+        const val EXTRA_SCREENSHOT_LOCALE = KaniLaunchIntents.EXTRA_SCREENSHOT_LOCALE
         const val EXTRA_SCREENSHOT_SCROLL_POSITION = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_POSITION"
         const val EXTRA_SCREENSHOT_SCROLL_Y = "dev.bee.kanjianki.extra.SCREENSHOT_SCROLL_Y"
         const val SCREENSHOT_MISSING_KANJI_ROUTE = "missing-kanji"
-        const val EXTRA_BENCHMARK_ROUTE = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
+        const val EXTRA_BENCHMARK_ROUTE = KaniLaunchIntents.EXTRA_BENCHMARK_ROUTE
         const val PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         private const val STATE_PENDING_REMINDER = "kani.pending-reminder"
         private const val STATE_RESTORE_STUDY_ROUTE = "kani.restore-study-route"

@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import dev.bee.kanjianki.hostpresentation.AutomationSettingsStore
 import dev.bee.kanjianki.AndroidKaniContainer
-import dev.bee.kanjianki.MainActivityStartup
 import dev.bee.kanjianki.canRequestPackageInstalls
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.requireKaniContainer
@@ -31,13 +30,13 @@ import dev.bee.kanjianki.presentation.PlatformCapability
  *
  * Those four are the whole reason an Activity is still in the picture:
  *
- * 1. **Lifecycle** — `setContent`, and nothing else yet. The old host's `onPause`/`onResume`
- *    did four things the shared graph has no equivalent for: flushing Study recovery,
- *    resuming a paused task, re-arming reminders, and re-checking a pending update. Each is
- *    a separate port with its own state, so this host deliberately has no `onPause`
- *    override rather than a partial one — a half-restored Study task is worse than a
- *    cold-started route. The composition's own `Lifecycle.Entered`/`Exited` already reload
- *    per route.
+ * 1. **Lifecycle** — `setContent`, plus the work only the activity is told about: pausing
+ *    and resuming the shared study task timer, and the reminder/pending-update work a
+ *    return to the foreground owes ([AndroidHostResume] decides whether, this performs it).
+ *    Two of the old host's `onResume` concerns are deliberately absent rather than
+ *    half-ported: the Study recovery flush has no store here because the shared surfaces
+ *    keep a typed draft in saved instance state instead, and the deferred settings-preview
+ *    re-render has nothing to refresh because the shared Settings has no sample preview.
  * 2. **Activity results** — the launchers in [AndroidHostLaunchers], whose registration
  *    order is load-bearing.
  * 3. **Intent translation** — the shared [KaniLaunchCodec] for both the cold-start intent
@@ -46,10 +45,10 @@ import dev.bee.kanjianki.presentation.PlatformCapability
  *    destination codec.
  *
  * Everything else — navigation, content, effects — is the shared graph, which is why this
- * file has no route names, no rendering, and no product logic in it. It deliberately does
- * not extend the `MainActivity*` inheritance chain (that chain is what Goal 199 removes)
- * and it is not yet the launcher activity: it runs in parallel with `MainActivity` until
- * the instrumented gate vouches for it.
+ * file has no route names, no rendering, and no product logic in it. It does not extend the
+ * `MainActivity*` inheritance chain, which is what Goal 199 removes, and it is the launcher:
+ * `singleTop`, so every deep link reaches the running instance through [onNewIntent] rather
+ * than stacking a second copy of the app.
  */
 internal class KaniHostActivity : ComponentActivity() {
     private lateinit var hostState: AndroidHostState
@@ -80,7 +79,9 @@ internal class KaniHostActivity : ComponentActivity() {
      * than something built per callback.
      */
     private val resume = AndroidHostResume(
-        backgroundWorkAllowed = { MainActivityStartup.backgroundStartupTasksAllowed(intent) },
+        // Read through [KaniLaunchIntents] rather than the `MainActivityStartup` helper that
+        // used to answer this, so the gate outlives that chain's deletion.
+        backgroundWorkAllowed = { KaniLaunchIntents.allowsBackgroundWork(intent) },
     )
 
     /**
@@ -109,12 +110,9 @@ internal class KaniHostActivity : ComponentActivity() {
      * `onSaveInstanceState`, because the system can kill the activity while the
      * permission dialog is on screen — the case this field exists for.
      *
-     * Nothing sets it yet, and that is the honest state of the port rather than an
-     * oversight: the shared settings surface has no reminder-time action, so the only
-     * code that can populate this is the Settings > Automation flow still living on the
-     * old host. The save/restore path is wired and tested now because it is the *host*
-     * half of that flow — the half that has to exist before the settings half can be
-     * ported, and the half a process-death test can reach without a settings screen.
+     * Set when an Automation write asks for POST_NOTIFICATIONS and settled by the
+     * permission callback: a grant arms the reminder for real, a denial leaves the setting
+     * saved for the section to report as blocked.
      */
     private var pendingReminder: AndroidHostSavedState.PendingReminder? = null
 

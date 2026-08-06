@@ -26,6 +26,7 @@ import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.testing.DeviceRisk
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -399,9 +400,9 @@ class Goal165AndroidRouteBaselineInstrumentedTest {
             } else {
                 MainActivityBase.NAV_HOME_ROUTE
             }
-        intent.putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, route)
-        intent.putExtra(MainActivityBase.EXTRA_SCREENSHOT_THEME, "light")
-        intent.putExtra(MainActivityBase.EXTRA_SCREENSHOT_LOCALE, LOCALE_TAG)
+        intent.putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_ROUTE, route)
+        intent.putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_THEME, "light")
+        intent.putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_LOCALE, LOCALE_TAG)
         return intent
     }
 

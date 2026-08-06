@@ -14,6 +14,7 @@ import dev.bee.kanjianki.core.KanjiInventoryBuilder
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.widget.KaniWidgetSnapshot
 import dev.bee.kanjianki.widget.KaniWidgetState
 import dev.bee.kanjianki.widget.kaniFocusDetailIntent
@@ -31,7 +32,7 @@ class KaniWidgetLaunchInstrumentedTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val intent = coldStartIntent(
             Intent(context, MainActivity::class.java)
-                .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true),
+                .putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true),
         )
 
         withScenario(intent) { scenario ->

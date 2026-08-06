@@ -17,6 +17,7 @@ import dev.bee.kanjianki.backup.BackupExportOperations
 import dev.bee.kanjianki.backup.BackupExportPreparation
 import dev.bee.kanjianki.backup.BackupRestoreStager
 import dev.bee.kanjianki.backup.StagedRestoreApplier
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.platform.PlatformFileAccess
 import dev.bee.kanjianki.platform.PlatformFileReference
 import dev.bee.kanjianki.backup.ValidatedBackup
@@ -160,7 +161,7 @@ class BackupAndRestoreInstrumentedTest {
         assertFalse(BackupRestoreStager.markerFile(context.filesDir).exists())
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
+            putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
         }
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             scenario.onActivity { activity ->

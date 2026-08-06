@@ -36,6 +36,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.Until;
 
 import dev.bee.kanjianki.anki.AnkiDroidGateway;
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.syncapi.CollectionGateway;
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider;
 import dev.bee.kanjianki.core.AdaptiveLoadPlanner;
@@ -832,7 +833,7 @@ fun testUpdateScreenSurfacesCachedPendingUpdate() {
         }
 
         val openUpdate = Intent(context, MainActivity::class.java)
-            .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
+            .putExtra(KaniLaunchIntents.EXTRA_OPEN_UPDATE, true)
         val scenario = ActivityScenario.launch<MainActivity>(openUpdate)
         try {
             waitForText(scenario, "Ready to install: 9.9.9")

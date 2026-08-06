@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import java.util.concurrent.ExecutorService
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -35,7 +36,7 @@ class ProcessContainerLifecycleInstrumentedTest {
         lateinit var userIo: ExecutorService
         lateinit var maintenance: ExecutorService
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
+            putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
         }
 
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->

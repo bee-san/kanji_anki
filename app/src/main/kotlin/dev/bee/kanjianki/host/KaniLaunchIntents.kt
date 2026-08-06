@@ -31,6 +31,34 @@ internal object KaniLaunchIntents {
     const val EXTRA_OPEN_KANJI_DETAIL: String = "dev.bee.kanjianki.extra.OPEN_KANJI_DETAIL"
 
     /**
+     * The harness extras: a screenshot or benchmark run pinning one screen.
+     *
+     * Not durable in the `PendingIntent` sense — no notification or widget carries these,
+     * only a test runner does — but here for the same reason the rest are: they outlive the
+     * `MainActivity*` chain that used to define them, and the thin host's own resume gate
+     * reads them to decide whether background work is allowed. A harness run that armed an
+     * alarm would leave a side effect outliving the run.
+     *
+     * Values unchanged from `MainActivityBase`, because the screenshot and benchmark
+     * tooling passes them on the `am instrument` command line.
+     */
+    const val EXTRA_SCREENSHOT_ROUTE: String = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
+    const val EXTRA_SCREENSHOT_THEME: String = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
+    const val EXTRA_SCREENSHOT_LOCALE: String = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
+    const val EXTRA_BENCHMARK_ROUTE: String = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
+
+    /**
+     * Whether [intent] is an ordinary launch rather than a harness one.
+     *
+     * The gate `MainActivityStartup.backgroundStartupTasksAllowed` was: a screenshot or
+     * benchmark run observes one screen, so arming alarms, re-checking updates, or posting
+     * notifications during it both perturbs the measurement and leaves state behind.
+     */
+    fun allowsBackgroundWork(intent: Intent?): Boolean =
+        intent?.getStringExtra(EXTRA_SCREENSHOT_ROUTE).isNullOrBlank() &&
+            intent?.getStringExtra(EXTRA_BENCHMARK_ROUTE).isNullOrBlank()
+
+    /**
      * Every target [intent] names, for [KaniLaunchCodec] to arbitrate between.
      *
      * A set rather than one value because an `Intent` can carry several extras at once and

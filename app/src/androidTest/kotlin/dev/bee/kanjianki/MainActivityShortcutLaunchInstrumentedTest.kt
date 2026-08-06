@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,21 +14,21 @@ import org.junit.runner.RunWith
 class MainActivityShortcutLaunchInstrumentedTest {
     @Test
     fun studyShortcutOpensStudyRoute() {
-        launchShortcut(MainActivityBase.ACTION_OPEN_STUDY) { activity ->
+        launchShortcut(KaniLaunchIntents.ACTION_OPEN_STUDY) { activity ->
             activity.currentRoute == MainActivityBase.NAV_STUDY
         }
     }
 
     @Test
     fun browseShortcutOpensBrowseSubroute() {
-        launchShortcut(MainActivityBase.ACTION_OPEN_BROWSE) { activity ->
+        launchShortcut(KaniLaunchIntents.ACTION_OPEN_BROWSE) { activity ->
             activity.currentRoute == MainActivityBase.NAV_HOME_ROUTE && activity.backAction != null
         }
     }
 
     @Test
     fun gamesShortcutOpensGamesSubroute() {
-        launchShortcut(MainActivityBase.ACTION_OPEN_GAMES) { activity ->
+        launchShortcut(KaniLaunchIntents.ACTION_OPEN_GAMES) { activity ->
             activity.currentRoute == MainActivityBase.NAV_HOME_ROUTE && activity.backAction != null
         }
     }
@@ -41,7 +42,7 @@ class MainActivityShortcutLaunchInstrumentedTest {
                 originalActivity = activity
                 activity.startActivity(
                     Intent(activity, MainActivity::class.java)
-                        .setAction(MainActivityBase.ACTION_OPEN_STUDY),
+                        .setAction(KaniLaunchIntents.ACTION_OPEN_STUDY),
                 )
             }
 
