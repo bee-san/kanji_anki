@@ -32,6 +32,19 @@ internal class AndroidHostLaunchers(
     private val onAnkiPermissionResult: () -> Unit,
     private val onNotificationPermissionResult: (Boolean) -> Unit,
     private val onFilePicked: (KaniEffect.FilePurpose, PlatformFileReference?) -> Unit,
+    /**
+     * Work that must happen before a purpose's dialog opens, reporting whether it may.
+     *
+     * Backup export is the reason this exists: Android has to snapshot the database into
+     * private cache *before* the picker opens (see [AndroidBackupExport]), and a snapshot
+     * that fails must not be answered with a save dialog whose file would be written from
+     * nothing. Returning false leaves no dialog on screen, which [pickFile] reports as a
+     * declined launch — the same answer an unmapped purpose gives.
+     *
+     * Defaulted to "always allowed" so a test or a host without the backup flow keeps the
+     * previous behavior.
+     */
+    private val beforePick: (KaniEffect.FilePurpose) -> Boolean = { true },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val saveDocument: ActivityResultLauncher<String>
@@ -76,13 +89,17 @@ internal class AndroidHostLaunchers(
     /**
      * Runs the system picker for [effect], reporting whether it was actually launched.
      *
-     * False means the request was declined, not that it failed: either a pick is already
-     * pending (the picker refuses to overwrite the waiting callback) or the purpose has no
-     * Android consumer yet. Both leave no dialog on screen, so the caller can keep the
-     * effect's own state unchanged.
+     * False means the request was declined, not that it failed: a pick is already pending
+     * (the picker refuses to overwrite the waiting callback), the purpose has no Android
+     * consumer yet, or [beforePick] refused — a backup snapshot that could not be taken.
+     * All of them leave no dialog on screen, so the caller can keep the effect's own state
+     * unchanged.
      */
     fun pickFile(effect: KaniEffect.PickFile): Boolean {
         val request = effect.toRequest() ?: return false
+        // Before the dialog, not after: the backup snapshot has to exist by the time the
+        // user chooses a destination, and a failed one must not open a picker at all.
+        if (!beforePick(effect.purpose)) return false
         return filePicker.launchForResult(request) { file -> onFilePicked(effect.purpose, file) }
     }
 

@@ -1,11 +1,16 @@
 package dev.bee.kanjianki.host
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
+import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.core.TextUtil
+import dev.bee.kanjianki.platform.android.AndroidPlatformFileAccess
+import dev.bee.kanjianki.presentation.KaniEffect
 import dev.bee.kanjianki.presentation.KaniLaunchCodec
 import dev.bee.kanjianki.presentation.KaniLaunchRequest
 import dev.bee.kanjianki.presentation.PlatformCapabilities
@@ -65,6 +70,19 @@ internal class KaniHostActivity : ComponentActivity() {
         val gateway = container.ankiDroidGateway
         pendingReminder = AndroidHostSavedState.readPendingReminder(savedInstanceState)
 
+        val backupExport = AndroidBackupExport(
+            cacheRoot = ::getCacheDir,
+            databaseFile = { getDatabasePath(DatabaseBackupPolicy.DB_NAME) },
+            fileAccess = AndroidPlatformFileAccess(this),
+            // The store's own `VACUUM INTO`, ignoring the source path the interface
+            // offers: the live database is the one the store has open, and snapshotting
+            // some other file would silently export a stale copy.
+            snapshotter = { _, destination -> container.localStore.snapshotInto(destination) },
+            operationsAllowed = {
+                DatabaseBackupAvailabilityPolicy.forAndroidApi(Build.VERSION.SDK_INT).operationsAllowed
+            },
+        )
+
         // Registered before the activity reaches STARTED, which is the framework's
         // requirement and the reason this is the first thing after reading saved state.
         launchers = AndroidHostLaunchers(
@@ -80,12 +98,25 @@ internal class KaniHostActivity : ComponentActivity() {
                 pendingReminder = null
                 hostState.requestRefresh()
             },
-            // Nothing consumes a picked file yet, and that is a missing *consumer*, not a
-            // missing wire: the backup export/restore flows still live on the old host,
-            // and porting them is its own step. The launcher is registered regardless,
-            // because its position in the registry is what the restored-result routing
-            // depends on -- see AndroidHostLaunchers -- so it cannot wait for its consumer.
-            onFilePicked = { _, _ -> },
+            // Export writes the snapshot `beforePick` took into the chosen document; a
+            // cancelled dialog arrives here as a null reference and discards it. Restore
+            // has no consumer yet -- it validates and *stages* a whole-file replacement
+            // that only startup may publish, so it is its own port rather than a branch.
+            // The returned copy is dropped, matching the desktop handler: an effect the
+            // host performs has no way back into the shell's message queue, because
+            // `KaniEffect` is one-directional by design. Both hosts owe the user the
+            // outcome and neither delivers it yet; the export itself is correct, and the
+            // refresh re-reads the archive count so Settings shows the new snapshot.
+            onFilePicked = { purpose, file ->
+                if (purpose == KaniEffect.FilePurpose.BACKUP_EXPORT) {
+                    backupExport.copyInto(file)
+                    hostState.requestRefresh()
+                }
+            },
+            // Android snapshots before the dialog, not after; see AndroidBackupExport.
+            beforePick = { purpose ->
+                purpose != KaniEffect.FilePurpose.BACKUP_EXPORT || backupExport.prepare().mayPick
+            },
         )
 
         hostState = AndroidHostState(

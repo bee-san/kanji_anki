@@ -139,6 +139,61 @@ class AndroidHostLaunchersTest {
     }
 
     @Test
+    fun aRefusedPreparationOpensNoDialogAndReportsItDidNot() {
+        // Android snapshots the database *before* the save dialog opens, so a snapshot that
+        // failed -- or a host that cannot take one safely -- must not be answered with a
+        // picker. The user would choose a destination for a file that does not exist.
+        val caller = RecordingCaller()
+        val refusedPurposes = mutableListOf<KaniEffect.FilePurpose>()
+        val launchers = launchers(caller, beforePick = { purpose ->
+            refusedPurposes += purpose
+            false
+        })
+
+        assertFalse(launchers.pickFile(KaniEffect.PickFile(KaniEffect.FilePurpose.BACKUP_EXPORT)))
+        assertTrue("no dialog opened", caller.launchesFor(0).isEmpty())
+        assertEquals(listOf(KaniEffect.FilePurpose.BACKUP_EXPORT), refusedPurposes)
+    }
+
+    @Test
+    fun thePreparationRunsBeforeTheDialogRatherThanAfterIt() {
+        val caller = RecordingCaller()
+        val order = mutableListOf<String>()
+        val launchers = launchers(caller, beforePick = {
+            order += "prepare"
+            true
+        })
+
+        launchers.pickFile(KaniEffect.PickFile(KaniEffect.FilePurpose.BACKUP_EXPORT))
+        if (caller.launchesFor(0).isNotEmpty()) {
+            order += "dialog"
+        }
+
+        // The order is the invariant, not just that both happened: a snapshot taken after
+        // the dialog would write whatever the database looked like once the user finished
+        // browsing, which is not the state they asked to export.
+        assertEquals(listOf("prepare", "dialog"), order)
+    }
+
+    @Test
+    fun aRestoreDoesNotWaitOnTheExportPreparation() {
+        // `beforePick` is consulted for every purpose, so a restore has to be allowed
+        // through by the host's own predicate rather than gated on an export snapshot it
+        // does not need. Pinned here because the alternative -- one flag for both -- would
+        // silently make restore unavailable whenever export was.
+        val caller = RecordingCaller()
+        val launchers = launchers(
+            caller,
+            beforePick = { purpose -> purpose != KaniEffect.FilePurpose.BACKUP_EXPORT },
+        )
+
+        assertFalse(launchers.pickFile(KaniEffect.PickFile(KaniEffect.FilePurpose.BACKUP_EXPORT)))
+        assertTrue(launchers.pickFile(KaniEffect.PickFile(KaniEffect.FilePurpose.BACKUP_RESTORE)))
+        assertTrue(caller.launchesFor(0).isEmpty())
+        assertEquals(1, caller.launchesFor(1).size)
+    }
+
+    @Test
     fun eachPermissionRequestGoesToItsOwnLauncher() {
         val caller = RecordingCaller()
         val launchers = launchers(caller)
@@ -161,12 +216,14 @@ class AndroidHostLaunchersTest {
     private fun launchers(
         caller: RecordingCaller,
         clock: () -> Long = { FIXED_NOW },
+        beforePick: (KaniEffect.FilePurpose) -> Boolean = { true },
     ): AndroidHostLaunchers = AndroidHostLaunchers(
         context = ApplicationProvider.getApplicationContext<Context>(),
         caller = caller,
         onAnkiPermissionResult = {},
         onNotificationPermissionResult = {},
         onFilePicked = { _, _ -> },
+        beforePick = beforePick,
         clock = clock,
     )
 
