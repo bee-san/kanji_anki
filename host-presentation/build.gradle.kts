@@ -15,5 +15,9 @@ dependencies {
     // DesktopStatsModel maps :progress-core's ProgressAnalyticsState to the portable
     // StatsDashboard; the analytics computation itself stays in :progress-core.
     api(project(":progress-core"))
+    // The Update section reports through :update-core's own status and
+    // background-option policies rather than re-deciding when an install may be
+    // offered. Both hosts read the same answer that way.
+    api(project(":update-core"))
     testImplementation(testFixtures(project(":data-api")))
 }

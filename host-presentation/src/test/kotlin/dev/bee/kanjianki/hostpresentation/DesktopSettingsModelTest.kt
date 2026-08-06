@@ -24,6 +24,7 @@ import dev.bee.kanjianki.presentation.StudyKeybindingsCodec
 import dev.bee.kanjianki.presentation.label
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -81,23 +82,27 @@ class DesktopSettingsModelTest {
     }
 
     @Test
-    fun anUnportedSectionIsTheHonestPlaceholder() {
-        val ported = setOf(
-            SettingsSection.ROOT,
-            SettingsSection.APPEARANCE,
-            SettingsSection.STUDY_BEHAVIOR,
-            SettingsSection.IMPORT_SYNC,
-            SettingsSection.KEYBINDINGS,
-            SettingsSection.AUTOMATION,
-            SettingsSection.DISPLAY_DATA,
-            SettingsSection.HOW_IT_WORKS,
-            SettingsSection.LICENSES,
-        )
-        for (section in SettingsSection.entries.filter { it !in ported }) {
+    fun everySectionRendersRealContentAndNoneIsStillAPlaceholder() {
+        // This test used to assert the opposite — that an unported section says so rather
+        // than rendering an empty panel — and inverted when the last one landed. Kept as
+        // the standing invariant instead of deleted: `SettingsScreen.Placeholder` still
+        // exists for a host on an older build to render, and a section added later without
+        // a mapper case would reach a user as a blank screen.
+        for (section in SettingsSection.entries) {
             val screen = DesktopSettingsModel.screen(section, snapshot())
             assertEquals(section, screen.section)
-            assertNull("a leaf section has no root menu", screen.root)
-            assertEquals(SettingsSectionContent.Placeholder, screen.content)
+            if (section == SettingsSection.ROOT) {
+                // The root is the category menu and carries no controls of its own, so its
+                // `content` stays at the default. The menu itself is what must be there.
+                assertNotNull("the root section is the category menu", screen.root)
+            } else {
+                assertNull("a leaf section has no root menu", screen.root)
+                assertNotEquals(
+                    "$section still renders the placeholder",
+                    SettingsSectionContent.Placeholder,
+                    screen.content,
+                )
+            }
         }
     }
 
@@ -666,6 +671,148 @@ class DesktopSettingsModelTest {
         assertNull(DesktopSettingsModel.keybindingEditFor(reset, "not a binding set", KeyboardPlatform.LINUX))
     }
 
+    @Test
+    fun theUpdateSectionReportsWhatWasCheckedBeforeOfferingToCheckAgain() {
+        val content = updateContent(update())
+
+        val infos = content.controls.filterIsInstance<SettingsControl.Info>()
+        val text = infos.joinToString(" ") { "${it.label} ${it.value}" }
+        // Both versions, so "did the update work" is answerable without leaving the screen.
+        assertTrue("the installed version is reported: $text", text.contains("0.3.6"))
+        assertTrue("the found version is reported: $text", text.contains("0.4.0"))
+        assertTrue("the last result is reported: $text", text.contains("Downloaded"))
+        // Reported before offered: the notification deep-links here, and the question it
+        // raises is what happened, not what to do next.
+        val firstAction = content.controls.indexOfFirst { it is SettingsControl.ActionButton }
+        val lastInfo = content.controls.indexOfLast { it is SettingsControl.Info }
+        assertTrue("the status lines come before the actions", firstAction < lastInfo)
+    }
+
+    @Test
+    fun aStagedUpdateIsOfferedForInstallOnlyWhenTheHostMayInstallIt() {
+        val allowed = updateContent(update(canInstall = true))
+        val refused = updateContent(update(canInstall = false))
+
+        // Offered and operable when the OS will honour it.
+        val install = allowed.controls.filterIsInstance<SettingsControl.ActionButton>()
+            .first { it.action == KaniAction.Settings.Command("update.install_pending") }
+        assertTrue("a staged update the host can install is operable", install.enabled)
+        // Replaces the running application, so it reads as destructive.
+        assertTrue("replacing the running app is destructive", install.destructive)
+
+        // Without the permission the panel offers the permission page instead of an
+        // install that would bounce straight off it.
+        val refusedCommands = refused.controls.filterIsInstance<SettingsControl.ActionButton>()
+            .map { (it.action as KaniAction.Settings.Command).id }
+        assertTrue(
+            "the permission page is offered: $refusedCommands",
+            "update.open_install_permission" in refusedCommands,
+        )
+        assertFalse(
+            "the permission page is not offered once granted",
+            allowed.controls.filterIsInstance<SettingsControl.ActionButton>()
+                .any { (it.action as KaniAction.Settings.Command).id == "update.open_install_permission" },
+        )
+    }
+
+    @Test
+    fun nothingStagedMeansNoInstallButtonAtAll() {
+        val content = updateContent(update(canInstall = true, pendingPackage = ""))
+
+        // An install button with nothing staged does nothing when pressed, which is worse
+        // than not offering it: the user reads it as "an update is ready".
+        assertFalse(
+            "no install button without a staged artifact",
+            content.controls.filterIsInstance<SettingsControl.ActionButton>()
+                .any { (it.action as KaniAction.Settings.Command).id == "update.install_pending" },
+        )
+    }
+
+    @Test
+    fun anInstallKaniDidNotPlaceIsReportedAndOfferedNothing() {
+        val unmanaged = DesktopSettingsModel.screen(
+            SettingsSection.UPDATE,
+            snapshot(),
+            update = update(canInstall = true),
+            capabilities = PlatformCapabilities.NONE,
+        ).content as SettingsSectionContent.Controls
+
+        // A source build, a Flatpak, a distro package: Kani did not place it and must not
+        // replace it. Every action is listed but inoperable, so the screen explains itself
+        // rather than looking broken or empty.
+        val actions = unmanaged.controls.filterIsInstance<SettingsControl.ActionButton>()
+        val toggles = unmanaged.controls.filterIsInstance<SettingsControl.Toggle>()
+        assertTrue("the actions are still listed", actions.isNotEmpty())
+        assertTrue("no action is operable", actions.none { it.enabled })
+        assertTrue("no toggle is operable", toggles.none { it.enabled })
+        // And the versions are still reported: reading them never needed the capability.
+        val text = unmanaged.controls.filterIsInstance<SettingsControl.Info>()
+            .joinToString(" ") { "${it.label} ${it.value}" }
+        assertTrue("the installed version is still reported: $text", text.contains("0.3.6"))
+    }
+
+    @Test
+    fun onlyTheTwoUpdateTogglesArePersistedHere() {
+        val current = update()
+
+        // The two user choices map to writes.
+        assertEquals(
+            current.copy(autoUpdateEnabled = true),
+            DesktopSettingsModel.updateEditFor(
+                KaniAction.Settings.SetToggle("update.auto_update_enabled", enabled = true),
+                current,
+            ),
+        )
+        assertEquals(
+            current.copy(betaUpdatesEnabled = true),
+            DesktopSettingsModel.updateEditFor(
+                KaniAction.Settings.SetToggle("update.beta_updates_enabled", enabled = true),
+                current,
+            ),
+        )
+        // Every command is the host's to perform, not this mapper's to persist. A mapper
+        // that claimed one would write a settings key on "check for updates".
+        for (id in listOf(
+            "update.check_now",
+            "update.install_pending",
+            "update.open_install_permission",
+            "update.background_setup",
+        )) {
+            assertNull(id, DesktopSettingsModel.updateEditFor(KaniAction.Settings.Command(id), current))
+        }
+        // And a toggle already in that state writes nothing, so re-rendering the section
+        // does not churn the store.
+        assertNull(
+            DesktopSettingsModel.updateEditFor(
+                KaniAction.Settings.SetToggle("update.auto_update_enabled", enabled = false),
+                current,
+            ),
+        )
+    }
+
+    @Test
+    fun theBackgroundSetupPathIsOfferedUntilBackgroundUpdatingActuallyWorks() {
+        fun offers(state: DesktopSettingsModel.UpdateState): Boolean =
+            updateContent(state).controls.filterIsInstance<SettingsControl.ActionButton>()
+                .any { (it.action as KaniAction.Settings.Command).id == "update.background_setup" }
+
+        // Background updating needs both halves, so the one-tap path stays visible until
+        // both are true — offering it after that would be a button that does nothing.
+        assertTrue(offers(update(autoUpdateEnabled = false, canInstall = false)))
+        assertTrue(offers(update(autoUpdateEnabled = true, canInstall = false)))
+        assertTrue(offers(update(autoUpdateEnabled = false, canInstall = true)))
+        assertFalse(offers(update(autoUpdateEnabled = true, canInstall = true)))
+    }
+
+    private fun updateContent(
+        state: DesktopSettingsModel.UpdateState,
+    ): SettingsSectionContent.Controls = DesktopSettingsModel.screen(
+        SettingsSection.UPDATE,
+        snapshot(),
+        update = state,
+        capabilities = PlatformCapabilities.of(PlatformCapability.UPDATE_DELIVERY),
+    ).content as SettingsSectionContent.Controls
+
     private fun snapshot(theme: KaniThemeChoice = KaniThemeChoice.GIRLYPOP): SettingsSnapshot =
         SettingsSnapshotFixtures.blank(theme)
 
@@ -693,5 +840,29 @@ class DesktopSettingsModelTest {
         autoSyncHour = 9,
         autoSyncMinute = 15,
         debugLogEnabled = false,
+    )
+
+    /**
+     * Update state as it reads after a successful background check found a newer release.
+     *
+     * The interesting state rather than the empty one: a staged artifact, two different
+     * versions, and a result line. A fixture with nothing in it would let a section that
+     * rendered blanks pass every one of these.
+     */
+    private fun update(
+        autoUpdateEnabled: Boolean = false,
+        betaUpdatesEnabled: Boolean = false,
+        canInstall: Boolean = true,
+        pendingPackage: String = "kani-0.4.0.apk",
+    ): DesktopSettingsModel.UpdateState = DesktopSettingsModel.UpdateState(
+        autoUpdateEnabled = autoUpdateEnabled,
+        betaUpdatesEnabled = betaUpdatesEnabled,
+        installedVersion = "0.3.6",
+        lastCheckAtMillis = 1_700_000_000_000L,
+        lastResult = "Downloaded and verified 0.4.0",
+        lastVersion = "0.4.0",
+        pendingPackage = pendingPackage,
+        pendingMessage = "",
+        canInstall = canInstall,
     )
 }

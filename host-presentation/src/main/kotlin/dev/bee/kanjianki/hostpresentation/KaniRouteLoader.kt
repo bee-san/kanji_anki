@@ -62,6 +62,28 @@ data class HostAutomationRuntime(
 )
 
 /**
+ * The Update facts no store holds, which the host has to answer for itself.
+ *
+ * [installedVersion] is the running build's own version — `BuildConfig.VERSION_NAME` on
+ * Android, the packaged version on desktop — and is deliberately not stored: a persisted
+ * copy would survive the upgrade that made it wrong and the panel would report the version
+ * the user just replaced.
+ *
+ * [canInstall] is re-asked every load rather than cached, because it can change without
+ * Kani running: on Android the user can revoke `REQUEST_INSTALL_PACKAGES` from system
+ * settings, and on desktop the answer depends on the installation channel
+ * `DesktopInstallationChannelPolicy` resolves from the launcher path each launch. A stale
+ * `true` here is an install button that bounces off a permission the user cannot see.
+ *
+ * Both default to the honest "nothing observed" value, so a host that has not wired its
+ * updater reports no version and no install ability rather than inventing either.
+ */
+data class HostUpdateRuntime(
+    val installedVersion: String = "",
+    val canInstall: Boolean = false,
+)
+
+/**
  * Builds one [KaniRouteContent] for a destination from the shared use-case graph.
  *
  * This is the orchestration that was `loadDesktopRoute`, lifted out of the desktop
@@ -107,6 +129,11 @@ class KaniRouteLoader(
          * — which is every caller on every other route — passes nothing.
          */
         automationRuntime: HostAutomationRuntime = HostAutomationRuntime(),
+        /**
+         * The Update facts the host observes rather than stores; see [HostUpdateRuntime].
+         * Defaulted for the same reason [automationRuntime] is.
+         */
+        updateRuntime: HostUpdateRuntime = HostUpdateRuntime(),
     ): KaniRouteContent {
         val snapshot = homeUseCases.loadRoute(nowMillis)
         val study = snapshot.study
@@ -196,6 +223,7 @@ class KaniRouteLoader(
                     bindings = studyKeybindings(),
                     platform = keyboardPlatform,
                     automation = automationState(automationRuntime),
+                    update = updateState(updateRuntime),
                     capabilities = PlatformCapabilities(status.capabilities),
                 )
             },
@@ -227,6 +255,21 @@ class KaniRouteLoader(
             notificationsBlocked = runtime.notificationsBlocked,
             lastAutomaticBackupAtMillis = runtime.lastAutomaticBackupAtMillis,
             automaticBackupCount = runtime.automaticBackupCount,
+        )
+
+    /**
+     * The stored update record, plus the two facts only the host can answer.
+     *
+     * Read on every load, which matters more here than anywhere else in this class: the
+     * update notification deep-links straight to this section, so the load that renders it
+     * is usually the first one after the background checker wrote its result.
+     */
+    private fun updateState(
+        runtime: HostUpdateRuntime,
+    ): DesktopSettingsModel.UpdateState =
+        UpdateSettingsStore.read(deviceSettings()).copy(
+            installedVersion = runtime.installedVersion,
+            canInstall = runtime.canInstall,
         )
 
     private suspend fun loadBrowse(destination: KaniDestination): BrowseResults {

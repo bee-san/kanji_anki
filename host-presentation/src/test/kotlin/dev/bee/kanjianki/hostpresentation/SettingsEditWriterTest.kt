@@ -215,6 +215,97 @@ class SettingsEditWriterTest {
     }
 
     @Test
+    fun anUpdateToggleSurvivesTheWriteAndTheNextRead() = runSync {
+        val store = FakeDeviceSettingsStore()
+        val settings = RecordingSettingsUseCases()
+
+        val outcome = write(store, KaniAction.Settings.SetToggle(BETA_UPDATES_KEY, true), settings)
+
+        assertEquals(SettingsEditOutcome.Update, outcome)
+        // Re-read through the store for the same reason the reminder test does: a write
+        // under a different key name would satisfy any assertion made on the return value.
+        assertEquals(true, UpdateSettingsStore.read(store).betaUpdatesEnabled)
+        assertEquals("an update toggle is device-local", 0, settings.saved)
+    }
+
+    @Test
+    fun theWriterNeverWritesTheUpdateRecordItsCheckerOwns() = runSync {
+        val store = FakeDeviceSettingsStore()
+        store.edit {
+            put(DeviceSettingKeys.autoUpdateLastVersion, "0.4.0")
+            put(DeviceSettingKeys.autoUpdatePendingPackage, "kani-0.4.0.apk")
+        }
+        store.forgetWrites()
+
+        write(store, KaniAction.Settings.SetToggle(AUTO_UPDATE_KEY, true))
+
+        // The staged artifact and the last found version are the checker's record. A
+        // settings edit that restated them would let Settings claim a check it never ran.
+        assertEquals(true, store.read(DeviceSettingKeys.autoUpdateEnabled))
+        assertEquals("kani-0.4.0.apk", store.read(DeviceSettingKeys.autoUpdatePendingPackage))
+        for (owned in CHECKER_OWNED_KEYS) {
+            assertTrue("$owned was written by a settings edit", owned !in store.written)
+        }
+    }
+
+    @Test
+    fun anUpdateCommandPersistsNowhereBecauseTheHostPerformsIt() = runSync {
+        val store = FakeDeviceSettingsStore()
+        val settings = RecordingSettingsUseCases()
+
+        // Checking, installing, and opening the OS permission page are host work. The
+        // failure this guards is the writer falling through to the collection mapper on an
+        // id it does not recognize, which would write an `update.*` key to the database.
+        for (id in listOf(
+            SettingsCommands.UPDATE_CHECK,
+            SettingsCommands.UPDATE_INSTALL,
+            SettingsCommands.UPDATE_PERMISSION,
+            SettingsCommands.UPDATE_BACKGROUND_SETUP,
+        )) {
+            assertEquals(id, SettingsEditOutcome.Ignored, write(store, KaniAction.Settings.Command(id), settings))
+        }
+        assertEquals(emptySet<String>(), store.written)
+        assertEquals(0, settings.saved)
+    }
+
+    @Test
+    fun everyUpdateControlIsAnEditThisWriterAcceptsOrDeliberatelyRefuses() = runSync {
+        val content = DesktopSettingsModel.screen(
+            section = SettingsSection.UPDATE,
+            snapshot = SettingsSnapshotFixtures.blank(),
+            update = DesktopSettingsModel.UpdateState(
+                installedVersion = "0.3.6",
+                lastVersion = "0.4.0",
+                pendingPackage = "kani-0.4.0.apk",
+                canInstall = true,
+            ),
+            capabilities = PlatformCapabilities.of(PlatformCapability.UPDATE_DELIVERY),
+        ).content as SettingsSectionContent.Controls
+
+        val edits = content.controls.flatMap { control ->
+            when (control) {
+                is SettingsControl.Toggle -> listOf(control.onChange(!control.checked))
+                is SettingsControl.ActionButton -> listOf(control.action)
+                else -> emptyList()
+            }
+        }.filterIsInstance<KaniAction.Settings>()
+
+        assertTrue("the section dispatches nothing", edits.isNotEmpty())
+        for (edit in edits) {
+            val store = FakeDeviceSettingsStore()
+            val settings = RecordingSettingsUseCases()
+            val outcome = write(store, edit, settings)
+            val expected = if (edit is KaniAction.Settings.Command) {
+                SettingsEditOutcome.Ignored
+            } else {
+                SettingsEditOutcome.Update
+            }
+            assertEquals("$edit", expected, outcome)
+            assertEquals("$edit reached the collection", 0, settings.saved)
+        }
+    }
+
+    @Test
     fun theSharedPickerIdsAreTheOnesTheSectionDispatches() {
         assertNotNull(SettingsCommands.filePurposeFor(SettingsCommands.BACKUP_EXPORT))
         assertNotNull(SettingsCommands.filePurposeFor(SettingsCommands.BACKUP_RESTORE))
@@ -253,6 +344,8 @@ class SettingsEditWriterTest {
         const val REMINDER_TIME_KEY = "automation.reminder_time"
         const val AUTO_SYNC_TIME_KEY = "automation.auto_sync_time"
         const val DEBUG_LOG_ENABLED_KEY = "automation.debug_log_enabled"
+        const val AUTO_UPDATE_KEY = "update.auto_update_enabled"
+        const val BETA_UPDATES_KEY = "update.beta_updates_enabled"
 
         /** State the sync runner reports and the settings screen may only render. */
         val RUNNER_OWNED_KEYS: Set<String> = setOf(
@@ -260,6 +353,15 @@ class SettingsEditWriterTest {
             DeviceSettingKeys.autoSyncLastSuccessAt.storageName,
             DeviceSettingKeys.autoSyncLastAttemptAt.storageName,
             DeviceSettingKeys.autoSyncNextRunAt.storageName,
+        )
+
+        /** State the update checker reports and the settings screen may only render. */
+        val CHECKER_OWNED_KEYS: Set<String> = setOf(
+            DeviceSettingKeys.autoUpdateLastCheckAt.storageName,
+            DeviceSettingKeys.autoUpdateLastResult.storageName,
+            DeviceSettingKeys.autoUpdateLastVersion.storageName,
+            DeviceSettingKeys.autoUpdatePendingPackage.storageName,
+            DeviceSettingKeys.autoUpdatePendingMessage.storageName,
         )
     }
 

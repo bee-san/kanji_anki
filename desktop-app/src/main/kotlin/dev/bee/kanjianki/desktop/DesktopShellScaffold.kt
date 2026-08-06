@@ -749,10 +749,10 @@ private suspend fun persistBrowseChoice(
 /**
  * Persists a settings edit before the section reloads.
  *
- * The fan-out across the three destinations — device-local keybindings, device-local
- * automation, portable collection settings — is [SettingsEditWriter]'s, shared with the
- * Android host so both agree on which store an edit belongs in. Nothing about that
- * decision is desktop-specific, and a host that got the order wrong would write an
+ * The fan-out across the four destinations — device-local keybindings, automation, and
+ * update toggles, then portable collection settings — is [SettingsEditWriter]'s, shared
+ * with the Android host so both agree on which store an edit belongs in. Nothing about
+ * that decision is desktop-specific, and a host that got the order wrong would write an
  * automation time into the collection database.
  */
 private suspend fun persistSettings(

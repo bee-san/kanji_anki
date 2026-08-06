@@ -20,6 +20,8 @@ import dev.bee.kanjianki.core.SettingsStudyBehaviorTextCopy
 import dev.bee.kanjianki.core.SettingsThemeTextCopy
 import dev.bee.kanjianki.core.StudyLadderThresholdPolicy
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
+import dev.bee.kanjianki.updatecore.AutoUpdateStatusPolicy
+import dev.bee.kanjianki.updatecore.BackgroundAutoUpdateOptionPolicy
 import dev.bee.kanjianki.data.SettingsSaveCommand
 import dev.bee.kanjianki.data.SettingsSnapshot
 import dev.bee.kanjianki.presentation.KaniAction
@@ -89,6 +91,16 @@ object DesktopSettingsModel {
     private val BACKUP_EXPORT_COMMAND = SettingsCommands.BACKUP_EXPORT
     private val BACKUP_RESTORE_COMMAND = SettingsCommands.BACKUP_RESTORE
 
+    private const val AUTO_UPDATE_ENABLED_KEY = "update.auto_update_enabled"
+    private const val BETA_UPDATES_ENABLED_KEY = "update.beta_updates_enabled"
+
+    // Host actions, not saved state, so their ids live beside the backup pair in
+    // `presentation-api`. Aliased here only so the section reads like the rest of it.
+    private val UPDATE_CHECK_COMMAND = SettingsCommands.UPDATE_CHECK
+    private val UPDATE_INSTALL_COMMAND = SettingsCommands.UPDATE_INSTALL
+    private val UPDATE_PERMISSION_COMMAND = SettingsCommands.UPDATE_PERMISSION
+    private val UPDATE_BACKGROUND_SETUP_COMMAND = SettingsCommands.UPDATE_BACKGROUND_SETUP
+
     // A scheduled time is edited as one minute-of-day value rather than an hour control
     // and a minute control. Two steppers would need two distinct labels, and a label is
     // what a control's test tag is derived from, so the pair would either collide or need
@@ -114,6 +126,7 @@ object DesktopSettingsModel {
         platform: KeyboardPlatform = KeyboardPlatform.LINUX,
         attribution: AttributionTexts = AttributionTexts.UNAVAILABLE,
         automation: AutomationState = AutomationState(),
+        update: UpdateState = UpdateState(),
         capabilities: PlatformCapabilities = PlatformCapabilities.NONE,
     ): SettingsScreen = when (section) {
         SettingsSection.ROOT -> SettingsScreen(section = section, root = root())
@@ -127,13 +140,17 @@ object DesktopSettingsModel {
             SettingsScreen(section = section, content = keybindings(bindings, platform))
         SettingsSection.AUTOMATION ->
             SettingsScreen(section = section, content = automation(automation, capabilities))
+        SettingsSection.UPDATE ->
+            SettingsScreen(section = section, content = update(update, capabilities))
         SettingsSection.DISPLAY_DATA ->
             SettingsScreen(section = section, content = displayData())
         SettingsSection.HOW_IT_WORKS ->
             SettingsScreen(section = section, content = howItWorks())
         SettingsSection.LICENSES ->
             SettingsScreen(section = section, content = licenses(attribution))
-        else -> SettingsScreen(section = section)
+        // Deliberately no `else`: every section is mapped now, and an exhaustive `when` is
+        // what makes a section added later a compile error here rather than a screen that
+        // renders `SettingsScreen`'s placeholder in a shipped build.
     }
 
     /**
@@ -176,6 +193,38 @@ object DesktopSettingsModel {
         val lastAutomaticBackupAtMillis: Long? = null,
         val automaticBackupCount: Int = 0,
     )
+
+    /**
+     * The update state a host has read, for [SettingsSection.UPDATE].
+     *
+     * Two device-local user choices — [autoUpdateEnabled] and [betaUpdatesEnabled] — and
+     * everything else the updater's own record of what it last did. Separate from
+     * [AutomationState] despite both being device-local, because this section is a live
+     * deep-link target: the update notification opens it directly, so it has to render
+     * from whatever the background checker last wrote without the Automation section
+     * having been loaded.
+     *
+     * [canInstall] is the host's answer, not a stored value. On Android it is
+     * `REQUEST_INSTALL_PACKAGES`, which the user can revoke between two renders; on
+     * desktop it is whether the resolved installation channel is one Kani may replace.
+     * Reading it per load rather than persisting it is what stops the panel offering an
+     * install button that would immediately bounce off a permission.
+     */
+    data class UpdateState(
+        val autoUpdateEnabled: Boolean = false,
+        val betaUpdatesEnabled: Boolean = false,
+        val installedVersion: String = "",
+        val lastCheckAtMillis: Long = 0L,
+        val lastResult: String = "",
+        val lastVersion: String = "",
+        val pendingPackage: String = "",
+        val pendingMessage: String = "",
+        val canInstall: Boolean = false,
+    ) {
+        /** Whether a verified artifact is staged and waiting to be installed. */
+        val hasPendingUpdate: Boolean
+            get() = AutoUpdateStatusPolicy.hasPendingUpdate(pendingPackage)
+    }
 
     /**
      * One device-local automation write, or null when the action is not one.
@@ -504,8 +553,174 @@ object DesktopSettingsModel {
                     value = DebugLogTextCopy.debugLogDetail(state.debugLogEnabled),
                 ),
             )
+            // The way in to the Update section, whose parent this is. Without it the
+            // section is reachable only from the update notification's deep link, which
+            // is how a screen comes to exist that a user cannot navigate to.
+            add(
+                SettingsControl.ActionButton(
+                    label = SettingsAutomationTextCopy.updatePageTitle(),
+                    action = KaniAction.Navigation.Open(
+                        KaniDestination.Settings(SettingsSection.UPDATE),
+                    ),
+                ),
+            )
         },
     )
+
+    /**
+     * The update panel: what is installed, what the last check found, and what may be done.
+     *
+     * Reports before it offers. The three "what happened" lines come first because the
+     * commonest reason a user opens this section is the update notification, and the
+     * question it raises is "what version, and did it work" rather than "check again".
+     *
+     * The install action is offered only when there is something staged *and* the host may
+     * install it. Both halves matter: an install button with nothing staged does nothing,
+     * and one the OS will refuse sends the user into a permission screen they cannot get
+     * back from. When the permission is what is missing, the panel says so and offers the
+     * settings page instead — [SettingsCommands.UPDATE_PERMISSION] rather than an install
+     * that would fail.
+     *
+     * [PlatformCapability.UPDATE_DELIVERY] gates the whole action set rather than any one
+     * button. A source build, a Flatpak, a distro package — anything
+     * `DesktopInstallationChannelPolicy` resolves to UNKNOWN — is a install Kani did not
+     * place and must not replace, so it reads its versions and is offered no action at all.
+     */
+    private fun update(
+        state: UpdateState,
+        capabilities: PlatformCapabilities,
+    ): SettingsSectionContent.Controls {
+        val status = AutoUpdateStatusPolicy.normalize(
+            state.autoUpdateEnabled,
+            state.lastCheckAtMillis,
+            state.lastResult,
+            state.lastVersion,
+            state.pendingPackage,
+            state.pendingMessage,
+        )
+        val deliverable = capabilities.supports(PlatformCapability.UPDATE_DELIVERY)
+        return SettingsSectionContent.Controls(
+            title = SettingsAutomationTextCopy.updatePageTitle(),
+            controls = buildList {
+                add(
+                    SettingsControl.Info(
+                        label = SettingsAutomationTextCopy.installedVersionLine(state.installedVersion),
+                        value = SettingsAutomationTextCopy.latestVersionLine(status.lastVersion()),
+                    ),
+                )
+                add(
+                    SettingsControl.Info(
+                        label = SettingsAutomationTextCopy.autoUpdateLastCheckLine(
+                            DateTextPolicy.autoUpdateLastCheckText(status.lastCheckAtMillis()),
+                        ),
+                        value = SettingsAutomationTextCopy.autoUpdateLastResultLine(status.lastResult()),
+                    ),
+                )
+                add(
+                    SettingsControl.Info(
+                        label = SettingsAutomationTextCopy.autoUpdatePanelStatus(status.enabled()),
+                        value = SettingsAutomationTextCopy.installPermissionLine(state.canInstall),
+                    ),
+                )
+                if (state.hasPendingUpdate) {
+                    add(
+                        SettingsControl.Info(
+                            label = SettingsAutomationTextCopy.verifiedApkReadyLine(status.lastVersion()),
+                            value = status.pendingMessage().ifEmpty {
+                                SettingsAutomationTextCopy.pendingUpdateFallback(state.canInstall)
+                            },
+                        ),
+                    )
+                }
+                add(
+                    SettingsControl.ActionButton(
+                        label = SettingsAutomationTextCopy.checkForUpdateLabel(),
+                        action = KaniAction.Settings.Command(UPDATE_CHECK_COMMAND),
+                        enabled = deliverable,
+                    ),
+                )
+                if (state.hasPendingUpdate) {
+                    add(
+                        SettingsControl.ActionButton(
+                            label = SettingsAutomationTextCopy.installVerifiedUpdateLabel(),
+                            action = KaniAction.Settings.Command(UPDATE_INSTALL_COMMAND),
+                            // Replaces the running application, so the host raises its own
+                            // per-version confirmation (`DesktopUpdateHandoffPolicy`); this
+                            // only makes the button look like what it does.
+                            destructive = true,
+                            enabled = deliverable && state.canInstall,
+                        ),
+                    )
+                }
+                if (!state.canInstall) {
+                    add(
+                        SettingsControl.ActionButton(
+                            label = SettingsAutomationTextCopy.setupAppInstallsLabel(),
+                            action = KaniAction.Settings.Command(UPDATE_PERMISSION_COMMAND),
+                            enabled = deliverable,
+                        ),
+                    )
+                }
+                add(
+                    SettingsControl.Toggle(
+                        label = SettingsAutomationTextCopy.automaticUpdatesToggleLabel(status.enabled()),
+                        checked = status.enabled(),
+                        enabled = deliverable,
+                        onChange = { KaniAction.Settings.SetToggle(AUTO_UPDATE_ENABLED_KEY, it) },
+                    ),
+                )
+                if (BackgroundAutoUpdateOptionPolicy.optionVisible(status.enabled(), state.canInstall)) {
+                    add(
+                        SettingsControl.ActionButton(
+                            label = SettingsAutomationTextCopy.autoUpdateInBackgroundLabel(),
+                            action = KaniAction.Settings.Command(UPDATE_BACKGROUND_SETUP_COMMAND),
+                            enabled = deliverable,
+                        ),
+                    )
+                }
+                add(
+                    SettingsControl.Toggle(
+                        label = SettingsAutomationTextCopy.betaUpdatesToggleLabel(state.betaUpdatesEnabled),
+                        checked = state.betaUpdatesEnabled,
+                        enabled = deliverable,
+                        onChange = { KaniAction.Settings.SetToggle(BETA_UPDATES_ENABLED_KEY, it) },
+                    ),
+                )
+                add(
+                    SettingsControl.Info(
+                        label = SettingsAutomationTextCopy.betaUpdatesToggleLabel(state.betaUpdatesEnabled),
+                        value = SettingsAutomationTextCopy.betaUpdatesDescription(),
+                    ),
+                )
+            },
+        )
+    }
+
+    /**
+     * One device-local update write, or null when the action is not one.
+     *
+     * Only the two toggles: everything else the section dispatches is an action the host
+     * performs — check now, install, open the OS permission page — and those are
+     * [SettingsCommands] the shell turns into effects, exactly like the backup pair. The
+     * updater's own record (last check, last result, pending artifact) is written by the
+     * checker and only read here, for the same reason the auto-sync timestamps are.
+     *
+     * Turning automatic updates on or off also has to schedule or cancel the background
+     * check, which is host work; the host does that after this returns a state whose
+     * [UpdateState.autoUpdateEnabled] changed.
+     */
+    fun updateEditFor(
+        action: KaniAction.Settings,
+        current: UpdateState,
+    ): UpdateState? {
+        val next = when {
+            action !is KaniAction.Settings.SetToggle -> return null
+            action.key == AUTO_UPDATE_ENABLED_KEY -> current.copy(autoUpdateEnabled = action.enabled)
+            action.key == BETA_UPDATES_ENABLED_KEY -> current.copy(betaUpdatesEnabled = action.enabled)
+            else -> return null
+        }
+        return if (next == current) null else next
+    }
 
     /**
      * One scheduled time, edited as a minute of day and read as a clock time.
