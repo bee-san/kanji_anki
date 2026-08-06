@@ -23,8 +23,16 @@ internal interface AndroidHostRequests {
      */
     fun requestProviderPermission()
 
-    /** Asks for POST_NOTIFICATIONS, for a reminder change that needs it. */
-    fun requestNotificationPermission()
+    /**
+     * Asks for POST_NOTIFICATIONS if it is missing and this OS version has it.
+     *
+     * Named `IfNeeded` for the same reason [requestProviderPermission] decides for itself:
+     * the caller is a settings write that has already happened, and it has no business
+     * knowing that the permission does not exist below API 33 or that the user may have
+     * granted it months ago. Asking again for a held permission shows a dialog that answers
+     * itself; asking on API 32 does nothing at all.
+     */
+    fun requestNotificationPermissionIfNeeded()
 
     companion object {
         /** Where [dev.bee.kanjianki.presentation.KaniAction.Provider.Connect] sends a user with no AnkiDroid. */
@@ -40,7 +48,7 @@ internal interface AndroidHostRequests {
         val None: AndroidHostRequests = object : AndroidHostRequests {
             override fun requestProviderPermission() = Unit
 
-            override fun requestNotificationPermission() = Unit
+            override fun requestNotificationPermissionIfNeeded() = Unit
         }
     }
 }

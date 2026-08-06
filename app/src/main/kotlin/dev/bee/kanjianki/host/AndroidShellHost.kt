@@ -13,6 +13,7 @@ import dev.bee.kanjianki.hostpresentation.HostSyncDriver
 import dev.bee.kanjianki.hostpresentation.HostSyncEngine
 import dev.bee.kanjianki.hostpresentation.KaniRouteContent
 import dev.bee.kanjianki.hostpresentation.KaniRouteLoader
+import dev.bee.kanjianki.hostpresentation.SettingsEditOutcome
 import dev.bee.kanjianki.hostpresentation.SettingsEditWriter
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
@@ -250,11 +251,19 @@ internal class AndroidShellHost(
      * device-local, and neither maps to a `SettingsSaveCommand`.
      */
     suspend fun persistSettings(action: KaniAction.Settings) {
-        SettingsEditWriter.write(
+        val outcome = SettingsEditWriter.write(
             action = action,
             deviceSettings = container.deviceSettingsStore,
             settingsUseCases = container.settingsUseCases,
             keyboardPlatform = keyboardPlatform,
         )
+        if (outcome == SettingsEditOutcome.Automation) {
+            // The write already happened, and that ordering is deliberate: the setting is
+            // the user's choice and is saved whether or not the OS lets us post anything.
+            // Asking afterwards means a denied dialog leaves a reminder that is enabled but
+            // cannot fire — which the Automation section then reports as "Blocked", rather
+            // than silently discarding what the user just chose.
+            requests.requestNotificationPermissionIfNeeded()
+        }
     }
 }

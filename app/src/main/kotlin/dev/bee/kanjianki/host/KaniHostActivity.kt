@@ -1,10 +1,13 @@
 package dev.bee.kanjianki.host
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.content.ContextCompat
+import dev.bee.kanjianki.hostpresentation.AutomationSettingsStore
 import dev.bee.kanjianki.AndroidKaniContainer
 import dev.bee.kanjianki.MainActivityStartup
 import dev.bee.kanjianki.canRequestPackageInstalls
@@ -140,13 +143,20 @@ internal class KaniHostActivity : ComponentActivity() {
             context = this,
             caller = this,
             onAnkiPermissionResult = { hostState.requestRefresh() },
-            // Only cleared, not settled: settling means telling the user whether reminders
-            // will actually fire, and that copy belongs to the Settings > Automation flow
-            // that has not been ported. Clearing is still correct on its own -- a stale
-            // pending change must not survive into the next dialog -- and the reload picks
-            // up the granted permission wherever the user is.
-            onNotificationPermissionResult = {
+            // Settling the parked change now that Automation reports blocked state: on a
+            // grant the reminder the user saved is armed for real, and on a denial it stays
+            // saved and the section says "Blocked" rather than claiming a time it cannot
+            // keep. Cleared either way, so a stale change cannot survive into a later
+            // dialog, and the reload picks up whichever answer arrived.
+            onNotificationPermissionResult = { granted ->
+                val parked = pendingReminder
                 pendingReminder = null
+                if (granted && parked?.enabled == true) {
+                    ReminderScheduler.ensureNotificationChannel(this)
+                    container.maintenanceExecutor.execute {
+                        runCatching { ReminderScheduler.schedule(this) }
+                    }
+                }
                 hostState.requestRefresh()
             },
             // Export writes the snapshot `beforePick` took into the chosen document; a
@@ -193,7 +203,28 @@ internal class KaniHostActivity : ComponentActivity() {
                     }
                 }
 
-                override fun requestNotificationPermission() {
+                override fun requestNotificationPermissionIfNeeded() {
+                    if (!NotificationPermissionPolicy.shouldRequest(
+                            apiLevel = Build.VERSION.SDK_INT,
+                            granted = ContextCompat.checkSelfPermission(
+                                this@KaniHostActivity,
+                                AndroidHostLaunchers.PERMISSION_POST_NOTIFICATIONS,
+                            ) == PackageManager.PERMISSION_GRANTED,
+                        )
+                    ) {
+                        return
+                    }
+                    // Parked before the dialog, because the system can kill this activity
+                    // while it is on screen: the reminder state the user just saved is what
+                    // the permission callback has to settle, and it has to survive that.
+                    pendingReminder = AutomationSettingsStore.read(container.deviceSettingsStore)
+                        .let {
+                            AndroidHostSavedState.PendingReminder(
+                                enabled = it.reminderEnabled,
+                                hour = it.reminderHour,
+                                minute = it.reminderMinute,
+                            )
+                        }
                     launchers.requestNotificationPermission()
                 }
             },
