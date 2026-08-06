@@ -314,17 +314,29 @@ internal fun decodeKaniLaunch(intent: Intent?): KaniLaunchRequest? {
 }
 
 /**
- * The capabilities the Android host advertises.
+ * The capabilities the thin Android host advertises.
  *
- * Android ships an on-device Japanese handwriting recognizer (ML Kit via
- * `:writing-core`), so [PlatformCapability.WRITING_RECOGNITION] is present — the one
- * capability that differs from desktop, and the reason the shared study runtime keeps
- * the writing task here rather than re-routing it. Provider capabilities are not listed
- * here: they are per-connection and come from the live [AndroidProviderProbe].
+ * [PlatformCapability.WRITING_RECOGNITION] is deliberately **absent**, which is the one
+ * answer here that needs justifying. Android does ship an on-device Japanese recognizer
+ * (ML Kit via `:writing-core`) and the old `MainActivity` chain used it — but this host has
+ * no ink surface to collect a stroke with: the shared `StudyCard.Writing` renders a prompt
+ * and Pass/Fail, and the pad is Goal 196's remaining work.
+ *
+ * The capability is not a statement about the device, it is what
+ * `StudyCapabilityPolicy.reroute` keys off. Claiming it makes the runtime present a
+ * `write_kanji` card as a writing card, and on this host that card cannot accept ink — a
+ * self-graded "did I write it right?" with nothing to write on. Declining it re-routes the
+ * card to core recognition and records a `write_unavailable` trace, which is the same
+ * honest degradation desktop takes under ADR 0005 and keeps the card studyable.
+ *
+ * Restore this the moment the ink surface lands, not before: the two must flip together or
+ * one of them is lying to the scheduler.
+ *
+ * Provider capabilities are not listed here: they are per-connection and come from the live
+ * [AndroidProviderProbe].
  */
 internal fun androidHostCapabilities(): PlatformCapabilities =
     PlatformCapabilities.of(
-        PlatformCapability.WRITING_RECOGNITION,
         PlatformCapability.BACKUP_RESTORE,
         PlatformCapability.SECRET_PERSISTENCE,
     )
