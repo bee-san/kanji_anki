@@ -236,12 +236,17 @@ class KaniHostLiveSyncInstrumentedTest {
     /** Waits until the sync engine has recorded that it needs a first-bind acknowledgement. */
     private fun waitForFirstBindingRequirement(timeoutMillis: Long) {
         val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        var sawRow = false
         while (SystemClock.uptimeMillis() < deadline) {
             try {
                 LocalStore(context()).use { store ->
                     store.readableDatabase.query(
                         LocalStoreBase.TABLE_SYNC_RUNS,
-                        arrayOf(LocalStoreBase.COLUMN_STATUS, "error_code"),
+                        arrayOf(
+                            LocalStoreBase.COLUMN_STATUS,
+                            "error_code",
+                            LocalStoreBase.COLUMN_ERROR_MESSAGE,
+                        ),
                         null,
                         null,
                         null,
@@ -250,8 +255,20 @@ class KaniHostLiveSyncInstrumentedTest {
                         "1",
                     ).use { cursor ->
                         if (cursor.moveToFirst()) {
+                            sawRow = true
+                            val status = cursor.getString(0)
                             val errorCode = if (cursor.isNull(1)) null else cursor.getString(1)
-                            if (errorCode == "source_binding_first_bind_required") return
+                            val errorMessage = if (cursor.isNull(2)) null else cursor.getString(2)
+                            if (errorCode == FIRST_BIND_ERROR_CODE) return
+                            // A run row that is not the first-bind requirement means the sync
+                            // took a different path entirely, and waiting cannot change that.
+                            // Carried over from the old gate: polling past it would report a
+                            // timeout instead of the status and error the engine recorded,
+                            // which is the difference between "diagnosable" and "not".
+                            throw AssertionError(
+                                "Expected first-bind requirement, got " +
+                                    "status=$status errorCode=$errorCode errorMessage=$errorMessage",
+                            )
                         }
                     }
                 }
@@ -260,7 +277,16 @@ class KaniHostLiveSyncInstrumentedTest {
             }
             SystemClock.sleep(500L)
         }
-        throw AssertionError("Timed out waiting for the first-bind requirement")
+        // No row at all in the window: the sync never recorded a run, so say that rather than
+        // implying the wrong error code was seen.
+        throw AssertionError(
+            if (sawRow) {
+                "Timed out waiting for the first-bind requirement"
+            } else {
+                "Timed out after ${timeoutMillis / 1000}s with no sync run recorded at all — " +
+                    "the sync button tap did not start a sync"
+            },
+        )
     }
 
     private fun waitForDeviceText(text: String, timeoutMillis: Long) {
@@ -276,15 +302,47 @@ class KaniHostLiveSyncInstrumentedTest {
     private fun tapDeviceText(text: String) {
         waitForDeviceText(text, UI_STEP_TIMEOUT_MILLIS)
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        assertNotNull("Missing tappable text: $text", findDeviceText(device, text))
-        findDeviceText(device, text)!!.click()
+        val found = findDeviceText(device, text)
+        assertNotNull("Missing tappable text: $text", found)
+        clickThrough(found!!, text)
     }
 
     private fun tapDeviceTextIfPresent(text: String): Boolean {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         val found = findDeviceText(device, text) ?: return false
-        found.click()
+        clickThrough(found, text)
         return true
+    }
+
+    /**
+     * Clicks the nearest clickable ancestor of [node], or [node] itself.
+     *
+     * The reason this exists, from a real failed run: Compose puts the click handler on the
+     * `Button`, not on the `Text` inside it, so a text query returns a non-clickable
+     * `TextView` whose `boundsInParent` is `Rect(0, 0 - 0, 0)`. `UiObject2.click()` logs
+     * "Clicking on non-clickable object", clicks a computed centre, and the tap lands
+     * nowhere — the whole gate then failed downstream waiting for a sync that no button had
+     * started. Walking up to the clickable is what makes the tap actually arrive.
+     *
+     * Bounded rather than unbounded so a malformed tree cannot loop; falls back to clicking
+     * the node itself, which is the previous behaviour and still right for a genuinely
+     * clickable node.
+     */
+    private fun clickThrough(node: UiObject2, text: String) {
+        var candidate: UiObject2? = node
+        var hops = 0
+        while (candidate != null && hops < MAX_CLICKABLE_ANCESTOR_HOPS) {
+            if (candidate.isClickable) {
+                candidate.click()
+                return
+            }
+            candidate = runCatching { candidate.parent }.getOrNull()
+            hops++
+        }
+        // Nothing clickable above it. Click the node anyway rather than failing: a surface
+        // that handles the gesture without advertising clickability would still respond, and
+        // the downstream wait reports it with the state it saw if it does not.
+        node.click()
     }
 
     /**
@@ -352,5 +410,22 @@ class KaniHostLiveSyncInstrumentedTest {
          * sync status was.
          */
         val DETERMINISTIC_IMPORT_TIMEOUT_MILLIS: Long = TimeUnit.MINUTES.toMillis(20)
+
+        /**
+         * The error code the engine records when a collection has never been acknowledged.
+         *
+         * A literal because it crosses a database column rather than a Kotlin API — the value
+         * is what `sync_runs.error_code` holds, and matching it loosely would let a different
+         * binding failure read as the expected one.
+         */
+        const val FIRST_BIND_ERROR_CODE = "source_binding_first_bind_required"
+
+        /**
+         * How far up the tree to look for a clickable ancestor.
+         *
+         * A Compose `Button` wraps its `Text` in a handful of layout nodes, so a small bound
+         * is enough; it exists so a malformed or detached tree cannot loop forever.
+         */
+        const val MAX_CLICKABLE_ANCESTOR_HOPS = 6
     }
 }
