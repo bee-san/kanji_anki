@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +31,7 @@ import dev.bee.kanjianki.hostpresentation.DesktopMenuBar
 import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.desktop.DesktopDeviceSettingsStore
 import dev.bee.kanjianki.platform.desktop.DesktopLogger
+import dev.bee.kanjianki.hostpresentation.CrashBoundaryPolicy
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.shell.DESKTOP_MINIMUM_WINDOW_HEIGHT
 import dev.bee.kanjianki.shell.DESKTOP_MINIMUM_WINDOW_WIDTH
@@ -159,13 +162,45 @@ private fun runWindow(
                 menuBar?.let { bar ->
                     menuDispatch?.let { dispatch -> KaniMenuBar(bar = bar, dispatch = dispatch) }
                 }
-                KaniDesktopFoundation(
-                    container = container,
-                    onMenuBarChange = { bar, dispatch ->
-                        menuBar = bar
-                        menuDispatch = dispatch
-                    },
-                )
+                // The crash boundary. Without it, a failure on the AWT event thread
+                // unwinds it and the window simply disappears — no message, and if the
+                // throw happened mid-review, no indication whether the answer was saved.
+                // A vanished window is the least informative outcome available.
+                var crash by remember { mutableStateOf<CrashBoundaryPolicy.Report?>(null) }
+                val crashed = crash
+                if (crashed == null) {
+                    // Installed for the window's lifetime, not wrapped around the
+                    // composition: Compose does not surface a recomposition failure to
+                    // an enclosing try/catch — the exception reaches the AWT event
+                    // thread's uncaught handler, which is what this replaces. The prior
+                    // handler is restored on dispose so a smoke run leaves none behind.
+                    DisposableEffect(Unit) {
+                        val previous = Thread.getDefaultUncaughtExceptionHandler()
+                        Thread.setDefaultUncaughtExceptionHandler { thread, failure ->
+                            when (CrashBoundaryPolicy.decide(failure)) {
+                                CrashBoundaryPolicy.Action.SHOW_RECOVERY ->
+                                    crash = CrashBoundaryPolicy.report(failure)
+                                // An Error, or normal cancellation: hand back to whoever
+                                // was handling these before Kani installed a handler.
+                                else -> previous?.uncaughtException(thread, failure)
+                            }
+                        }
+                        onDispose { Thread.setDefaultUncaughtExceptionHandler(previous) }
+                    }
+                    KaniDesktopFoundation(
+                        container = container,
+                        onMenuBarChange = { bar, dispatch ->
+                            menuBar = bar
+                            menuDispatch = dispatch
+                        },
+                    )
+                } else {
+                    // Menus are dropped with the failed composition: their actions
+                    // dispatch into a shell that is no longer running.
+                    menuBar = null
+                    menuDispatch = null
+                    CrashRecoveryContent(report = crashed, onRetry = { crash = null })
+                }
                 if (smokeTest) {
                     LaunchedEffect(dataRoot) {
                         repeat(SMOKE_RENDER_FRAME_COUNT) {
@@ -235,6 +270,50 @@ private fun showStartupBlocked(blocked: DesktopStartup.Outcome.Blocked) {
             }
         } else {
             LaunchedEffect(Unit) { exitApplication() }
+        }
+    }
+}
+
+/**
+ * What the window shows once a failure has been contained.
+ *
+ * Retry rather than only "quit", because the failure may have been in loading one
+ * route: clearing the report recomposes the shell from scratch, which recovers a
+ * transient fault without the user losing their session. A repeated failure lands
+ * back here rather than looping invisibly, since the report is set again.
+ *
+ * The type name and nothing else — [CrashBoundaryPolicy.Report] deliberately carries no
+ * exception message, because this is the screen a user is most likely to screenshot
+ * into a bug report and a message routinely contains their file paths or their cards.
+ */
+@Composable
+private fun CrashRecoveryContent(
+    report: CrashBoundaryPolicy.Report,
+    onRetry: () -> Unit,
+) {
+    MaterialTheme {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Kani hit an unexpected error",
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        text = report.summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Your saved reviews are unaffected. You can try again, " +
+                            "or close the window and reopen Kani.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(onClick = onRetry) { Text("Try again") }
+                }
+            }
         }
     }
 }
