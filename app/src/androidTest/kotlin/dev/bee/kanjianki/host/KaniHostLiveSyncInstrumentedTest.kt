@@ -107,15 +107,21 @@ class KaniHostLiveSyncInstrumentedTest {
             // Last, and on the device rather than the store: the user has to be *told* the
             // sync finished, and a committed run the UI never reported is still a bug.
             //
-            // The signal is Home's sync tile reading "Up to date", not a "Sync complete"
-            // toast. That distinction is the whole point of the port: the old MainActivity
-            // showed a transient completion toast, but the shared Home surface reports
-            // success durably on the SYNC metric tile (DesktopHomeModels.homeMetrics ->
-            // syncMetricStatus(upToDate = true)) and shows no toast at all. Asserting on the
-            // old toast is what failed this run *after every store-level check had passed* —
-            // the sync had succeeded and Home already said so. A durable tile is also the
-            // better thing to wait on: a toast can dismiss before the assertion looks.
-            waitForDeviceText(HomeTextCopy.syncMetricStatus(true), UI_STEP_TIMEOUT_MILLIS)
+            // The signal is that Home's sync tile no longer reads "Never synced" — not that
+            // it reads "Up to date". Both were wrong to require, for reasons two dispatches
+            // taught in turn. The old MainActivity showed a transient "Sync complete" toast;
+            // the shared Home shows none, so that assertion failed on API 35 after the sync
+            // had plainly succeeded. "Up to date" then failed on API 26 for a subtler reason:
+            // `syncMetricStatus(upToDate = true)` needs `dailyPlan.syncStatus` to have left
+            // SYNC_NEEDED_TO_JUDGE_PROGRESS, which is adaptive-plan state that legitimately
+            // differs between API levels for the same committed sync.
+            //
+            // `homeSyncValue` is the durable, plan-independent fact: null finished-time reads
+            // "Never synced", any real one reads as a timestamp. So a successful sync is
+            // exactly "Never synced" being gone, whatever the tile's status line says. The
+            // store block above already proved the sync committed; this proves Home reflects
+            // it, without coupling the gate to how a given emulator judged progress.
+            waitForHomeToLeaveNeverSynced(UI_STEP_TIMEOUT_MILLIS)
         }
     }
 
@@ -328,6 +334,30 @@ class KaniHostLiveSyncInstrumentedTest {
             SystemClock.sleep(500L)
         }
         throw AssertionError("Missing device text: $text")
+    }
+
+    /**
+     * Waits until Home's sync tile stops reading "Never synced".
+     *
+     * The plan-independent proof that a sync reached the UI: `homeSyncValue(null)` is the
+     * never-synced string and any real finished-time is a timestamp, so the string
+     * disappearing is a sync having been recorded — independent of whether the status line
+     * reached "Up to date". Requires the string to have been present first would be wrong
+     * (a re-run against an already-synced profile never shows it), so this only waits for
+     * absence, which the committed-sync assertions above have already earned.
+     */
+    private fun waitForHomeToLeaveNeverSynced(timeoutMillis: Long) {
+        val neverSynced = HomeTextCopy.homeSyncValue(null)
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (findDeviceText(device, neverSynced) == null) return
+            SystemClock.sleep(500L)
+        }
+        throw AssertionError(
+            "Home still shows \"$neverSynced\" after a committed sync — the sync succeeded " +
+                "in the store but Home never reflected it",
+        )
     }
 
     private fun tapDeviceText(text: String) {
