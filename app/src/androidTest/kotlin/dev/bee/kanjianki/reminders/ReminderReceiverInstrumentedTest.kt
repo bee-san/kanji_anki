@@ -13,7 +13,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
-import dev.bee.kanjianki.MainActivityBase
 import dev.bee.kanjianki.host.KaniLaunchIntents
 import org.junit.After
 import org.junit.Assert.assertEquals
