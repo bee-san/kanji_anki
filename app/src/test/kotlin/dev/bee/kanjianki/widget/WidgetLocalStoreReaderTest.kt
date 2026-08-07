@@ -2,6 +2,7 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
@@ -91,27 +92,15 @@ class WidgetLocalStoreReaderTest {
     }
 
     /**
-     * Clears the database path *and* its sidecars before each case.
+     * Clears the database path through the shared helper.
      *
-     * `deleteDatabase` plus a recursive delete of the main file is not enough: SQLite leaves
-     * `-journal`, `-wal`, and `-shm` beside it, and a sibling test in the same Robolectric
-     * sandbox that opened a store can leave one behind. `halfCreatedFileReturnsCorrupt...`
-     * then calls `createNewFile()` on a path whose directory still holds a journal, and its
-     * `assertTrue` on the create fails — which reads as a widget-reader regression rather
-     * than as leftover state. This failed in CI's full-suite run while passing in isolation,
-     * which is the signature of exactly that.
+     * `KaniTestDatabase.delete` removes the database *and* SQLite's `-journal`/`-wal`/`-shm`
+     * sidecars, which is what this test needs and what a bare `deleteDatabase` misses. Kept
+     * as one helper rather than a local copy because many tests in this module share the one
+     * database path in the same Robolectric sandbox.
      */
     private fun cleanDatabasePath() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
-        val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
-        databaseFile.deleteRecursively()
-        for (suffix in SQLITE_SIDECARS) {
-            java.io.File(databaseFile.parentFile, databaseFile.name + suffix).deleteRecursively()
-        }
-    }
-
-    private companion object {
-        /** What SQLite writes next to the database and `deleteDatabase` can leave behind. */
-        val SQLITE_SIDECARS = listOf("-journal", "-wal", "-shm")
+        KaniTestDatabase.delete(context)
+        context.getDatabasePath(LocalStoreSchema.DB_NAME).deleteRecursively()
     }
 }

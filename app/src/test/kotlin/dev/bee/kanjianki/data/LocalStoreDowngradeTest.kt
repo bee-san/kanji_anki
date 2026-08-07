@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.MissingKanjiCandidate
+import dev.bee.kanjianki.KaniTestDatabase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -24,12 +25,12 @@ class LocalStoreDowngradeTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @After
     fun tearDown() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @Test

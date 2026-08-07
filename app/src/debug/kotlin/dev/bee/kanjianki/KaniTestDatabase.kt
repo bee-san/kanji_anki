@@ -17,14 +17,40 @@ import dev.bee.kanjianki.data.LocalStoreSchema
  * Tests must call this instead of `Context.deleteDatabase` directly. It is order-safe:
  * the store is detached before *and* after deletion, so neither a lingering connection
  * nor a lazily reopened one can hold the stale file.
+ *
+ * It also removes SQLite's `-journal`, `-wal`, and `-shm` sidecars, which
+ * `deleteDatabase` can leave behind. Those are why "delete the database" was not enough
+ * to isolate a test: a reopened store can recover cached settings from a surviving
+ * journal, and `File.createNewFile()` returns false on a path whose directory still holds
+ * one. Both showed up as unrelated-looking CI failures — a widget reader reporting the
+ * wrong state, then a downgrade notice appearing on a supposedly fresh store — that
+ * passed in isolation and failed only in the full suite, and only once an unrelated
+ * change reordered it.
  */
 object KaniTestDatabase {
     @JvmStatic
     fun delete(context: Context) {
         detachProcessStore(context)
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        deleteSidecars(context)
         detachProcessStore(context)
     }
+
+    /**
+     * Removes what SQLite writes beside the database and `deleteDatabase` may not.
+     *
+     * Best-effort by design: a sidecar that never existed is the normal case, and failing
+     * here would turn successful isolation into a test error.
+     */
+    private fun deleteSidecars(context: Context) {
+        val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
+        val parent = databaseFile.parentFile ?: return
+        for (suffix in SQLITE_SIDECARS) {
+            runCatching { java.io.File(parent, databaseFile.name + suffix).delete() }
+        }
+    }
+
+    private val SQLITE_SIDECARS = listOf("-journal", "-wal", "-shm")
 
     private fun detachProcessStore(context: Context) {
         // The container only exists once KaniApplication.onCreate has run its restore gate.
