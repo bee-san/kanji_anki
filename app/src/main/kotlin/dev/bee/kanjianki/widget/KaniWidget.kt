@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.widget
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
@@ -44,7 +45,6 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.unit.ColorProvider
-import dev.bee.kanjianki.host.KaniHostActivity
 import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.WidgetTextCopy
@@ -520,10 +520,34 @@ private fun KaniWidgetColorRole.toProvider(): ColorProvider = ColorProvider(day 
  * repaired-tagging write-back must stay manual-confirm-only, so no sync entry
  * point is reachable from the widget.
  */
-internal fun kaniWidgetHomeIntent(context: Context): Intent =
-    Intent(context, KaniHostActivity::class.java).apply {
+internal fun kaniWidgetHomeIntent(context: Context): Intent {
+    // The launcher is resolved from the package manager rather than named as a class, and
+    // that is a module-boundary decision rather than a style one: `:widget` is extracted to
+    // its own Android module (Goal 199's last step), and a widget that referenced the host
+    // activity's type would depend on `:app` while `:app` depends on it — a cycle. Asking
+    // the system which activity answers LAUNCHER keeps the dependency one-way.
+    //
+    // Still an *explicit* component intent, not an implicit one. `setPackage` plus the
+    // resolved component means the tap is delivered to Kani's own launcher and cannot be
+    // intercepted, which an action-only intent could not promise. The flags then reuse the
+    // visible task; without them every tap would stack another copy of the app and Back
+    // would reveal a stale duplicate underneath.
+    val launcher = Intent(Intent.ACTION_MAIN)
+        .addCategory(Intent.CATEGORY_LAUNCHER)
+        .setPackage(context.packageName)
+    val component = context.packageManager
+        .resolveActivity(launcher, 0)
+        ?.activityInfo
+        ?.let { ComponentName(it.packageName, it.name) }
+    return Intent(Intent.ACTION_MAIN).apply {
+        addCategory(Intent.CATEGORY_LAUNCHER)
+        setPackage(context.packageName)
+        // A null component would mean the app has no launcher at all, which the manifest
+        // test forbids; the package-scoped intent still reaches Kani if it ever happened.
+        component?.let { setComponent(it) }
         addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
+}
 
 /** Action-row tap: deep-links straight to Study when reviews are due. */
 internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapshot): Intent =
