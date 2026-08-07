@@ -21,7 +21,7 @@ if [ "${KANJI_LIVE_TEST_CLASSES+x}" = "x" ]; then
   app_test_classes=""
 else
   provider_test_classes="${KANJI_LIVE_PROVIDER_TEST_CLASSES-dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest}"
-  app_test_classes="${KANJI_LIVE_APP_TEST_CLASSES-dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid}"
+  app_test_classes="${KANJI_LIVE_APP_TEST_CLASSES-dev.bee.kanjianki.host.KaniHostLiveSyncInstrumentedTest#theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid}"
 fi
 
 current_instrumentation_name=""

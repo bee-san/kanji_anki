@@ -697,7 +697,13 @@ OUT
         self.assertEqual(result.returncode, 0, result.stdout)
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertIn("dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest", adb_calls)
-        self.assertNotIn("MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid", adb_calls)
+        # The override replaces the default app test class rather than adding to it, so the
+        # default must be absent. Named in full because a substring like "KaniHost" would
+        # also match the override's own class and the assertion would pass vacuously.
+        self.assertNotIn(
+            "KaniHostLiveSyncInstrumentedTest#theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid",
+            adb_calls,
+        )
 
 
 if __name__ == "__main__":

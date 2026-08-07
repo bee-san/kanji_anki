@@ -21,7 +21,7 @@ adb uninstall "${provider_test_package}" >/dev/null 2>&1 || true
 
 readonly smoke_apk='app/build/outputs/apk/minifiedSmoke/app-minifiedSmoke.apk'
 readonly smoke_package='dev.bee.kanjianki.smoke'
-readonly smoke_activity='dev.bee.kanjianki.MainActivity'
+readonly smoke_activity='dev.bee.kanjianki.host.KaniHostActivity'
 readonly smoke_report_dir='app/build/reports/minifiedSmoke'
 
 capture_minified_smoke_diagnostics() {
@@ -63,5 +63,5 @@ if adb shell pidof -s "${smoke_package}" \
 fi
 
 capture_minified_smoke_diagnostics
-echo "::error::Minified smoke did not remain alive with MainActivity resumed"
+echo "::error::Minified smoke did not remain alive with the host activity resumed"
 exit 1

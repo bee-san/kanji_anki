@@ -228,7 +228,13 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn(":app:assembleMinifiedSmoke", self.risk_script)
         self.assertIn("adb install -r", self.risk_script)
         self.assertIn("smoke_package='dev.bee.kanjianki.smoke'", self.risk_script)
-        self.assertIn("smoke_activity='dev.bee.kanjianki.MainActivity'", self.risk_script)
+        # The launcher activity, which the script starts by explicit component. It has to be
+        # the exported one: `am start` from the shell runs as uid 2000 and a Permission
+        # Denial is how this failed when the launcher moved and the script did not.
+        self.assertIn(
+            "smoke_activity='dev.bee.kanjianki.host.KaniHostActivity'",
+            self.risk_script,
+        )
         self.assertIn('-n "${smoke_package}/${smoke_activity}"', self.risk_script)
 
         smoke_build = self.app_build.split('create("minifiedSmoke")', maxsplit=1)[1]
