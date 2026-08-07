@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.host
 
 import android.content.Intent
+import dev.bee.kanjianki.platform.KaniLaunchExtras
 import dev.bee.kanjianki.presentation.KaniLaunchCodec
 
 /**
@@ -20,15 +21,15 @@ import dev.bee.kanjianki.presentation.KaniLaunchCodec
  * from an `Intent` to that codec's input is here, because only Android has intents.
  */
 internal object KaniLaunchIntents {
-    const val ACTION_OPEN_STUDY: String = "dev.bee.kanjianki.action.OPEN_STUDY"
-    const val ACTION_OPEN_BROWSE: String = "dev.bee.kanjianki.action.OPEN_BROWSE"
-    const val ACTION_OPEN_GAMES: String = "dev.bee.kanjianki.action.OPEN_GAMES"
+    const val ACTION_OPEN_STUDY: String = KaniLaunchExtras.ACTION_OPEN_STUDY
+    const val ACTION_OPEN_BROWSE: String = KaniLaunchExtras.ACTION_OPEN_BROWSE
+    const val ACTION_OPEN_GAMES: String = KaniLaunchExtras.ACTION_OPEN_GAMES
 
-    const val EXTRA_OPEN_HOME: String = "dev.bee.kanjianki.extra.OPEN_HOME"
-    const val EXTRA_OPEN_UPDATE: String = "dev.bee.kanjianki.extra.OPEN_UPDATE"
-    const val EXTRA_OPEN_STUDY: String = "dev.bee.kanjianki.extra.OPEN_STUDY"
-    const val EXTRA_OPEN_STATS: String = "dev.bee.kanjianki.extra.OPEN_STATS"
-    const val EXTRA_OPEN_KANJI_DETAIL: String = "dev.bee.kanjianki.extra.OPEN_KANJI_DETAIL"
+    const val EXTRA_OPEN_HOME: String = KaniLaunchExtras.EXTRA_OPEN_HOME
+    const val EXTRA_OPEN_UPDATE: String = KaniLaunchExtras.EXTRA_OPEN_UPDATE
+    const val EXTRA_OPEN_STUDY: String = KaniLaunchExtras.EXTRA_OPEN_STUDY
+    const val EXTRA_OPEN_STATS: String = KaniLaunchExtras.EXTRA_OPEN_STATS
+    const val EXTRA_OPEN_KANJI_DETAIL: String = KaniLaunchExtras.EXTRA_OPEN_KANJI_DETAIL
 
     /**
      * The harness extras: a screenshot or benchmark run pinning one screen.
@@ -42,10 +43,10 @@ internal object KaniLaunchIntents {
      * Values unchanged from `MainActivityBase`, because the screenshot and benchmark
      * tooling passes them on the `am instrument` command line.
      */
-    const val EXTRA_SCREENSHOT_ROUTE: String = "dev.bee.kanjianki.extra.SCREENSHOT_ROUTE"
-    const val EXTRA_SCREENSHOT_THEME: String = "dev.bee.kanjianki.extra.SCREENSHOT_THEME"
-    const val EXTRA_SCREENSHOT_LOCALE: String = "dev.bee.kanjianki.extra.SCREENSHOT_LOCALE"
-    const val EXTRA_BENCHMARK_ROUTE: String = "dev.bee.kanjianki.extra.BENCHMARK_ROUTE"
+    const val EXTRA_SCREENSHOT_ROUTE: String = KaniLaunchExtras.EXTRA_SCREENSHOT_ROUTE
+    const val EXTRA_SCREENSHOT_THEME: String = KaniLaunchExtras.EXTRA_SCREENSHOT_THEME
+    const val EXTRA_SCREENSHOT_LOCALE: String = KaniLaunchExtras.EXTRA_SCREENSHOT_LOCALE
+    const val EXTRA_BENCHMARK_ROUTE: String = KaniLaunchExtras.EXTRA_BENCHMARK_ROUTE
 
     /**
      * Whether [intent] is an ordinary launch rather than a harness one.

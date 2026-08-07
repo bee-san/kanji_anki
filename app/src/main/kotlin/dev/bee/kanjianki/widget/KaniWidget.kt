@@ -45,7 +45,7 @@ import androidx.glance.layout.fillMaxHeight
 import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.unit.ColorProvider
-import dev.bee.kanjianki.host.KaniLaunchIntents
+import dev.bee.kanjianki.platform.KaniLaunchExtras
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.WidgetTextCopy
 import kotlinx.coroutines.CoroutineDispatcher
@@ -553,20 +553,20 @@ internal fun kaniWidgetHomeIntent(context: Context): Intent {
 internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapshot): Intent =
     kaniWidgetHomeIntent(context).apply {
         if (snapshot.state == KaniWidgetState.DUE_NOW) {
-            putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true)
+            putExtra(KaniLaunchExtras.EXTRA_OPEN_STUDY, true)
         }
     }
 
 /** Focus-kanji card tap: opens the selected glyph's existing in-app detail route. */
 internal fun kaniFocusDetailIntent(context: Context, kanji: String): Intent =
     kaniWidgetHomeIntent(context).apply {
-        putExtra(KaniLaunchIntents.EXTRA_OPEN_KANJI_DETAIL, kanji)
+        putExtra(KaniLaunchExtras.EXTRA_OPEN_KANJI_DETAIL, kanji)
     }
 
 /** Heatmap-card tap: opens the stats screen that hosts the full heatmap. */
 internal fun kaniWidgetStatsIntent(context: Context): Intent =
     kaniWidgetHomeIntent(context).apply {
-        putExtra(KaniLaunchIntents.EXTRA_OPEN_STATS, true)
+        putExtra(KaniLaunchExtras.EXTRA_OPEN_STATS, true)
     }
 
 internal data class KaniWidgetCopy(
