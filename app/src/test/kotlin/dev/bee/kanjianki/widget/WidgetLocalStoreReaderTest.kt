@@ -77,8 +77,28 @@ class WidgetLocalStoreReaderTest {
         assertEquals(WidgetStoreRead.Ready("ready"), result)
     }
 
+    /**
+     * Clears the database path *and* its sidecars before each case.
+     *
+     * `deleteDatabase` plus a recursive delete of the main file is not enough: SQLite leaves
+     * `-journal`, `-wal`, and `-shm` beside it, and a sibling test in the same Robolectric
+     * sandbox that opened a store can leave one behind. `halfCreatedFileReturnsCorrupt...`
+     * then calls `createNewFile()` on a path whose directory still holds a journal, and its
+     * `assertTrue` on the create fails — which reads as a widget-reader regression rather
+     * than as leftover state. This failed in CI's full-suite run while passing in isolation,
+     * which is the signature of exactly that.
+     */
     private fun cleanDatabasePath() {
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
-        context.getDatabasePath(LocalStoreSchema.DB_NAME).deleteRecursively()
+        val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
+        databaseFile.deleteRecursively()
+        for (suffix in SQLITE_SIDECARS) {
+            java.io.File(databaseFile.parentFile, databaseFile.name + suffix).deleteRecursively()
+        }
+    }
+
+    private companion object {
+        /** What SQLite writes next to the database and `deleteDatabase` can leave behind. */
+        val SQLITE_SIDECARS = listOf("-journal", "-wal", "-shm")
     }
 }
