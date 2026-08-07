@@ -138,11 +138,9 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "platform-contracts": frozenset(),
     "presentation-api": frozenset(),
     "ui-common": frozenset({"presentation-api"}),
-    # The shell hosts `:feature-home` from Goal 194 on, which is what lets the
-    # desktop host render real Home/Browse screens rather than a placeholder.
-    # The Android host still renders MainActivityBase's screens until Goal 200,
-    # and the remaining leaf features have no shared screens yet, so the rest of
-    # the aggregator edges stay in FINAL_PROJECT_DEPENDENCIES.
+    # The shell aggregates every leaf feature. Both hosts now render through it:
+    # the `MainActivity*` chain that used to draw Android's screens is deleted, so
+    # `KaniHostActivity` and the desktop window compose the same surfaces.
     "feature-shell": frozenset(
         {
             "presentation-api",
@@ -209,8 +207,9 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "data-api",
             "dictionary-core",
             # The shared shell and host-neutral presentation mapping the thin
-            # KaniHostActivity renders through. The legacy MainActivity* chain still
-            # renders in parallel until the thin host passes the instrumented gate.
+            # KaniHostActivity renders through. It is now the only Android host —
+            # the legacy MainActivity* chain was deleted once the live AnkiDroid
+            # gate passed on the thin host.
             "feature-shell",
             "host-presentation",
             "platform-contracts",
@@ -1308,6 +1307,51 @@ class ModuleBoundaryTest(unittest.TestCase):
             violations,
             "production ReviewRequest and TaskMemory creation must use typed field factories",
         )
+
+    def test_shared_sources_never_import_android_platform_classes(self) -> None:
+        """Goal 199's final boundary: Android must not re-enter the shared graph.
+
+        The module-level DAG above already forbids a shared module *depending* on an
+        Android one, but that cannot catch the way the old chain actually leaked —
+        an `android.*` import inside a file that compiles for desktop too. Those
+        fail only when the desktop target is built, which is a slower and much more
+        confusing signal than naming the file here.
+
+        `androidx.compose` and friends are allowed: Compose Multiplatform publishes
+        them for every target, so an `androidx.compose.runtime` import in commonMain
+        is correct rather than a leak. The forbidden set is the Android *platform*
+        itself, which has no desktop implementation at all.
+        """
+        forbidden = re.compile(
+            r"^import\s+(android\.[\w.]+"
+            r"|androidx\.(?:core|activity|work|glance|appcompat|room|sqlite|test)\.[\w.]+)",
+            re.MULTILINE,
+        )
+        shared_roots = (
+            ROOT / "presentation-api/src/commonMain",
+            ROOT / "host-presentation/src/main",
+            ROOT / "ui-common/src/commonMain",
+            ROOT / "application/src/main",
+            ROOT / "core/src/main",
+            ROOT / "sync-engine/src/main",
+            ROOT / "data-api/src/main",
+        ) + tuple(
+            ROOT / f"feature-{name}/src/commonMain"
+            for name in ("home", "study", "stats", "games", "settings", "shell", "missing-kanji")
+        )
+        violations = []
+        for source_root in shared_roots:
+            if not source_root.exists():
+                continue
+            for source in sorted(source_root.rglob("*.kt")):
+                for match in forbidden.findall(source.read_text(encoding="utf-8")):
+                    violations.append(f"{source.relative_to(ROOT).as_posix()}: {match}")
+        self.assertEqual(
+            [],
+            violations,
+            "shared and feature sources must not import Android platform classes",
+        )
+
 
 
 if __name__ == "__main__":
