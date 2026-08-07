@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.core.content.edit
 import java.time.ZoneId
 
 /** One durable inexact alarm shared by every installed Kani widget provider. */
@@ -27,10 +26,13 @@ internal object KaniWidgetBoundaryAlarm {
         val dueAt = KaniWidgetRefreshPolicy.oneShotRefreshAtMillis(nowMillis, nextUsefulAtMillis)
         val midnightAt = KaniWidgetRefreshPolicy.nextLocalMidnightMillis(nowMillis, zoneId)
         val preferences = preferences(context)
-        preferences.edit(commit = true) {
-            putOrRemove(KEY_DUE_AT, dueAt)
-            putLong(KEY_MIDNIGHT_AT, midnightAt)
-        }
+        // `commit()`, not `apply()`: the reschedule below reads these back, so an async
+        // write could arm the alarm from the previous values. Plain SharedPreferences rather
+        // than `androidx.core`'s `edit` extension, so the module needs no core-ktx dependency.
+        preferences.edit()
+            .putOrRemove(KEY_DUE_AT, dueAt)
+            .putLong(KEY_MIDNIGHT_AT, midnightAt)
+            .commit()
         reschedulePersisted(context, nowMillis)
     }
 
@@ -39,12 +41,12 @@ internal object KaniWidgetBoundaryAlarm {
         nowMillis: Long,
         zoneId: ZoneId = ZoneId.systemDefault(),
     ) {
-        preferences(context).edit(commit = true) {
-            putLong(
+        preferences(context).edit()
+            .putLong(
                 KEY_MIDNIGHT_AT,
                 KaniWidgetRefreshPolicy.nextLocalMidnightMillis(nowMillis, zoneId),
             )
-        }
+            .commit()
         reschedulePersisted(context, nowMillis)
     }
 
@@ -54,7 +56,7 @@ internal object KaniWidgetBoundaryAlarm {
 
     fun reset(context: Context) {
         cancelAlarm(context)
-        preferences(context).edit(commit = true) { clear() }
+        preferences(context).edit().clear().commit()
     }
 
     fun onProvidersChanged(context: Context, hasInstalledWidgets: Boolean) {
@@ -71,7 +73,7 @@ internal object KaniWidgetBoundaryAlarm {
         val triggerAt = listOf(dueAt, midnightAt).filter { it > 0L }.minOrNull() ?: 0L
         if (triggerAt <= 0L) {
             cancelAlarm(context)
-            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
+            preferences.edit().remove(KEY_SCHEDULED_AT).commit()
             return
         }
         val alarmManager = try {
@@ -81,7 +83,7 @@ internal object KaniWidgetBoundaryAlarm {
             null
         }
         if (alarmManager == null) {
-            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
+            preferences.edit().remove(KEY_SCHEDULED_AT).commit()
             return
         }
         try {
@@ -93,10 +95,10 @@ internal object KaniWidgetBoundaryAlarm {
             } catch (cancelError: RuntimeException) {
                 warn("Could not cancel failed widget boundary alarm.", cancelError)
             }
-            preferences.edit(commit = true) { remove(KEY_SCHEDULED_AT) }
+            preferences.edit().remove(KEY_SCHEDULED_AT).commit()
             return
         }
-        preferences.edit(commit = true) { putLong(KEY_SCHEDULED_AT, triggerAt) }
+        preferences.edit().putLong(KEY_SCHEDULED_AT, triggerAt).commit()
     }
 
     private fun cancelAlarm(context: Context) {

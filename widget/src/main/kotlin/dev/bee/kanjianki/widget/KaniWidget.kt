@@ -46,13 +46,12 @@ import androidx.glance.semantics.contentDescription
 import androidx.glance.semantics.semantics
 import androidx.glance.unit.ColorProvider
 import dev.bee.kanjianki.platform.KaniLaunchExtras
-import dev.bee.kanjianki.R
 import dev.bee.kanjianki.core.WidgetTextCopy
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-internal class KaniWidget(
+class KaniWidget(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : GlanceAppWidget() {
     companion object {
@@ -520,7 +519,7 @@ private fun KaniWidgetColorRole.toProvider(): ColorProvider = ColorProvider(day 
  * repaired-tagging write-back must stay manual-confirm-only, so no sync entry
  * point is reachable from the widget.
  */
-internal fun kaniWidgetHomeIntent(context: Context): Intent {
+fun kaniWidgetHomeIntent(context: Context): Intent {
     // The launcher is resolved from the package manager rather than named as a class, and
     // that is a module-boundary decision rather than a style one: `:widget` is extracted to
     // its own Android module (Goal 199's last step), and a widget that referenced the host
@@ -550,7 +549,7 @@ internal fun kaniWidgetHomeIntent(context: Context): Intent {
 }
 
 /** Action-row tap: deep-links straight to Study when reviews are due. */
-internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapshot): Intent =
+fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapshot): Intent =
     kaniWidgetHomeIntent(context).apply {
         if (snapshot.state == KaniWidgetState.DUE_NOW) {
             putExtra(KaniLaunchExtras.EXTRA_OPEN_STUDY, true)
@@ -558,18 +557,18 @@ internal fun kaniWidgetLaunchIntent(context: Context, snapshot: KaniWidgetSnapsh
     }
 
 /** Focus-kanji card tap: opens the selected glyph's existing in-app detail route. */
-internal fun kaniFocusDetailIntent(context: Context, kanji: String): Intent =
+fun kaniFocusDetailIntent(context: Context, kanji: String): Intent =
     kaniWidgetHomeIntent(context).apply {
         putExtra(KaniLaunchExtras.EXTRA_OPEN_KANJI_DETAIL, kanji)
     }
 
 /** Heatmap-card tap: opens the stats screen that hosts the full heatmap. */
-internal fun kaniWidgetStatsIntent(context: Context): Intent =
+fun kaniWidgetStatsIntent(context: Context): Intent =
     kaniWidgetHomeIntent(context).apply {
         putExtra(KaniLaunchExtras.EXTRA_OPEN_STATS, true)
     }
 
-internal data class KaniWidgetCopy(
+data class KaniWidgetCopy(
     val title: String,
     val body: String,
     val action: String,
@@ -607,7 +606,7 @@ internal fun overviewVisibleCopy(
  * so tier-dependent content (count split, due-later line, best streak) is
  * unit-testable without a Glance host.
  */
-internal fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
+fun widgetCopy(snapshot: KaniWidgetSnapshot, isExpanded: Boolean): KaniWidgetCopy = when (snapshot.state) {
     KaniWidgetState.NOT_SET_UP -> KaniWidgetCopy(
         WidgetTextCopy.notSetUpTitle(),
         WidgetTextCopy.notSetUpBody(),

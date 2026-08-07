@@ -22,7 +22,7 @@ import dev.bee.kanjianki.widget.FocusKanjiWidgetReceiver
 import dev.bee.kanjianki.widget.FocusKanjiWidgetSnapshotLoader
 import dev.bee.kanjianki.widget.FocusKanjiWidgetState
 import dev.bee.kanjianki.widget.KaniWidgetReceiver
-import dev.bee.kanjianki.widget.KaniWidgetRegistry
+import dev.bee.kanjianki.widget.refreshInstalledWidgets
 import dev.bee.kanjianki.widget.KaniWidgetState
 import dev.bee.kanjianki.widget.QuickStudyWidgetReceiver
 import dev.bee.kanjianki.widget.StudyWidgetSnapshotLoader
@@ -105,7 +105,7 @@ class KaniWidgetScreenshotFixtureInstrumentedTest {
             }
             store.putStringSetting(FIXTURE_SETTING, FIXTURE_ID)
         }
-        runBlocking { KaniWidgetRegistry.DEFAULT.refreshInstalled(context) }
+        runBlocking { refreshInstalledWidgets(context) }
         // Glance publishes through a session worker after updateAll returns.
         SystemClock.sleep(WIDGET_RENDER_WAIT_MILLIS)
 

@@ -9,7 +9,6 @@ import android.util.Log
 import androidx.annotation.XmlRes
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.updateAll
-import dev.bee.kanjianki.R
 import kotlinx.coroutines.CancellationException
 
 internal data class KaniWidgetDescriptor(
@@ -85,3 +84,27 @@ internal class KaniWidgetRegistry(
         val DEFAULT = KaniWidgetRegistry()
     }
 }
+
+/**
+ * Whether [appWidgetId] belongs to the main study-overview receiver.
+ *
+ * The module's public surface for this is one question rather than the descriptor: the config
+ * activity in `:app` only needs to know whether it owns the id it was launched for, and
+ * exposing `KaniWidgetDescriptor` to answer that would publish the whole registry shape —
+ * receiver classes, factories, info resources — for a Boolean.
+ */
+/**
+ * Redraws every Kani widget the user has actually placed.
+ *
+ * A façade over the registry rather than exposing it, because the descriptor list names
+ * receiver classes and provider-info resources — this module's own wiring, which no caller
+ * outside it should be able to enumerate or reorder. "Refresh what is installed" is the
+ * whole of what a host or a screenshot fixture needs.
+ */
+suspend fun refreshInstalledWidgets(context: Context) {
+    KaniWidgetRegistry.DEFAULT.refreshInstalled(context)
+}
+
+fun ownsStudyOverviewWidget(context: Context, appWidgetId: Int): Boolean =
+    KaniWidgetRegistry.DEFAULT.descriptorForAppWidgetId(context, appWidgetId)?.receiverClass ==
+        KaniWidgetReceiver::class.java

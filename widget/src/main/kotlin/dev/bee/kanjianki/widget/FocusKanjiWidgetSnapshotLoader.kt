@@ -8,20 +8,25 @@ import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.core.KaniThemeChoice
 import java.time.ZoneId
 
-internal enum class FocusKanjiWidgetState {
+enum class FocusKanjiWidgetState {
     NOT_SET_UP,
     ERROR,
     EMPTY,
     READY,
 }
 
-internal data class FocusKanjiWidgetSelection(
+data class FocusKanjiWidgetSelection(
     val kanji: String,
     val primaryMeaning: String,
     val readings: String,
 )
 
-internal fun interface FocusKanjiSelectionResolver {
+/**
+ * Picks the day's focus kanji. Public because it is an injectable parameter of
+ * [FocusKanjiWidgetSnapshotLoader.load] — the seam that lets a caller pin the selection
+ * instead of depending on the day-boundary rotation.
+ */
+fun interface FocusKanjiSelectionResolver {
     fun resolve(
         inventory: List<RecordsImportModels.KanjiInventoryItem>,
         allowedKanji: Set<String>,
@@ -46,7 +51,7 @@ internal fun interface FocusKanjiSelectionResolver {
     }
 }
 
-internal data class FocusKanjiWidgetSnapshot(
+data class FocusKanjiWidgetSnapshot(
     val state: FocusKanjiWidgetState,
     val kanji: String = "",
     val primaryMeaning: String = "",
@@ -59,7 +64,7 @@ internal data class FocusKanjiWidgetSnapshot(
  * Reads only committed local inventory and canonical Study eligibility. The default resolver
  * rotates deterministically at the local calendar-day boundary.
  */
-internal object FocusKanjiWidgetSnapshotLoader {
+object FocusKanjiWidgetSnapshotLoader {
     fun load(
         context: Context,
         nowMillis: Long = System.currentTimeMillis(),

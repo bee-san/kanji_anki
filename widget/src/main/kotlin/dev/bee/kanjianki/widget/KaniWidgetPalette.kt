@@ -3,7 +3,8 @@ package dev.bee.kanjianki.widget
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import dev.bee.kanjianki.core.KaniThemeChoice
-import dev.bee.kanjianki.theme.resolvePalette
+import dev.bee.kanjianki.ui.KaniThemeId
+import dev.bee.kanjianki.ui.resolvePalette
 import kotlin.math.max
 import kotlin.math.min
 
@@ -51,8 +52,14 @@ internal data class KaniWidgetPalette(
 ) {
     companion object {
         fun forChoice(choice: KaniThemeChoice): KaniWidgetPalette {
-            val day = choice.resolvePalette(isSystemInDarkTheme = false)
-            val night = choice.resolvePalette(isSystemInDarkTheme = true)
+            // Resolved through `:ui-common`'s shared palettes, keyed by storage key rather
+            // than by a hand-written enum-to-enum map: `KaniThemeChoice` and `KaniThemeId`
+            // carry the same ten values, and matching on the persisted string means a theme
+            // added to one and not the other degrades to the default instead of failing to
+            // compile against a stale `when`.
+            val id = KaniThemeId.fromStorageKey(choice.storageKey)
+            val day = id.resolvePalette(isSystemInDarkTheme = false)
+            val night = id.resolvePalette(isSystemInDarkTheme = true)
             return KaniWidgetPalette(
                 background = KaniWidgetColorRole(day.bg, night.bg),
                 primary = KaniWidgetColorRole(day.primary, night.primary),

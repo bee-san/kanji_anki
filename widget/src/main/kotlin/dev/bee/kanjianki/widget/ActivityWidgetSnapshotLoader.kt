@@ -3,14 +3,14 @@ package dev.bee.kanjianki.widget
 import android.content.Context
 import dev.bee.kanjianki.core.KaniThemeChoice
 
-internal enum class ActivityWidgetState {
+enum class ActivityWidgetState {
     NOT_SET_UP,
     ERROR,
     NO_HISTORY,
     HISTORY,
 }
 
-internal data class ActivityWidgetSnapshot(
+data class ActivityWidgetSnapshot(
     val state: ActivityWidgetState,
     val last35DayCounts: List<Int> = emptyList(),
     val streakDays: Int = 0,
@@ -21,8 +21,8 @@ internal data class ActivityWidgetSnapshot(
     val themeChoice: KaniThemeChoice = KaniThemeChoice.GIRLYPOP,
 )
 
-internal object ActivityWidgetSnapshotLoader {
-    internal const val HISTORY_DAYS = 35
+object ActivityWidgetSnapshotLoader {
+    const val HISTORY_DAYS = 35
     private const val RECENT_DAYS = 7
 
     fun load(context: Context, nowMillis: Long = System.currentTimeMillis()): ActivityWidgetSnapshot =

@@ -8,6 +8,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 
+/**
+ * The four widget providers as this module's manifest declares them.
+ *
+ * The names are fully qualified, and that is a property of being a library rather than
+ * cosmetic: a relative `.widget.X` in a library manifest resolves against the *merging
+ * application's* package, so it would silently name a class in whatever app consumed the
+ * module. Absolute names are the only ones that keep meaning the same class after the merge.
+ */
 class KaniWidgetProviderInfoTest {
     @Test
     fun manifestRegistersExactlyFourDistinctWidgetProviders() {
@@ -15,10 +23,10 @@ class KaniWidgetProviderInfoTest {
 
         assertEquals(
             setOf(
-                ".widget.KaniWidgetReceiver",
-                ".widget.QuickStudyWidgetReceiver",
-                ".widget.ActivityWidgetReceiver",
-                ".widget.FocusKanjiWidgetReceiver",
+                "dev.bee.kanjianki.widget.KaniWidgetReceiver",
+                "dev.bee.kanjianki.widget.QuickStudyWidgetReceiver",
+                "dev.bee.kanjianki.widget.ActivityWidgetReceiver",
+                "dev.bee.kanjianki.widget.FocusKanjiWidgetReceiver",
             ),
             providers.keys,
         )
@@ -277,7 +285,7 @@ class KaniWidgetProviderInfoTest {
     @Test
     fun newProvidersNeverDeclareConfigurationState() {
         val newInfo = widgetReceivers()
-            .filterKeys { it != ".widget.KaniWidgetReceiver" }
+            .filterKeys { it != "dev.bee.kanjianki.widget.KaniWidgetReceiver" }
             .values
             .map { providerInfo(it.providerInfo) }
 
@@ -290,7 +298,7 @@ class KaniWidgetProviderInfoTest {
     @Test
     fun onlyPlainRefreshReceiverOwnsSystemRefreshEvents() {
         val manifestReceivers = manifestReceivers()
-        val refresh = manifestReceivers.single { it.androidAttribute("name") == ".widget.KaniWidgetRefreshReceiver" }
+        val refresh = manifestReceivers.single { it.androidAttribute("name") == "dev.bee.kanjianki.widget.KaniWidgetRefreshReceiver" }
         val refreshActions = actions(refresh)
 
         assertEquals(

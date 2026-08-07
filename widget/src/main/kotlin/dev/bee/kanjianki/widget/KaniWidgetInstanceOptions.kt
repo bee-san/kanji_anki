@@ -3,7 +3,7 @@ package dev.bee.kanjianki.widget
 import dev.bee.kanjianki.core.KaniThemeChoice
 
 /** Which layout a widget instance renders. */
-internal enum class KaniWidgetStyle(val storageKey: String) {
+enum class KaniWidgetStyle(val storageKey: String) {
     DUE_CARD("due_card"),
     HEATMAP("heatmap");
 
@@ -19,7 +19,7 @@ internal enum class KaniWidgetStyle(val storageKey: String) {
  * (due card, follow the in-app theme), so dropping a widget without visiting
  * the configure screen keeps today's behavior.
  */
-internal data class KaniWidgetInstanceOptions(
+data class KaniWidgetInstanceOptions(
     val style: KaniWidgetStyle = KaniWidgetStyle.DUE_CARD,
     /** `null` means "follow the in-app theme". */
     val themeOverride: KaniThemeChoice? = null,

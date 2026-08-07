@@ -7,14 +7,14 @@ import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.core.KaniThemeChoice
 
-internal enum class KaniWidgetState {
+enum class KaniWidgetState {
     NOT_SET_UP,
     ERROR,
     NOTHING_DUE,
     DUE_NOW,
 }
 
-internal data class KaniWidgetSnapshot(
+data class KaniWidgetSnapshot(
     val state: KaniWidgetState,
     val dueCount: Int = 0,
     val streakDays: Int = 0,
@@ -31,7 +31,7 @@ internal data class KaniWidgetSnapshot(
 )
 
 /** Loads Study Overview and Quick Study facts from the canonical studyable set. */
-internal object StudyWidgetSnapshotLoader {
+object StudyWidgetSnapshotLoader {
     internal const val STRIP_DAYS = 7
 
     fun load(context: Context, nowMillis: Long = System.currentTimeMillis()): KaniWidgetSnapshot =

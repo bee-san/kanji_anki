@@ -2,7 +2,6 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.backup.StagedRestoreApplier
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,8 +28,11 @@ class KaniWidgetEventHooksTest {
         var refreshes = 0
         val hooks = KaniWidgetEventHooks { refreshes += 1 }
 
-        StagedRestoreApplier.Result.entries.forEach { result ->
-            hooks.restoreCompleted(context, result)
+        // Every outcome the applier can report, now as the Boolean the hook takes: only an
+        // applied restore should refresh, because the others left the database untouched and
+        // a refresh would redraw identical content.
+        for (applied in listOf(false, true, false)) {
+            hooks.restoreCompleted(context, applied = applied)
         }
 
         assertEquals(1, refreshes)

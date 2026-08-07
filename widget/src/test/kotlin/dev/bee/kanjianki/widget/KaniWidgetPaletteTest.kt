@@ -3,7 +3,8 @@ package dev.bee.kanjianki.widget
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import dev.bee.kanjianki.core.KaniThemeChoice
-import dev.bee.kanjianki.theme.resolvePalette
+import dev.bee.kanjianki.ui.KaniThemeId
+import dev.bee.kanjianki.ui.resolvePalette
 import kotlin.math.max
 import kotlin.math.min
 import org.junit.Assert.assertEquals
@@ -17,8 +18,8 @@ class KaniWidgetPaletteTest {
     fun everyThemeChoiceMapsRolesFromItsResolvedPalettes() {
         for (choice in KaniThemeChoice.entries) {
             val palette = KaniWidgetPalette.forChoice(choice)
-            val day = choice.resolvePalette(isSystemInDarkTheme = false)
-            val night = choice.resolvePalette(isSystemInDarkTheme = true)
+            val day = choice.let { KaniThemeId.fromStorageKey(it.storageKey) }.resolvePalette(isSystemInDarkTheme = false)
+            val night = choice.let { KaniThemeId.fromStorageKey(it.storageKey) }.resolvePalette(isSystemInDarkTheme = true)
 
             assertEquals(choice.name, day.bg, palette.background.day)
             assertEquals(choice.name, night.bg, palette.background.night)
@@ -61,11 +62,11 @@ class KaniWidgetPaletteTest {
         assertNotEquals(palette.background.day, palette.background.night)
         assertNotEquals(palette.ink.day, palette.ink.night)
         assertEquals(
-            KaniThemeChoice.LIGHT.resolvePalette(isSystemInDarkTheme = false).bg,
+            KaniThemeChoice.LIGHT.let { KaniThemeId.fromStorageKey(it.storageKey) }.resolvePalette(isSystemInDarkTheme = false).bg,
             palette.background.day,
         )
         assertEquals(
-            KaniThemeChoice.DARK.resolvePalette(isSystemInDarkTheme = true).bg,
+            KaniThemeChoice.DARK.let { KaniThemeId.fromStorageKey(it.storageKey) }.resolvePalette(isSystemInDarkTheme = true).bg,
             palette.background.night,
         )
     }
@@ -83,7 +84,7 @@ class KaniWidgetPaletteTest {
     @Test
     fun darkThemeChoiceUsesDarkPaletteForBothModes() {
         val palette = KaniWidgetPalette.forChoice(KaniThemeChoice.DARK)
-        val dark = KaniThemeChoice.DARK.resolvePalette(isSystemInDarkTheme = false)
+        val dark = KaniThemeChoice.DARK.let { KaniThemeId.fromStorageKey(it.storageKey) }.resolvePalette(isSystemInDarkTheme = false)
         assertTrue(dark.isDark)
         assertEquals(dark.bg, palette.background.day)
         assertEquals(dark.bg, palette.background.night)

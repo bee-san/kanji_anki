@@ -274,6 +274,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.androidx.profileinstaller)
     implementation(project(":update-core"))
+    implementation(project(":widget"))
     implementation(project(":writing-core"))
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.glance.appwidget)

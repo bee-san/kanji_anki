@@ -106,6 +106,7 @@ EXPECTED_CURRENT_MODULES = frozenset(
         "provider-ankidroid",
         "platform-android",
         "automation-android",
+        "widget",
         "app",
         "desktop-app",
     },
@@ -192,6 +193,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
         },
     ),
     "provider-ankidroid": frozenset({"sync-api"}),
+    "widget": frozenset({"core", "data-api", "platform-contracts", "ui-common"}),
     "platform-android": frozenset({"platform-contracts", "writing-core"}),
     "automation-android": frozenset({"platform-contracts"}),
     "data-android": frozenset({"data-sql"}),
@@ -220,6 +222,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
             "sync-api",
             "sync-engine",
             "update-core",
+            "widget",
             "writing-core",
         },
     ),
@@ -297,9 +300,12 @@ FINAL_PROJECT_DEPENDENCIES = {
     "provider-ankidroid": frozenset({"sync-api"}),
     "platform-android": frozenset({"platform-contracts", "writing-core"}),
     "automation-android": frozenset({"application", "platform-contracts"}),
-    "widget": frozenset(
-        {"application", "core", "platform-contracts", "presentation-api"},
-    ),
+    # The reviewed target set said `application` + `presentation-api`; the extraction landed
+    # on `data-api` + `ui-common` instead, and the difference is the point. A widget renders
+    # persisted state and never runs a use case, so it takes the read-only `WidgetDataPort`
+    # from `:data-api` rather than `:application`, and it needs the shared palettes rather
+    # than the presentation DTOs it does not render.
+    "widget": frozenset({"core", "data-api", "platform-contracts", "ui-common"}),
     "app": frozenset(
         {
             "application",
@@ -400,6 +406,7 @@ EDGE_RATIONALES = {
     ("host-presentation", "data-api"): "Host mappers read repository snapshot types.",
     ("host-presentation", "progress-core"): "Host mappers map analytics state to the stats dashboard.",
     ("host-presentation", "update-core"): "The Update section reports through the update status policies.",
+    ("app", "widget"): "The composition root registers the widget host bindings.",
     ("app", "host-presentation"): "Android maps its snapshots to shared presentation DTOs.",
     ("desktop-app", "host-presentation"): "Desktop maps its snapshots to shared presentation DTOs.",
     ("ui-common", "presentation-api"): "Shared UI renders portable presentation DTOs.",
@@ -429,10 +436,10 @@ EDGE_RATIONALES = {
         "automation-android",
         "platform-contracts",
     ): "Android automation implements background platform ports.",
-    ("widget", "application"): "Widgets invoke shared read use cases.",
     ("widget", "core"): "Widgets retain canonical reminder eligibility policy.",
-    ("widget", "platform-contracts"): "Widgets consume committed app event contracts.",
-    ("widget", "presentation-api"): "Widgets consume portable display snapshots.",
+    ("widget", "data-api"): "Widgets read persisted state through the read-only WidgetDataPort.",
+    ("widget", "platform-contracts"): "Widgets name the durable launch extras.",
+    ("widget", "ui-common"): "Widget palettes resolve the shared theme colors.",
     ("app", "application"): "Android assembles shared application use cases.",
     ("app", "backup-core"): "Android backup delegates to the portable backup core.",
     ("app", "automation-android"): "Android installs automation components.",

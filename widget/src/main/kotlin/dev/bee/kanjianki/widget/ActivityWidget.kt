@@ -538,7 +538,7 @@ internal fun activityGridCellSizeDp(tier: ActivityWidgetTier): Int = when (tier)
     -> 14
 }
 
-internal fun kaniActivityLaunchIntent(
+fun kaniActivityLaunchIntent(
     context: Context,
     snapshot: ActivityWidgetSnapshot,
 ) = when (snapshot.state) {

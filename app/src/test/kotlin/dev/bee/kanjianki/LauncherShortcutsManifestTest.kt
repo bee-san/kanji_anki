@@ -89,8 +89,19 @@ class LauncherShortcutsManifestTest {
 
     @Test
     fun shortcutLabelsAreLocalizedInEnglishAndJapanese() {
-        val english = stringResources("src/main/res/values/strings.xml")
-        val japanese = stringResources("src/main/res/values-ja/strings.xml")
+        // Both source sets, because a shortcut label is a resource the *merged* app resolves,
+        // and one of them now lives in `:widget`: `shortcut_study_long_label` is also the
+        // Quick Study widget preview's caption, so it sits in the module that owns that
+        // layout. Reading only this module's strings would report a live, resolvable label as
+        // missing — which is what it did when the widget module was extracted.
+        val english = stringResources(
+            "src/main/res/values/strings.xml",
+            "../widget/src/main/res/values/strings.xml",
+        )
+        val japanese = stringResources(
+            "src/main/res/values-ja/strings.xml",
+            "../widget/src/main/res/values-ja/strings.xml",
+        )
 
         assertEquals(
             mapOf(
@@ -137,12 +148,13 @@ class LauncherShortcutsManifestTest {
         assertEquals(THIN_HOST_CLASS, intent.androidAttribute("targetClass"))
     }
 
-    private fun stringResources(path: String): Map<String, String> {
-        val strings = xmlFile(path).documentElement.getElementsByTagName("string")
-        return (0 until strings.length)
-            .map { strings.item(it) as Element }
-            .associate { it.getAttribute("name") to it.textContent }
-    }
+    private fun stringResources(vararg paths: String): Map<String, String> =
+        paths.fold(emptyMap()) { merged, path ->
+            val strings = xmlFile(path).documentElement.getElementsByTagName("string")
+            merged + (0 until strings.length)
+                .map { strings.item(it) as Element }
+                .associate { it.getAttribute("name") to it.textContent }
+        }
 
     private fun Element.androidAttribute(name: String): String = getAttributeNS(ANDROID_NS, name)
 

@@ -4,8 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import dev.bee.kanjianki.requireKaniContainer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
@@ -40,8 +40,19 @@ class KaniWidgetRefreshReceiver : BroadcastReceiver() {
     }
 
     internal fun launchRefresh(context: Context, onFinished: () -> Unit) {
+        // The app's maintenance dispatcher when it has registered one, and a background
+        // default otherwise: a refresh has to run somewhere, and skipping it would leave a
+        // stale widget on the home screen.
         val scope = coroutineScope ?: CoroutineScope(
-            SupervisorJob() + context.requireKaniContainer().dispatchers.maintenance,
+            // `runCatching`, because resolving the host's dispatcher now reads the process
+            // container: a refresh delivered before startup finished would throw, and a stale
+            // widget is a worse outcome than doing this one refresh on a plain dispatcher.
+            SupervisorJob() +
+                (
+                    WidgetHostBindings.refreshContext
+                        ?.let { resolve -> runCatching(resolve).getOrNull() }
+                        ?: Dispatchers.Default
+                    ),
         )
         val refresh = scope.launch {
             try {
