@@ -95,6 +95,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 "tools.test_desktop_ci_workflow",
                 "tools.test_desktop_packaging_audit",
                 "tools.test_generate_desktop_icons",
+                "tools.test_generate_desktop_sbom",
                 "tools.test_host_render_parity",
                 "tools.test_measure_desktop_startup_budget",
                 "tools.test_merge_verification_metadata",
@@ -128,6 +129,26 @@ class DesktopRootGateContractTest(unittest.TestCase):
         self.assertIn("packageDesktopCurrentOs", package_block)
         self.assertIn("smokeDesktopInstalledImage", package_block)
         self.assertIn("verifyDesktopPackage", package_block)
+
+    def test_the_sbom_gate_generates_from_the_image_and_joins_the_package_gate(
+        self,
+    ) -> None:
+        # Goal 205 asks for an SBOM from the exact release dependency graph. Generated
+        # from the installed image rather than a resolution listing, because the image is
+        # what users receive — a resolution can name artifacts the packager dropped.
+        sbom_block = kotlin_block('tasks.register<Exec>("generateDesktopSbom")')
+        self.assertIn("dependsOn(createDesktopDistributable)", sbom_block)
+        self.assertIn('"tools.generate_desktop_sbom"', sbom_block)
+        self.assertIn('"-m"', sbom_block)
+        self.assertIn('"--image-root"', sbom_block)
+        self.assertIn('"--sbom-out"', sbom_block)
+        self.assertIn('"--notices-out"', sbom_block)
+        # The verification metadata is an input because component identity is resolved
+        # from it by digest; a stale one silently degrades every component to UNKNOWN.
+        self.assertIn('"gradle/verification-metadata.xml"', sbom_block)
+
+        package_block = kotlin_block('tasks.register("ciDesktopPackage")')
+        self.assertIn("generateDesktopSbom", package_block)
 
     def test_data_retention_gate_runs_after_smoke_and_joins_the_package_gate(
         self,

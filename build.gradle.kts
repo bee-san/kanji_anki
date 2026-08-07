@@ -252,6 +252,7 @@ tasks.register<Exec>("testDesktopTooling") {
         "tools.test_desktop_ci_workflow",
         "tools.test_desktop_packaging_audit",
         "tools.test_generate_desktop_icons",
+        "tools.test_generate_desktop_sbom",
         "tools.test_host_render_parity",
         "tools.test_measure_desktop_startup_budget",
         "tools.test_merge_verification_metadata",
@@ -388,6 +389,36 @@ val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImag
     )
 }
 
+val generateDesktopSbom = tasks.register<Exec>("generateDesktopSbom") {
+    group = "documentation"
+    description =
+        "Generates a CycloneDX SBOM and third-party notices from the installed desktop image."
+    dependsOn(createDesktopDistributable)
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_sbom.py"))
+    inputs.file(layout.projectDirectory.file("gradle/verification-metadata.xml"))
+    inputs.dir(desktopInstalledImageDirectory)
+    outputs.file(layout.buildDirectory.file("sbom/kani-desktop-sbom.json"))
+    outputs.file(layout.buildDirectory.file("sbom/kani-desktop-third-party-notices.txt"))
+    workingDir(layout.projectDirectory)
+    // Generated from the image, not from a dependency resolution: the image is what
+    // users receive, and a resolution listing can name artifacts the packager dropped.
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.generate_desktop_sbom",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+        "--sbom-out",
+        layout.buildDirectory.file("sbom/kani-desktop-sbom.json").get().asFile.absolutePath,
+        "--notices-out",
+        layout.buildDirectory
+            .file("sbom/kani-desktop-third-party-notices.txt")
+            .get()
+            .asFile
+            .absolutePath,
+    )
+}
+
 val verifyDesktopDataRetention = tasks.register<Exec>("verifyDesktopDataRetention") {
     group = "verification"
     description =
@@ -442,6 +473,7 @@ tasks.register("ciDesktopPackage") {
     dependsOn(
         measureDesktopStartupBudget,
         packageDesktopCurrentOs,
+        generateDesktopSbom,
         smokeDesktopInstalledImage,
         verifyDesktopDataRetention,
         verifyDesktopPackage,
