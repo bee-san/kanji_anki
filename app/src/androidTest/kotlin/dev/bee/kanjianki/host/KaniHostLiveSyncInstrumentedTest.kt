@@ -50,11 +50,17 @@ class KaniHostLiveSyncInstrumentedTest {
         Assume.assumeTrue("Live AnkiDroid fixture is opt-in.", liveEnabled())
 
         ActivityScenario.launch(KaniHostActivity::class.java).use {
+            // Stamped before the taps, not after: the sync starts on the confirmation tap and
+            // an already-bound source can finish it while `confirmFirstCollectionBinding` is
+            // still looking for a step that will never come. A later stamp would then reject
+            // the very run it was waiting for, because `finishedAt >= startedAt` could not
+            // hold for a sync that completed first.
+            val startedAt = System.currentTimeMillis()
+
             tapSyncEntryPoint()
             tapDeviceText(HomeTextCopy.syncDialogPositiveLabel())
             confirmFirstCollectionBinding()
 
-            val startedAt = System.currentTimeMillis()
             val status = waitForLiveSyncImport(startedAt)
 
             assertEquals("success", status.status)
@@ -118,15 +124,23 @@ class KaniHostLiveSyncInstrumentedTest {
     }
 
     /**
-     * Answers the first-bind confirmation the sync raises on a never-bound collection.
+     * Answers the first-bind confirmation, if this sync raised one.
      *
-     * Kani will not import from a source the user has not acknowledged, so the first live
-     * sync always stops here. The button can be below the fold — the recovery panel explains
-     * itself at length first — so this scrolls toward it rather than failing on a control
-     * that is present but off screen.
+     * Kani will not import from a source the user has not acknowledged, so a sync against a
+     * *never-bound* collection stops here and waits. But that is a precondition of the
+     * environment, not the thing this gate tests: a fixture whose source is already bound —
+     * which is what the CI fixture turns out to produce — syncs straight through, and the run
+     * recorded `status=success errorCode=null` with no confirmation ever shown.
+     *
+     * So this is conditional. Requiring the confirmation made the gate assert on how the
+     * emulator happened to be seeded rather than on whether the thin host can sync, and it
+     * failed on a run where the sync had *already succeeded*. When the confirmation does
+     * appear, it is answered exactly as before: the button can be below the fold, because the
+     * recovery panel explains itself at length first, so this scrolls toward it rather than
+     * failing on a control that is present but off screen.
      */
     private fun confirmFirstCollectionBinding() {
-        waitForFirstBindingRequirement(FIRST_BIND_TIMEOUT_MILLIS)
+        if (!awaitFirstBindingRequirement(FIRST_BIND_TIMEOUT_MILLIS)) return
         val label = SourceBindingRecoveryUi.firstBindLabel()
         val headline = SourceBindingRecoveryUi.presentation(
             SourceBindingReason.FIRST_BIND_REQUIRED,
@@ -233,8 +247,15 @@ class KaniHostLiveSyncInstrumentedTest {
     private fun isDeterministicFixture(): Boolean =
         "1" == InstrumentationRegistry.getArguments().getString("kanjiLiveMinimumNotes")
 
-    /** Waits until the sync engine has recorded that it needs a first-bind acknowledgement. */
-    private fun waitForFirstBindingRequirement(timeoutMillis: Long) {
+    /**
+     * Whether the sync stopped to ask for a first-bind acknowledgement.
+     *
+     * Returns true when the engine recorded that requirement, false when it recorded any
+     * other outcome — a source already bound syncs straight through, and that is a legitimate
+     * environment rather than a failure. Only "no run row at all" is fatal: that means the tap
+     * never started a sync, which is the one thing this gate cannot proceed past.
+     */
+    private fun awaitFirstBindingRequirement(timeoutMillis: Long): Boolean {
         val deadline = SystemClock.uptimeMillis() + timeoutMillis
         var sawRow = false
         while (SystemClock.uptimeMillis() < deadline) {
@@ -259,16 +280,18 @@ class KaniHostLiveSyncInstrumentedTest {
                             val status = cursor.getString(0)
                             val errorCode = if (cursor.isNull(1)) null else cursor.getString(1)
                             val errorMessage = if (cursor.isNull(2)) null else cursor.getString(2)
-                            if (errorCode == FIRST_BIND_ERROR_CODE) return
-                            // A run row that is not the first-bind requirement means the sync
-                            // took a different path entirely, and waiting cannot change that.
-                            // Carried over from the old gate: polling past it would report a
-                            // timeout instead of the status and error the engine recorded,
-                            // which is the difference between "diagnosable" and "not".
-                            throw AssertionError(
-                                "Expected first-bind requirement, got " +
+                            if (errorCode == FIRST_BIND_ERROR_CODE) return true
+                            // Any other recorded outcome means this sync did not need the
+                            // acknowledgement. Reported and returned rather than waited past,
+                            // because waiting cannot turn one outcome into another — and
+                            // rather than thrown, because an already-bound source is a valid
+                            // fixture, not a defect. The status is echoed so a genuinely
+                            // wrong outcome is still visible in the log.
+                            println(
+                                "no first-bind step needed: " +
                                     "status=$status errorCode=$errorCode errorMessage=$errorMessage",
                             )
+                            return false
                         }
                     }
                 }
@@ -277,15 +300,14 @@ class KaniHostLiveSyncInstrumentedTest {
             }
             SystemClock.sleep(500L)
         }
-        // No row at all in the window: the sync never recorded a run, so say that rather than
-        // implying the wrong error code was seen.
+        // A row was seen but never resolved either way within the window; treat that as "no
+        // confirmation needed" and let the import wait below reach its own verdict, which
+        // reports the last status it saw.
+        if (sawRow) return false
+        // No row at all: the tap did not start a sync, and nothing downstream can recover.
         throw AssertionError(
-            if (sawRow) {
-                "Timed out waiting for the first-bind requirement"
-            } else {
-                "Timed out after ${timeoutMillis / 1000}s with no sync run recorded at all — " +
-                    "the sync button tap did not start a sync"
-            },
+            "Timed out after ${timeoutMillis / 1000}s with no sync run recorded at all — " +
+                "the sync button tap did not start a sync",
         )
     }
 
