@@ -25,6 +25,78 @@ class DesktopLauncherTest {
     }
 
     @Test
+    fun parsesAPinnedDataRootAndKeepsIt() {
+        val pinned = Files.createTempDirectory("kani-pinned-profile-")
+        try {
+            val options = DesktopLaunchOptions.parse(
+                arrayOf("--smoke-test", "--data-root=$pinned"),
+            )
+
+            assertEquals(
+                DesktopLaunchOptions(smokeTest = true, temporaryData = false, dataRoot = pinned),
+                options,
+            )
+
+            // The session must not delete it. This is the property the upgrade gate rests
+            // on: a second image runs over the same profile and asks whether the first
+            // run's data survived, which is only a real question if nothing cleaned up.
+            val session = selectDataSession(
+                options = options,
+                normalDataRoot = { error("a pinned root must not fall back to the user profile") },
+                temporaryDataRoot = { error("a pinned root must not create a throwaway one") },
+            )
+            assertEquals(pinned, session.root)
+            assertFalse(session.deleteAfterLaunch)
+        } finally {
+            pinned.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun theReadyMarkerStatesWhichDataModeRan() {
+        val directory = Files.createTempDirectory("kani-marker-")
+        try {
+            val temporary = directory.resolve("temporary.txt")
+            reportSmokeReady(temporary, temporaryData = true)
+            assertEquals("$SMOKE_READY_LINE\n", Files.readString(temporary))
+
+            // A retention gate reads this line to decide whether the run it just observed
+            // could have retained anything. Reporting `temporary_data=true` for a pinned
+            // profile would let it verify survival across a root the app had deleted.
+            val pinned = directory.resolve("pinned.txt")
+            reportSmokeReady(pinned, temporaryData = false)
+            assertEquals("$SMOKE_READY_LINE_PINNED_DATA\n", Files.readString(pinned))
+        } finally {
+            directory.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun rejectsAnUnusableOrConflictingDataRoot() {
+        val pinned = Files.createTempDirectory("kani-pinned-reject-")
+        try {
+            for (arguments in listOf(
+                // A pinned root outside smoke mode would point the *real* app at a
+                // caller-supplied profile, which is a data-loss shape, not a test seam.
+                arrayOf("--data-root=$pinned"),
+                // Contradictory promises about what survives the run.
+                arrayOf("--smoke-test", "--temporary-data", "--data-root=$pinned"),
+                arrayOf("--smoke-test", "--data-root="),
+                arrayOf("--smoke-test", "--data-root=relative/profile"),
+                arrayOf("--smoke-test", "--data-root=$pinned/missing"),
+                arrayOf("--smoke-test", "--data-root=$pinned", "--data-root=$pinned"),
+            )) {
+                assertThrows(
+                    "expected ${arguments.joinToString(" ")} to be rejected",
+                    IllegalArgumentException::class.java,
+                ) { DesktopLaunchOptions.parse(arguments) }
+            }
+        } finally {
+            pinned.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
     fun rejectsUnknownDuplicateOrUnpairedArguments() {
         for (arguments in listOf(
             arrayOf("--unknown"),
@@ -95,10 +167,12 @@ class DesktopLauncherTest {
                     DesktopWindowResult.SMOKE_RENDERED
                 },
                 smokeResultFile = { resultFile },
-                smokeReadyReporter = { selectedResultFile ->
+                smokeReadyReporter = { selectedResultFile, temporaryData ->
                     assertFalse(Files.exists(temporaryRoot))
                     assertEquals(resultFile, selectedResultFile)
-                    reportSmokeReady(selectedResultFile)
+                    // A throwaway root reports as one; the retention gate rejects this line.
+                    assertTrue(temporaryData)
+                    reportSmokeReady(selectedResultFile, temporaryData)
                     smokeReadyReported = true
                 },
             )
@@ -136,7 +210,7 @@ class DesktopLauncherTest {
                 smokeResultFile = {
                     throw AssertionError("result file must not resolve")
                 },
-                smokeReadyReporter = {
+                smokeReadyReporter = { _, _ ->
                     smokeReadyReported = true
                 },
             )
@@ -168,7 +242,7 @@ class DesktopLauncherTest {
                 smokeResultFile = {
                     throw AssertionError("normal launch must not resolve a smoke result file")
                 },
-                smokeReadyReporter = {
+                smokeReadyReporter = { _, _ ->
                     throw AssertionError("normal launch must not report smoke readiness")
                 },
             )

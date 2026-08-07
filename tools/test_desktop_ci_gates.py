@@ -99,6 +99,7 @@ class DesktopRootGateContractTest(unittest.TestCase):
                 "tools.test_measure_desktop_startup_budget",
                 "tools.test_merge_verification_metadata",
                 "tools.test_module_boundaries",
+                "tools.test_run_desktop_data_retention",
                 "tools.test_run_desktop_installed_image_smoke",
                 "tools.test_shared_string_locales",
                 "tools.test_verify_desktop_package",
@@ -127,6 +128,29 @@ class DesktopRootGateContractTest(unittest.TestCase):
         self.assertIn("packageDesktopCurrentOs", package_block)
         self.assertIn("smokeDesktopInstalledImage", package_block)
         self.assertIn("verifyDesktopPackage", package_block)
+
+    def test_data_retention_gate_runs_after_smoke_and_joins_the_package_gate(
+        self,
+    ) -> None:
+        # Goal 204's install/upgrade/uninstall journeys all rest on one invariant: the
+        # profile lives outside the installed image. This gate proves that half without
+        # needing dpkg/WiX/Xcode, so it belongs in the package gate on every host.
+        retention_block = kotlin_block(
+            'tasks.register<Exec>("verifyDesktopDataRetention")',
+        )
+        self.assertIn("dependsOn(createDesktopDistributable)", retention_block)
+        # After the smoke gate: an image that cannot start would fail here as a
+        # retention bug, which is a misleading place to first learn it is broken.
+        self.assertIn("mustRunAfter(", retention_block)
+        self.assertIn("smokeDesktopInstalledImage", retention_block)
+        # A module, so it imports the smoke runner's launcher resolution rather than
+        # keeping a second answer to "where is the launcher".
+        self.assertIn('"tools.run_desktop_data_retention"', retention_block)
+        self.assertIn('"-m"', retention_block)
+        self.assertIn('"--image-root"', retention_block)
+
+        package_block = kotlin_block('tasks.register("ciDesktopPackage")')
+        self.assertIn("verifyDesktopDataRetention", package_block)
 
     def test_compose_packaging_task_names_are_reached_only_through_the_wrappers(
         self,

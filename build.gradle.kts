@@ -256,6 +256,7 @@ tasks.register<Exec>("testDesktopTooling") {
         "tools.test_measure_desktop_startup_budget",
         "tools.test_merge_verification_metadata",
         "tools.test_module_boundaries",
+        "tools.test_run_desktop_data_retention",
         "tools.test_run_desktop_installed_image_smoke",
         "tools.test_shared_string_locales",
         "tools.test_verify_desktop_package",
@@ -387,6 +388,29 @@ val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImag
     )
 }
 
+val verifyDesktopDataRetention = tasks.register<Exec>("verifyDesktopDataRetention") {
+    group = "verification"
+    description =
+        "Verifies the installed desktop image retains user data across a second launch over one profile."
+    dependsOn(createDesktopDistributable)
+    // After the smoke gate: there is no point asking whether an image retains data if it
+    // cannot start at all, and the failure would read as a retention bug rather than a
+    // launch one.
+    mustRunAfter(packageDesktopCurrentOs, smokeDesktopInstalledImage)
+    inputs.file(layout.projectDirectory.file("tools/run_desktop_data_retention.py"))
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // A module, so it imports the smoke runner's launcher resolution and render-environment
+    // checks rather than keeping a second answer to "where is the launcher".
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.run_desktop_data_retention",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
 val measureDesktopStartupBudget = tasks.register<Exec>("measureDesktopStartupBudget") {
     group = "verification"
     description = "Measures the installed desktop image against its startup and peak-memory budgets."
@@ -419,6 +443,7 @@ tasks.register("ciDesktopPackage") {
         measureDesktopStartupBudget,
         packageDesktopCurrentOs,
         smokeDesktopInstalledImage,
+        verifyDesktopDataRetention,
         verifyDesktopPackage,
     )
 }
