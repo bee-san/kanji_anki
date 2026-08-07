@@ -106,6 +106,16 @@ internal class DesktopKaniContainer(
     override val appLifecycle = DesktopAppLifecycle()
 
     /**
+     * The four reference assets a sync reads.
+     *
+     * Held here so the dictionary is opened once per profile rather than per sync: a
+     * `DesktopDictionaryStore` opens its connections per query, but locating the asset
+     * walks the install and profile directories, and that answer cannot change while the
+     * process runs.
+     */
+    val syncAssetReaders = DesktopSyncAssetReaders.forProfile(profileDir)
+
+    /**
      * The `VACUUM INTO` snapshot service, bound to this profile's database.
      *
      * Held here so the source path is the container's and never a caller's: a
