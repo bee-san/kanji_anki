@@ -3,6 +3,7 @@ package dev.bee.kanjianki.widget
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.KaniTestDatabase
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
@@ -80,15 +81,17 @@ class WidgetLocalStoreReaderTest {
 
     @Test
     fun validStoreReturnsBlockValue() {
+        // Written through the store, read back through the port — which is the point of the
+        // seam. The block now receives a `WidgetDataPort` rather than a `LocalStore`, so a
+        // widget cannot reach a write method, and this asserts the reader still hands over
+        // something that sees committed state.
         LocalStore(context).use { store ->
-            store.putStringSetting("widget_reader_test", "ready")
+            store.putStringSetting(KaniThemeChoice.SETTING_KEY, KaniThemeChoice.GIRLYPOP.storageKey)
         }
 
-        val result = WidgetLocalStoreReader.read(context) { store ->
-            store.getStringSetting("widget_reader_test", null)
-        }
+        val result = WidgetLocalStoreReader.read(context) { port -> port.themeStorageKey() }
 
-        assertEquals(WidgetStoreRead.Ready("ready"), result)
+        assertEquals(WidgetStoreRead.Ready(KaniThemeChoice.GIRLYPOP.storageKey), result)
     }
 
     /**

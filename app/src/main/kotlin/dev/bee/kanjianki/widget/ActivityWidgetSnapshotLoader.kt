@@ -1,7 +1,6 @@
 package dev.bee.kanjianki.widget
 
 import android.content.Context
-import dev.bee.kanjianki.data.StudyStatsQueries
 import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal enum class ActivityWidgetState {
@@ -28,9 +27,7 @@ internal object ActivityWidgetSnapshotLoader {
 
     fun load(context: Context, nowMillis: Long = System.currentTimeMillis()): ActivityWidgetSnapshot =
         when (val read = WidgetLocalStoreReader.read(context) { store ->
-            val counts = StudyStatsQueries(store)
-                .reviewDaySummaries(nowMillis, HISTORY_DAYS)
-                .map { it.total }
+            val counts = store.reviewTotalsByDay(nowMillis, HISTORY_DAYS)
             val streak = store.studyStreak(nowMillis)
             val total = counts.sum()
             ActivityWidgetSnapshot(

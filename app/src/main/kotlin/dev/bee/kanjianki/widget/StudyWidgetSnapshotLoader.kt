@@ -5,7 +5,6 @@ import dev.bee.kanjianki.core.DailyStudyPlanPolicy
 import dev.bee.kanjianki.core.DailyStudyPlanRequest
 import dev.bee.kanjianki.core.ReminderEligibilityPolicy
 import dev.bee.kanjianki.core.StudyStreakPolicy
-import dev.bee.kanjianki.data.StudyStatsQueries
 import dev.bee.kanjianki.core.KaniThemeChoice
 
 internal enum class KaniWidgetState {
@@ -45,7 +44,7 @@ internal object StudyWidgetSnapshotLoader {
             )
             val streak = store.studyStreak(nowMillis)
             val dueCount = eligibleItems.count { it.dueAtMillis <= nowMillis }
-            val autoSync = store.autoSyncSettings()
+            val autoSync = store.autoSyncSnapshot()
             val plan = DailyStudyPlanPolicy.plan(
                 DailyStudyPlanRequest(
                     nowMillis = nowMillis,
@@ -64,9 +63,7 @@ internal object StudyWidgetSnapshotLoader {
                     consecutiveFailedSyncs = store.consecutiveFailedSyncCount(),
                 ),
             )
-            val last7Days = StudyStatsQueries(store)
-                .reviewDaySummaries(nowMillis, STRIP_DAYS)
-                .map { it.total }
+            val last7Days = store.reviewTotalsByDay(nowMillis, STRIP_DAYS)
             KaniWidgetSnapshot(
                 state = if (dueCount > 0) KaniWidgetState.DUE_NOW else KaniWidgetState.NOTHING_DUE,
                 dueCount = dueCount,

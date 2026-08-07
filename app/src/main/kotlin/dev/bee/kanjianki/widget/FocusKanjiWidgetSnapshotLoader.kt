@@ -74,7 +74,7 @@ internal object FocusKanjiWidgetSnapshotLoader {
         val allowedKanji = eligibleItems.mapTo(linkedSetOf()) { it.kanji }
         // activeDashboardRows is capped; resolve only its canonical eligible glyphs instead of
         // scanning the full inventory on every widget refresh.
-        val inventory = allowedKanji.mapNotNull(store::inventoryItemForKanji)
+        val inventory = allowedKanji.mapNotNull { store.inventoryItemForKanji(it) }
         val selected = resolver.resolve(inventory, allowedKanji, nowMillis)
             ?.takeIf { selection ->
                 selection.kanji == TextUtil.normalizeSingleKanji(selection.kanji) &&

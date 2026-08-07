@@ -556,6 +556,10 @@ REPOSITORY_CONTRACTS = {
 }
 REPOSITORY_MODEL_FILES = (
     "data-api/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
+    # The widgets' read-only view of persisted state. Here rather than in `:app` so the
+    # Android `:widget` module can name it without depending on the composition root — the
+    # cycle that blocked Goal 199's last extraction.
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/WidgetDataPort.kt",
     "data-api/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
     "data-api/src/main/kotlin/dev/bee/kanjianki/data/StoreResult.kt",
 )
