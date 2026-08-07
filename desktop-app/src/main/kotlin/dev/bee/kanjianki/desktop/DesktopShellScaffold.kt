@@ -65,6 +65,9 @@ import dev.bee.kanjianki.presentation.BrowseResults
 import dev.bee.kanjianki.presentation.ContentResult
 import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.HomeNoticePolicy
+import dev.bee.kanjianki.missing.MissingKanjiScreenView
+import dev.bee.kanjianki.missing.rememberMissingKanjiCopy
+import dev.bee.kanjianki.hostpresentation.MissingKanjiRender
 import dev.bee.kanjianki.presentation.KaniAction
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KaniEffect
@@ -109,6 +112,7 @@ internal const val DESKTOP_BROWSE_TEST_TAG: String = "kani-desktop-browse"
 internal const val DESKTOP_DETAIL_TEST_TAG: String = "kani-desktop-detail"
 internal const val DESKTOP_STUDY_TEST_TAG: String = "kani-desktop-study"
 internal const val DESKTOP_STATS_TEST_TAG: String = "kani-desktop-stats"
+internal const val DESKTOP_MISSING_KANJI_TEST_TAG: String = "kani-desktop-missing-kanji"
 internal const val DESKTOP_GAMES_TEST_TAG: String = "kani-desktop-games"
 internal const val DESKTOP_SETTINGS_TEST_TAG: String = "kani-desktop-settings"
 
@@ -167,6 +171,11 @@ internal fun DesktopShellScaffold(
     // One games session per container, holding the round/score state across answers.
     val gamesRuntime = remember(container) { GamesRuntime(container.homeUseCases) }
     var gamesRender by remember { mutableStateOf<GamesRender?>(null) }
+    // Held across loads like the other two: a scan is long-running with progress and
+    // cancellation, and a route re-entry must show the scan in flight rather than
+    // restarting it. Kani deliberately does not persist a partial scan, so this state
+    // is the session's and dies with the window.
+    var missingKanjiRender by remember { mutableStateOf<MissingKanjiRender?>(null) }
     val host = remember(container) {
         DesktopShellHost(
             capabilities = PlatformCapabilities(
@@ -183,7 +192,14 @@ internal fun DesktopShellScaffold(
                 if (destination == KaniDestination.Games && gamesRender == null) {
                     gamesRender = gamesRuntime.menu()
                 }
-                loadDesktopRoute(container, provider, destination, studyRender, gamesRender)
+                loadDesktopRoute(
+                    container,
+                    provider,
+                    destination,
+                    studyRender,
+                    gamesRender,
+                    missingKanjiRender,
+                )
             },
         )
     }
@@ -335,6 +351,10 @@ private fun DesktopRouteBody(
                 dispatch = dispatch,
             )
             is KaniDestination.Settings -> DesktopSettingsRoute(
+                content = content,
+                dispatch = dispatch,
+            )
+            KaniDestination.MissingKanji -> DesktopMissingKanjiRoute(
                 content = content,
                 dispatch = dispatch,
             )
@@ -555,6 +575,36 @@ private fun DesktopStatsRoute(
  * shared surface renders. Scrollable because a round's prompt plus choices can exceed
  * the window.
  */
+/**
+ * Missing Kanji, from `:feature-missing-kanji`'s own screen.
+ *
+ * The report is real: `KaniRouteLoader` maps the host's scan state through
+ * `DesktopMissingKanjiModel`, and the candidates come from the reference dictionary the
+ * container now opens. Before that existed this route could only have shown FirstRun or
+ * an empty report, which is why it stayed a placeholder rather than being wired to
+ * something that looked finished and was not.
+ *
+ * Scrollable for the same reason Stats is: a report over a wide frequency range is
+ * thousands of rows, and a fixed-height column would simply hide most of them.
+ */
+@Composable
+private fun DesktopMissingKanjiRoute(
+    content: DesktopRouteContent,
+    dispatch: (KaniAction) -> Unit,
+) {
+    val screen = content.missingKanji ?: return
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(ROUTE_PADDING).testTag(DESKTOP_MISSING_KANJI_TEST_TAG),
+    ) {
+        MissingKanjiScreenView(
+            screen = screen,
+            copy = rememberMissingKanjiCopy(),
+            dispatch = dispatch,
+        )
+    }
+}
+
 @Composable
 private fun DesktopGamesRoute(
     content: DesktopRouteContent,
@@ -638,6 +688,7 @@ private suspend fun loadDesktopRoute(
     destination: KaniDestination,
     studyRender: StudyRouteRender?,
     gamesRender: GamesRender?,
+    missingKanjiRender: MissingKanjiRender?,
 ): ContentResult<DesktopRouteContent> = withContext(Dispatchers.IO) {
     // The provider probe is desktop's (an AnkiConnect handshake); everything after it
     // is the shared KaniRouteLoader, so both hosts assemble route content identically.
@@ -654,6 +705,14 @@ private suspend fun loadDesktopRoute(
             nowMillis = System.currentTimeMillis(),
             studyRender = studyRender,
             gamesRender = gamesRender,
+            // Idle carries whether the reference dictionary is present, which is what
+            // decides between the first-run invitation and the honest "cannot check"
+            // state. Asked of the container per load rather than cached, because a
+            // portable install can have its assets unpacked while Kani is running.
+            missingKanjiRender = missingKanjiRender
+                ?: MissingKanjiRender.Idle(
+                    dictionaryAvailable = container.syncAssetReaders.loadDictionary() != null,
+                ),
         ),
     )
 }

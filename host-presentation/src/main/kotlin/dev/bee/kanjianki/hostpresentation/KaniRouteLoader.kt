@@ -13,6 +13,8 @@ import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.platform.DeviceSettingsReader
 import dev.bee.kanjianki.presentation.BrowseResults
 import dev.bee.kanjianki.presentation.HomeDashboard
+import dev.bee.kanjianki.presentation.MissingKanjiProvider
+import dev.bee.kanjianki.presentation.MissingKanjiScreen
 import dev.bee.kanjianki.presentation.KaniDestination
 import dev.bee.kanjianki.presentation.KanjiDetail
 import dev.bee.kanjianki.presentation.KeyboardPlatform
@@ -113,6 +115,15 @@ class KaniRouteLoader(
         nowMillis: Long,
         studyRender: StudyRouteRender?,
         gamesRender: GamesRender?,
+        /**
+         * The Missing Kanji scan state, or null when the host has none.
+         *
+         * A parameter for the same reason `studyRender` is one: a scan is a long-running
+         * host-driven operation with progress and cancellation, and its state cannot be
+         * recovered from a settings snapshot. Null yields the first-run screen, which is
+         * also the correct answer for a host that has not wired scanning yet.
+         */
+        missingKanjiRender: MissingKanjiRender? = null,
         /**
          * Whether a sync is running right now, from the host's [HostSyncDriver].
          *
@@ -227,8 +238,67 @@ class KaniRouteLoader(
                     capabilities = PlatformCapabilities(status.capabilities),
                 )
             },
+            missingKanji = (destination as? KaniDestination.MissingKanji)?.let {
+                missingKanjiScreen(missingKanjiRender, status)
+            },
             studyKeybindings = studyKeybindings(),
         )
+    }
+
+    /**
+     * The Missing Kanji screen for [render], or the first-run invitation when absent.
+     *
+     * The provider projection is derived from the same [HostProviderStatus] every other
+     * route reads, so the screen cannot claim a provider is ready while Home says it is
+     * not. `dictionaryAvailable` comes from the render because only the host knows
+     * whether its reference assets were unpacked.
+     */
+    private fun missingKanjiScreen(
+        render: MissingKanjiRender?,
+        status: HostProviderStatus,
+    ): MissingKanjiScreen {
+        val provider = missingKanjiProvider(status)
+        return when (render) {
+            null -> DesktopMissingKanjiModel.firstRun(provider, dictionaryAvailable = false)
+            is MissingKanjiRender.Idle ->
+                DesktopMissingKanjiModel.firstRun(provider, render.dictionaryAvailable)
+            is MissingKanjiRender.Scanning -> DesktopMissingKanjiModel.scanning(
+                provider = provider,
+                notesScanned = render.notesScanned,
+                uniqueKanji = render.uniqueKanji,
+                skippedNotes = render.skippedNotes,
+                cancelling = render.cancelling,
+            )
+            is MissingKanjiRender.Failed ->
+                DesktopMissingKanjiModel.failed(provider, render.failureCode)
+            is MissingKanjiRender.Ready -> DesktopMissingKanjiModel.report(
+                provider = provider,
+                report = render.report,
+                admittedKanji = render.admittedKanji,
+                canCreateAnkiNotes = render.canCreateAnkiNotes,
+                defaultDeckName = render.defaultDeckName,
+                staleReason = render.staleReason,
+                operationInProgress = render.operationInProgress,
+            )
+        }
+    }
+
+    /**
+     * Projects the host's provider status onto the screen's own enum.
+     *
+     * `PERMISSION_REQUIRED` is distinguished from plain unavailability because only the
+     * first is fixable by the user in one step, and the surface offers a different
+     * affordance for each.
+     */
+    private fun missingKanjiProvider(status: HostProviderStatus): MissingKanjiProvider = when {
+        status.isReady -> MissingKanjiProvider.READY
+        // `UNAUTHORIZED` maps to PERMISSION_REQUIRED and `ABSENT` to NOT_INSTALLED: the
+        // screen's enum names the user-visible situation, the readiness enum names the
+        // provider condition, and only the first is fixable in one step.
+        status.readiness == ProviderReadiness.UNAUTHORIZED ->
+            MissingKanjiProvider.PERMISSION_REQUIRED
+        status.readiness == ProviderReadiness.ABSENT -> MissingKanjiProvider.NOT_INSTALLED
+        else -> MissingKanjiProvider.UNAVAILABLE
     }
 
     /**

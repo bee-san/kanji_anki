@@ -7,6 +7,7 @@ import dev.bee.kanjianki.presentation.HomeDashboard
 import dev.bee.kanjianki.presentation.KanjiDetail
 import dev.bee.kanjianki.presentation.OnboardingPlan
 import dev.bee.kanjianki.presentation.OnboardingStep
+import dev.bee.kanjianki.presentation.MissingKanjiScreen
 import dev.bee.kanjianki.presentation.SettingsScreen
 import dev.bee.kanjianki.presentation.StatsDashboard
 import dev.bee.kanjianki.presentation.StudyKeybindings
@@ -44,6 +45,15 @@ data class KaniRouteContent(
     val stats: StatsDashboard? = null,
     val games: GamesScreen? = null,
     val settings: SettingsScreen? = null,
+    /**
+     * The Missing Kanji screen, or null on every other route.
+     *
+     * Null off-route rather than an empty screen, so a host cannot accidentally
+     * render a stale report: the scan state lives with the host that ran the scan,
+     * and a route load for Home must not resurrect a report the user navigated away
+     * from.
+     */
+    val missingKanji: MissingKanjiScreen? = null,
     /**
      * The Study keybindings in force, for the Study surface and native accelerators.
      *
