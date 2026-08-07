@@ -690,7 +690,7 @@ path; unrelated UI tests use the fake provider in the normal local gate.
 adb logcat -c
 adb shell am instrument -w \
   -e kanjiLiveAnkiDroid true \
-  -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid \
+  -e class dev.bee.kanjianki.host.KaniHostLiveSyncInstrumentedTest#theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid \
   dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
@@ -703,9 +703,16 @@ OK (1 test)
 
 Important live tests:
 
-- `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`
+- `KaniHostLiveSyncInstrumentedTest.theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid`
   taps `Sync AnkiDroid`, confirms `Sync cards`, and verifies a
-  successful sync, dashboard rows, and study items.
+  successful sync, dashboard rows, and study items. This is the Goal 199 port
+  of `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`:
+  it launches `KaniHostActivity` (the launcher since the thin host took over)
+  and drives it entirely through `UiDevice`, so it does not depend on the
+  `MainActivity*` chain being present. The tapped labels come from
+  `HomeTextCopy` rather than string literals, so a copy change cannot silently
+  stop the gate from finding its own buttons. The old test still exists and
+  still passes while the chain does; it is the one being retired.
 - `RealAnkiDroidLiveProviderInstrumentedTest` reads the copied Kiku collection
   through the real AnkiDroid provider once and asserts at least 7,000 Kiku
   notes/cards plus real scheduler state. Its second test probes a same-value
