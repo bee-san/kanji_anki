@@ -291,6 +291,41 @@ class WorkflowAnalysisIntegrityTest(unittest.TestCase):
             ":writing-core:compileKotlin",
             ":dictionary-core:compileKotlin",
             ":update-core:compileKotlin",
+            # Every shared and desktop module, because CodeQL only reports on code it
+            # watched a compiler produce. Before this the scan covered 8 of 36 modules:
+            # the whole shared presentation/application/data layer and all of desktop
+            # were silently unscanned, so a finding there could not have been reported.
+            ":application:compileKotlin",
+            ":data-api:compileKotlin",
+            ":data-sql:compileKotlin",
+            ":sync-api:compileKotlin",
+            ":sync-engine:compileKotlin",
+            ":host-presentation:compileKotlin",
+            ":backup-core:compileKotlin",
+            ":progress-core:compileKotlin",
+            ":platform-contracts:compileKotlin",
+            ":reference-assets:compileKotlin",
+            ":data-desktop:compileKotlin",
+            ":platform-desktop:compileKotlin",
+            ":provider-ankiconnect:compileKotlin",
+            ":desktop-app:compileKotlin",
+            # The KMP modules compile their JVM target under the `Desktop` name; a plain
+            # `compileKotlin` does not exist for them and would fail the build.
+            ":presentation-api:compileKotlinDesktop",
+            ":ui-common:compileKotlinDesktop",
+            ":feature-shell:compileKotlinDesktop",
+            ":feature-home:compileKotlinDesktop",
+            ":feature-study:compileKotlinDesktop",
+            ":feature-stats:compileKotlinDesktop",
+            ":feature-games:compileKotlinDesktop",
+            ":feature-missing-kanji:compileKotlinDesktop",
+            ":feature-settings:compileKotlinDesktop",
+            # Android libraries need a variant-qualified task.
+            ":data-android:compileDebugKotlin",
+            ":provider-ankidroid:compileDebugKotlin",
+            ":platform-android:compileDebugKotlin",
+            ":automation-android:compileDebugKotlin",
+            ":widget:compileDebugKotlin",
             ":app:compileDebugKotlin",
             ":app:compileDebugJavaWithJavac",
             "--parallel",

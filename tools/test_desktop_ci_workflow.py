@@ -10,6 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 DESKTOP_WORKFLOW = ROOT / ".github/workflows/desktop-ci.yml"
 ANDROID_WORKFLOW = ROOT / ".github/workflows/android-ci.yml"
 ANDROID_SDK_ACTION = ROOT / ".github/actions/setup-android-sdk/action.yml"
+LIVE_ANKI_WORKFLOW = ROOT / ".github/workflows/desktop-live-anki.yml"
 
 
 def _mapping_block(document: str, key: str, indentation: int) -> str:
@@ -340,3 +341,105 @@ class AndroidSdkActionCrossPlatformContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DesktopLiveAnkiWorkflowContractTest(unittest.TestCase):
+    """The live Anki fixture workflow's isolation from every release path.
+
+    Goal 205 requires that Android Release cannot be blocked by desktop or Anki
+    service flakiness. This suite is the enforcement: the workflow boots a real Anki
+    process and talks to a real AnkiConnect, which is exactly the dependency that
+    made emulator jobs the top cause of blocked releases.
+    """
+
+    def setUp(self) -> None:
+        self.workflow = LIVE_ANKI_WORKFLOW.read_text(encoding="utf-8")
+
+    def test_it_runs_nightly_and_on_demand_only(self) -> None:
+        triggers = _mapping_block(self.workflow, "on", 0)
+
+        self.assertIn("workflow_dispatch:", triggers)
+        self.assertIn("schedule:", triggers)
+        # No push and no pull_request: a live-service job on every PR would make the
+        # deterministic gate hostage to a third-party process starting.
+        self.assertNotIn("push:", triggers)
+        self.assertNotIn("pull_request:", triggers)
+        # And not chained off another workflow, which is how it would become a
+        # release dependency without appearing to be one.
+        self.assertNotIn("workflow_run:", triggers)
+        self.assertNotIn("workflow_call:", triggers)
+
+    def test_no_release_workflow_depends_on_it(self) -> None:
+        # The name is what a `workflow_run` trigger would reference, so grepping every
+        # other workflow for it proves nothing chains off this one.
+        for other in sorted((ROOT / ".github/workflows").glob("*.yml")):
+            if other.name == "desktop-live-anki.yml":
+                continue
+            with self.subTest(workflow=other.name):
+                body = other.read_text(encoding="utf-8")
+                self.assertNotIn("Desktop Live Anki", body)
+                self.assertNotIn("desktop-live-anki", body)
+
+    def test_it_never_binds_the_operators_own_ankiconnect_port(self) -> None:
+        # 8765 is a real user's live AnkiConnect. A fixture that bound it could seed a
+        # test collection into somebody's actual profile.
+        #
+        # Checked on the operational lines only. The header comment explains *why* the
+        # script refuses 8765, and a naive scan of the whole file cannot tell that
+        # prose from a binding — the first version of this test failed on its own
+        # rationale.
+        operational = "\n".join(
+            line for line in self.workflow.splitlines() if not line.lstrip().startswith("#")
+        )
+        self.assertIn("KANI_ANKI_DESKTOP_PORT: '18765'", operational)
+        self.assertIn("http://127.0.0.1:18765", operational)
+        for line in operational.splitlines():
+            with self.subTest(line=line):
+                self.assertNotRegex(line, r"(?<![0-9])8765")
+
+    def test_the_suite_is_opt_in_and_pinned_to_the_fixture_endpoint(self) -> None:
+        self.assertIn("-Pkani.liveAnkiDesktop=true", self.workflow)
+        # Endpoint pinned explicitly rather than defaulted: the default is the
+        # operator's port, and a workflow that fell back to it would be talking to
+        # whatever Anki happened to be listening.
+        self.assertIn("-Pkani.liveAnkiDesktopEndpoint=http://127.0.0.1:18765", self.workflow)
+        self.assertIn("LiveAnkiDesktopQualificationTest", self.workflow)
+
+    def test_it_uses_the_repos_pinned_fixture_scripts(self) -> None:
+        # Not an inline reimplementation: the scripts carry the port guard, the
+        # pinned Anki version, and the pinned AnkiConnect commit.
+        self.assertIn("ci/scripts/run_anki_desktop_fixture.sh", self.workflow)
+        self.assertIn("ci/scripts/seed_anki_desktop_kiku_collection.py", self.workflow)
+
+    def test_readiness_is_polled_rather_than_slept(self) -> None:
+        # A fixed sleep is either flaky or slow. Polling with a bounded retry count
+        # fails the job when Anki never answers instead of running the suite against
+        # a host that is not up.
+        self.assertIn("curl", self.workflow)
+        self.assertIn('"action":"version"', self.workflow)
+        self.assertIn("did not answer", self.workflow)
+
+    def test_the_fixture_is_always_torn_down(self) -> None:
+        # A leaked Anki holds the port and breaks the next run on a reused runner.
+        self.assertIn("if: always()", self.workflow)
+        self.assertIn("Stop the fixture", self.workflow)
+
+    def test_it_is_bounded_and_read_only(self) -> None:
+        self.assertRegex(self.workflow, r"(?m)^    timeout-minutes: \d+$")
+        self.assertIn("permissions: {}", self.workflow)
+        self.assertIn("contents: read", self.workflow)
+        self.assertIn("cache-read-only: true", self.workflow)
+        self.assertIn("cancel-in-progress: true", self.workflow)
+
+    def test_no_collection_is_uploaded_as_an_artifact(self) -> None:
+        # A profile is a collection. Even a sanitized one should not become a
+        # downloadable artifact by default.
+        self.assertNotIn("kani-anki-desktop-fixture/**", self.workflow)
+        self.assertIn("provider-ankiconnect/build/reports/tests/test/**", self.workflow)
+
+    def test_all_remote_actions_use_immutable_full_shas(self) -> None:
+        for reference in re.findall(r"uses: ([^\s]+)", self.workflow):
+            if reference.startswith("./"):
+                continue
+            with self.subTest(action=reference):
+                self.assertRegex(reference, r"@[0-9a-f]{40}$")

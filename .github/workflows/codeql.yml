@@ -82,6 +82,34 @@ jobs:
             :dictionary-core:compileJava \
             :update-core:compileKotlin \
             :update-core:compileJava \
+            :reference-assets:compileKotlin \
+            :progress-core:compileKotlin \
+            :backup-core:compileKotlin \
+            :platform-contracts:compileKotlin \
+            :data-api:compileKotlin \
+            :data-sql:compileKotlin \
+            :sync-api:compileKotlin \
+            :sync-engine:compileKotlin \
+            :application:compileKotlin \
+            :host-presentation:compileKotlin \
+            :data-desktop:compileKotlin \
+            :provider-ankiconnect:compileKotlin \
+            :platform-desktop:compileKotlin \
+            :desktop-app:compileKotlin \
+            :presentation-api:compileKotlinDesktop \
+            :ui-common:compileKotlinDesktop \
+            :feature-shell:compileKotlinDesktop \
+            :feature-home:compileKotlinDesktop \
+            :feature-study:compileKotlinDesktop \
+            :feature-stats:compileKotlinDesktop \
+            :feature-games:compileKotlinDesktop \
+            :feature-missing-kanji:compileKotlinDesktop \
+            :feature-settings:compileKotlinDesktop \
+            :data-android:compileDebugKotlin \
+            :provider-ankidroid:compileDebugKotlin \
+            :platform-android:compileDebugKotlin \
+            :automation-android:compileDebugKotlin \
+            :widget:compileDebugKotlin \
             :app:compileDebugKotlin \
             :app:compileDebugJavaWithJavac \
             --parallel \
