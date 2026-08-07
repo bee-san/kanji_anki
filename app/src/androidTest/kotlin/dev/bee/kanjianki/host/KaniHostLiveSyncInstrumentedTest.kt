@@ -78,8 +78,7 @@ class KaniHostLiveSyncInstrumentedTest {
                 )
                 // The deterministic CI fixture carries only the 橋・箸・端 homophone set, so
                 // it is checked by name; a real collection is checked in aggregate.
-                val deterministicFixture =
-                    "1" == InstrumentationRegistry.getArguments().getString("kanjiLiveMinimumNotes")
+                val deterministicFixture = isDeterministicFixture()
                 val readingKanjiItems = if (deterministicFixture) {
                     items.filter { it.kanji in setOf("橋", "箸", "端") }
                 } else {
@@ -101,7 +100,7 @@ class KaniHostLiveSyncInstrumentedTest {
 
             // Last, and on the device rather than the store: the user has to be *told* the
             // sync finished, and a committed run the UI never reported is still a bug.
-            waitForDeviceText(HomeTextCopy.syncCompleteTitle(), LIVE_SYNC_TIMEOUT_MILLIS)
+            waitForDeviceText(HomeTextCopy.syncCompleteTitle(), UI_STEP_TIMEOUT_MILLIS)
         }
     }
 
@@ -113,7 +112,7 @@ class KaniHostLiveSyncInstrumentedTest {
      * accepts either rather than assuming a fixture.
      */
     private fun tapSyncEntryPoint() {
-        waitForDeviceText("Sync", TimeUnit.MINUTES.toMillis(2))
+        waitForDeviceText("Sync", UI_STEP_TIMEOUT_MILLIS)
         if (tapDeviceTextIfPresent(HomeTextCopy.syncAnkiDroidLabel())) return
         tapDeviceText("Sync")
     }
@@ -127,7 +126,7 @@ class KaniHostLiveSyncInstrumentedTest {
      * that is present but off screen.
      */
     private fun confirmFirstCollectionBinding() {
-        waitForFirstBindingRequirement(LIVE_SYNC_TIMEOUT_MILLIS)
+        waitForFirstBindingRequirement(FIRST_BIND_TIMEOUT_MILLIS)
         val label = SourceBindingRecoveryUi.firstBindLabel()
         val headline = SourceBindingRecoveryUi.presentation(
             SourceBindingReason.FIRST_BIND_REQUIRED,
@@ -135,7 +134,7 @@ class KaniHostLiveSyncInstrumentedTest {
             safeStorageAvailable = false,
         ).headline
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val deadline = SystemClock.uptimeMillis() + LIVE_SYNC_TIMEOUT_MILLIS
+        val deadline = SystemClock.uptimeMillis() + UI_STEP_TIMEOUT_MILLIS
         var sawRecovery = false
         var button: UiObject2? = null
         while (SystemClock.uptimeMillis() < deadline && button == null) {
@@ -173,11 +172,14 @@ class KaniHostLiveSyncInstrumentedTest {
      * means "still working", not "broken".
      */
     private fun waitForLiveSyncImport(startedAt: Long): LocalStoreBase.SyncStatus {
-        val deadline = SystemClock.uptimeMillis() + LIVE_SYNC_TIMEOUT_MILLIS
+        val budget = importBudgetMillis()
+        val deadline = SystemClock.uptimeMillis() + budget
+        var lastStatus: String? = null
         while (SystemClock.uptimeMillis() < deadline) {
             try {
                 LocalStore(context()).use { store ->
                     val status = store.latestSync()
+                    lastStatus = status?.status
                     if (status != null &&
                         status.status == "success" &&
                         status.finishedAt >= startedAt &&
@@ -191,8 +193,45 @@ class KaniHostLiveSyncInstrumentedTest {
             }
             SystemClock.sleep(1_000L)
         }
-        throw AssertionError("Timed out waiting for live sync to populate study items")
+        // Names what it last saw, because "timed out" alone cannot distinguish a sync that
+        // never started from one that failed from one still committing.
+        throw AssertionError(
+            "Timed out after ${budget / 1000}s waiting for live sync to populate study items; " +
+                "last recorded sync status was ${lastStatus ?: "none"}",
+        )
     }
+
+    /**
+     * How long the import may take, bounded by the harness that will kill us.
+     *
+     * The four-hour figure is right for a real user collection on a developer machine, and
+     * wrong inside a 75-minute CI job: the first dispatch of this gate waited past the job's
+     * own `timeout-minutes`, so the run was cancelled and the log showed the test's class name
+     * and nothing else — no assertion, no diagnosis. A caller can pass
+     * `-e kanjiLiveImportBudgetSeconds N` to cap it below the harness limit, and the
+     * deterministic CI fixture (`kanjiLiveMinimumNotes=1`) is a handful of notes that has no
+     * business taking more than a few minutes, so it gets a short default automatically.
+     */
+    private fun importBudgetMillis(): Long {
+        val args = InstrumentationRegistry.getArguments()
+        args.getString("kanjiLiveImportBudgetSeconds")?.toLongOrNull()?.let {
+            return TimeUnit.SECONDS.toMillis(it)
+        }
+        return if (isDeterministicFixture()) {
+            DETERMINISTIC_IMPORT_TIMEOUT_MILLIS
+        } else {
+            LIVE_SYNC_TIMEOUT_MILLIS
+        }
+    }
+
+    /**
+     * Whether this is the small synthesized CI collection rather than a real one.
+     *
+     * `kanjiLiveMinimumNotes=1` is how `run_ankidroid_fixture.sh` says "deterministic
+     * fixture"; a real-collection run leaves it at the 7,000 default.
+     */
+    private fun isDeterministicFixture(): Boolean =
+        "1" == InstrumentationRegistry.getArguments().getString("kanjiLiveMinimumNotes")
 
     /** Waits until the sync engine has recorded that it needs a first-bind acknowledgement. */
     private fun waitForFirstBindingRequirement(timeoutMillis: Long) {
@@ -235,7 +274,7 @@ class KaniHostLiveSyncInstrumentedTest {
     }
 
     private fun tapDeviceText(text: String) {
-        waitForDeviceText(text, TimeUnit.MINUTES.toMillis(2))
+        waitForDeviceText(text, UI_STEP_TIMEOUT_MILLIS)
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         assertNotNull("Missing tappable text: $text", findDeviceText(device, text))
         findDeviceText(device, text)!!.click()
@@ -273,12 +312,45 @@ class KaniHostLiveSyncInstrumentedTest {
 
     private companion object {
         /**
-         * Four hours, carried over unchanged.
+         * How long the *import itself* may take.
          *
-         * A real user collection is tens of thousands of notes and the import is deliberately
-         * one transaction; the old gate used this bound and shortening it here would turn a
-         * slow-but-correct release gate into a flaky one.
+         * Four hours, carried over from the old gate: a real user collection is tens of
+         * thousands of notes committed in one transaction, and shortening this would turn a
+         * slow-but-correct release gate into a flaky one. Only the two waits that genuinely
+         * span the import use it — [waitForLiveSyncImport] and the final "Sync complete".
          */
         val LIVE_SYNC_TIMEOUT_MILLIS: Long = TimeUnit.HOURS.toMillis(4)
+
+        /**
+         * How long any single UI step may take before the test gives up and says which one.
+         *
+         * Separate from the import bound, and the reason is a real failure: the first dispatch
+         * of this gate hung for 64 minutes and was killed by the job's own
+         * `timeout-minutes: 75`, so the log showed the class name and nothing else. A wait
+         * that outlives its harness cannot report anything — every UI step now fails inside
+         * the job with a message naming the text it was waiting for.
+         *
+         * Three minutes is generous for a button appearing while a sync runs in the
+         * background, and short enough that all of them together stay well inside the job.
+         */
+        val UI_STEP_TIMEOUT_MILLIS: Long = TimeUnit.MINUTES.toMillis(3)
+
+        /**
+         * How long to wait for the engine to record that it needs a first-bind acknowledgement.
+         *
+         * Its own bound because it is neither a UI step nor the import: the sync has to reach
+         * the provider and write a run row first, which on a cold emulator is slower than a
+         * button appearing but nothing like a full import.
+         */
+        val FIRST_BIND_TIMEOUT_MILLIS: Long = TimeUnit.MINUTES.toMillis(10)
+
+        /**
+         * The import bound for the small synthesized CI collection.
+         *
+         * A few notes, so anything past this is stuck rather than slow — and failing here
+         * leaves time inside a 75-minute job to report which step and what the last recorded
+         * sync status was.
+         */
+        val DETERMINISTIC_IMPORT_TIMEOUT_MILLIS: Long = TimeUnit.MINUTES.toMillis(20)
     }
 }

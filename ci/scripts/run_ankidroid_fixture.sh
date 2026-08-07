@@ -262,6 +262,12 @@ run_instrumentation_gate_once() {
       -e kanjiLiveMinimumNotes "${minimum_notes}"
     )
   fi
+  # Cap the import wait below the job's own timeout-minutes. Without this the app gate can
+  # wait past the point the harness kills it, and a cancelled job reports the test class name
+  # and nothing else -- no assertion, no last-seen sync status, nothing to diagnose.
+  instrumentation_args+=(
+    -e kanjiLiveImportBudgetSeconds "${KANJI_LIVE_IMPORT_BUDGET_SECONDS-1500}"
+  )
   instrumentation_args+=(
     -e class "${current_test_classes}"
     "${current_test_runner}"
