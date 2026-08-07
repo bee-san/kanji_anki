@@ -11,10 +11,12 @@ import dev.bee.kanjianki.application.SyncUseCases
 import dev.bee.kanjianki.data.desktop.DesktopProfileRepositories
 import dev.bee.kanjianki.data.desktop.DesktopStorageLayout
 import dev.bee.kanjianki.platform.AppLogger
+import dev.bee.kanjianki.platform.warning
 import dev.bee.kanjianki.platform.DeviceSettingsStore
 import dev.bee.kanjianki.platform.SecretPersistence
 import dev.bee.kanjianki.platform.info
 import dev.bee.kanjianki.platform.desktop.DesktopAppDirectories
+import dev.bee.kanjianki.platform.desktop.DesktopAppEventBus
 import dev.bee.kanjianki.platform.desktop.DesktopAppLifecycle
 import dev.bee.kanjianki.platform.desktop.DesktopDeviceSettingsStore
 import dev.bee.kanjianki.platform.desktop.DesktopFileAccess
@@ -102,6 +104,31 @@ internal class DesktopKaniContainer(
     val databaseFile: Path = profileDir.resolve(DesktopStorageLayout.DATABASE_FILE_NAME)
 
     override val appLifecycle = DesktopAppLifecycle()
+
+    /**
+     * The `VACUUM INTO` snapshot service, bound to this profile's database.
+     *
+     * Held here so the source path is the container's and never a caller's: a
+     * caller-supplied source would let a backup read a file outside the profile.
+     */
+    val databaseSnapshotService = DesktopDatabaseSnapshotService(databaseFile)
+
+    /**
+     * The committed-work event bus.
+     *
+     * One per container, because its subscribers' lifetimes are the profile's: a
+     * process-wide singleton would keep observers of a closed profile attached, and they
+     * would reload from a database that is no longer open.
+     *
+     * Observer failures are logged rather than dropped. A publish happens at the end of a
+     * committed transaction, so a failure here is a stale panel, not a failed sync — but
+     * one that leaves no trace is a panel that silently stops updating.
+     */
+    val appEventBus = DesktopAppEventBus(
+        onObserverFailure = { event, failure ->
+            logger.warning("Event observer failed for ${event.type}", failure)
+        },
+    )
 
     val appDirectories = DesktopAppDirectories.forProfile(
         profileDirectory = profileDir,
