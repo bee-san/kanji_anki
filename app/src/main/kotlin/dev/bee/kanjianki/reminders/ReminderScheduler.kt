@@ -9,7 +9,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.host.KaniHostActivity
-import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.automation.AndroidAlarmManagerGateway
@@ -369,7 +369,7 @@ object ReminderScheduler {
         )
         val studyIntent = Intent(context, KaniHostActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+            .putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true)
         val studyPendingIntent = PendingIntent.getActivity(
             context,
             STUDY_ACTION_REQUEST_CODE,
@@ -427,9 +427,9 @@ object ReminderScheduler {
         return Intent(context, KaniHostActivity::class.java)
             .apply {
                 if (family != ReminderFamily.SYNC.name) {
-                    putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+                    putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true)
                 } else {
-                    putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
+                    putExtra(KaniLaunchIntents.EXTRA_OPEN_HOME, true)
                 }
             }
             .setFlags(

@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
@@ -68,21 +69,21 @@ class LauncherShortcutsManifestTest {
             icon = "@drawable/ic_study_24",
             shortLabel = "@string/shortcut_study_short_label",
             longLabel = "@string/shortcut_study_long_label",
-            action = MainActivityBase.ACTION_OPEN_STUDY,
+            action = KaniLaunchIntents.ACTION_OPEN_STUDY,
         )
         assertShortcut(
             shortcuts.getValue("browse"),
             icon = "@drawable/ic_book_24",
             shortLabel = "@string/shortcut_browse_short_label",
             longLabel = "@string/shortcut_browse_long_label",
-            action = MainActivityBase.ACTION_OPEN_BROWSE,
+            action = KaniLaunchIntents.ACTION_OPEN_BROWSE,
         )
         assertShortcut(
             shortcuts.getValue("games"),
             icon = "@drawable/ic_game_24",
             shortLabel = "@string/shortcut_games_short_label",
             longLabel = "@string/shortcut_games_long_label",
-            action = MainActivityBase.ACTION_OPEN_GAMES,
+            action = KaniLaunchIntents.ACTION_OPEN_GAMES,
         )
     }
 

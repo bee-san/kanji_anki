@@ -14,15 +14,6 @@ SCRIPT = ROOT / "ci/scripts/classify_device_smoke.py"
 WORKFLOW = ROOT / ".github/workflows/android-device-smoke.yml"
 RISK_SCRIPT = ROOT / "ci/scripts/run_device_risk_suite.sh"
 SMOKE_SCRIPT = ROOT / "ci/scripts/run_device_smoke_suite.sh"
-GOAL165_RUNNER = ROOT / "ci/scripts/run_goal165_ui_baselines.sh"
-GOAL165_VALIDATOR = ROOT / "ci/scripts/validate_goal165_ui_baselines.py"
-GOAL165_TEST = (
-    ROOT
-    / "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/"
-    "Goal165AndroidRouteBaselineInstrumentedTest.kt"
-)
-GOAL165_CONTRACT = ROOT / "app/src/androidTest/assets/goal165/ui/route-state-catalog.snapshot.txt"
-GOAL165_ASSETS = ROOT / "app/src/androidTest/assets/goal165/ui"
 PROGUARD_RULES = ROOT / "app/proguard-rules.pro"
 
 SPEC = importlib.util.spec_from_file_location("classify_device_smoke", SCRIPT)
@@ -69,11 +60,9 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
         )
         self.assert_level(
             "full",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165AndroidRouteBaselineInstrumentedTest.kt",
         )
         self.assert_level(
             "full",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165SyncBaselineInstrumentedTest.kt",
         )
         self.assert_level(
             "full",
@@ -85,9 +74,12 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
         )
 
     def test_unannotated_instrumentation_change_does_not_claim_full_coverage(self) -> None:
+        # An instrumented file with no @DeviceRisk annotation must not claim the full lane.
+        # Named against a surviving suite: the previous example went with the MainActivity
+        # chain, and a path that no longer exists would make this pass for the wrong reason.
         self.assert_level(
             "smoke",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityGamesInstrumentedTest.kt",
+            "app/src/androidTest/kotlin/dev/bee/kanjianki/AttributionTextsInstrumentedTest.kt",
         )
 
     def test_every_full_risk_test_is_annotated_for_the_selected_runner_lane(self) -> None:
@@ -130,9 +122,7 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
             "gradle/libs.versions.toml",
             ".github/workflows/android-device-smoke.yml",
             "ci/scripts/classify_device_smoke.py",
-            "ci/scripts/run_goal165_ui_baselines.sh",
             "ci/scripts/run_device_risk_suite.sh",
-            "ci/scripts/validate_goal165_ui_baselines.py",
         )
         for path in full_paths:
             with self.subTest(path=path):
@@ -251,113 +241,11 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         )[1].split("}", maxsplit=1)[0]
         self.assertIn("void <init>();", registrar_rule)
 
-
-class Goal165BaselineRunnerContractTest(unittest.TestCase):
-    def setUp(self) -> None:
-        self.runner = GOAL165_RUNNER.read_text(encoding="utf-8")
-        self.instrumentation_test = GOAL165_TEST.read_text(encoding="utf-8")
-        self.risk_runner = RISK_SCRIPT.read_text(encoding="utf-8")
-
-    def contract_case_counts(self) -> tuple[int, int]:
-        sections: dict[str, list[str]] = {}
-        section = ""
-        for raw_line in GOAL165_CONTRACT.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if line.startswith("[") and line.endswith("]"):
-                section = line
-                sections[section] = []
-            elif line and section:
-                sections[section].append(line)
-        durable = len(sections["[durable-routes]"])
-        states = len(sections["[representative-states]"])
-        return durable + states, durable
-
-    def test_runner_pins_all_six_bounded_shards_and_exact_heavy_method(self) -> None:
-        self.assertTrue(os.access(GOAL165_RUNNER, os.X_OK))
-        self.assertIn("for shard_index in 0 1 2 3; do", self.runner)
-        self.assertIn('run_shard 1.0 "${shard_index}" 4', self.runner)
-        self.assertIn("for shard_index in 0 1; do", self.runner)
-        self.assertIn('run_shard 2.0 "${shard_index}" 2', self.runner)
-        self.assertIn(
-            "readonly test_class="
-            "'dev.bee.kanjianki.baseline.Goal165AndroidRouteBaselineInstrumentedTest'",
-            self.runner,
-        )
-        self.assertIn(
-            'readonly test_method="${test_class}#capturesOrComparesCatalogShard"',
-            self.runner,
-        )
-        self.assertIn("-e goal165RunBaselines true", self.runner)
-        self.assertIn("-e goal165FontScale", self.runner)
-        self.assertIn("-e goal165ShardIndex", self.runner)
-        self.assertIn("-e goal165ShardCount", self.runner)
-        self.assertIn("private const val MAX_CASES_PER_SHARD = 12", self.instrumentation_test)
-
-        normal_cases, accessibility_cases = self.contract_case_counts()
-        self.assertEqual((44, 19), (normal_cases, accessibility_cases))
-        normal_shards = [
-            len(range(index, normal_cases, 4))
-            for index in range(4)
-        ]
-        accessibility_shards = [
-            len(range(index, accessibility_cases, 2))
-            for index in range(2)
-        ]
-        self.assertEqual([11, 11, 11, 11], normal_shards)
-        self.assertEqual([10, 9], accessibility_shards)
-        self.assertLessEqual(max(normal_shards + accessibility_shards), 12)
-        self.assertEqual(63, normal_cases + accessibility_cases)
-
-    def test_runner_fails_closed_on_output_logcat_and_restores_device(self) -> None:
-        self.assertIn("trap restore_device EXIT", self.runner)
-        self.assertIn("trap 'exit 130' INT TERM", self.runner)
-        self.assertIn('run_tmp="$(mktemp -d', self.runner)
-        self.assertIn("host diagnostics directory is unavailable", self.runner)
-        self.assertIn('run_shard 1.0 "${shard_index}" 4 || exit 1', self.runner)
-        self.assertIn('run_shard 2.0 "${shard_index}" 2 || exit 1', self.runner)
-        self.assertIn(r"^OK \([0-9]+ tests?\)$", self.runner)
-        self.assertIn("INSTRUMENTATION_CODE: -1", self.runner)
-        self.assertIn("FAILURES!!!", self.runner)
-        self.assertIn("FATAL EXCEPTION", self.runner)
-        self.assertIn("DeadObjectException", self.runner)
-        self.assertIn("UiAutomation.*(error|exception)", self.runner)
-        self.assertIn("wm size reset", self.runner)
-        self.assertIn("wm density reset", self.runner)
-        self.assertIn("original_font_scale", self.runner)
-
-    def test_recording_stages_validates_repackages_and_runs_light_contracts(self) -> None:
-        self.assertIn('readonly staged_root="${run_tmp}/recorded-assets"', self.runner)
-        self.assertGreaterEqual(self.runner.count('python3 "${validator}"'), 2)
-        self.assertIn("./gradlew :app:assembleDebugAndroidTest", self.runner)
-        self.assertIn("run_lightweight_contracts", self.runner)
-        self.assertIn("record_install_started=true", self.runner)
-        self.assertIn("record_install_complete=true", self.runner)
-
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(GOAL165_VALIDATOR),
-                "--root",
-                str(GOAL165_ASSETS),
-                "--contract",
-                str(GOAL165_CONTRACT),
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        self.assertIn("63 PNGs and 63 semantics snapshots", result.stdout)
-
-    def test_heavy_capture_is_opt_in_not_part_of_generic_device_risk_suite(self) -> None:
-        capture_method = re.search(
-            r"@Test\s+fun capturesOrComparesCatalogShard\(\).*?"
-            r"@Test\s+@DeviceRisk",
-            self.instrumentation_test,
-            re.DOTALL,
-        )
-        self.assertIsNotNone(capture_method)
-        self.assertNotIn("capturesOrComparesCatalogShard", self.risk_runner)
-        self.assertNotIn("run_goal165_ui_baselines", self.risk_runner)
+# `Goal165BaselineRunnerContractTest` was removed with the `MainActivity*` chain. It pinned a
+# runner and an instrumented test that rendered the old host's screens into baseline images;
+# both retired with those screens. The equivalent coverage is the shared
+# `feature-*/src/{commonTest,androidHostTest}` render suites, which exercise the same window
+# and font-scale axes on both Android and desktop.
 
 
 if __name__ == "__main__":

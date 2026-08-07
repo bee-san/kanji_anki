@@ -57,75 +57,11 @@ class BackupAndRestoreInstrumentedTest {
         File(context.cacheDir, "backup-export-test.db.gz").delete()
     }
 
-    @Test
-    @SdkSuppress(minSdkVersion = 30)
-    fun panelRendersAndExportProducesStandaloneSqliteGzip() {
-        val panel = SettingsBackupPanelModel(
-            title = "Backup & restore",
-            body = "Export or restore Kani data.",
-            lastBackupLine = "Last automatic backup: not yet",
-            archiveCountLine = "0 automatic backups kept on this device",
-            exportLabel = "Export now",
-            onExport = Runnable {},
-            restoreLabel = "Restore from backup…",
-            onRestore = Runnable {},
-        )
-        composeRule.setContent {
-            SettingsSubmenuScreen(
-                SettingsSubmenuScreenModel(
-                    "Home",
-                    Runnable {},
-                    "Back",
-                    Runnable {},
-                    "Automation",
-                    "Manage automation.",
-                    listOf(panel),
-                ),
-            )
-        }
-        composeRule.onNodeWithTag("settings-panel-backup").assertIsDisplayed()
-        composeRule.onNodeWithText("Export now").assertIsDisplayed()
-
-        KaniTestDatabase.delete(context)
-        val dbFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
-        val preparation = LocalStore(context).use { store ->
-            store.writableDatabase.execSQL(
-                "INSERT OR REPLACE INTO settings(key, value, updated_at) VALUES ('export_probe', 'yes', 1)",
-            )
-            BackupExportOperations.prepare(context.cacheDir, dbFile, 1_778_832_000_000L) { _, destination ->
-                store.snapshotInto(destination)
-            }
-        }
-        assertTrue(preparation is BackupExportPreparation.Ready)
-        val prepared = (preparation as BackupExportPreparation.Ready).export
-        val destination = File(context.cacheDir, "backup-export-test.db.gz")
-        val copied = BackupExportOperations.copyToFile(
-            prepared,
-            PlatformFileReference.create(
-                "content://dev.bee.kanjianki.test/export",
-                destination.name,
-            ),
-            object : PlatformFileAccess {
-                override fun openInput(file: PlatformFileReference) = null
-
-                override fun openOutput(file: PlatformFileReference) =
-                    FileOutputStream(destination)
-            },
-        )
-        assertTrue(copied.success)
-        val header = GZIPInputStream(destination.inputStream()).use { gzip ->
-            ByteArray(16).also { bytes ->
-                var offset = 0
-                while (offset < bytes.size) {
-                    val read = gzip.read(bytes, offset, bytes.size - offset)
-                    assertTrue(read > 0)
-                    offset += read
-                }
-            }
-        }
-        assertEquals("SQLite format 3\u0000", header.toString(Charsets.US_ASCII))
-    }
-
+    // `panelRendersAndExportProducesStandaloneSqliteGzip` was removed with the
+    // `MainActivity*` chain: it rendered the old Settings backup panel, which no longer
+    // exists. Export is covered without a screen by `AndroidBackupExportTest`, and the two
+    // restore tests below are store-level, which is where the atomic-publication contract
+    // actually lives.
     @Test
     @SdkSuppress(minSdkVersion = 30)
     fun applicationStartupHookAppliesStagedOlderFixtureBeforeActivityOpen() {
@@ -160,22 +96,22 @@ class BackupAndRestoreInstrumentedTest {
         assertFalse(BackupRestoreStager.stagedFile(context.filesDir).exists())
         assertFalse(BackupRestoreStager.markerFile(context.filesDir).exists())
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(KaniLaunchIntents.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
-        }
-        ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.store.readableDatabase.rawQuery(
-                    "SELECT value FROM settings WHERE key = 'restore_probe'",
-                    null,
-                ).use { cursor ->
-                    assertTrue(cursor.moveToFirst())
-                    assertEquals("visible", cursor.getString(0))
-                }
-                activity.store.readableDatabase.rawQuery("PRAGMA user_version", null).use { cursor ->
-                    assertTrue(cursor.moveToFirst())
-                    assertEquals(LocalStoreSchema.DB_VERSION, cursor.getInt(0))
-                }
+        // Read the published database directly rather than through an activity's `store`.
+        // The restore's contract is about what startup published, not about which screen
+        // happens to open afterwards, and a fresh `LocalStore` opens exactly the file the
+        // atomic replacement left behind. This also drops the last reason for this test to
+        // know an Activity type at all.
+        LocalStore(context).use { store ->
+            store.readableDatabase.rawQuery(
+                "SELECT value FROM settings WHERE key = 'restore_probe'",
+                null,
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("visible", cursor.getString(0))
+            }
+            store.readableDatabase.rawQuery("PRAGMA user_version", null).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(LocalStoreSchema.DB_VERSION, cursor.getInt(0))
             }
         }
     }

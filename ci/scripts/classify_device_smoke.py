@@ -56,9 +56,7 @@ FULL_RELEASE_FILES = frozenset(
         "app/build.gradle.kts",
         "app/proguard-rules.pro",
         "ci/scripts/classify_device_smoke.py",
-        "ci/scripts/run_goal165_ui_baselines.sh",
         "ci/scripts/run_device_risk_suite.sh",
-        "ci/scripts/validate_goal165_ui_baselines.py",
         "gradle/libs.versions.toml",
     },
 )
@@ -66,14 +64,8 @@ FULL_RELEASE_FILES = frozenset(
 FULL_ANDROID_TEST_FILES = frozenset(
     {
         "app/src/androidTest/kotlin/dev/bee/kanjianki/BackupAndRestoreInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/BrowseStudyQueueInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/LadderSchedulerEndToEndTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityPrimaryRouteSmokeInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityStudyRouteSmokeInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/StudySevenItemRouteInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidSyncProviderIntegrationInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165AndroidRouteBaselineInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/baseline/Goal165SyncBaselineInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/backup/DatabaseBackupWorkerInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/data/LocalStoreInstrumentedTest.kt",
         "app/src/androidTest/kotlin/dev/bee/kanjianki/sync/ManualSyncEngineInstrumentedTest.kt",

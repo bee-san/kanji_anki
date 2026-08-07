@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">カニ</string>
-    <string name="copied_anki_search">コピーしました</string>
     <string name="kani_widget_description">今日の学習状況をひと目で確認します。</string>
     <string name="kani_widget_loading">カニを読み込み中…</string>
     <string name="kani_widget_preview_count">復習できるカード12件</string>

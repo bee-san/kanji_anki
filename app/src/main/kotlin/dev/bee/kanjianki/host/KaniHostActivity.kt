@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.core.content.ContextCompat
 import dev.bee.kanjianki.hostpresentation.AutomationSettingsStore
 import dev.bee.kanjianki.AndroidKaniContainer
-import dev.bee.kanjianki.canRequestPackageInstalls
 import dev.bee.kanjianki.reminders.ReminderScheduler
 import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.update.GitHubUpdater

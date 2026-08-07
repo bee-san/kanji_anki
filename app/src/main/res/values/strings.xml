@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Kani</string>
-    <string name="copied_anki_search">Copied</string>
     <string name="kani_widget_description">See today’s study status at a glance.</string>
     <string name="kani_widget_loading">Loading Kani…</string>
     <string name="kani_widget_preview_count">12 reviews ready</string>

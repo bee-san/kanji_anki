@@ -49,18 +49,7 @@
                 android:resource="@xml/shortcuts" />
         </activity>
         <!--
-            The pre-Goal-199 host, kept declared but no longer the entry point while its
-            ~170-file inheritance chain is removed in its own commit. Not exported: nothing
-            outside the app may start it, and nothing inside does either now that the
-            notification/widget/shortcut intents name the host above.
-        -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize" />
-        <!--
-            Kani initializes scheduler/update work explicitly from MainActivityStartup,
+            Kani initializes scheduler/update work explicitly from its own host,
             and does not use AndroidX Startup consumers. Removing the provider keeps
             transitive EmojiCompat/ProcessLifecycle/ProfileInstaller initializers out
             of the cold activity-start path.

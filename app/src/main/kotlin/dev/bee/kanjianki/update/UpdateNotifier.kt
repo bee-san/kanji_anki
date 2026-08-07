@@ -8,7 +8,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import dev.bee.kanjianki.host.KaniHostActivity
-import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.R
 import dev.bee.kanjianki.notifications.AndroidNotificationGateway
 import dev.bee.kanjianki.updatecore.UpdateNotificationPolicy
@@ -119,7 +119,7 @@ object UpdateNotifier {
     @JvmStatic
     fun updateOpenIntent(context: Context): Intent {
         return Intent(context, KaniHostActivity::class.java)
-            .putExtra(MainActivityBase.EXTRA_OPEN_UPDATE, true)
+            .putExtra(KaniLaunchIntents.EXTRA_OPEN_UPDATE, true)
             .setFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
