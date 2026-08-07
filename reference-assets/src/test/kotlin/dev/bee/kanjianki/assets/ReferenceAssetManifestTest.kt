@@ -23,7 +23,15 @@ class ReferenceAssetManifestTest {
         manifest.assets.forEach { asset ->
             assertTrue("every asset carries an attribution", asset.license.attribution.isNotBlank())
             assertTrue("every asset has a target", asset.extractionTarget.startsWith("reference/"))
-            assertTrue("bundled hashes are placeholders until binaries land", asset.hasPlaceholderHash())
+            // Real digests, not placeholders. This previously asserted the opposite —
+            // it pinned the incomplete state, so recording the true hashes failed it.
+            // The durable property is that a shipped asset is verifiable at all: a
+            // placeholder means the verifier cannot check the bytes it installs.
+            assertFalse(
+                "a bundled asset must carry its real digest: ${asset.id}",
+                asset.hasPlaceholderHash(),
+            )
+            assertEquals(64, asset.expectedSha256.length)
         }
     }
 

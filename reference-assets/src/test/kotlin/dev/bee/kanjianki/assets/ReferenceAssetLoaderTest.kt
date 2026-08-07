@@ -15,7 +15,7 @@ import org.junit.Test
 class ReferenceAssetLoaderTest {
     @Test
     fun missingCacheExtractsAndInstallsEveryAsset() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val cache = FakeCache()
         val outcomes = ReferenceAssetLoader(manifest, packagedSource(), cache).loadAll()
 
@@ -30,7 +30,7 @@ class ReferenceAssetLoaderTest {
 
     @Test
     fun freshCacheIsReusedWithoutReinstalling() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val cache = FakeCache()
         val loader = ReferenceAssetLoader(manifest, packagedSource(), cache)
         loader.loadAll()
@@ -43,7 +43,7 @@ class ReferenceAssetLoaderTest {
 
     @Test
     fun anOldFormatVersionUpgrades() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val asset = manifest.byId("kanji_dictionary")!!
         val cache = FakeCache()
         cache.seed(asset, formatVersion = asset.formatVersion - 1, sha = "seed")
@@ -75,7 +75,7 @@ class ReferenceAssetLoaderTest {
 
     @Test
     fun aMissingPackagedFileIsIsolatedNotFatal() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val source = PackagedAssetSource { asset ->
             if (asset.id == "study_font") throw IOException("asset not found")
             packagedSource().open(asset)
@@ -130,7 +130,7 @@ class ReferenceAssetLoaderTest {
 
     @Test
     fun concurrentLoadsAllSucceed() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val threads = 8
         val executor = Executors.newFixedThreadPool(threads)
         val start = CountDownLatch(1)
@@ -153,7 +153,7 @@ class ReferenceAssetLoaderTest {
 
     @Test
     fun cancellationBeforeInstallLeavesNoPartialCacheEntry() {
-        val manifest = ReferenceAssetManifest.bundled()
+        val manifest = fixtureManifest()
         val asset = manifest.byId("kanji_dictionary")!!
         val cache = FakeCache()
         // A source that throws mid-stream models an interrupted extraction; the
@@ -171,6 +171,37 @@ class ReferenceAssetLoaderTest {
         val outcome = ReferenceAssetLoader(manifest, source, cache).load(asset)
         assertFalse(outcome.succeeded())
         assertTrue("a cancelled extraction installs nothing", cache.installed.isEmpty())
+    }
+
+    /**
+     * The bundled manifest with each hash restated as its test fixture's digest.
+     *
+     * These tests cover extraction, verification, caching, and failure isolation — not
+     * which bytes ship. They previously used `bundled()` directly, which only worked
+     * while its hashes were placeholders the verifier skipped; now that it carries real
+     * digests, using it would require shipping the real 1.6 MB font as a test resource
+     * to make a caching test pass.
+     *
+     * Derived from `bundled()` rather than hardcoded, so the asset *set* still comes
+     * from one place: adding an asset to the manifest without a fixture fails here
+     * loudly instead of being silently untested.
+     */
+    private fun fixtureManifest(): ReferenceAssetManifest {
+        val bundled = ReferenceAssetManifest.bundled()
+        return bundled.copy(
+            assets = bundled.assets.map { asset ->
+                asset.copy(expectedSha256 = fixtureDigest(asset.fileName))
+            },
+        )
+    }
+
+    private fun fixtureDigest(fileName: String): String {
+        val resource = "/reference-assets/$fileName"
+        val bytes = javaClass.getResourceAsStream(resource)?.use { it.readBytes() }
+            ?: throw IOException("missing test resource $resource")
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .joinToString("") { byte -> "%02x".format(byte) }
     }
 
     private fun packagedSource(): PackagedAssetSource =

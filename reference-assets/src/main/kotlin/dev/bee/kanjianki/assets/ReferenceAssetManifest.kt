@@ -43,7 +43,18 @@ data class ReferenceAssetManifest(
 
         /**
          * The bundled manifest. Kinds and license records are final; the SHA-256
-         * values are placeholders until the licensed binaries are checked in.
+         * Every hash is the real digest of the asset as checked into this repo,
+         * recorded 2026-08-07. They were placeholders before that, on the belief that
+         * the licensed binaries were still outstanding — but all four were already
+         * present, two of them under names the manifest did not use
+         * (`kanji_strokes.tsv`, not `kanjivg_strokes.db`; `cinecaption_regular.ttf`,
+         * not `study_font.otf`). Nothing in production read `bundled()`, so the
+         * mismatch never failed a build; it only made the manifest describe assets
+         * that did not exist.
+         *
+         * `PLACEHOLDER_SHA256` and [ReferenceAsset.hasPlaceholderHash] stay: a future
+         * asset can legitimately be declared before it is sourced, and the verifier
+         * needs to keep reporting that state rather than pretending to check it.
          */
         fun bundled(): ReferenceAssetManifest =
             ReferenceAssetManifest(
@@ -53,7 +64,7 @@ data class ReferenceAssetManifest(
                         id = "kanji_dictionary",
                         kind = ReferenceAssetKind.DICTIONARY_DATABASE,
                         fileName = "kanji_dictionary.db",
-                        expectedSha256 = PLACEHOLDER_SHA256,
+                        expectedSha256 = "ebaead1723adcc6212722609484c2549779999f1c37ffabc46cc0150bbf47fe9",
                         formatVersion = 2,
                         extractionTarget = "reference/kanji_dictionary.db",
                         license = ReferenceAssetLicense(
@@ -67,7 +78,7 @@ data class ReferenceAssetManifest(
                         id = "jiten_kanji_rank",
                         kind = ReferenceAssetKind.FREQUENCY_RANKS,
                         fileName = "jiten_kanji_rank.csv",
-                        expectedSha256 = PLACEHOLDER_SHA256,
+                        expectedSha256 = "ffbe5c0844443367fa0def82d97a3339e29efb4018376607e61f5065a60ef2a9",
                         formatVersion = 1,
                         extractionTarget = "reference/jiten_kanji_rank.csv",
                         license = ReferenceAssetLicense(
@@ -80,10 +91,13 @@ data class ReferenceAssetManifest(
                     ReferenceAsset(
                         id = "kanjivg_strokes",
                         kind = ReferenceAssetKind.STROKE_GUIDES,
-                        fileName = "kanjivg_strokes.db",
-                        expectedSha256 = PLACEHOLDER_SHA256,
+                        // A TSV of normalized stroke coordinates, not a database: the
+                        // generator emits `kanji_strokes.tsv` from KanjiVG, and the
+                        // manifest previously named a `.db` that has never existed.
+                        fileName = "kanji_strokes.tsv",
+                        expectedSha256 = "f4039d680f463e6f161302f637219b5b2e192d9f5cec30ef9d288f8595eedac3",
                         formatVersion = 1,
-                        extractionTarget = "reference/kanjivg_strokes.db",
+                        extractionTarget = "reference/kanji_strokes.tsv",
                         license = ReferenceAssetLicense(
                             name = "KanjiVG",
                             spdxOrName = "CC BY-SA 3.0",
@@ -94,10 +108,12 @@ data class ReferenceAssetManifest(
                     ReferenceAsset(
                         id = "study_font",
                         kind = ReferenceAssetKind.STUDY_FONT,
-                        fileName = "study_font.otf",
-                        expectedSha256 = PLACEHOLDER_SHA256,
+                        // The bundled typeface, a TTF rather than the OTF the manifest
+                        // previously claimed.
+                        fileName = "cinecaption_regular.ttf",
+                        expectedSha256 = "01e1d9620f8084fa58c33d8a0ac11d5ac5a11a29cfef8c623904ffde02e5ef26",
                         formatVersion = 1,
-                        extractionTarget = "reference/study_font.otf",
+                        extractionTarget = "reference/cinecaption_regular.ttf",
                         license = ReferenceAssetLicense(
                             name = "Study font",
                             spdxOrName = "SIL Open Font License 1.1",
