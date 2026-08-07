@@ -145,6 +145,17 @@ warmup run before measuring. **The 5s budget was not changed** — it was chosen
 for a reason, and the correct repair was to make the measurement mean what the
 budget assumes, not to move the line until the flake stopped.
 
+`ManualKanjiAdmissionPolicyTest.fiveThousandCandidatesPlanAndMergeWithinRegressionBudget`
+had the same defect in a worse form: a *single* cold timed run against a 2s
+budget, so the number was mostly JIT compilation of the merge path. It failed
+twice on Windows Desktop CI while Linux and macOS passed the same commits, and
+passed on re-run with nothing changed. With one warmup discarded it measures
+**0.43s** — the cold run was the entire margin. The 2s budget is unchanged.
+
+The general lesson, since two tests had it: a wall-clock budget whose first
+iteration is also its only iteration is not measuring the code. Before
+suspecting a shared runner, check whether the test warms up.
+
 ## Not yet measured, and not estimated
 
 Goal 203 also asks for first sync, a 7,000+ note sync, dashboard load, Study

@@ -37,6 +37,16 @@ class StatsPrecomputePerformanceSmokeTest {
     @Test
     fun refreshDirectlyProducesCurrentCacheWithoutLegacyModelBuilder() {
         lateinit var snapshot: StatsCacheStore.Snapshot
+        // One discarded warmup, then measure — the same defect the forecast budget below
+        // had. A single cold run charges this budget for JIT compilation of the whole
+        // precompute path plus Robolectric's first touch of the SQLite layer.
+        //
+        // Repeating `refresh` is safe: it recomputes from the store and republishes the
+        // cache row for the timestamp it is given, so a second call with the same
+        // `generatedAtMillis` produces the same snapshot rather than accumulating state.
+        // The assertions below check that the *measured* run produced a valid snapshot.
+        StatsPrecomputeStore(store).refresh(generatedAtMillis = 44_444L)
+
         val elapsed = measureTimeMillis {
             snapshot = StatsPrecomputeStore(store).refresh(generatedAtMillis = 44_444L)
         }

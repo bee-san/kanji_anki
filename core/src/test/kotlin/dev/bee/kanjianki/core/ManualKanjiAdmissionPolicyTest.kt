@@ -204,8 +204,7 @@ class ManualKanjiAdmissionPolicyTest {
             )
         }
         lateinit var rows: List<RecordsImportModels.DashboardRow>
-
-        val elapsed = measureTimeMillis {
+        fun merge() {
             rows = ManualKanjiAdmissionPolicy.mergeRows(
                 emptyList(),
                 candidates,
@@ -213,8 +212,27 @@ class ManualKanjiAdmissionPolicyTest {
             )
         }
 
+        // One discarded warmup, then the fastest of three. This previously timed a
+        // single cold run, so the number included JIT compilation of the whole merge
+        // path — it failed twice on Windows CI while Linux and macOS passed the same
+        // commits, and passed on re-run without any code changing. A budget that fails
+        // for reasons that are not Kani's gets bumped or deleted rather than believed.
+        //
+        // The 2s budget is unchanged: it is meant to catch an order-of-magnitude
+        // regression in admission planning, and it still does. What changed is that the
+        // measurement now describes the code rather than the JIT.
+        merge()
+
+        var fastestElapsed = Long.MAX_VALUE
+        repeat(3) {
+            fastestElapsed = minOf(fastestElapsed, measureTimeMillis { merge() })
+        }
+
         assertEquals(5_000, rows.size)
-        assertTrue("5,000-row admission planning took ${elapsed}ms", elapsed < 2_000L)
+        assertTrue(
+            "fastest 5,000-row admission planning took ${fastestElapsed}ms",
+            fastestElapsed < 2_000L,
+        )
     }
 
     private fun candidate(
