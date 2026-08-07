@@ -131,6 +131,20 @@ build over.
 Raise a budget only with a fresh recorded measurement here saying why. Do not
 raise one to make a run pass.
 
+### A flake that was a measurement bug, not a tight budget
+
+`StatsPrecomputePerformanceSmokeTest.twoHundredItemForecastStaysWithinJvmBudget`
+failed twice in ten SonarQube runs (2026-08-07) while `Android CI` passed the
+same commits. Measured on an idle Cloud Desktop it took 3.1s of its 5s budget —
+under 2x headroom on a test whose first iteration carries its own JIT
+compilation and Robolectric class loading.
+
+The test took the fastest of three timed runs, but with no warmup the first run
+could dominate that minimum on a loaded shared runner. Fixed by discarding one
+warmup run before measuring. **The 5s budget was not changed** — it was chosen
+for a reason, and the correct repair was to make the measurement mean what the
+budget assumes, not to move the line until the flake stopped.
+
 ## Not yet measured, and not estimated
 
 Goal 203 also asks for first sync, a 7,000+ note sync, dashboard load, Study
