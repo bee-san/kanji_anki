@@ -106,7 +106,16 @@ class KaniHostLiveSyncInstrumentedTest {
 
             // Last, and on the device rather than the store: the user has to be *told* the
             // sync finished, and a committed run the UI never reported is still a bug.
-            waitForDeviceText(HomeTextCopy.syncCompleteTitle(), UI_STEP_TIMEOUT_MILLIS)
+            //
+            // The signal is Home's sync tile reading "Up to date", not a "Sync complete"
+            // toast. That distinction is the whole point of the port: the old MainActivity
+            // showed a transient completion toast, but the shared Home surface reports
+            // success durably on the SYNC metric tile (DesktopHomeModels.homeMetrics ->
+            // syncMetricStatus(upToDate = true)) and shows no toast at all. Asserting on the
+            // old toast is what failed this run *after every store-level check had passed* —
+            // the sync had succeeded and Home already said so. A durable tile is also the
+            // better thing to wait on: a toast can dismiss before the assertion looks.
+            waitForDeviceText(HomeTextCopy.syncMetricStatus(true), UI_STEP_TIMEOUT_MILLIS)
         }
     }
 
