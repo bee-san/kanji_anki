@@ -156,6 +156,20 @@ The general lesson, since two tests had it: a wall-clock budget whose first
 iteration is also its only iteration is not measuring the code. Before
 suspecting a shared runner, check whether the test warms up.
 
+**Then measure, before concluding anything.** The forecast test failed once more
+on SonarQube after the warmup fix, so the samples were printed rather than
+guessed at: the forecast runs in **~830ms**, stable to within 3% across samples
+(`[851, 824, 828]`, idle Cloud Desktop, 2026-08-10). A 5s budget therefore has
+about **6x headroom on the work it measures** — so a failure at 5s is not this
+code getting slower, it is the machine, and on the SonarQube job it means 830ms
+of work took over 5000ms while a Sonar scan competed for CPU.
+
+The budget was still not raised. 5s against 830ms is already the right shape for
+catching an order-of-magnitude regression, which is the only thing a wall-clock
+gate can honestly detect; raising it would weaken the gate everywhere to
+accommodate one job's scheduling. What changed is the sample count, so a single
+descheduled window cannot decide the outcome on its own.
+
 ## Not yet measured, and not estimated
 
 Goal 203 also asks for first sync, a 7,000+ note sync, dashboard load, Study
