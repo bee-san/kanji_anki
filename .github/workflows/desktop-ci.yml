@@ -128,6 +128,26 @@ jobs:
           --dependency-verification=strict
           --no-daemon --no-build-cache
 
+      # Kept, not discarded: `ciDesktopPackage` above already built this host's
+      # installer, so retaining it turns the PR into the place a build is downloaded
+      # from. No `if:` guard is needed or wanted: a step runs only when prior steps
+      # succeeded, so a run that failed its gate uploads nothing — and an explicit
+      # condition here trips the contract test that keeps the strict gate block free
+      # of `if:`, which exists so the gate cannot be quietly made skippable.
+      - name: Upload the installable package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: kani-desktop-${{ matrix.host_id }}
+          # All three format directories are listed for every host; jpackage builds
+          # only the current OS's, so the other two simply do not exist. That is why
+          # this warns rather than errors on a miss, unlike a single-format upload.
+          path: |
+            desktop-app/build/compose/binaries/main/deb/*.deb
+            desktop-app/build/compose/binaries/main/msi/*.msi
+            desktop-app/build/compose/binaries/main/dmg/*.dmg
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Upload failed desktop diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
