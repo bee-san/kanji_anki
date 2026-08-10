@@ -1,0 +1,25 @@
+<resources>
+    <!--
+      Missing Kanji structural copy. The scan summary, row meanings/readings, rank
+      lines, and operation-result text are host-computed and reach the surface as plain
+      strings on the portable model. Only the chrome the shell adds itself — the
+      first-run and provider states, the selection controls, and the destination button
+      labels — is here.
+    -->
+    <string name="missing_first_run_title">Find missing kanji</string>
+    <string name="missing_first_run_body">Scan your collection for common kanji you have not added yet.</string>
+    <string name="missing_provider_missing_title">No collection connected</string>
+    <string name="missing_provider_missing_body">Connect a collection to scan for missing kanji.</string>
+    <string name="missing_permission_title">Permission needed</string>
+    <string name="missing_permission_body">Grant Kani access to read your collection.</string>
+    <string name="missing_error_title">Scan failed</string>
+    <string name="missing_scanning">Scanning…</string>
+    <string name="missing_cancel">Cancel</string>
+    <string name="missing_select_all">Select all</string>
+    <string name="missing_clear">Clear</string>
+    <string name="missing_add_to_kani">Add to Kani</string>
+    <string name="missing_create_anki">Create in Anki</string>
+    <string name="missing_export_csv">Export CSV</string>
+    <string name="missing_dismiss">Done</string>
+    <string name="missing_selection">%1$d selected</string>
+</resources>

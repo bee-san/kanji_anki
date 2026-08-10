@@ -41,7 +41,7 @@ class StrokeOrderDiagramPolicyTest {
         assertTrue(panel.strokes[0].highlighted)
         assertNotNull(panel.startPoint)
         assertEquals(0.1f, panel.startPoint!!.x, 0.001f)
-        assertEquals(0.2f, panel.startPoint!!.y, 0.001f)
+        assertEquals(0.2f, panel.startPoint.y, 0.001f)
     }
 
     @Test

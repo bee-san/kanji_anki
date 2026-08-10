@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Architecture contracts for Kani's current and target module graphs."""
+"""Architecture contracts for Kani's current, migration, and final module graphs."""
 
 from __future__ import annotations
 
@@ -9,105 +9,360 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PURE_MODULES = (
+CURRENT_SHARED_JVM_MODULES = (
     "domain",
     "dictionary-core",
-    "fsrs-java",
+    "bee-fsrs",
     "sync-domain",
     "writing-core",
     "update-core",
     "core",
 )
-FEATURE_MODULES = frozenset(
+NEW_SHARED_JVM_MODULES = frozenset(
     {
+        "application",
+        "backup-core",
+        "data-api",
+        "data-sql",
+        "host-presentation",
+        "platform-contracts",
+        "progress-core",
+        "reference-assets",
+        "sync-api",
+        "sync-engine",
+    },
+)
+LEAF_FEATURE_MODULES = frozenset(
+    {
+        "feature-games",
+        "feature-home",
+        "feature-missing-kanji",
+        "feature-settings",
+        "feature-stats",
+        "feature-study",
+    },
+)
+SHARED_PRESENTATION_MODULES = frozenset(
+    {
+        "feature-shell",
+        "presentation-api",
+        "ui-common",
+        *LEAF_FEATURE_MODULES,
+    },
+)
+ANDROID_MODULES = frozenset(
+    {
+        "app",
+        "automation-android",
+        "data-android",
+        "platform-android",
+        "provider-ankidroid",
+        "widget",
+    },
+)
+DESKTOP_MODULES = frozenset(
+    {
+        "data-desktop",
+        "desktop-app",
+        "platform-desktop",
+        "provider-ankiconnect",
+    },
+)
+FINAL_MODULES = frozenset(
+    {
+        *CURRENT_SHARED_JVM_MODULES,
+        *NEW_SHARED_JVM_MODULES,
+        *SHARED_PRESENTATION_MODULES,
+        *ANDROID_MODULES,
+        *DESKTOP_MODULES,
+    },
+)
+EXPECTED_CURRENT_MODULES = frozenset(
+    {
+        *CURRENT_SHARED_JVM_MODULES,
+        "platform-contracts",
+        "presentation-api",
+        "progress-core",
+        "ui-common",
+        "feature-shell",
         "feature-home",
         "feature-study",
         "feature-stats",
+        "feature-games",
+        "feature-missing-kanji",
         "feature-settings",
-    },
-)
-TARGET_ANDROID_MODULES = frozenset(
-    {
-        "app",
-        "automation",
-        "data",
-        "sync-android",
-        "ui-common",
+        "data-api",
+        "data-sql",
+        "data-desktop",
+        "provider-ankiconnect",
+        "platform-desktop",
+        "reference-assets",
+        "backup-core",
+        "sync-api",
+        "sync-engine",
+        "application",
+        "host-presentation",
+        "data-android",
+        "provider-ankidroid",
+        "platform-android",
+        "automation-android",
         "widget",
-        *FEATURE_MODULES,
+        "app",
+        "desktop-app",
     },
 )
-TARGET_MODULES = frozenset({*PURE_MODULES, *TARGET_ANDROID_MODULES})
-EXPECTED_CURRENT_MODULES = frozenset({*PURE_MODULES, "app"})
 MODULE_CLASSES = {
-    **dict.fromkeys(PURE_MODULES, "pure-jvm"),
-    "data": "persistence",
-    "ui-common": "shared-ui",
-    **dict.fromkeys(FEATURE_MODULES, "feature"),
-    "sync-android": "android-platform",
-    "automation": "android-platform",
+    **dict.fromkeys(CURRENT_SHARED_JVM_MODULES, "shared-jvm-policy"),
+    **dict.fromkeys(NEW_SHARED_JVM_MODULES, "shared-jvm-application"),
+    "presentation-api": "shared-presentation-api",
+    "ui-common": "shared-presentation-ui",
+    **dict.fromkeys(LEAF_FEATURE_MODULES, "shared-feature"),
+    "feature-shell": "shared-feature-aggregator",
+    "data-android": "android-data-adapter",
+    "provider-ankidroid": "android-provider-adapter",
+    "platform-android": "android-platform-adapter",
+    "automation-android": "android-automation-adapter",
     "widget": "android-platform",
-    "app": "composition-root",
+    "app": "android-composition-root",
+    "data-desktop": "desktop-data-adapter",
+    "provider-ankiconnect": "desktop-provider-adapter",
+    "platform-desktop": "desktop-platform-adapter",
+    "desktop-app": "desktop-composition-root",
 }
 CURRENT_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
     "dictionary-core": frozenset(),
-    "fsrs-java": frozenset(),
+    "bee-fsrs": frozenset(),
     "sync-domain": frozenset({"domain"}),
     "writing-core": frozenset({"domain"}),
     "update-core": frozenset(),
+    "platform-contracts": frozenset(),
+    "presentation-api": frozenset(),
+    "ui-common": frozenset({"presentation-api"}),
+    # The shell aggregates every leaf feature. Both hosts now render through it:
+    # the `MainActivity*` chain that used to draw Android's screens is deleted, so
+    # `KaniHostActivity` and the desktop window compose the same surfaces.
+    "feature-shell": frozenset(
+        {
+            "presentation-api",
+            "ui-common",
+            "feature-home",
+            "feature-study",
+            "feature-stats",
+            "feature-games",
+            "feature-missing-kanji",
+            "feature-settings",
+        },
+    ),
+    "feature-home": frozenset({"presentation-api", "ui-common"}),
+    "feature-study": frozenset({"presentation-api", "ui-common"}),
+    "feature-stats": frozenset({"presentation-api", "ui-common"}),
+    "feature-games": frozenset({"presentation-api", "ui-common"}),
+    "feature-missing-kanji": frozenset({"presentation-api", "ui-common"}),
+    "feature-settings": frozenset({"presentation-api", "ui-common"}),
+    "data-api": frozenset({"core", "sync-domain"}),
+    "data-sql": frozenset(
+        {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
+    ),
+    "data-desktop": frozenset({"backup-core", "core", "data-api", "data-sql"}),
+    "provider-ankiconnect": frozenset({"platform-contracts", "sync-api"}),
+    "platform-desktop": frozenset({"platform-contracts"}),
+    "reference-assets": frozenset(),
+    "progress-core": frozenset({"core", "data-api"}),
+    "backup-core": frozenset({"platform-contracts"}),
+    "sync-api": frozenset({"core", "sync-domain"}),
+    "application": frozenset({"data-api", "platform-contracts", "sync-engine"}),
+    "host-presentation": frozenset(
+        {
+            "application",
+            "presentation-api",
+            "core",
+            "data-api",
+            "progress-core",
+            "update-core",
+        },
+    ),
+    "sync-engine": frozenset(
+        {
+            "core",
+            "data-api",
+            "dictionary-core",
+            "platform-contracts",
+            "sync-api",
+            "sync-domain",
+        },
+    ),
+    "provider-ankidroid": frozenset({"sync-api"}),
+    "widget": frozenset({"core", "data-api", "platform-contracts", "ui-common"}),
+    "platform-android": frozenset({"platform-contracts", "writing-core"}),
+    "automation-android": frozenset({"platform-contracts"}),
+    "data-android": frozenset({"data-sql"}),
     "core": frozenset(
-        {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
+        {"dictionary-core", "domain", "sync-domain", "bee-fsrs", "update-core"},
     ),
-    "app": frozenset({"core", "dictionary-core", "update-core", "writing-core"}),
-}
-TARGET_PROJECT_DEPENDENCIES = {
-    "domain": frozenset(),
-    "dictionary-core": frozenset(),
-    "fsrs-java": frozenset(),
-    "sync-domain": frozenset({"domain"}),
-    "writing-core": frozenset({"domain"}),
-    "update-core": frozenset(),
-    "core": frozenset(
-        {"dictionary-core", "domain", "sync-domain", "fsrs-java", "update-core"},
-    ),
-    "data": frozenset(
-        {"core", "dictionary-core", "sync-domain", "update-core"},
-    ),
-    "ui-common": frozenset({"core"}),
-    "feature-home": frozenset(
-        {"core", "data", "sync-android", "ui-common"},
-    ),
-    "feature-study": frozenset(
-        {"core", "data", "dictionary-core", "ui-common", "writing-core"},
-    ),
-    "feature-stats": frozenset({"core", "data", "ui-common"}),
-    "feature-settings": frozenset(
-        {"automation", "core", "data", "ui-common"},
-    ),
-    "sync-android": frozenset(
-        {"core", "data", "dictionary-core", "sync-domain"},
-    ),
-    "automation": frozenset({"core", "data", "update-core"}),
-    "widget": frozenset({"core", "data", "ui-common"}),
     "app": frozenset(
         {
-            "automation",
-            "data",
-            "feature-home",
-            "feature-settings",
-            "feature-stats",
-            "feature-study",
-            "sync-android",
-            "ui-common",
+            "application",
+            "automation-android",
+            "backup-core",
+            "core",
+            "data-api",
+            "dictionary-core",
+            # The shared shell and host-neutral presentation mapping the thin
+            # KaniHostActivity renders through. It is now the only Android host —
+            # the legacy MainActivity* chain was deleted once the live AnkiDroid
+            # gate passed on the thin host.
+            "feature-shell",
+            "host-presentation",
+            "platform-contracts",
+            "platform-android",
+            "presentation-api",
+            "progress-core",
+            "provider-ankidroid",
+            "sync-api",
+            "sync-engine",
+            "update-core",
             "widget",
+            "writing-core",
+        },
+    ),
+    "desktop-app": frozenset(
+        {
+            "application",
+            "data-desktop",
+            "feature-shell",
+            "host-presentation",
+            "platform-desktop",
+            "progress-core",
+            "provider-ankiconnect",
         },
     ),
 }
-ALLOWED_PROJECT_DEPENDENCIES = {
-    module: CURRENT_PROJECT_DEPENDENCIES.get(module, frozenset())
-    | TARGET_PROJECT_DEPENDENCIES.get(module, frozenset())
-    for module in TARGET_MODULES
+FINAL_PROJECT_DEPENDENCIES = {
+    "domain": frozenset(),
+    "dictionary-core": frozenset(),
+    "bee-fsrs": frozenset(),
+    "sync-domain": frozenset({"domain"}),
+    "writing-core": frozenset({"domain"}),
+    "update-core": frozenset(),
+    "core": frozenset(
+        {"dictionary-core", "domain", "sync-domain", "bee-fsrs", "update-core"},
+    ),
+    "data-api": frozenset({"core", "sync-domain"}),
+    "sync-api": frozenset({"core", "sync-domain"}),
+    "platform-contracts": frozenset(),
+    "application": frozenset(
+        {
+            "core",
+            "data-api",
+            "platform-contracts",
+            "reference-assets",
+            "sync-engine",
+            "update-core",
+        },
+    ),
+    "sync-engine": frozenset(
+        {
+            "core",
+            "data-api",
+            "dictionary-core",
+            "platform-contracts",
+            "sync-api",
+            "sync-domain",
+        },
+    ),
+    "data-sql": frozenset(
+        {"core", "data-api", "dictionary-core", "sync-api", "sync-domain"},
+    ),
+    "backup-core": frozenset({"data-api", "platform-contracts"}),
+    "progress-core": frozenset({"core", "data-api"}),
+    "host-presentation": frozenset(
+        {
+            "application",
+            "presentation-api",
+            "core",
+            "data-api",
+            "progress-core",
+            "update-core",
+        },
+    ),
+    "reference-assets": frozenset({"dictionary-core", "writing-core"}),
+    "presentation-api": frozenset(),
+    "ui-common": frozenset({"presentation-api"}),
+    **{
+        feature: frozenset({"presentation-api", "ui-common"})
+        for feature in LEAF_FEATURE_MODULES
+    },
+    "feature-shell": frozenset(
+        {"presentation-api", "ui-common", *LEAF_FEATURE_MODULES},
+    ),
+    "data-android": frozenset({"backup-core", "data-sql"}),
+    "provider-ankidroid": frozenset({"sync-api"}),
+    "platform-android": frozenset({"platform-contracts", "writing-core"}),
+    "automation-android": frozenset({"application", "platform-contracts"}),
+    # The reviewed target set said `application` + `presentation-api`; the extraction landed
+    # on `data-api` + `ui-common` instead, and the difference is the point. A widget renders
+    # persisted state and never runs a use case, so it takes the read-only `WidgetDataPort`
+    # from `:data-api` rather than `:application`, and it needs the shared palettes rather
+    # than the presentation DTOs it does not render.
+    "widget": frozenset({"core", "data-api", "platform-contracts", "ui-common"}),
+    "app": frozenset(
+        {
+            "application",
+            "automation-android",
+            "data-android",
+            "feature-shell",
+            "host-presentation",
+            "platform-android",
+            "provider-ankidroid",
+            "widget",
+        },
+    ),
+    "data-desktop": frozenset({"backup-core", "core", "data-api", "data-sql"}),
+    "provider-ankiconnect": frozenset({"platform-contracts", "sync-api"}),
+    "platform-desktop": frozenset({"platform-contracts"}),
+    "desktop-app": frozenset(
+        {
+            "application",
+            "data-desktop",
+            "feature-shell",
+            "host-presentation",
+            "platform-desktop",
+            "progress-core",
+            "provider-ankiconnect",
+        },
+    ),
+}
+MIGRATION_ONLY_PROJECT_DEPENDENCIES = {
+    "app": frozenset(
+        {
+            "backup-core",
+            "core",
+            "data-api",
+            "data-sql",
+            "dictionary-core",
+            "feature-games",
+            "feature-home",
+            "feature-missing-kanji",
+            "feature-settings",
+            "feature-stats",
+            "feature-study",
+            "platform-contracts",
+            "presentation-api",
+            "progress-core",
+            "reference-assets",
+            "sync-api",
+            "sync-engine",
+            "ui-common",
+            "update-core",
+            "writing-core",
+        },
+    ),
+}
+MIGRATION_PROJECT_DEPENDENCIES = {
+    module: FINAL_PROJECT_DEPENDENCIES[module]
+    | MIGRATION_ONLY_PROJECT_DEPENDENCIES.get(module, frozenset())
+    for module in FINAL_MODULES
 }
 EDGE_RATIONALES = {
     ("sync-domain", "domain"): "Sync-domain shares domain value models.",
@@ -115,55 +370,106 @@ EDGE_RATIONALES = {
     ("core", "dictionary-core"): "Scheduler policy consumes dictionary models.",
     ("core", "domain"): "Core policy builds on shared domain models.",
     ("core", "sync-domain"): "Core policy consumes pure sync contracts.",
-    ("core", "fsrs-java"): "Core delegates memory scheduling to FSRS.",
+    ("core", "bee-fsrs"): "Core delegates memory scheduling to FSRS.",
     ("core", "update-core"): "Core consumes pure update policy.",
-    ("data", "core"): "Persistence implements core-owned state contracts.",
-    ("data", "dictionary-core"): "Persistence installs dictionary content.",
-    ("data", "sync-domain"): "Persistence stores pure sync-domain models.",
-    ("data", "update-core"): "Persistence stores update metadata.",
-    ("ui-common", "core"): "Shared UI renders core value models.",
-    ("feature-home", "core"): "Home renders core dashboard models.",
-    ("feature-home", "data"): "Home consumes its repository contracts.",
-    ("feature-home", "sync-android"): "Home invokes the public sync action contract.",
-    ("feature-home", "ui-common"): "Home uses the shared shell and controls.",
-    ("feature-study", "core"): "Study delegates all scheduler decisions to core.",
-    ("feature-study", "data"): "Study consumes its repository contract.",
-    ("feature-study", "dictionary-core"): "Study consumes dictionary interfaces.",
-    ("feature-study", "ui-common"): "Study uses shared controls and tokens.",
-    ("feature-study", "writing-core"): "Study uses pure writing evaluation models.",
-    ("feature-stats", "core"): "Stats renders core analytics models.",
-    ("feature-stats", "data"): "Stats consumes its repository contract.",
-    ("feature-stats", "ui-common"): "Stats uses shared charts and surfaces.",
-    ("feature-settings", "automation"): "Settings invokes public automation actions.",
-    ("feature-settings", "core"): "Settings edits core preference models.",
-    ("feature-settings", "data"): "Settings consumes its repository contract.",
-    ("feature-settings", "ui-common"): "Settings uses shared controls and tokens.",
-    ("sync-android", "core"): "Android sync applies core admission policy.",
-    ("sync-android", "data"): "Android sync commits through sync repositories.",
-    ("sync-android", "dictionary-core"): "Provider mapping uses dictionary models.",
-    ("sync-android", "sync-domain"): "Android sync implements pure sync contracts.",
-    ("automation", "core"): "Automation evaluates core reminder and fit policy.",
-    ("automation", "data"): "Automation persists through repositories.",
-    ("automation", "update-core"): "Updater workers execute pure update policy.",
-    ("widget", "core"): "Widgets render core eligibility models.",
-    ("widget", "data"): "Widgets load immutable repository snapshots.",
-    ("widget", "ui-common"): "Widgets share launch and presentation contracts.",
-    ("app", "automation"): "The composition root installs automation adapters.",
-    ("app", "data"): "The composition root constructs repository implementations.",
-    ("app", "feature-home"): "The navigation graph hosts Home.",
-    ("app", "feature-settings"): "The navigation graph hosts Settings.",
-    ("app", "feature-stats"): "The navigation graph hosts Stats.",
-    ("app", "feature-study"): "The navigation graph hosts Study.",
-    ("app", "sync-android"): "The composition root installs sync adapters.",
-    ("app", "ui-common"): "The composition root hosts the shared app shell.",
-    ("app", "widget"): "The application manifest installs widget components.",
-    ("app", "core"): "Migration-only app code still consumes core directly.",
+    ("data-api", "core"): "Repository contracts use canonical core models.",
+    ("data-api", "sync-domain"): "Repository contracts expose sync-domain values.",
+    ("sync-api", "core"): "Provider envelopes wrap canonical core snapshots.",
+    ("sync-api", "sync-domain"): "Provider contracts reuse sync-domain models.",
+    ("application", "core"): "Application state machines invoke scheduler policy.",
+    ("application", "data-api"): "Application use cases consume repository ports.",
+    ("application", "platform-contracts"): "Application effects use platform ports.",
+    ("application", "reference-assets"): "Application use cases consume shared assets.",
+    ("application", "sync-engine"): "Application use cases invoke shared sync.",
+    ("application", "update-core"): "Application update flows use verified policy.",
+    ("sync-engine", "core"): "Sync normalization applies shared admission policy.",
+    ("sync-engine", "data-api"): "Sync publishes through repository ports.",
+    ("sync-engine", "dictionary-core"): "Sync reads shared dictionary contracts.",
+    ("sync-engine", "platform-contracts"): "Sync effects use platform ports.",
+    ("sync-engine", "sync-api"): "Sync orchestrates provider-neutral gateways.",
+    ("sync-engine", "sync-domain"): "Sync reuses canonical sync value models.",
+    ("data-sql", "core"): "Shared SQL persists canonical core state.",
+    ("data-sql", "data-api"): "Shared SQL implements repository contracts.",
+    ("data-sql", "dictionary-core"): "Shared SQL installs dictionary content.",
+    ("data-sql", "sync-api"): "Shared SQL persists opaque source-binding records.",
+    ("data-sql", "sync-domain"): "Shared SQL persists sync-domain models.",
+    ("backup-core", "data-api"): "Portable backup uses data-owned snapshot contracts.",
+    ("backup-core", "platform-contracts"): "Backup durability uses platform ports.",
+    ("reference-assets", "dictionary-core"): "Reference assets serve dictionary data.",
+    ("reference-assets", "writing-core"): "Reference assets serve writing models.",
+    ("progress-core", "core"): "Progress analytics apply scheduler policy.",
+    ("progress-core", "data-api"): "Progress analytics read stats snapshots.",
+    ("desktop-app", "progress-core"): "Desktop maps analytics state to the stats model.",
+    ("host-presentation", "application"): "Host mappers read use-case snapshots and runtime renders.",
+    ("host-presentation", "presentation-api"): "Host mappers produce portable presentation DTOs.",
+    ("host-presentation", "core"): "Host mappers apply scheduler and copy policy.",
+    ("host-presentation", "data-api"): "Host mappers read repository snapshot types.",
+    ("host-presentation", "progress-core"): "Host mappers map analytics state to the stats dashboard.",
+    ("host-presentation", "update-core"): "The Update section reports through the update status policies.",
+    ("app", "widget"): "The composition root registers the widget host bindings.",
+    ("app", "host-presentation"): "Android maps its snapshots to shared presentation DTOs.",
+    ("desktop-app", "host-presentation"): "Desktop maps its snapshots to shared presentation DTOs.",
+    ("ui-common", "presentation-api"): "Shared UI renders portable presentation DTOs.",
+    **{
+        (feature, "presentation-api"): (
+            f":{feature} consumes portable presentation state and actions."
+        )
+        for feature in LEAF_FEATURE_MODULES
+    },
+    **{
+        (feature, "ui-common"): f":{feature} uses shared Compose UI."
+        for feature in LEAF_FEATURE_MODULES
+    },
+    **{
+        ("feature-shell", feature): f"The shell hosts :{feature}."
+        for feature in LEAF_FEATURE_MODULES
+    },
+    ("feature-shell", "presentation-api"): "The shell consumes portable navigation state.",
+    ("feature-shell", "ui-common"): "The shell composes shared UI infrastructure.",
+    ("data-android", "backup-core"): "Android data implements portable backup.",
+    ("data-android", "data-sql"): "Android data supplies the shared SQL driver.",
+    ("provider-ankidroid", "sync-api"): "AnkiDroid implements provider contracts.",
+    ("platform-android", "platform-contracts"): "Android implements platform ports.",
+    ("platform-android", "writing-core"): "Android hosts the ML Kit writing adapter.",
+    ("automation-android", "application"): "Android automation invokes shared use cases.",
     (
-        "app",
-        "dictionary-core",
-    ): "Migration-only app code still constructs dictionary adapters.",
-    ("app", "update-core"): "Migration-only app code still executes update policy.",
-    ("app", "writing-core"): "Migration-only app code still hosts writing adapters.",
+        "automation-android",
+        "platform-contracts",
+    ): "Android automation implements background platform ports.",
+    ("widget", "core"): "Widgets retain canonical reminder eligibility policy.",
+    ("widget", "data-api"): "Widgets read persisted state through the read-only WidgetDataPort.",
+    ("widget", "platform-contracts"): "Widgets name the durable launch extras.",
+    ("widget", "ui-common"): "Widget palettes resolve the shared theme colors.",
+    ("app", "application"): "Android assembles shared application use cases.",
+    ("app", "backup-core"): "Android backup delegates to the portable backup core.",
+    ("app", "automation-android"): "Android installs automation components.",
+    ("app", "data-android"): "Android installs its data driver.",
+    ("app", "feature-shell"): "Android hosts the shared product shell.",
+    ("app", "platform-android"): "Android installs platform adapters.",
+    ("app", "provider-ankidroid"): "Android installs its collection provider.",
+    ("app", "widget"): "Android installs widget components.",
+    ("data-desktop", "backup-core"): "Desktop data implements portable backup.",
+    ("data-desktop", "core"): "Desktop data consumes canonical backup/restore policy.",
+    ("data-desktop", "data-api"): "Desktop data validates against repository contracts.",
+    ("data-desktop", "data-sql"): "Desktop data supplies the shared SQL driver.",
+    ("provider-ankiconnect", "sync-api"): "AnkiConnect implements provider contracts.",
+    (
+        "provider-ankiconnect",
+        "platform-contracts",
+    ): "AnkiConnect obtains authentication through the SecretStore port.",
+    ("platform-desktop", "platform-contracts"): "Desktop implements platform ports.",
+    ("desktop-app", "application"): "Desktop assembles shared application use cases.",
+    ("desktop-app", "data-desktop"): "Desktop installs its data driver.",
+    ("desktop-app", "feature-shell"): "Desktop hosts the shared product shell.",
+    ("desktop-app", "platform-desktop"): "Desktop installs platform adapters.",
+    ("desktop-app", "provider-ankiconnect"): "Desktop installs its collection provider.",
+    **{
+        ("app", dependency): (
+            f"Migration-only Android host access to :{dependency} is removed "
+            "when its final owner is wired."
+        )
+        for dependency in MIGRATION_ONLY_PROJECT_DEPENDENCIES["app"]
+    },
 }
 PROJECT_CALL = re.compile(r"\bproject\s*\(")
 PROJECT_DEPENDENCY = re.compile(
@@ -171,14 +477,72 @@ PROJECT_DEPENDENCY = re.compile(
 )
 TYPE_SAFE_PROJECT_ACCESSOR = re.compile(r"\bprojects\.[A-Za-z0-9_.]+")
 ANDROID_IMPORT = re.compile(r"^import\s+(android|androidx)\.", re.MULTILINE)
+COMMON_PLATFORM_IMPORT = re.compile(
+    r"^import\s+(?:"
+    # The Android framework and the desktop toolkits are never portable.
+    r"android\.|java\.awt\.|javax\.swing\."
+    # Every other androidx artifact is Android-only. Compose Multiplatform
+    # publishes its common API under `androidx.compose`, so that is the one
+    # allowed exception — shared UI has to be able to name a Composable.
+    r"|androidx\.(?!compose\.)"
+    # A handful of `androidx.compose` members are Android-only even so: resource
+    # lookup goes through compose-resources instead, view interop has no desktop
+    # meaning, and these three locals are backed by Android platform types.
+    r"|androidx\.compose\.ui\.(?:res|viewinterop)\."
+    r"|androidx\.compose\.ui\.platform\.Local(?:Context|Configuration|View)\b"
+    r")",
+    re.MULTILINE,
+)
+ANKIDROID_IMPLEMENTATION_IMPORT = re.compile(
+    r"(?m)^\s*import\s+dev\.bee\.kanjianki\.anki\."
+    r"(?:AnkiDroid(?:ArchiveCleanup|CardReader|CollectionInventoryGateway|Gateway|"
+    r"RepairedTagging)|AnkiFieldTextNormalizer|AnkiKanjiInventoryReader|"
+    r"AnkiMissingKanjiWriter)\b",
+)
+ANKIDROID_PRODUCTION_FILES = frozenset(
+    {
+        "AnkiDroidArchiveCleanup.kt",
+        "AnkiDroidCardReader.kt",
+        "AnkiDroidCollectionInventoryGateway.kt",
+        "AnkiDroidGateway.kt",
+        "AnkiDroidRepairedTagging.kt",
+        # AnkiFieldTextNormalizer deliberately does NOT live here: both providers
+        # must apply the same sound-marker/HTML rule or an inventory scanned over
+        # AnkiConnect and one scanned over AnkiDroid would disagree about which
+        # kanji a collection contains. It lives in :core.
+        "AnkiKanjiInventoryReader.kt",
+        "AnkiMissingKanjiWriter.kt",
+    },
+)
+ANKIDROID_CONTRACT_TEST_FILES = frozenset(
+    {
+        "anki/AnkiDroidCollectionInventoryGatewayInstrumentedTest.kt",
+        "anki/AnkiDroidCrossProviderConformanceInstrumentedTest.kt",
+        "anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
+        "anki/AnkiMissingKanjiWriterInstrumentedTest.kt",
+        "anki/RealAnkiDroidLiveProviderInstrumentedTest.kt",
+        "baseline/Goal165ProviderBaselineInstrumentedTest.kt",
+    },
+)
 KANI_REFERENCE = re.compile(
     r"\b(dev\.bee\.kanjianki(?:\.[A-Za-z0-9_*]+)+)",
 )
 PERSISTENCE_ALLOWED_REFERENCE_PREFIXES = (
     "dev.bee.kanjianki.core",
     "dev.bee.kanjianki.data",
+    "dev.bee.kanjianki.syncapi",
     "dev.bee.kanjianki.syncdomain",
     "dev.bee.kanjianki.updatecore",
+)
+PERSISTENCE_ALLOWED_PLATFORM_CONTRACTS = frozenset(
+    {
+        "dev.bee.kanjianki.platform.DeviceSettingKey",
+        "dev.bee.kanjianki.platform.DeviceSettingKeys",
+        "dev.bee.kanjianki.platform.DeviceSettingValueType",
+        "dev.bee.kanjianki.platform.DeviceSettingsEditor",
+        "dev.bee.kanjianki.platform.DeviceSettingsReader",
+        "dev.bee.kanjianki.platform.DeviceSettingsStore",
+    },
 )
 AMBIGUOUS_RECORD_CONSTRUCTION = re.compile(
     r"\b(?:(?:RecordsSchedulerModels\.)?ReviewRequest|"
@@ -190,15 +554,21 @@ RECORD_DEFINITION_FILES = {
     "core/src/main/kotlin/dev/bee/kanjianki/core/RecordsStudyModels.kt",
 }
 REPOSITORY_CONTRACTS = {
-    "HomeRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/HomeRepository.kt",
-    "StudyRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
-    "StatsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
-    "SettingsRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
-    "SyncRepository": "app/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
+    "HomeRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/HomeRepository.kt",
+    "StudyRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/StudyRepository.kt",
+    "StatsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/StatsRepository.kt",
+    "SettingsRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
+    "SyncRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/SyncRepository.kt",
+    "MissingKanjiRepository": "data-api/src/main/kotlin/dev/bee/kanjianki/data/MissingKanjiRepository.kt",
 }
 REPOSITORY_MODEL_FILES = (
-    "app/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/RepositorySnapshots.kt",
+    # The widgets' read-only view of persisted state. Here rather than in `:app` so the
+    # Android `:widget` module can name it without depending on the composition root — the
+    # cycle that blocked Goal 199's last extraction.
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/WidgetDataPort.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/ReviewCommitModels.kt",
+    "data-api/src/main/kotlin/dev/bee/kanjianki/data/StoreResult.kt",
 )
 REPOSITORY_FORBIDDEN_TOKENS = (
     "LocalStore",
@@ -213,6 +583,24 @@ REPOSITORY_FORBIDDEN_TOKENS = (
     "android.",
     "androidx.",
 )
+TOP_LEVEL_DECLARATION = re.compile(
+    r"^(?:(?:data|sealed|enum|fun)\s+)?(?:class|interface|object)\s+"
+    r"([A-Za-z][A-Za-z0-9_]*)\b",
+    re.MULTILINE,
+)
+DATA_API_REQUIRED_DECLARATIONS = frozenset(
+    {
+        *REPOSITORY_CONTRACTS,
+        "HomeSnapshot",
+        "ReviewCommitCommand",
+        "ReviewCommitResult",
+        "SettingsSnapshot",
+        "StatsSnapshot",
+        "StoreResult",
+        "StudyQueueSnapshot",
+        "SyncPublicationCommand",
+    },
+)
 
 
 def parse_project_dependencies(build_script: str, module: str) -> set[str]:
@@ -226,13 +614,30 @@ def parse_project_dependencies(build_script: str, module: str) -> set[str]:
     return set(dependencies)
 
 
+def validate_project_dependencies(
+    module: str,
+    dependencies: set[str] | frozenset[str],
+    allowed_graph: dict[str, frozenset[str]],
+) -> None:
+    if module not in allowed_graph:
+        raise AssertionError(f"unknown project module :{module}")
+    unknown = set(dependencies) - set(allowed_graph)
+    if unknown:
+        formatted = ", ".join(f":{dependency}" for dependency in sorted(unknown))
+        raise AssertionError(f":{module} has unknown project dependencies: {formatted}")
+    forbidden = set(dependencies) - set(allowed_graph[module])
+    if forbidden:
+        formatted = ", ".join(f":{dependency}" for dependency in sorted(forbidden))
+        raise AssertionError(f":{module} has forbidden project dependencies: {formatted}")
+
+
 def project_dependencies(module: str) -> set[str]:
     build_script = (ROOT / module / "build.gradle.kts").read_text(encoding="utf-8")
     return parse_project_dependencies(build_script, module)
 
 
 def persistence_reference_allowed(reference: str) -> bool:
-    return any(
+    return reference in PERSISTENCE_ALLOWED_PLATFORM_CONTRACTS or any(
         reference == prefix or reference.startswith(f"{prefix}.")
         for prefix in PERSISTENCE_ALLOWED_REFERENCE_PREFIXES
     )
@@ -250,6 +655,25 @@ def declaration_body(source: str, declaration: str) -> str:
             if depth == 0:
                 return source[opening + 1 : index]
     raise AssertionError(f"{declaration} has no closing brace")
+
+
+def delimited_body(
+    source: str,
+    marker: str,
+    opening_delimiter: str,
+    closing_delimiter: str,
+) -> str:
+    start = source.index(marker)
+    opening = source.index(opening_delimiter, start + len(marker))
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == opening_delimiter:
+            depth += 1
+        elif source[index] == closing_delimiter:
+            depth -= 1
+            if depth == 0:
+                return source[opening + 1 : index]
+    raise AssertionError(f"{marker} has no closing {closing_delimiter}")
 
 
 class ModuleBoundaryTest(unittest.TestCase):
@@ -271,51 +695,120 @@ class ModuleBoundaryTest(unittest.TestCase):
                 with self.assertRaisesRegex(AssertionError, "unparsed"):
                     parse_project_dependencies(unsupported, "fixture")
 
-    def test_target_modules_have_one_architecture_class(self) -> None:
-        self.assertEqual(TARGET_MODULES, frozenset(MODULE_CLASSES))
-        self.assertEqual(TARGET_MODULES, frozenset(TARGET_PROJECT_DEPENDENCIES))
-        for module, dependencies in TARGET_PROJECT_DEPENDENCIES.items():
+    def test_final_modules_have_one_architecture_class(self) -> None:
+        self.assertEqual(FINAL_MODULES, frozenset(MODULE_CLASSES))
+        self.assertEqual(FINAL_MODULES, frozenset(FINAL_PROJECT_DEPENDENCIES))
+        self.assertEqual(FINAL_MODULES, frozenset(MIGRATION_PROJECT_DEPENDENCIES))
+        for module, dependencies in FINAL_PROJECT_DEPENDENCIES.items():
             with self.subTest(module=module):
-                self.assertLessEqual(dependencies, TARGET_MODULES)
+                self.assertLessEqual(dependencies, FINAL_MODULES)
+
+    def test_migration_graph_is_final_graph_plus_reviewed_temporary_edges(self) -> None:
+        self.assertTrue(MIGRATION_ONLY_PROJECT_DEPENDENCIES)
+        for module, dependencies in MIGRATION_ONLY_PROJECT_DEPENDENCIES.items():
+            with self.subTest(module=module):
+                self.assertIn(module, FINAL_MODULES)
+                self.assertLessEqual(dependencies, FINAL_MODULES)
+                self.assertFalse(
+                    dependencies & FINAL_PROJECT_DEPENDENCIES[module],
+                    "migration-only edges must not be final edges",
+                )
+        for module in FINAL_MODULES:
+            with self.subTest(module=module):
+                self.assertEqual(
+                    FINAL_PROJECT_DEPENDENCIES[module]
+                    | MIGRATION_ONLY_PROJECT_DEPENDENCIES.get(module, frozenset()),
+                    MIGRATION_PROJECT_DEPENDENCIES[module],
+                )
 
     def test_settings_contains_the_reviewed_current_module_set(self) -> None:
         settings = (ROOT / "settings.gradle.kts").read_text(encoding="utf-8")
         included = set(re.findall(r'include\(\s*"\:([^\"]+)"\s*\)', settings))
         self.assertEqual(EXPECTED_CURRENT_MODULES, included)
-        self.assertLessEqual(included, TARGET_MODULES)
+        self.assertLessEqual(included, FINAL_MODULES)
 
     def test_current_project_dependency_edges_match_the_reviewed_dag(self) -> None:
         for module, expected in CURRENT_PROJECT_DEPENDENCIES.items():
             with self.subTest(module=module):
                 actual = project_dependencies(module)
                 self.assertEqual(expected, actual)
-                self.assertLessEqual(actual, ALLOWED_PROJECT_DEPENDENCIES[module])
+                validate_project_dependencies(
+                    module,
+                    actual,
+                    MIGRATION_PROJECT_DEPENDENCIES,
+                )
+
+    def test_unknown_or_unreviewed_project_edges_fail_closed(self) -> None:
+        with self.assertRaisesRegex(AssertionError, "unknown project module"):
+            validate_project_dependencies(
+                "unreviewed-module",
+                set(),
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
+        with self.assertRaisesRegex(AssertionError, "unknown project dependencies"):
+            validate_project_dependencies(
+                "domain",
+                {"unreviewed-module"},
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
+        with self.assertRaisesRegex(AssertionError, "forbidden project dependencies"):
+            validate_project_dependencies(
+                "domain",
+                {"core"},
+                MIGRATION_PROJECT_DEPENDENCIES,
+            )
 
     def test_every_allowed_dependency_edge_has_a_rationale(self) -> None:
         allowed_edges = {
             (module, dependency)
-            for module, dependencies in ALLOWED_PROJECT_DEPENDENCIES.items()
+            for module, dependencies in MIGRATION_PROJECT_DEPENDENCIES.items()
             for dependency in dependencies
         }
         self.assertEqual(allowed_edges, set(EDGE_RATIONALES))
         self.assertTrue(all(reason.strip() for reason in EDGE_RATIONALES.values()))
 
-    def test_feature_modules_cannot_depend_on_each_other(self) -> None:
-        for module in FEATURE_MODULES:
+    def test_leaf_feature_modules_cannot_depend_on_each_other(self) -> None:
+        for module in LEAF_FEATURE_MODULES:
             with self.subTest(module=module):
-                other_features = FEATURE_MODULES - {module}
                 self.assertFalse(
-                    ALLOWED_PROJECT_DEPENDENCIES[module] & other_features,
-                    f":{module} may not depend on another feature module",
+                    FINAL_PROJECT_DEPENDENCIES[module]
+                    & (LEAF_FEATURE_MODULES | {"feature-shell"}),
+                    f":{module} may not depend on another feature or the shell",
                 )
 
-    def test_current_and_target_dependency_graphs_are_acyclic(self) -> None:
+    def test_shared_and_host_module_directions_are_platform_safe(self) -> None:
+        shared_modules = (
+            set(CURRENT_SHARED_JVM_MODULES)
+            | NEW_SHARED_JVM_MODULES
+            | SHARED_PRESENTATION_MODULES
+        )
+        platform_modules = ANDROID_MODULES | DESKTOP_MODULES
+        for module in shared_modules:
+            with self.subTest(shared=module):
+                self.assertFalse(
+                    FINAL_PROJECT_DEPENDENCIES[module] & platform_modules,
+                    f":{module} may not depend on a host/platform module",
+                )
+
+        jvm_modules = set(CURRENT_SHARED_JVM_MODULES) | NEW_SHARED_JVM_MODULES
+        for module in SHARED_PRESENTATION_MODULES:
+            with self.subTest(presentation=module):
+                self.assertFalse(
+                    FINAL_PROJECT_DEPENDENCIES[module] & jvm_modules,
+                    f":{module} common presentation may not depend on JVM modules",
+                )
+
+        self.assertFalse(FINAL_PROJECT_DEPENDENCIES["app"] & DESKTOP_MODULES)
+        self.assertFalse(FINAL_PROJECT_DEPENDENCIES["desktop-app"] & ANDROID_MODULES)
+
+    def test_current_migration_and_final_dependency_graphs_are_acyclic(self) -> None:
         current_graph = {
             module: project_dependencies(module)
             for module in CURRENT_PROJECT_DEPENDENCIES
         }
         self.assert_acyclic(current_graph)
-        self.assert_acyclic(TARGET_PROJECT_DEPENDENCIES)
+        self.assert_acyclic(MIGRATION_PROJECT_DEPENDENCIES)
+        self.assert_acyclic(FINAL_PROJECT_DEPENDENCIES)
 
     def assert_acyclic(self, graph: dict[str, frozenset[str] | set[str]]) -> None:
         visiting: set[str] = set()
@@ -335,15 +828,156 @@ class ModuleBoundaryTest(unittest.TestCase):
         for module in graph:
             visit(module)
 
-    def test_pure_jvm_sources_do_not_import_android_apis(self) -> None:
+    def test_included_shared_jvm_sources_do_not_import_android_apis(self) -> None:
         violations = []
-        for module in PURE_MODULES:
+        shared_jvm_modules = sorted(
+            module
+            for module in EXPECTED_CURRENT_MODULES
+            if MODULE_CLASSES[module].startswith("shared-jvm-")
+        )
+        for module in shared_jvm_modules:
             source_root = ROOT / module / "src/main"
             sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
             for source in sources:
                 if ANDROID_IMPORT.search(source.read_text(encoding="utf-8")):
                     violations.append(source.relative_to(ROOT).as_posix())
         self.assertEqual([], violations, "pure JVM modules must not import Android APIs")
+
+    def test_included_common_presentation_sources_do_not_import_platform_apis(
+        self,
+    ) -> None:
+        for forbidden_import in (
+            "import android.content.Context",
+            "import androidx.activity.ComponentActivity",
+            "import androidx.work.WorkManager",
+            "import androidx.compose.ui.res.painterResource",
+            "import androidx.compose.ui.viewinterop.AndroidView",
+            "import androidx.compose.ui.platform.LocalContext",
+            "import androidx.compose.ui.platform.LocalConfiguration",
+            "import androidx.compose.ui.platform.LocalView",
+            "import java.awt.Desktop",
+            "import javax.swing.JFrame",
+        ):
+            with self.subTest(forbidden_import=forbidden_import):
+                self.assertIsNotNone(COMMON_PLATFORM_IMPORT.search(forbidden_import))
+        # Compose Multiplatform's own common API, and anything not platform-bound
+        # at all, must stay allowed or shared UI could not be written here.
+        for allowed_import in (
+            "import kotlinx.coroutines.flow.Flow",
+            "import androidx.compose.runtime.Composable",
+            "import androidx.compose.material3.MaterialTheme",
+            "import androidx.compose.ui.graphics.Color",
+            "import androidx.compose.ui.platform.LocalDensity",
+        ):
+            with self.subTest(allowed_import=allowed_import):
+                self.assertIsNone(COMMON_PLATFORM_IMPORT.search(allowed_import))
+
+        violations = []
+        presentation_modules = sorted(
+            EXPECTED_CURRENT_MODULES & SHARED_PRESENTATION_MODULES
+        )
+        for module in presentation_modules:
+            source_root = ROOT / module / "src/commonMain"
+            sources = sorted((*source_root.rglob("*.kt"), *source_root.rglob("*.java")))
+            for source in sources:
+                if COMMON_PLATFORM_IMPORT.search(source.read_text(encoding="utf-8")):
+                    violations.append(source.relative_to(ROOT).as_posix())
+        self.assertEqual(
+            [],
+            violations,
+            "common presentation must not import Android, AWT, or Swing APIs",
+        )
+
+    def test_ankidroid_implementation_and_contract_tests_live_in_provider_module(
+        self,
+    ) -> None:
+        provider_main = (
+            ROOT / "provider-ankidroid/src/main/kotlin/dev/bee/kanjianki/anki"
+        )
+        self.assertEqual(
+            ANKIDROID_PRODUCTION_FILES,
+            frozenset(path.name for path in provider_main.glob("*.kt")),
+        )
+        app_main = ROOT / "app/src/main/kotlin/dev/bee/kanjianki/anki"
+        self.assertEqual([], list(app_main.rglob("*")) if app_main.exists() else [])
+
+        provider_tests = (
+            ROOT
+            / "provider-ankidroid/src/androidTest/kotlin/dev/bee/kanjianki"
+        )
+        actual_contract_tests = frozenset(
+            path.relative_to(provider_tests).as_posix()
+            for path in provider_tests.rglob("*.kt")
+        )
+        self.assertEqual(ANKIDROID_CONTRACT_TEST_FILES, actual_contract_tests)
+        self.assertFalse(
+            (
+                ROOT
+                / "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/"
+                "AnkiDroidGatewayProviderInstrumentedTest.kt"
+            ).exists(),
+        )
+
+        card_reader = (provider_main / "AnkiDroidCardReader.kt").read_text(
+            encoding="utf-8",
+        )
+        self.assertRegex(card_reader, r"\binternal class AnkiDroidCardReader\b")
+
+    def test_anki_field_normalization_is_shared_not_copied_per_provider(
+        self,
+    ) -> None:
+        """Both providers must extract kanji from field text by the same rule.
+
+        A second hand-copied sound-marker/HTML rule would diverge silently: an
+        inventory scanned over AnkiConnect and one scanned over AnkiDroid's
+        provider would then disagree about which kanji a collection contains,
+        and Missing Kanji would propose notes the user already has.
+        """
+        shared = (
+            ROOT
+            / "core/src/main/kotlin/dev/bee/kanjianki/core"
+            / "AnkiFieldTextNormalizer.kt"
+        )
+        self.assertTrue(shared.is_file(), f"{shared} must hold the one rule")
+        self.assertRegex(
+            shared.read_text(encoding="utf-8"),
+            r"package dev\.bee\.kanjianki\.core\b",
+        )
+
+        copies = []
+        for module in sorted(EXPECTED_CURRENT_MODULES - {"core"}):
+            source_root = ROOT / module / "src"
+            if not source_root.exists():
+                continue
+            copies.extend(
+                path.relative_to(ROOT).as_posix()
+                for path in source_root.rglob("AnkiFieldTextNormalizer.kt")
+            )
+        self.assertEqual(
+            [],
+            copies,
+            "field normalization must not be copied outside :core",
+        )
+
+    def test_shared_feature_and_desktop_sources_cannot_import_ankidroid_types(
+        self,
+    ) -> None:
+        violations = []
+        excluded_modules = {"app", "provider-ankidroid"}
+        for module in sorted(EXPECTED_CURRENT_MODULES - excluded_modules):
+            source_root = ROOT / module / "src"
+            for source in sorted(
+                (*source_root.rglob("*.kt"), *source_root.rglob("*.java")),
+            ):
+                if ANKIDROID_IMPLEMENTATION_IMPORT.search(
+                    source.read_text(encoding="utf-8"),
+                ):
+                    violations.append(source.relative_to(ROOT).as_posix())
+        self.assertEqual(
+            [],
+            violations,
+            "shared, feature, and desktop modules must use :sync-api contracts",
+        )
 
     def test_persistence_reference_policy_rejects_application_layers(self) -> None:
         for forbidden in (
@@ -367,6 +1001,7 @@ class ModuleBoundaryTest(unittest.TestCase):
         source_roots = (
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data",
             ROOT / "app/src/main/java/dev/bee/kanjianki/data",
+            ROOT / "data-api/src/main",
             ROOT / "data/src/main",
         )
         for source_root in source_roots:
@@ -430,6 +1065,212 @@ class ModuleBoundaryTest(unittest.TestCase):
             (ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt").exists(),
         )
 
+    def test_data_api_uniquely_owns_contracts_without_implementation_details(
+        self,
+    ) -> None:
+        expected_files = {
+            *REPOSITORY_CONTRACTS.values(),
+            *REPOSITORY_MODEL_FILES,
+        }
+        data_api_root = ROOT / "data-api/src/main"
+        data_api_sources = sorted(
+            (*data_api_root.rglob("*.kt"), *data_api_root.rglob("*.java")),
+        )
+        self.assertEqual(
+            expected_files,
+            {source.relative_to(ROOT).as_posix() for source in data_api_sources},
+        )
+
+        owned_declarations = {}
+        for source in data_api_sources:
+            relative = source.relative_to(ROOT).as_posix()
+            content = source.read_text(encoding="utf-8")
+            for declaration in TOP_LEVEL_DECLARATION.findall(content):
+                self.assertNotIn(
+                    declaration,
+                    owned_declarations,
+                    f":data-api declares {declaration} more than once",
+                )
+                owned_declarations[declaration] = relative
+            for token in REPOSITORY_FORBIDDEN_TOKENS:
+                self.assertNotIn(
+                    token,
+                    content,
+                    f"{relative} contains implementation token {token}",
+                )
+        self.assertLessEqual(DATA_API_REQUIRED_DECLARATIONS, set(owned_declarations))
+
+        duplicate_owners = []
+        production_sources = sorted(
+            (
+                *ROOT.glob("*/src/main/**/*.kt"),
+                *ROOT.glob("*/src/main/**/*.java"),
+            ),
+        )
+        for source in production_sources:
+            if data_api_root in source.parents:
+                continue
+            declarations = set(
+                TOP_LEVEL_DECLARATION.findall(source.read_text(encoding="utf-8")),
+            )
+            for duplicate in sorted(declarations & set(owned_declarations)):
+                duplicate_owners.append(
+                    f"{duplicate}: {source.relative_to(ROOT).as_posix()}",
+                )
+        self.assertEqual(
+            [],
+            duplicate_owners,
+            ":data-api contracts must not be redefined by another module",
+        )
+
+        self.assertFalse(
+            (ROOT / "core/src/main/kotlin/dev/bee/kanjianki/core/StoreResult.kt").exists(),
+        )
+        self.assertFalse(
+            (
+                ROOT
+                / "data-api/src/main/kotlin/dev/bee/kanjianki/data/StaleReviewCommitException.kt"
+            ).exists(),
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "app/src/main/kotlin/dev/bee/kanjianki/data/StaleReviewCommitException.kt"
+            ).exists(),
+        )
+        self.assertTrue(
+            (
+                ROOT
+                / "data-api/src/testFixtures/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ).exists(),
+        )
+        self.assertFalse(
+            (
+                ROOT
+                / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ).exists(),
+        )
+
+    def test_data_api_is_in_shared_gates_and_sonar_inputs(self) -> None:
+        root_build = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+        desktop = delimited_body(root_build, "val desktopCiTasks = listOf", "(", ")")
+        fast = delimited_body(root_build, "val fastCiTasks = listOf", "(", ")")
+        quality = delimited_body(
+            root_build,
+            'tasks.register("ciQuality")',
+            "{",
+            "}",
+        )
+        sonar_main = delimited_body(
+            root_build,
+            "val sonarMainBinaries = listOf",
+            "(",
+            ")",
+        )
+        sonar_test = delimited_body(
+            root_build,
+            "val sonarTestBinaries = listOf",
+            "(",
+            ")",
+        )
+        sonar_coverage = delimited_body(
+            root_build,
+            "val sonarCoveragePaths = buildList<String>",
+            "{",
+            "}",
+        )
+
+        self.assertEqual(1, desktop.count('":data-api:check"'))
+        for task in (
+            ":data-api:test",
+            ":data-api:jacocoTestReport",
+            ":data-api:jacocoTestCoverageVerification",
+        ):
+            with self.subTest(fast_task=task):
+                self.assertEqual(1, fast.count(f'"{task}"'))
+        self.assertEqual(1, quality.count('":data-api:jar"'))
+        self.assertEqual(
+            1,
+            sonar_main.count('rootPath("data-api/build/classes/kotlin/main")'),
+        )
+        for path in (
+            "data-api/build/classes/kotlin/test",
+            "data-api/build/classes/java/test",
+            "data-api/build/classes/kotlin/testFixtures",
+        ):
+            with self.subTest(sonar_test_binary=path):
+                self.assertEqual(1, sonar_test.count(f'rootPath("{path}")'))
+        self.assertEqual(
+            1,
+            sonar_coverage.count(
+                'rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml")',
+            ),
+        )
+
+    def test_multiplatform_modules_are_gated_on_both_targets_locally_and_in_ci(
+        self,
+    ) -> None:
+        # A multiplatform module is the only kind whose two targets can diverge.
+        # Android CI runs the Android target and ciDesktop runs the desktop target
+        # with its 100% class coverage gate; a module gated on only one target could
+        # compile for both and be tested for one, which is exactly the failure the
+        # portable contracts exist to prevent.
+        root_build = (ROOT / "build.gradle.kts").read_text(encoding="utf-8")
+        desktop = delimited_body(root_build, "val desktopCiTasks = listOf", "(", ")")
+        fast = delimited_body(root_build, "val fastCiTasks = listOf", "(", ")")
+        android_ci = (ROOT / ".github/workflows/android-ci.yml").read_text(
+            encoding="utf-8",
+        )
+
+        for module in (
+            "presentation-api",
+            "ui-common",
+            "feature-shell",
+            "feature-home",
+        ):
+            with self.subTest(module=module):
+                self.assertEqual(1, desktop.count(f'":{module}:check"'))
+                for suffix in (
+                    "testAndroidHostTest",
+                    "compileAndroidDeviceTest",
+                    "lintAnalyzeAndroidHostTest",
+                ):
+                    task = f":{module}:{suffix}"
+                    self.assertEqual(1, fast.count(f'"{task}"'), task)
+                    self.assertIn(task, android_ci)
+                # The Android gate must stay desktop-free: the desktop target's tests
+                # and coverage gate reach it only through `check` in ciDesktop.
+                self.assertNotIn(f":{module}:desktopTest", fast)
+                self.assertNotIn(f":{module}:check", fast)
+
+    def test_portable_theme_ids_match_the_stored_core_theme_choices(self) -> None:
+        # :ui-common cannot depend on :core (a JVM module), so KaniThemeId restates
+        # the storage keys KaniThemeChoice persists. That duplication is the price of
+        # the module boundary; the drift it invites is not. If the two lists ever
+        # disagree, a theme the user picked on one host silently reads back as
+        # Girlypop on the other, so pin them to each other here.
+        def storage_keys(path: str, enum_name: str) -> list[tuple[str, str]]:
+            body = delimited_body(
+                (ROOT / path).read_text(encoding="utf-8"),
+                f"enum class {enum_name}",
+                "{",
+                "}",
+            )
+            return re.findall(r"\n\s{4}([A-Z][A-Z_0-9]*)\(\"([a-z][a-z_]*)\"\)", body)
+
+        self.assertEqual(
+            storage_keys(
+                "core/src/main/kotlin/dev/bee/kanjianki/core/KaniThemeChoice.kt",
+                "KaniThemeChoice",
+            ),
+            storage_keys(
+                "ui-common/src/commonMain/kotlin/dev/bee/kanjianki/ui/KaniThemeId.kt",
+                "KaniThemeId",
+            ),
+            "KaniThemeId and KaniThemeChoice must declare the same themes in the "
+            "same order with the same storage keys",
+        )
+
     def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:
         study_adapter = (
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteStudyRepository.kt"
@@ -441,7 +1282,8 @@ class ModuleBoundaryTest(unittest.TestCase):
             ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt"
         ).read_text(encoding="utf-8")
         fakes = (
-            ROOT / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
+            ROOT
+            / "data-api/src/testFixtures/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
         ).read_text(encoding="utf-8")
 
         self.assertEqual(1, study_adapter.count("store.commitReview(command)"))
@@ -476,6 +1318,51 @@ class ModuleBoundaryTest(unittest.TestCase):
             violations,
             "production ReviewRequest and TaskMemory creation must use typed field factories",
         )
+
+    def test_shared_sources_never_import_android_platform_classes(self) -> None:
+        """Goal 199's final boundary: Android must not re-enter the shared graph.
+
+        The module-level DAG above already forbids a shared module *depending* on an
+        Android one, but that cannot catch the way the old chain actually leaked —
+        an `android.*` import inside a file that compiles for desktop too. Those
+        fail only when the desktop target is built, which is a slower and much more
+        confusing signal than naming the file here.
+
+        `androidx.compose` and friends are allowed: Compose Multiplatform publishes
+        them for every target, so an `androidx.compose.runtime` import in commonMain
+        is correct rather than a leak. The forbidden set is the Android *platform*
+        itself, which has no desktop implementation at all.
+        """
+        forbidden = re.compile(
+            r"^import\s+(android\.[\w.]+"
+            r"|androidx\.(?:core|activity|work|glance|appcompat|room|sqlite|test)\.[\w.]+)",
+            re.MULTILINE,
+        )
+        shared_roots = (
+            ROOT / "presentation-api/src/commonMain",
+            ROOT / "host-presentation/src/main",
+            ROOT / "ui-common/src/commonMain",
+            ROOT / "application/src/main",
+            ROOT / "core/src/main",
+            ROOT / "sync-engine/src/main",
+            ROOT / "data-api/src/main",
+        ) + tuple(
+            ROOT / f"feature-{name}/src/commonMain"
+            for name in ("home", "study", "stats", "games", "settings", "shell", "missing-kanji")
+        )
+        violations = []
+        for source_root in shared_roots:
+            if not source_root.exists():
+                continue
+            for source in sorted(source_root.rglob("*.kt")):
+                for match in forbidden.findall(source.read_text(encoding="utf-8")):
+                    violations.append(f"{source.relative_to(ROOT).as_posix()}: {match}")
+        self.assertEqual(
+            [],
+            violations,
+            "shared and feature sources must not import Android platform classes",
+        )
+
 
 
 if __name__ == "__main__":

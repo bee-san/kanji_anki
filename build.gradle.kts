@@ -4,8 +4,11 @@ import org.gradle.api.GradleException
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.jetbrains.compose) apply false
     alias(libs.plugins.sonarqube)
 }
 
@@ -21,37 +24,68 @@ val sonarFullCoverage = providers.gradleProperty("sonarFullCoverage").map(String
 val sonarAppMainBinaries = providers.gradleProperty("sonarAppMainBinaries")
     .getOrElse(rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"))
 val sonarMainBinaries = listOf(
-    rootPath("fsrs-java/build/classes/kotlin/main"),
+    rootPath("bee-fsrs/build/classes/kotlin/main"),
     rootPath("core/build/classes/kotlin/main"),
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
+    rootPath("data-api/build/classes/kotlin/main"),
+    rootPath("data-sql/build/classes/kotlin/main"),
+    rootPath("sync-engine/build/classes/kotlin/main"),
+    rootPath("application/build/classes/kotlin/main"),
     rootPath("writing-core/build/classes/kotlin/main"),
     rootPath("dictionary-core/build/classes/kotlin/main"),
     rootPath("update-core/build/classes/kotlin/main"),
+    rootPath("platform-contracts/build/classes/kotlin/main"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+    rootPath("automation-android/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+    rootPath("desktop-app/build/classes/kotlin/main"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
     rootPath("app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
     sonarAppMainBinaries,
 )
 val sonarTestBinaries = listOf(
-    rootPath("fsrs-java/build/classes/kotlin/test"),
+    rootPath("bee-fsrs/build/classes/kotlin/test"),
     rootPath("core/build/classes/kotlin/test"),
     rootPath("core/build/classes/java/test"),
     rootPath("domain/build/classes/kotlin/test"),
     rootPath("sync-domain/build/classes/kotlin/test"),
+    rootPath("data-api/build/classes/kotlin/test"),
+    rootPath("data-api/build/classes/java/test"),
+    rootPath("data-api/build/classes/kotlin/testFixtures"),
+    rootPath("data-sql/build/classes/kotlin/test"),
+    rootPath("sync-engine/build/classes/kotlin/test"),
+    rootPath("application/build/classes/kotlin/test"),
     rootPath("writing-core/build/classes/kotlin/test"),
     rootPath("dictionary-core/build/classes/kotlin/test"),
     rootPath("update-core/build/classes/kotlin/test"),
+    rootPath("platform-contracts/build/classes/kotlin/test"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("platform-android/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
+    rootPath("automation-android/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("desktop-app/build/classes/kotlin/test"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
+    rootPath("provider-ankidroid/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes"),
     rootPath("app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes"),
     rootPath("app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes"),
 )
 val sonarCoveragePaths = buildList<String> {
-    add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("bee-fsrs/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("data-api/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("data-sql/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("sync-engine/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("application/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("writing-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("dictionary-core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("update-core/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("platform-contracts/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("platform-android/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
+    add(rootPath("automation-android/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
+    add(rootPath("desktop-app/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("provider-ankidroid/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     add(rootPath("app/build/reports/jacoco/jacocoDebugUnitTestReport/jacocoDebugUnitTestReport.xml"))
     if (sonarFullCoverage) {
         add(rootPath("app/build/reports/coverage/androidTest/debug/connected/report.xml"))
@@ -61,6 +95,7 @@ val sonarCoveragePaths = buildList<String> {
 val sonarPreflight = tasks.register("sonarPreflight") {
     group = "verification"
     description = "Fails closed when deterministic Sonar bytecode or coverage inputs are missing."
+    mustRunAfter("ciQuality")
     inputs.property("binaryPaths", (sonarMainBinaries + sonarTestBinaries).distinct())
     inputs.property("coveragePaths", sonarCoveragePaths)
     doLast {
@@ -99,22 +134,22 @@ val fastSonarCoverageExclusions = listOf(
     "app/src/main/kotlin/dev/bee/kanjianki/KaniBottomNavCompose.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/*View.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/SyncProgressPanel.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
+    "provider-ankidroid/src/main/kotlin/dev/bee/kanjianki/anki/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/HistoricalSyncStore.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/LocalStore*.kt",
-    "app/src/main/kotlin/dev/bee/kanjianki/data/SettingsRepository.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/data/DictionaryStore.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/reminders/ReminderReceiverDailyActions.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/sync/*.kt",
     "app/src/main/kotlin/dev/bee/kanjianki/widget/KaniWidget.kt",
 )
-val testSonarCoverageExclusions = listOf(
+val alwaysSonarCoverageExclusions = listOf(
     "**/src/test/**",
     "**/src/androidTest/**",
     "**/src/debug/**",
+    "desktop-app/src/main/kotlin/dev/bee/kanjianki/desktop/DesktopFoundationWindow.kt",
 )
-val sonarCoverageExclusions = testSonarCoverageExclusions + if (sonarFullCoverage) {
+val sonarCoverageExclusions = alwaysSonarCoverageExclusions + if (sonarFullCoverage) {
     emptyList()
 } else {
     fastSonarCoverageExclusions
@@ -156,17 +191,300 @@ tasks.register<Exec>("testCiScripts") {
     commandLine("python3", "-m", "unittest", "discover", "-s", "ci/tests", "-p", "test_*.py")
 }
 
+tasks.register<Exec>("generateDesktopIcons") {
+    group = "build setup"
+    description = "Generates committed PNG, ICO, and ICNS package icons from the canonical SVG."
+    inputs.file(layout.projectDirectory.file("branding/kani-app-icon.svg"))
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_icons.py"))
+    outputs.files(
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.png"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.ico"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.icns"),
+        layout.projectDirectory.file(
+            "desktop-app/src/main/packaging/icons/icon-manifest.json",
+        ),
+    )
+    commandLine("python3", "tools/generate_desktop_icons.py", "--write")
+}
+
+tasks.register<Exec>("verifyDesktopIcons") {
+    group = "verification"
+    description = "Fails when a desktop package icon diverges from the canonical SVG."
+    inputs.file(layout.projectDirectory.file("branding/kani-app-icon.svg"))
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_icons.py"))
+    inputs.files(
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.png"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.ico"),
+        layout.projectDirectory.file("desktop-app/src/main/packaging/icons/kani.icns"),
+        layout.projectDirectory.file(
+            "desktop-app/src/main/packaging/icons/icon-manifest.json",
+        ),
+    )
+    commandLine("python3", "tools/generate_desktop_icons.py", "--check")
+}
+
 tasks.register("testBuildLogic") {
     group = "verification"
     description = "Runs convention-plugin tests, including the Android library fixture."
     dependsOn(gradle.includedBuild("build-logic").task(":test"))
 }
 
+val desktopPythonExecutable = if (
+    System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+) {
+    "python"
+} else {
+    "python3"
+}
+
+tasks.register<Exec>("testDesktopTooling") {
+    group = "verification"
+    description = "Runs host-portable desktop gate, icon-contract, boundary, locale, and smoke-runner tests."
+    // Enumerated rather than discovered, because most of `tools/` needs the generated
+    // dictionary assets and belongs to the Android gate. The list is pinned by
+    // `test_desktop_ci_gates`, so adding a desktop tooling test without adding it here
+    // fails rather than silently never running.
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "unittest",
+        "tools.test_desktop_ci_gates",
+        "tools.test_desktop_ci_workflow",
+        "tools.test_desktop_packaging_audit",
+        "tools.test_generate_desktop_icons",
+        "tools.test_generate_desktop_sbom",
+        "tools.test_host_render_parity",
+        "tools.test_measure_desktop_startup_budget",
+        "tools.test_merge_verification_metadata",
+        "tools.test_module_boundaries",
+        "tools.test_run_desktop_data_retention",
+        "tools.test_run_desktop_installed_image_smoke",
+        "tools.test_shared_string_locales",
+        "tools.test_verify_desktop_package",
+    )
+}
+
+tasks.register<Exec>("testDesktopCiScripts") {
+    group = "verification"
+    description = "Runs host-portable desktop CI classifier and verification-metadata artifact tests."
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "unittest",
+        "ci.tests.test_capture_verification_metadata",
+        "ci.tests.test_classify_desktop_ci",
+        "ci.tests.test_verification_metadata_artifact_validation",
+    )
+}
+
+val desktopCiTasks = listOf(
+    "testBuildLogic",
+    ":bee-fsrs:check",
+    ":core:check",
+    ":domain:check",
+    ":sync-domain:check",
+    ":data-api:check",
+    ":data-sql:check",
+    ":data-desktop:check",
+    ":provider-ankiconnect:check",
+    ":reference-assets:check",
+    ":backup-core:check",
+    ":sync-engine:check",
+    ":application:check",
+    ":writing-core:check",
+    ":dictionary-core:check",
+    ":update-core:check",
+    ":platform-contracts:check",
+    ":platform-desktop:check",
+    ":presentation-api:check",
+    ":host-presentation:check",
+    ":ui-common:check",
+    ":feature-shell:check",
+    ":feature-home:check",
+    ":feature-study:check",
+    ":feature-stats:check",
+    ":feature-games:check",
+    ":feature-missing-kanji:check",
+    ":feature-settings:check",
+    ":desktop-app:check",
+    "testDesktopCiScripts",
+    "testDesktopTooling",
+)
+
+tasks.register("ciDesktop") {
+    group = "verification"
+    description = "Runs deterministic desktop, shared JVM, build-logic, icon-contract, and tooling checks for the current host."
+    dependsOn(desktopCiTasks)
+}
+
+val desktopInstalledImageDirectory =
+    layout.projectDirectory.dir("desktop-app/build/compose/binaries/main/app")
+
+// Stable names for the two Compose packaging steps (Goal 204). CI, the release runbook,
+// and the docs refer to these instead of to the plugin's own task names.
+//
+// The indirection is not ceremony: `createDistributable` and
+// `packageDistributionForCurrentOS` are the Compose plugin's names, and the plugin also
+// registers `createReleaseDistributable`/`packageReleaseDistributionForCurrentOS` (the
+// ProGuard-minified variants) whose names differ by an infix. A plugin upgrade that
+// renames or re-defaults either one turns every reference across three workflows and two
+// documents into a silent change of what gets built and verified. Delegating in one place
+// means a rename breaks here, once, loudly.
+//
+// The non-release variants are deliberate: Kani does not minify the desktop distribution,
+// and the smoke and budget gates must exercise the image users install.
+val createDesktopDistributable = tasks.register("createDesktopDistributable") {
+    group = "distribution"
+    description = "Builds the current-host installed desktop application image."
+    dependsOn(":desktop-app:createDistributable")
+}
+
+val packageDesktopCurrentOs = tasks.register("packageDesktopCurrentOs") {
+    group = "distribution"
+    description = "Builds the native desktop installer for the current host only."
+    // Only the current host's format, because desktop packaging is not
+    // cross-compilation: jpackage needs the target OS's own tooling (WiX on Windows,
+    // dpkg/fakeroot on Linux, Xcode CLI on macOS). Each format is built on its own
+    // runner; asking one host for all three fails on the tooling, not on Kani.
+    dependsOn(":desktop-app:packageDistributionForCurrentOS")
+    mustRunAfter(createDesktopDistributable)
+}
+
+val verifyDesktopPackage = tasks.register<Exec>("verifyDesktopPackage") {
+    group = "verification"
+    description = "Verifies the installed desktop image's identity, runtime version, and module set."
+    dependsOn(createDesktopDistributable)
+    mustRunAfter(packageDesktopCurrentOs)
+    inputs.file(layout.projectDirectory.file("tools/verify_desktop_package.py"))
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // A module, for the same reason as the budget gate: it imports the smoke runner's
+    // launcher check rather than keeping a second answer to "is this a real image".
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.verify_desktop_package",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
+val smokeDesktopInstalledImage = tasks.register<Exec>("smokeDesktopInstalledImage") {
+    group = "verification"
+    description = "Runs the current-host installed desktop image in isolated temporary-data smoke mode."
+    dependsOn(createDesktopDistributable)
+    mustRunAfter(packageDesktopCurrentOs)
+    inputs.file(
+        layout.projectDirectory.file(
+            "tools/run_desktop_installed_image_smoke.py",
+        ),
+    )
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    commandLine(
+        desktopPythonExecutable,
+        "tools/run_desktop_installed_image_smoke.py",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
+val generateDesktopSbom = tasks.register<Exec>("generateDesktopSbom") {
+    group = "documentation"
+    description =
+        "Generates a CycloneDX SBOM and third-party notices from the installed desktop image."
+    dependsOn(createDesktopDistributable)
+    inputs.file(layout.projectDirectory.file("tools/generate_desktop_sbom.py"))
+    inputs.file(layout.projectDirectory.file("gradle/verification-metadata.xml"))
+    inputs.dir(desktopInstalledImageDirectory)
+    outputs.file(layout.buildDirectory.file("sbom/kani-desktop-sbom.json"))
+    outputs.file(layout.buildDirectory.file("sbom/kani-desktop-third-party-notices.txt"))
+    workingDir(layout.projectDirectory)
+    // Generated from the image, not from a dependency resolution: the image is what
+    // users receive, and a resolution listing can name artifacts the packager dropped.
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.generate_desktop_sbom",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+        "--sbom-out",
+        layout.buildDirectory.file("sbom/kani-desktop-sbom.json").get().asFile.absolutePath,
+        "--notices-out",
+        layout.buildDirectory
+            .file("sbom/kani-desktop-third-party-notices.txt")
+            .get()
+            .asFile
+            .absolutePath,
+    )
+}
+
+val verifyDesktopDataRetention = tasks.register<Exec>("verifyDesktopDataRetention") {
+    group = "verification"
+    description =
+        "Verifies the installed desktop image retains user data across a second launch over one profile."
+    dependsOn(createDesktopDistributable)
+    // After the smoke gate: there is no point asking whether an image retains data if it
+    // cannot start at all, and the failure would read as a retention bug rather than a
+    // launch one.
+    mustRunAfter(packageDesktopCurrentOs, smokeDesktopInstalledImage)
+    inputs.file(layout.projectDirectory.file("tools/run_desktop_data_retention.py"))
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // A module, so it imports the smoke runner's launcher resolution and render-environment
+    // checks rather than keeping a second answer to "where is the launcher".
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.run_desktop_data_retention",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
+val measureDesktopStartupBudget = tasks.register<Exec>("measureDesktopStartupBudget") {
+    group = "verification"
+    description = "Measures the installed desktop image against its startup and peak-memory budgets."
+    dependsOn(createDesktopDistributable)
+    // After the smoke gate, not instead of it: the smoke gate answers "does the
+    // packaged image work", and there is no point timing an image that does not.
+    mustRunAfter(smokeDesktopInstalledImage, packageDesktopCurrentOs)
+    inputs.file(
+        layout.projectDirectory.file(
+            "tools/measure_desktop_startup_budget.py",
+        ),
+    )
+    inputs.dir(desktopInstalledImageDirectory)
+    workingDir(layout.projectDirectory)
+    // Run as a module, not as a path: this gate imports the smoke runner rather
+    // than duplicating it, and a path invocation leaves `tools` off `sys.path`.
+    commandLine(
+        desktopPythonExecutable,
+        "-m",
+        "tools.measure_desktop_startup_budget",
+        "--image-root",
+        desktopInstalledImageDirectory.asFile.absolutePath,
+    )
+}
+
+tasks.register("ciDesktopPackage") {
+    group = "verification"
+    description = "Builds the current-host desktop image and native package, then verifies the packaged runtime and runs the installed-image smoke and performance-budget contracts."
+    dependsOn(
+        measureDesktopStartupBudget,
+        packageDesktopCurrentOs,
+        generateDesktopSbom,
+        smokeDesktopInstalledImage,
+        verifyDesktopDataRetention,
+        verifyDesktopPackage,
+    )
+}
+
 val fastCiTasks = listOf(
     "testBuildLogic",
-    ":fsrs-java:test",
-    ":fsrs-java:jacocoTestReport",
-    ":fsrs-java:jacocoTestCoverageVerification",
+    ":bee-fsrs:test",
+    ":bee-fsrs:jacocoTestReport",
+    ":bee-fsrs:jacocoTestCoverageVerification",
     ":core:test",
     ":core:jacocoTestReport",
     ":core:jacocoTestCoverageVerification",
@@ -176,6 +494,28 @@ val fastCiTasks = listOf(
     ":sync-domain:test",
     ":sync-domain:jacocoTestReport",
     ":sync-domain:jacocoTestCoverageVerification",
+    ":data-api:test",
+    ":data-api:jacocoTestReport",
+    ":data-api:jacocoTestCoverageVerification",
+    ":data-sql:test",
+    ":data-sql:jacocoTestReport",
+    ":data-sql:jacocoTestCoverageVerification",
+    ":reference-assets:test",
+    ":reference-assets:jacocoTestReport",
+    ":reference-assets:jacocoTestCoverageVerification",
+    ":backup-core:test",
+    ":backup-core:jacocoTestReport",
+    ":backup-core:jacocoTestCoverageVerification",
+    ":data-android:testDebugUnitTest",
+    ":data-android:jacocoDebugUnitTestReport",
+    ":data-android:compileDebugAndroidTestKotlin",
+    ":data-android:lintDebug",
+    ":sync-engine:test",
+    ":sync-engine:jacocoTestReport",
+    ":sync-engine:jacocoTestCoverageVerification",
+    ":application:test",
+    ":application:jacocoTestReport",
+    ":application:jacocoTestCoverageVerification",
     ":writing-core:test",
     ":writing-core:jacocoTestReport",
     ":writing-core:jacocoTestCoverageVerification",
@@ -185,6 +525,39 @@ val fastCiTasks = listOf(
     ":update-core:test",
     ":update-core:jacocoTestReport",
     ":update-core:jacocoTestCoverageVerification",
+    ":platform-contracts:test",
+    ":platform-contracts:jacocoTestReport",
+    ":platform-contracts:jacocoTestCoverageVerification",
+    // :presentation-api and :ui-common are multiplatform, so the Android fast gate
+    // runs their Android target: the common tests compiled for Android, the
+    // device-test source set's compile, and Android Lint. The desktop target's tests
+    // and its 100% class coverage gate belong to ciDesktop; running them here would
+    // make the Android gate depend on desktop tasks, which
+    // `test_desktop_ci_gates.py` forbids.
+    ":presentation-api:testAndroidHostTest",
+    ":presentation-api:compileAndroidDeviceTest",
+    ":presentation-api:lintAnalyzeAndroidHostTest",
+    ":ui-common:testAndroidHostTest",
+    ":ui-common:compileAndroidDeviceTest",
+    ":ui-common:lintAnalyzeAndroidHostTest",
+    ":feature-shell:testAndroidHostTest",
+    ":feature-shell:compileAndroidDeviceTest",
+    ":feature-shell:lintAnalyzeAndroidHostTest",
+    ":feature-home:testAndroidHostTest",
+    ":feature-home:compileAndroidDeviceTest",
+    ":feature-home:lintAnalyzeAndroidHostTest",
+    ":platform-android:testDebugUnitTest",
+    ":platform-android:jacocoDebugUnitTestReport",
+    ":platform-android:compileDebugAndroidTestKotlin",
+    ":platform-android:lintDebug",
+    ":automation-android:testDebugUnitTest",
+    ":automation-android:jacocoDebugUnitTestReport",
+    ":automation-android:compileDebugAndroidTestKotlin",
+    ":automation-android:lintDebug",
+    ":provider-ankidroid:testDebugUnitTest",
+    ":provider-ankidroid:jacocoDebugUnitTestReport",
+    ":provider-ankidroid:compileDebugAndroidTestKotlin",
+    ":provider-ankidroid:lintDebug",
     ":app:compileDebugKotlin",
     ":app:testDebugUnitTest",
     ":app:jacocoDebugUnitTestReport",
@@ -207,13 +580,24 @@ tasks.register("ciQuality") {
     description = "Builds the deterministic test, coverage, and bytecode inputs used by SonarQube."
     dependsOn(
         "ciFast",
-        ":fsrs-java:jar",
+        ":bee-fsrs:jar",
         ":core:jar",
         ":domain:jar",
         ":sync-domain:jar",
+        ":data-api:jar",
+        ":data-sql:jar",
+        ":data-android:compileDebugKotlin",
+        ":sync-engine:jar",
+        ":application:jar",
         ":writing-core:jar",
         ":dictionary-core:jar",
         ":update-core:jar",
+        ":platform-contracts:jar",
+        ":platform-android:compileDebugKotlin",
+        ":automation-android:compileDebugKotlin",
+        ":provider-ankidroid:compileDebugKotlin",
+        ":desktop-app:jacocoTestReport",
+        ":desktop-app:jar",
         ":app:compileDebugKotlin",
         ":app:compileDebugJavaWithJavac",
     )
@@ -225,5 +609,15 @@ tasks.register("ciRelease") {
     dependsOn(
         "ciFast",
         ":app:assembleRelease",
+    )
+}
+
+tasks.register("ciAll") {
+    group = "verification"
+    description = "Aggregates Android, quality, desktop, and current-host desktop-package confidence gates without making cross-host claims."
+    dependsOn(
+        "ciQuality",
+        "ciDesktop",
+        "ciDesktopPackage",
     )
 }

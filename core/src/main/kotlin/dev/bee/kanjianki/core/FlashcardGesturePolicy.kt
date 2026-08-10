@@ -6,12 +6,6 @@ import kotlin.math.max
 object FlashcardGesturePolicy {
     private const val HORIZONTAL_DOMINANCE = 1.25f
 
-    /** Portable setting key controlling whether the left/right swipe-to-grade gesture is active. */
-    const val SWIPE_GESTURE_ENABLED_SETTING_KEY: String = "flashcard_swipe_gesture_enabled"
-
-    /** Swipe-to-grade ships on by default; stored as an Int (1 = on, 0 = off). */
-    const val SWIPE_GESTURE_ENABLED_DEFAULT: Int = 1
-
     @JvmStatic
     fun release(
         startX: Float,

@@ -418,15 +418,13 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         item.dueAtMillis <= nowMillis &&
             (item.lastRealReviewDueAtMillis == 0L || item.lastRealReviewDueAtMillis != item.dueAtMillis)
 
-    private fun elapsedReviewDays(memory: RecordsStudyModels.TaskMemory, nowMillis: Long): Int {
-        val previousIntervalMillis = max(0L, memory.matureIntervalDays.toLong()) * StudyLadderRules.DAY
-        val lastReviewAt = memory.lastReviewedAtMillis.takeIf { it > 0L }
-            ?: max(0L, saturatingSubtract(memory.dueAtMillis, previousIntervalMillis))
-        return min(
-            Int.MAX_VALUE.toLong(),
-            nonNegativeDifference(nowMillis, lastReviewAt) / StudyLadderRules.DAY,
-        ).toInt()
-    }
+    private fun elapsedReviewDays(memory: RecordsStudyModels.TaskMemory, nowMillis: Long): Double =
+        FsrsElapsedTime.elapsedDays(
+            nowMillis,
+            memory.lastReviewedAtMillis,
+            memory.dueAtMillis,
+            memory.matureIntervalDays,
+        )
 
     private fun repairRating(request: RecordsSchedulerModels.ReviewRequest, taskType: String): String {
         if (taskType == StudyTaskTypes.WRITE_KANJI) {

@@ -5,8 +5,10 @@ import android.app.AlertDialog
 import android.os.Handler
 import android.widget.EditText
 import android.widget.Toast
-import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.core.NoteTypeFieldMappingPolicy
+import dev.bee.kanjianki.syncapi.CollectionFailure
+import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.syncapi.NoteTypeDescriptor
 import java.util.concurrent.ExecutorService
 
 internal object NoteTypeFieldMappings {
@@ -17,7 +19,7 @@ internal object NoteTypeFieldMappings {
     @JvmStatic
     fun choose(
         activity: Activity,
-        gateway: AnkiDroidGateway,
+        gateway: CollectionGateway,
         io: ExecutorService,
         main: Handler,
         inputs: FieldInputs,
@@ -45,7 +47,7 @@ internal object NoteTypeFieldMappings {
                 try {
                     val noteTypes = reader.noteTypes()
                     main.run(Runnable { presentNoteTypes(noteTypes, inputs, ui) })
-                } catch (error: AnkiDroidGateway.SyncFailure) {
+                } catch (error: CollectionFailure) {
                     main.run(Runnable { ui.showLongMessage(errorMessage(error)) })
                 } catch (error: RuntimeException) {
                     main.run(Runnable { ui.showLongMessage(errorMessage(error)) })
@@ -85,7 +87,7 @@ internal object NoteTypeFieldMappings {
     }
 
     @JvmStatic
-    fun labels(noteTypes: List<Choice>?): Array<String> {
+    fun labels(noteTypes: List<Choice?>?): Array<String> {
         val choices = noteTypes.orEmpty().map { noteType -> noteType?.coreChoice }
         return NoteTypeFieldMappingPolicy.labels(choices)
     }
@@ -111,7 +113,7 @@ internal object NoteTypeFieldMappings {
     }
 
     @JvmStatic
-    fun choicesFrom(noteTypes: List<AnkiDroidGateway.NoteType>?): List<Choice> {
+    fun choicesFrom(noteTypes: List<NoteTypeDescriptor>?): List<Choice> {
         if (noteTypes.isNullOrEmpty()) {
             return emptyList()
         }
@@ -119,7 +121,7 @@ internal object NoteTypeFieldMappings {
     }
 
     fun interface NoteTypeReader {
-        @Throws(AnkiDroidGateway.SyncFailure::class)
+        @Throws(CollectionFailure::class)
         fun noteTypes(): List<Choice>?
     }
 

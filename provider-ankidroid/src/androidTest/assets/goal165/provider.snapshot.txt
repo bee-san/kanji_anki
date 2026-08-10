@@ -1,0 +1,46 @@
+goal165 provider baseline v1
+personal-data=none
+
+[capability]
+status installed=true permission=true read=true write=true spec=2 authority=dev.bee.kanjianki.test.ankidroid
+note-types=100:Kiku:Expression,ExpressionReading,MainDefinition,Sentence,Frequency,FreqSort,Glossary;200:Custom Japanese:Front,Reading,Back,Example,Frequency,FrequencySort
+
+[configured-kiku]
+note id=1 model=100:Kiku expression=確認 reading=かくにん meaning=confirmation sentence=確認した。 tags=[]
+note id=2 model=100:Kiku expression=笥箱 reading=しはこ meaning=rare box sentence=笥箱を見た。 tags=[]
+card id=1000 note=1 ord=0 deck=Kiku/Kiku queue=2 type=2 due=12 interval=42 reps=80 lapses=3 suspended=false fsrs=12.5,7.0,0.42 browser=false
+card id=2000 note=2 ord=0 deck=Kiku/Kiku queue=-1 type=2 due=0 interval=10 reps=5 lapses=1 suspended=true fsrs=12.5,7.0,0.42 browser=false
+queries bulk=1 per-note=0 explicit-id=0
+
+[configured-custom]
+note id=101 model=200:Custom Japanese expression=確認 reading=かくにん meaning=confirmation sentence=確認した。 tags=[]
+note id=102 model=200:Custom Japanese expression=笥箱 reading=しはこ meaning=rare box sentence=笥箱を見た。 tags=[]
+card id=101000 note=101 ord=0 deck=Kiku/Kiku queue=2 type=2 due=12 interval=42 reps=80 lapses=3 suspended=false fsrs=12.5,7.0,0.42 browser=false
+card id=102000 note=102 ord=0 deck=Kiku/Kiku queue=-1 type=2 due=0 interval=10 reps=5 lapses=1 suspended=true fsrs=12.5,7.0,0.42 browser=false
+queries bulk=1 per-note=0 explicit-id=0
+
+[browser-query]
+active-matches=[1000] queries=1
+suspended-matches=[2000] suspended=[2000] queries=1
+
+[fsrs-fallbacks]
+nullable=1000:-,-,-;2000:-,-,- rejects=2 bulk=3
+data-only=1000:12.5,7.0,0.42;2000:12.5,7.0,0.42
+malformed=1000:-,-,-;2000:-,-,-
+
+[note-tag-write-back]
+archive source=1 deleted=0 tagged=1 final-tags=kani_archived
+repaired requested=[1, 2] tagged=[1, 2] failed=[] note1=kani_repaired note2=kani_repaired updates=2
+
+[collection-inventory]
+complete notes=4 skipped=0 models=2 mode=DIRECT_SQL_PAGED ids=[1, 2, 101, 102] field-counts=[7, 7, 6, 6]
+malformed notes=4 skipped=1 ids=[1, 2, 101, 102]
+
+[missing-kanji-export]
+result completed=true requested=4 valid=2 created=2 present=0 invalid=1 duplicates=1 unfinished=[]
+created-literals=[水, 火] receipt-literals=[水, 火] source-ids=[kani-missing:水, kani-missing:火] bulk-inserts=1
+
+[cancellation]
+browser=permanent=false message=Timed out while reading AnkiDroid.
+inventory kind=CANCELLED partial-note-ids=[1, 2]
+export kind=CANCELLED created=100 unfinished=1 bulk-inserts=1

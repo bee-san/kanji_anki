@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.ManualKanjiSource
 import dev.bee.kanjianki.core.KanjiInventorySearchQuery
 import dev.bee.kanjianki.core.KanjiReadingChoicePlanner
 import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
@@ -78,6 +79,19 @@ internal abstract class LocalStoreInventory(
         val publishedEpoch = DASHBOARD_CACHE_EPOCH.incrementAndGet()
         clearLocalDashboardRowsCache()
         observedDashboardCacheEpoch = publishedEpoch
+    }
+
+    /**
+     * Drops every in-memory projection this helper holds. Only for the test seam that
+     * replaces the underlying database file beneath a process-cached store; production
+     * invalidation stays targeted so a single write cannot flush unrelated caches.
+     */
+    internal fun clearAllProjectionCachesForTest() {
+        clearDashboardRowsCache()
+        clearLocallySuspendedCache()
+        clearStudyItemsCache()
+        clearKanjiInventoryAllCache()
+        clearSimilarKanjiNeighborsCache()
     }
 
     private fun clearLocalDashboardRowsCache() {

@@ -45,8 +45,7 @@ import dev.bee.kanjianki.core.KaniThemeChoice
 import kotlinx.coroutines.launch
 
 internal fun ownsLegacyConfigurableWidget(context: Context, appWidgetId: Int): Boolean =
-    KaniWidgetRegistry.DEFAULT.descriptorForAppWidgetId(context, appWidgetId)?.receiverClass ==
-        KaniWidgetReceiver::class.java
+    ownsStudyOverviewWidget(context, appWidgetId)
 
 internal suspend fun loadKaniWidgetInstanceOptions(
     context: Context,

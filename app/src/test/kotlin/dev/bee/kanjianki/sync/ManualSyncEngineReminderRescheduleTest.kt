@@ -3,7 +3,8 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
+import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.RecordsBase
@@ -48,7 +49,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun successfulSyncRearmsReminder() {
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
         var rearms = 0
         engine.reminderRescheduler = Runnable { rearms++ }
 
@@ -71,7 +72,7 @@ class ManualSyncEngineReminderRescheduleTest {
             ),
             nowMillis = 100,
         )
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             EmptyGateway(),
@@ -118,7 +119,7 @@ class ManualSyncEngineReminderRescheduleTest {
             "good",
             now - 1_000L,
         )
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults()).also {
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults()).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
         }
@@ -154,7 +155,7 @@ class ManualSyncEngineReminderRescheduleTest {
         assertTrue(store.studyItems().isEmpty())
         assertTrue(store.hasPersistedCollectionMirror())
 
-        val result = ManualSyncEngine(context, store, EmptyGateway(), settings).run()
+        val result = createManualSyncEngine(context, store, EmptyGateway(), settings).run()
 
         assertFalse(result.success)
         assertTrue(result.retryable)
@@ -183,7 +184,7 @@ class ManualSyncEngineReminderRescheduleTest {
             }
         }
 
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(suspendedSnapshot("新")),
@@ -262,7 +263,7 @@ class ManualSyncEngineReminderRescheduleTest {
         )
         val notesOnly = RecordsSyncModels.CollectionSnapshot(prior.notes, emptyList())
 
-        val result = ManualSyncEngine(context, store, SnapshotGateway(notesOnly), settings).run()
+        val result = createManualSyncEngine(context, store, SnapshotGateway(notesOnly), settings).run()
 
         assertFalse(result.success)
         assertTrue(result.retryable)
@@ -323,13 +324,13 @@ class ManualSyncEngineReminderRescheduleTest {
             "hard",
             now - 2_000L,
         )
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(suspendedSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -367,13 +368,13 @@ class ManualSyncEngineReminderRescheduleTest {
     fun archivedSuspendedImportRemainsAnalyzableWhenProviderHidesTaggedNote() {
         val now = 1_725_000_000_000L
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val firstEngine = ManualSyncEngine(
+        val firstEngine = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(suspendedSnapshot("痛")),
             settings,
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -385,13 +386,13 @@ class ManualSyncEngineReminderRescheduleTest {
         store.replaceStudyItems(listOf(original))
         val currentProvider = completeSnapshot("別", noteId = 2L, cardId = 20L)
         assertTrue(currentProvider.cards.none { it.cardId == 10L })
-        val secondEngine = ManualSyncEngine(
+        val secondEngine = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(currentProvider),
             settings,
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now + 1_000L },
+            dev.bee.kanjianki.platform.AppClock { now + 1_000L },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -414,13 +415,13 @@ class ManualSyncEngineReminderRescheduleTest {
             .build()
         store.replaceStudyItems(listOf(original))
         store.setKanjiLocallySuspended("痛", true, now - 1_000L)
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(suspendedSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -462,13 +463,13 @@ class ManualSyncEngineReminderRescheduleTest {
             )
         }
         store.setKanjiLocallySuspended("痛", true, now - 1_000L)
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             SnapshotGateway(matureProviderSnapshot("痛")),
             RecordsSyncModels.Settings.kikuDefaults(),
             SyncProgress.NONE,
-            dev.bee.kanjianki.time.AppClock { now },
+            dev.bee.kanjianki.platform.AppClock { now },
         ).also {
             it.reminderRescheduler = Runnable { }
             it.widgetRefresher = Runnable { }
@@ -481,7 +482,11 @@ class ManualSyncEngineReminderRescheduleTest {
         assertEquals(2, currentRow.matureSupportCount)
         assertEquals(
             KanjiRepairEvidencePolicy.Status.REGRESSING,
-            engine.repairEvidenceStatusByKanji(listOf(currentRow), now)["痛"],
+            ManualSyncQueuePlanner.repairEvidenceStatusByKanji(
+                listOf(currentRow),
+                store.kanjiRepairEvidenceInputs(),
+                now,
+            )["痛"],
         )
         assertEquals(StudyLadderRules.STATE_REVIEW, store.studyItems().single().state)
         assertFalse(store.timelineForKanji("痛").events.any { it.eventType == StudyLadderRules.STATE_RETIRED })
@@ -489,7 +494,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun failedSyncDoesNotRearmReminder() {
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             ThrowingGateway(AnkiDroidGateway.SyncFailure.retryable("try later")),
@@ -506,7 +511,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun postCommitSideEffectAndSummaryFailuresRetainSingleSuccessfulSync() {
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
         var reminderCalls = 0
         var widgetCalls = 0
         var summaryCalls = 0
@@ -539,7 +544,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun successCopyUsesTheEffectiveCommittedFocusPlan() {
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
         val committedPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
             false,
             20,
@@ -563,7 +568,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun archiveFailureRetainsSuccessAndDoesNotExposeProviderError() {
-        val engine = ManualSyncEngine(
+        val engine = createManualSyncEngine(
             context,
             store,
             ArchiveThrowingGateway(),
@@ -585,7 +590,7 @@ class ManualSyncEngineReminderRescheduleTest {
     @Test
     fun committedSummaryCountsMergedReviewInsteadOfStaleSeededState() {
         val settings = RecordsSyncModels.Settings.kikuDefaults()
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), settings)
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), settings)
         val now = 1_725_000_000_000L
         val row = repairRow("痛")
         val baseline = reviewItem(row, dueAtMillis = now, totalReviews = 3, lastRealReviewDueAt = 100L)
@@ -616,7 +621,7 @@ class ManualSyncEngineReminderRescheduleTest {
 
     @Test
     fun committedSummaryDryRunsAdmissionForMissingPostSyncFocus() {
-        val engine = ManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
+        val engine = createManualSyncEngine(context, store, EmptyGateway(), RecordsSyncModels.Settings.kikuDefaults())
         val now = 1_725_000_000_000L
         val row = repairRow("未")
 

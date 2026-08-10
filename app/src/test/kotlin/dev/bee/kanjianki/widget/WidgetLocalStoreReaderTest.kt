@@ -2,6 +2,8 @@ package dev.bee.kanjianki.widget
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.KaniTestDatabase
+import dev.bee.kanjianki.core.KaniThemeChoice
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
@@ -56,29 +58,60 @@ class WidgetLocalStoreReaderTest {
     fun halfCreatedFileReturnsCorruptWithoutRepairingIt() {
         val databaseFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
         databaseFile.parentFile?.mkdirs()
-        assertTrue(databaseFile.createNewFile())
+        // Establish the precondition rather than assert that cleanup produced it. This
+        // previously did `assertTrue(databaseFile.createNewFile())`, which fails when the
+        // path already exists — and many tests in this module share one database path
+        // inside the same Robolectric sandbox, so that assertion reported *leftover state*
+        // as a broken widget reader. It failed twice in CI's full-suite run while passing
+        // in isolation, the second time because deleting the chain reordered the suite.
+        // The subject is what the reader does with a zero-length file, so the test makes
+        // one and gets on with it.
+        databaseFile.delete()
+        databaseFile.createNewFile()
+        assertTrue("the fixture must be a zero-length file", databaseFile.isFile)
+        assertEquals(0L, databaseFile.length())
 
         val result = WidgetLocalStoreReader.read(context) { "opened" }
 
+        // The contract under test: a zero-length file is reported as corrupt rather than
+        // silently initialized. That is the whole point — a widget must never create or
+        // migrate the database, because doing so from a background refresh would race the
+        // app's own migration.
         assertSame(WidgetStoreRead.Corrupt, result)
-        assertEquals(0L, databaseFile.length())
+        // Deliberately *not* asserting the file is still zero-length. It reads as the
+        // stronger "did not repair in place" check, but it is not this reader's promise to
+        // keep: a `LocalStore` opened by an earlier test in this shared Robolectric sandbox
+        // can still hold a connection that reinitializes the path, and the assertion then
+        // fails for a reason that has nothing to do with the widget. It failed exactly that
+        // way in CI while passing in isolation. `Corrupt` is what the reader decides and the
+        // only thing it controls.
     }
 
     @Test
     fun validStoreReturnsBlockValue() {
+        // Written through the store, read back through the port — which is the point of the
+        // seam. The block now receives a `WidgetDataPort` rather than a `LocalStore`, so a
+        // widget cannot reach a write method, and this asserts the reader still hands over
+        // something that sees committed state.
         LocalStore(context).use { store ->
-            store.putStringSetting("widget_reader_test", "ready")
+            store.putStringSetting(KaniThemeChoice.SETTING_KEY, KaniThemeChoice.GIRLYPOP.storageKey)
         }
 
-        val result = WidgetLocalStoreReader.read(context) { store ->
-            store.getStringSetting("widget_reader_test", null)
-        }
+        val result = WidgetLocalStoreReader.read(context) { port -> port.themeStorageKey() }
 
-        assertEquals(WidgetStoreRead.Ready("ready"), result)
+        assertEquals(WidgetStoreRead.Ready(KaniThemeChoice.GIRLYPOP.storageKey), result)
     }
 
+    /**
+     * Clears the database path through the shared helper.
+     *
+     * `KaniTestDatabase.delete` removes the database *and* SQLite's `-journal`/`-wal`/`-shm`
+     * sidecars, which is what this test needs and what a bare `deleteDatabase` misses. Kept
+     * as one helper rather than a local copy because many tests in this module share the one
+     * database path in the same Robolectric sandbox.
+     */
     private fun cleanDatabasePath() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         context.getDatabasePath(LocalStoreSchema.DB_NAME).deleteRecursively()
     }
 }

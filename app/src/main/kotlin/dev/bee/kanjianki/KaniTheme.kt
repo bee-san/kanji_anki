@@ -9,6 +9,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import dev.bee.kanjianki.ui.KaniUiTokens
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -59,42 +60,6 @@ internal class KaniColors(
     val disabledContent: Color,
     val disabledBorder: Color,
 ) {
-    /**
-     * Resolves a legacy light-palette ARGB int (the values declared in
-     * [MainActivityUiSupport]) to its theme-aware color. Screen models keep
-     * carrying ints as semantic keys; composables translate them here so the
-     * same model renders correctly in light and dark themes.
-     */
-    fun fromLegacy(argb: Int): Color = legacyMap[argb] ?: Color(argb)
-
-    private val legacyMap: Map<Int, Color> by lazy(LazyThreadSafetyMode.NONE) {
-        buildMap {
-            put(MainActivityUiSupport.BG, bg)
-            put(MainActivityUiSupport.INK, ink)
-            put(MainActivityUiSupport.MUTED, muted)
-            put(MainActivityUiSupport.CORAL, coral)
-            put(MainActivityUiSupport.TEAL, teal)
-            put(MainActivityUiSupport.GOLD, gold)
-            put(MainActivityUiSupport.BLUE, blue)
-            put(MainActivityUiSupport.BLUSH, pill)
-            put(MainActivityUiSupport.PINK_STROKE, pinkStroke)
-            put(MainActivityUiSupport.LILAC, lilac)
-            put(MainActivityUiSupport.STUDY_BG, studyBg)
-            put(MainActivityUiSupport.STUDY_BG_SOFT, studyBg)
-            put(MainActivityUiSupport.STUDY_CARD, surface)
-            put(MainActivityUiSupport.STUDY_PANEL, panel)
-            put(MainActivityUiSupport.STUDY_PLUM, plum)
-            put(MainActivityUiSupport.STUDY_MUTED, muted)
-            put(MainActivityUiSupport.STUDY_PINK_DARK, primary)
-            put(MainActivityUiSupport.STUDY_BORDER, border)
-            put(MainActivityUiSupport.STUDY_PILL, pill)
-            put(MainActivityUiSupport.STUDY_HERO_PANEL, panelSoft)
-            put(MainActivityUiSupport.STUDY_HERO_PILL, pill)
-            put(MainActivityUiSupport.STUDY_HERO_PINK, primary)
-            put(MainActivityUiSupport.STUDY_HERO_PLUM, ink)
-            put(MainActivityUiSupport.STUDY_HERO_MUTED, muted)
-        }
-    }
 }
 
 internal val LightKaniColors = KaniColors(
@@ -197,7 +162,8 @@ internal val AutumnKaniColors = KaniColors(
 
 internal val DarkKaniColors = KaniColors(
     isDark = true,
-    bg = Color(MainActivityUiSupport.BG_DARK),
+    // Inlined from the deleted MainActivityUiSupport, whose only surviving use this was.
+    bg = Color(0xFF1C1220),
     studyBg = Color(0xFF1F1424),
     surface = Color(0xFF2B1C30),
     panel = Color(0xFF3A2240),
@@ -306,10 +272,3 @@ internal fun KaniTheme(
     }
 }
 
-/**
- * Resolves a legacy light-palette ARGB int carried by a screen model to the
- * current theme's color. Use at the composable boundary instead of `Color(int)`.
- */
-@Composable
-@ReadOnlyComposable
-internal fun kaniColor(argb: Int): Color = LocalKaniColors.current.fromLegacy(argb)

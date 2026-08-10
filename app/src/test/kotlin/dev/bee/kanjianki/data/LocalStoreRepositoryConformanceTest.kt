@@ -1,0 +1,207 @@
+package dev.bee.kanjianki.data
+
+import android.content.ContentValues
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.RecordsImportModels
+import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.data.conformance.RepositoryConformanceFixture
+import dev.bee.kanjianki.data.conformance.RepositoryConformanceHost
+import dev.bee.kanjianki.data.conformance.MissingKanjiRepositoryConformanceSuite
+import dev.bee.kanjianki.data.conformance.RepositoryConformanceSuite
+import dev.bee.kanjianki.data.conformance.StatsRepositoryConformanceSuite
+import dev.bee.kanjianki.data.conformance.StudyRepositoryConformanceSuite
+import dev.bee.kanjianki.data.conformance.SyncRepositoryConformanceSuite
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Drives the shared repository conformance suite against the legacy Android
+ * `LocalStore` repositories. Production Android stays on this facade until
+ * Goal 184; the suite proves it stays byte-for-byte behaviourally identical to
+ * the shared `:data-sql` implementation.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class LocalStoreRepositoryConformanceTest {
+    private val context: Context = ApplicationProvider.getApplicationContext()
+
+    @After
+    fun tearDown() {
+        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+    }
+
+    @Test
+    fun localStoreRepositoriesPassSharedContract() = runBlocking {
+        val host = LocalStoreConformanceHost(context)
+        try {
+            RepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
+    @Test
+    fun localStoreStudyRepositoryPassesSharedContract() = runBlocking {
+        val host = LocalStoreConformanceHost(context)
+        try {
+            StudyRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
+    @Test
+    fun localStoreSyncRepositoryPassesSharedContract() = runBlocking {
+        val host = LocalStoreConformanceHost(context)
+        try {
+            SyncRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
+    @Test
+    fun localStoreStatsRepositoryPassesSharedContract() = runBlocking {
+        val host = LocalStoreConformanceHost(context)
+        try {
+            StatsRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
+    @Test
+    fun localStoreMissingKanjiRepositoryPassesSharedContract() = runBlocking {
+        val host = LocalStoreConformanceHost(context)
+        try {
+            MissingKanjiRepositoryConformanceSuite(host).runAll()
+        } finally {
+            host.close()
+        }
+    }
+
+    private class LocalStoreConformanceHost(
+        private val context: Context,
+    ) : RepositoryConformanceHost {
+        private var store: LocalStore = freshStore()
+
+        override val home: HomeRepository
+            get() = SqliteHomeRepository(store)
+
+        override val settings: SettingsRepository
+            get() = SqliteSettingsRepository(store)
+
+        override val study: StudyRepository
+            get() = SqliteStudyRepository(store)
+
+        override val sync: SyncRepository
+            get() = SqliteSyncRepository(store)
+
+        override val stats: StatsRepository
+            get() = SqliteStatsRepository(store)
+
+        override val missingKanji: MissingKanjiRepository
+            get() = SqliteMissingKanjiRepository(store)
+
+        override suspend fun reset() {
+            // A fresh LocalStore is required (not just deleteDatabase): the theme
+            // choice is cached in a @Volatile field that database replacement
+            // does not clear, so each case must start from a new instance.
+            store.close()
+            store = freshStore()
+        }
+
+        override suspend fun putRawSetting(key: String, value: String) {
+            store.putStringSetting(key, value)
+        }
+
+        override suspend fun rawSetting(key: String): String? =
+            store.getStringSetting(key, MISSING).takeUnless { it === MISSING }
+
+        override suspend fun statsSourceVersion(): Long =
+            StatsCacheStore(store).currentSourceVersion()
+
+        override suspend fun seedFixture(fixture: RepositoryConformanceFixture) {
+            val db = store.writableDatabase
+            store.saveRows(db, fixture.kanji.map(::dashboardRow), FIXED_CLOCK)
+            store.backfillKanjiInventory(db, FIXED_CLOCK, RecordsSyncModels.Settings.kikuDefaults())
+            fixture.similarPairs.forEach { pair -> seedSimilarPair(pair) }
+            seedSuccessfulSync(fixture.syncFinishedAtMillis)
+        }
+
+        private fun seedSimilarPair(pair: RepositoryConformanceFixture.SimilarPair) {
+            val values = ContentValues()
+            values.put(LocalStoreBase.COLUMN_KANJI_A, pair.kanjiA)
+            values.put(LocalStoreBase.COLUMN_KANJI_B, pair.kanjiB)
+            values.put("source", pair.source)
+            values.put("first_seen_at", FIXED_CLOCK)
+            values.put("last_seen_at", FIXED_CLOCK)
+            store.writableDatabase.insert(LocalStoreBase.TABLE_SIMILAR_KANJI_PAIRS, null, values)
+        }
+
+        private fun seedSuccessfulSync(finishedAtMillis: Long) {
+            val values = ContentValues()
+            values.put("started_at", finishedAtMillis)
+            values.put("finished_at", finishedAtMillis)
+            values.put("status", "success")
+            values.put("active_notes_count", 0)
+            values.put("active_cards_count", 0)
+            values.put("suspended_cards_archived_count", 0)
+            values.put("suspended_kanji_imported_count", 0)
+            values.put("deleted_notes_count", 0)
+            values.put("deleted_cards_count", 0)
+            values.put("error_message", "")
+            values.put("removal_message", "")
+            store.writableDatabase.insert(LocalStoreBase.TABLE_SYNC_RUNS, null, values)
+        }
+
+        private fun dashboardRow(
+            entry: RepositoryConformanceFixture.Entry,
+        ): RecordsImportModels.DashboardRow =
+            RecordsImportModels.DashboardRow(
+                entry.kanji,
+                null,
+                entry.primaryMeaning,
+                entry.reading,
+                entry.kanji,
+                entry.weaknessScore,
+                "",
+                "",
+                entry.activeExampleCount,
+                entry.suspendedExampleCount,
+                entry.matureSupportCount,
+                entry.examples.map { example ->
+                    RecordsImportModels.Example(
+                        example.sourceType,
+                        0L,
+                        0L,
+                        example.expression,
+                        example.reading,
+                        example.meaning,
+                        example.sentence,
+                        example.mature,
+                        0,
+                    )
+                },
+            )
+
+        fun close() {
+            store.close()
+        }
+
+        private fun freshStore(): LocalStore {
+            context.deleteDatabase(LocalStoreSchema.DB_NAME)
+            return LocalStore(context)
+        }
+
+        private companion object {
+            const val FIXED_CLOCK = 1_770_050_000_000L
+            const val MISSING = "\u0000conformance-missing\u0000"
+        }
+    }
+}

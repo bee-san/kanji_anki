@@ -1,0 +1,118 @@
+package dev.bee.kanjianki.platform.desktop
+
+import dev.bee.kanjianki.platform.SecretPersistence
+import dev.bee.kanjianki.platform.SecretReference
+import dev.bee.kanjianki.platform.SecretStore
+import dev.bee.kanjianki.platform.SecretValue
+import java.util.Arrays
+
+/**
+ * Desktop's [SecretStore], holding the AnkiConnect API key for the process
+ * session and nothing longer.
+ *
+ * **There is deliberately no plaintext fallback.** The rule from Goal 187 is that
+ * a key persists only where a *tested and wired* OS credential-vault adapter
+ * exists, and otherwise lives for the session only. No vault adapter is qualified
+ * yet on any host, so this store reports
+ * [SecretPersistence.SESSION_ONLY] and the user re-enters the key after a
+ * restart. That is a real cost, and it is the correct one: writing an API key to
+ * `%LOCALAPPDATA%` or `~/.local/share` in plaintext would hand it to every other
+ * process running as that user, and a key that survives restarts is not worth
+ * that. The presentation layer already models this — `PlatformCapabilities`
+ * carries the vault capability so Settings can explain why the key was forgotten
+ * rather than appearing to lose it.
+ *
+ * When a vault adapter *is* qualified (libsecret / Keychain / DPAPI, per host,
+ * each with its own tests), it plugs in as a [Vault] and this class starts
+ * reporting [SecretPersistence.OS_CREDENTIAL_STORE]. Callers need no change:
+ * `AnkiConnectKeyStore` already reads `persistence` to decide what to tell the
+ * user, and every consumer goes through `SecretValue.withValue`, so no caller
+ * holds the key beyond its own block either way.
+ *
+ * In-memory storage keeps the key as a `CharArray` and zeroes it on overwrite and
+ * on [delete]. That is not theatre against a process that can read our memory —
+ * against that, nothing here helps — but it does bound the window in which the
+ * key sits in a heap region that could reach a crash dump or a swap file.
+ */
+class DesktopSecretStore(
+    private val vault: Vault? = null,
+) : SecretStore {
+    /**
+     * A qualified OS credential vault. Implemented per host, once its adapter is
+     * tested; absent means session-only, never plaintext-on-disk.
+     */
+    interface Vault {
+        /** A short host identifier for diagnostics, e.g. `"libsecret"`. */
+        val name: String
+
+        fun read(reference: SecretReference): CharArray?
+
+        fun write(reference: SecretReference, value: CharArray): Boolean
+
+        fun delete(reference: SecretReference): Boolean
+    }
+
+    private val session = HashMap<String, CharArray>()
+
+    override val persistence: SecretPersistence
+        get() = if (vault == null) {
+            SecretPersistence.SESSION_ONLY
+        } else {
+            SecretPersistence.OS_CREDENTIAL_STORE
+        }
+
+    /** The qualified vault's name, or null when running session-only. */
+    val vaultName: String?
+        get() = vault?.name
+
+    override fun read(reference: SecretReference): SecretValue? {
+        vault?.let { qualified ->
+            val stored = qualified.read(reference) ?: return null
+            // SecretValue.create copies, so the vault's array is ours to clear.
+            return try {
+                SecretValue.create(stored)
+            } finally {
+                Arrays.fill(stored, '\u0000')
+            }
+        }
+        val stored = synchronized(session) { session[reference.value] } ?: return null
+        return SecretValue.create(stored)
+    }
+
+    override fun write(reference: SecretReference, value: SecretValue): Boolean {
+        vault?.let { qualified ->
+            return value.withValue { chars -> qualified.write(reference, chars) }
+        }
+        return value.withValue { chars ->
+            synchronized(session) {
+                session.put(reference.value, chars.copyOf())?.let { previous ->
+                    Arrays.fill(previous, '\u0000')
+                }
+            }
+            true
+        }
+    }
+
+    override fun delete(reference: SecretReference): Boolean {
+        vault?.let { qualified -> return qualified.delete(reference) }
+        return synchronized(session) {
+            session.remove(reference.value)?.let { previous ->
+                Arrays.fill(previous, '\u0000')
+                true
+            } ?: false
+        }
+    }
+
+    /**
+     * Zeroes and drops every session-held secret. Called by
+     * [DesktopShutdownCoordinator] so a key does not outlive the window that
+     * needed it, and available to a profile switch for the same reason: one
+     * profile's provider key must not be readable after switching to another.
+     */
+    fun clearSession() {
+        synchronized(session) {
+            session.values.forEach { value -> Arrays.fill(value, '\u0000') }
+            session.clear()
+        }
+    }
+}

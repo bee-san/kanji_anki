@@ -1,9 +1,6 @@
 package dev.bee.kanjianki.reminders
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.annotation.SuppressLint
-import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -11,9 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
-import dev.bee.kanjianki.MainActivity
-import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.host.KaniHostActivity
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import dev.bee.kanjianki.R
+import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.automation.AndroidAlarmManagerGateway
 import dev.bee.kanjianki.core.HomeTextCopy
 import dev.bee.kanjianki.core.DailyReminderDecisionPolicy
 import dev.bee.kanjianki.core.DailyReminderDecisionRequest
@@ -35,7 +34,7 @@ import dev.bee.kanjianki.core.StudyStreakPolicy
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.notifications.AndroidNotificationGateway
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 
 object ReminderScheduler {
     const val ACTION_DAILY_REMINDER: String = "dev.bee.kanjianki.action.DAILY_REMINDER"
@@ -58,15 +57,14 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             schedule(context, store.reminderSettings())
         }
     }
 
     /**
-     * Activity-owned-store variant used by foreground re-arms. Reusing the same [LocalStore]
-     * preserves its dashboard/study caches after a route load and avoids opening a second helper
-     * that repeats the full dashboard read.
+     * Process-store variant used by foreground re-arms. Reusing the same [LocalStore]
+     * preserves its dashboard/study caches after a route load and across recreation.
      */
     @JvmStatic
     internal fun schedule(context: Context, store: LocalStore) {
@@ -106,7 +104,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             schedule(settings, store, services, nowMillis)
         }
     }
@@ -130,7 +128,7 @@ object ReminderScheduler {
         if (context == null) {
             return
         }
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             scheduleSnooze(
                 store.reminderSettings(),
                 store.reminderAntiSpamSettings(),
@@ -332,7 +330,7 @@ object ReminderScheduler {
             return
         }
         val reservation = snoozeReservation(snoozeRepost, snoozedFamily) ?: return
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             val now = AppClock.orSystem(clock).nowMillis()
             val plan = evaluate(store, now, reservation.family) ?: return@use
             // Anti-spam gate: only post when the throttle allows it right now.
@@ -369,9 +367,9 @@ object ReminderScheduler {
             reminderOpenIntent(context, plan.family),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val studyIntent = Intent(context, MainActivity::class.java)
+        val studyIntent = Intent(context, KaniHostActivity::class.java)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            .putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+            .putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true)
         val studyPendingIntent = PendingIntent.getActivity(
             context,
             STUDY_ACTION_REQUEST_CODE,
@@ -426,12 +424,12 @@ object ReminderScheduler {
 
     @JvmStatic
     fun reminderOpenIntent(context: Context, family: String?): Intent {
-        return Intent(context, MainActivity::class.java)
+        return Intent(context, KaniHostActivity::class.java)
             .apply {
                 if (family != ReminderFamily.SYNC.name) {
-                    putExtra(MainActivityBase.EXTRA_OPEN_STUDY, true)
+                    putExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, true)
                 } else {
-                    putExtra(MainActivityBase.EXTRA_OPEN_HOME, true)
+                    putExtra(KaniLaunchIntents.EXTRA_OPEN_HOME, true)
                 }
             }
             .setFlags(
@@ -500,30 +498,23 @@ object ReminderScheduler {
     }
 
     private class AndroidReminderServices(private val context: Context) : ReminderServices {
+        private val alarms = AndroidAlarmManagerGateway(context)
         private val notifications = AndroidNotificationGateway(context)
 
         override fun scheduleAlarm(triggerAtMillis: Long, hour: Int, minute: Int) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, false, "") ?: return
-            alarmManager.setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pendingIntent
-            )
+            alarms.scheduleWakeup(triggerAtMillis, pendingIntent)
         }
 
         override fun scheduleSnoozeAlarm(triggerAtMillis: Long, hour: Int, minute: Int, family: String) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
             val pendingIntent = alarmIntent(PendingIntent.FLAG_UPDATE_CURRENT, hour, minute, true, family) ?: return
-            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            alarms.scheduleWakeup(triggerAtMillis, pendingIntent)
         }
 
         override fun cancelAlarm() {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
             val pendingIntent = alarmIntent(PendingIntent.FLAG_NO_CREATE, 0, 0, false, "")
             if (pendingIntent != null) {
-                alarmManager?.cancel(pendingIntent)
-                pendingIntent.cancel()
+                alarms.cancel(pendingIntent)
             }
         }
 

@@ -1,0 +1,12 @@
+schemaVersion:1
+releaseTag:v1.2.3
+semanticVersion:1.2.3
+buildSha:abc123
+keyId:kani-release-key-1
+assetCount:1
+asset:kani-desktop-linux-x64-1.2.3.deb
+size:1024
+sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+os:linux
+arch:x64
+packageType:deb

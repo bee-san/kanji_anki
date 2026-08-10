@@ -1,0 +1,605 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       | IsTraversalGroup = 'true'
+       | Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       | VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=4153.0, reverseScrolling=false)'
+       | Actions = [ScrollBy, ScrollByOffset]
+       |  |-Node
+       |  | Focused = 'false'
+       |  | Role = 'Button'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  | Actions = [OnClick, RequestFocus]
+       |  | MergeDescendants = 'true'
+       |  |  |-Node
+       |  |    Text = '[Home]'
+       |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Focused = 'false'
+       |  | Role = 'Button'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  | Actions = [OnClick, RequestFocus]
+       |  | MergeDescendants = 'true'
+       |  |  |-Node
+       |  |    Text = '[Back to settings]'
+       |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Import & sync]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Choose sources, filters, and rank range.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Note type]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Kiku]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Use Kiku or map Anki fields.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Note type]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Note type]'
+       |  |     | EditableText = 'Kiku'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'Kiku'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Fields]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Choose the fields Kani reads.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Expression field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Expression field]'
+       |  |     | EditableText = 'Expression'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'Expression'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Save note type]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Choose note type]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Use Kiku]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Reading field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Reading field]'
+       |  |     | EditableText = 'ExpressionReading'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'ExpressionReading'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, ScrollBy, ScrollByOffset, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Meaning field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Meaning field]'
+       |  |     | EditableText = 'MainDefinition'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'MainDefinition'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Sentence field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Sentence field]'
+       |  |     | EditableText = 'Sentence'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'Sentence'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Frequency field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Frequency field]'
+       |  |     | EditableText = 'Frequency'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = 'Frequency'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Frequency sort field]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |       ContentDescription = '[Frequency sort field]'
+       |  |       EditableText = 'FreqSort'
+       |  |       FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |       Focused = 'false'
+       |  |       ImeAction = 'Default'
+       |  |       InputText = 'FreqSort'
+       |  |       IsEditable = 'true'
+       |  |       TextSelectionRange = 'TextRange(0, 0)'
+       |  |       Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |       MergeDescendants = 'true'
+       |  |        |-Node
+       |  |        | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |        |-Node
+       |  |          Shape = 'RectangleShape'
+       |  |-Node
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Import filters]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[suspended + weak; 1+ card per kanji]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Pick sources, save, sync.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Active cards]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'Off'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Active cards]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Suspended cards]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'On'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Suspended cards]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Tagged cards]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'Off'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Tagged cards]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Weak cards]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'On'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Weak cards]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Browser query]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'Off'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Browser query]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=2)'
+       |  |     | ContentDescription = '[Tag repaired notes in AnkiDroid (ask before each sync)]'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Checkbox'
+       |  |     | ToggleableState = 'Off'
+       |  |     | Actions = [OnClick, OnFillData, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Tag repaired notes in AnkiDroid (ask before each sync)]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Anki search]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Anki search]'
+       |  |     | EditableText = ''
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = ''
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[deck:Japanese tag:kani]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Try is:suspended or tag:kani.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Tags to include]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Tags to include]'
+       |  |     | EditableText = ''
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = ''
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RectangleShape'
+       |  |     |  |-Node
+       |  |     |     |-Node
+       |  |     |       Text = '[tag1, tag2]'
+       |  |     |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Minimum FSRS difficulty]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Minimum FSRS difficulty]'
+       |  |     | EditableText = '7.5'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = '7.5'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Minimum lapses]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Minimum lapses]'
+       |  |     | EditableText = '3'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = '3'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Presets]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Suspended only]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Kani tag]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Leech tag]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Mining deck]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Recent fails]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Focused = 'false'
+       |  |     | Role = 'Button'
+       |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |     | Actions = [OnClick, RequestFocus]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Text = '[Save filters]'
+       |  |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Matching cards per kanji]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |       ContentDescription = '[Matching cards per kanji]'
+       |  |       EditableText = '1'
+       |  |       FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |       Focused = 'false'
+       |  |       ImeAction = 'Default'
+       |  |       InputText = '1'
+       |  |       IsEditable = 'true'
+       |  |       TextSelectionRange = 'TextRange(0, 0)'
+       |  |       Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |       MergeDescendants = 'true'
+       |  |        |-Node
+       |  |        | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |        |-Node
+       |  |          Shape = 'RectangleShape'
+       |  |-Node
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Suspended card range]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Jiten ranks 100-3000]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Set the rank range, then sync.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Min rank]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Min rank]'
+       |  |     | EditableText = '100'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = '100'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Max rank]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+       |  |     | ContentDescription = '[Max rank]'
+       |  |     | EditableText = '3000'
+       |  |     | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@<id>'
+       |  |     | Focused = 'false'
+       |  |     | ImeAction = 'Default'
+       |  |     | InputText = '3000'
+       |  |     | IsEditable = 'true'
+       |  |     | TextSelectionRange = 'TextRange(0, 0)'
+       |  |     | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 4.0.dp), topEnd = CornerSize(size = 4.0.dp), bottomEnd = CornerSize(size = 4.0.dp), bottomStart = CornerSize(size = 4.0.dp))'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RectangleShape'
+       |  |     |-Node
+       |  |     | Text = '[Minimum rank]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDescription = '[Minimum rank]'
+       |  |     | Focused = 'false'
+       |  |     | ProgressBarRangeInfo = 'ProgressBarRangeInfo(current=99.0, range=0.0..19999.0, steps=0)'
+       |  |     | StateDescription = '99.0'
+       |  |     | Actions = [RequestFocus, SetProgress]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |     |-Node
+       |  |     | Text = '[Maximum rank]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | ContentDescription = '[Maximum rank]'
+       |  |     | Focused = 'false'
+       |  |     | ProgressBarRangeInfo = 'ProgressBarRangeInfo(current=2999.0, range=0.0..19999.0, steps=0)'
+       |  |     | StateDescription = '2999.0'
+       |  |     | Actions = [RequestFocus, SetProgress]
+       |  |     | MergeDescendants = 'true'
+       |  |     |  |-Node
+       |  |     |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |     |-Node
+       |  |       Focused = 'false'
+       |  |       Role = 'Button'
+       |  |       Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |       Actions = [OnClick, RequestFocus]
+       |  |       MergeDescendants = 'true'
+       |  |        |-Node
+       |  |          Text = '[Save rank range]'
+       |  |          Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Daily sync]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |     | Text = '[Sync once to enable daily sync.]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[Sync once to enable daily sync.]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab, selected]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'true'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

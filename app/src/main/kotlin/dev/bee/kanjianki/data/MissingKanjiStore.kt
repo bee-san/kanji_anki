@@ -6,9 +6,18 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.ManualKanjiAdmissionPolicy
+import dev.bee.kanjianki.core.ManualKanjiSource
+import dev.bee.kanjianki.core.ManualKanjiSourceRemovalResult
+import dev.bee.kanjianki.core.ManualKanjiSourceWriteResult
 import dev.bee.kanjianki.core.MissingKanjiAnalyzer
 import dev.bee.kanjianki.core.MissingKanjiCandidate
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
+import dev.bee.kanjianki.core.MissingKanjiInventoryState
+import dev.bee.kanjianki.core.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiScanRecord
+import dev.bee.kanjianki.core.MissingKanjiScanStatus
+import dev.bee.kanjianki.core.StoredAnkiKanjiInventory
 import dev.bee.kanjianki.core.TextUtil
 import org.json.JSONArray
 import org.json.JSONException
@@ -16,102 +25,6 @@ import java.util.Collections
 import java.util.LinkedHashMap
 import java.util.LinkedHashSet
 import java.util.regex.Pattern
-
-internal enum class MissingKanjiScanStatus(val storedValue: String) {
-    SUCCESS("success"),
-    FAILED("failed"),
-    CANCELLED("cancelled");
-
-    companion object {
-        fun fromStored(value: String?): MissingKanjiScanStatus {
-            return entries.firstOrNull { it.storedValue == value } ?: FAILED
-        }
-    }
-}
-
-internal data class MissingKanjiScanRecord(
-    val id: Long,
-    val startedAt: Long,
-    val completedAt: Long,
-    val status: MissingKanjiScanStatus,
-    val notesScanned: Int,
-    val fieldsScanned: Int,
-    val uniqueKanjiCount: Int,
-    val skippedNotes: Int,
-    val modelCount: Int,
-    val providerFingerprint: String,
-    val failureCode: String,
-)
-
-internal data class StoredAnkiKanjiInventory(
-    val scan: MissingKanjiScanRecord,
-    val literals: Set<String>,
-)
-
-internal data class MissingKanjiInventoryState(
-    val published: StoredAnkiKanjiInventory?,
-    val latestAttempt: MissingKanjiScanRecord?,
-) {
-    val isStale: Boolean
-        get() = latestAttempt != null &&
-            (published == null || latestAttempt.id != published.scan.id)
-}
-
-internal data class MissingKanjiPreferences(
-    val preset: String = PRESET_TOP_2000,
-    val range: MissingKanjiFrequencyRange = MissingKanjiFrequencyRange.TOP_2000,
-    val searchQuery: String = "",
-) {
-    companion object {
-        const val PRESET_TOP_1000 = "top_1000"
-        const val PRESET_TOP_2000 = "top_2000"
-        const val PRESET_TOP_3000 = "top_3000"
-        const val PRESET_TOP_5000 = "top_5000"
-        const val PRESET_CUSTOM = "custom"
-
-        val SUPPORTED_PRESETS = setOf(
-            PRESET_TOP_1000,
-            PRESET_TOP_2000,
-            PRESET_TOP_3000,
-            PRESET_TOP_5000,
-            PRESET_CUSTOM,
-        )
-    }
-}
-
-internal data class ManualKanjiSource(
-    val candidate: MissingKanjiCandidate,
-    val sourceType: String,
-    val addedAt: Long,
-    val updatedAt: Long,
-    val active: Boolean,
-)
-
-internal data class ManualKanjiSourceWriteResult(
-    val requestedCount: Int,
-    val addedLiterals: Set<String>,
-    val reactivatedLiterals: Set<String>,
-    val alreadyActiveLiterals: Set<String>,
-    val missingMeaningLiterals: Set<String>,
-    val missingReadingLiterals: Set<String>,
-    val invalidCount: Int,
-    val duplicateCount: Int,
-)
-
-internal data class ManualKanjiSourceRemovalResult(
-    val requestedCount: Int,
-    val removedLiterals: Set<String>,
-    val reviewedLiterals: Set<String>,
-    val inactiveLiterals: Set<String>,
-    val invalidCount: Int,
-)
-
-internal data class MissingKanjiExportReceipt(
-    val literal: String,
-    val destinationKey: String,
-    val exportedAt: Long,
-    val externalNoteId: Long?,
-)
 
 /**
  * Durable, aggregate-only Missing Kanji state.

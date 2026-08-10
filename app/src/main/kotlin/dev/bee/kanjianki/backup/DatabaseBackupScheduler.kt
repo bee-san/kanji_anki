@@ -4,7 +4,8 @@ import android.content.Context
 import android.os.Build
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
+import dev.bee.kanjianki.automation.AndroidWorkManagerGateway
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import java.util.concurrent.TimeUnit
 
@@ -14,10 +15,10 @@ object DatabaseBackupScheduler {
     @JvmStatic
     fun schedule(context: Context?) {
         val appContext = context!!.applicationContext
-        schedule(Build.VERSION.SDK_INT, WorkManagerBackend(appContext))
+        schedule(Build.VERSION.SDK_INT, AndroidWorkManagerGateway(appContext))
     }
 
-    internal fun schedule(apiLevel: Int, backend: SchedulerBackend) {
+    internal fun schedule(apiLevel: Int, backend: WorkManagerGateway) {
         if (!DatabaseBackupAvailabilityPolicy.forAndroidApi(apiLevel).operationsAllowed) {
             backend.cancelUniqueWork(UNIQUE_WORK_NAME)
             return
@@ -38,32 +39,6 @@ object DatabaseBackupScheduler {
 
     @JvmStatic
     fun cancel(context: Context?) {
-        WorkManagerBackend(context!!.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
-    }
-
-    internal interface SchedulerBackend {
-        fun enqueueUniquePeriodicWork(
-            uniqueWorkName: String,
-            policy: ExistingPeriodicWorkPolicy,
-            request: PeriodicWorkRequest,
-        )
-
-        fun cancelUniqueWork(workName: String)
-    }
-
-    private class WorkManagerBackend(context: Context) : SchedulerBackend {
-        private val workManager = WorkManager.getInstance(context.applicationContext)
-
-        override fun enqueueUniquePeriodicWork(
-            uniqueWorkName: String,
-            policy: ExistingPeriodicWorkPolicy,
-            request: PeriodicWorkRequest,
-        ) {
-            workManager.enqueueUniquePeriodicWork(uniqueWorkName, policy, request)
-        }
-
-        override fun cancelUniqueWork(workName: String) {
-            workManager.cancelUniqueWork(workName)
-        }
+        AndroidWorkManagerGateway(context!!.applicationContext).cancelUniqueWork(UNIQUE_WORK_NAME)
     }
 }

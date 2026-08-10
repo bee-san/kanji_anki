@@ -9,7 +9,7 @@
         <intent
             android:action="dev.bee.kanjianki.action.OPEN_STUDY"
             android:targetPackage="dev.bee.kanjianki"
-            android:targetClass="dev.bee.kanjianki.MainActivity" />
+            android:targetClass="dev.bee.kanjianki.host.KaniHostActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="browse"
@@ -20,7 +20,7 @@
         <intent
             android:action="dev.bee.kanjianki.action.OPEN_BROWSE"
             android:targetPackage="dev.bee.kanjianki"
-            android:targetClass="dev.bee.kanjianki.MainActivity" />
+            android:targetClass="dev.bee.kanjianki.host.KaniHostActivity" />
     </shortcut>
     <shortcut
         android:shortcutId="games"
@@ -31,6 +31,6 @@
         <intent
             android:action="dev.bee.kanjianki.action.OPEN_GAMES"
             android:targetPackage="dev.bee.kanjianki"
-            android:targetClass="dev.bee.kanjianki.MainActivity" />
+            android:targetClass="dev.bee.kanjianki.host.KaniHostActivity" />
     </shortcut>
 </shortcuts>

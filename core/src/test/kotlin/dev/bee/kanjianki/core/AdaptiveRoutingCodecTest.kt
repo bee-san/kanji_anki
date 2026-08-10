@@ -107,4 +107,32 @@ class AdaptiveRoutingCodecTest {
         assertEquals(FailureKind.UNKNOWN, decoded.recurringFailure)
         assertEquals(2, decoded.recurringFailureCount)
     }
+
+    @Test
+    fun stringListRoundTripsAndEscapes() {
+        val encoded = StringListJsonCodec.encode(listOf("split", "裂\"れつ", "破\\裂"))
+        assertEquals(listOf("split", "裂\"れつ", "破\\裂"), StringListJsonCodec.decode(encoded))
+    }
+
+    @Test
+    fun stringListTrimsBlankEntriesAndDeduplicates() {
+        val encoded = StringListJsonCodec.encode(listOf("  pain  ", "", "pain", "escape"))
+        assertEquals(listOf("pain", "escape"), StringListJsonCodec.decode(encoded))
+    }
+
+    @Test
+    fun stringListDecodesEmptyForNullBlankAndMalformedInput() {
+        assertTrue(StringListJsonCodec.decode(null).isEmpty())
+        assertTrue(StringListJsonCodec.decode("").isEmpty())
+        assertTrue(StringListJsonCodec.decode("   ").isEmpty())
+        assertTrue(StringListJsonCodec.decode("[not valid").isEmpty())
+        assertTrue(StringListJsonCodec.decode("[\"a\"] trailing").isEmpty())
+        assertEquals(listOf("a"), StringListJsonCodec.decode("[\"a\"]"))
+    }
+
+    @Test
+    fun stringListEncodesAnEmptyListAsAnEmptyArray() {
+        assertEquals("[]", StringListJsonCodec.encode(emptyList()))
+        assertTrue(StringListJsonCodec.decode("[]").isEmpty())
+    }
 }

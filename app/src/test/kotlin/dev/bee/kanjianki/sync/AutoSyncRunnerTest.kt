@@ -3,13 +3,13 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.core.AutoSyncSchedulePolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.data.LocalStoreSchema
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -102,7 +102,7 @@ class AutoSyncRunnerTest {
         val gateway = RecordingGateway(
             AnkiDroidGateway.SyncFailure.retryable("provider must not be touched again today"),
         )
-        val result = AutoSyncRunner(context, store, gateway, AppClock { now }).run()
+        val result = createAutoSyncRunner(context, store, gateway, AppClock { now }).run()
 
         assertFalse("a same-day duplicate retry must not run the engine", result.ran)
         assertFalse(result.success)
@@ -129,7 +129,7 @@ class AutoSyncRunnerTest {
             gateway.status().canSync,
         )
 
-        val result = AutoSyncRunner(context, store, gateway, AppClock { now }).run()
+        val result = createAutoSyncRunner(context, store, gateway, AppClock { now }).run()
 
         assertTrue(result.ran)
         assertFalse(result.success)
@@ -148,7 +148,7 @@ class AutoSyncRunnerTest {
         val threadFailure = AtomicReference<Throwable?>()
         val foreground = Thread {
             try {
-                ManualSyncEngine(
+                createManualSyncEngine(
                     context,
                     store,
                     blocker,
@@ -177,7 +177,7 @@ class AutoSyncRunnerTest {
 
     private fun runWith(gateway: CollectionGateway): AutoSyncRunner.Result {
         val now = 1_784_000_000_000L
-        return AutoSyncRunner(context, store, gateway, AppClock { now }).run()
+        return createAutoSyncRunner(context, store, gateway, AppClock { now }).run()
     }
 
     private class ThrowingGateway(private val error: Throwable) : CollectionGateway {

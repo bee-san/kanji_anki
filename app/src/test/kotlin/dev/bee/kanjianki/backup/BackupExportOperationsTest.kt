@@ -1,13 +1,15 @@
 package dev.bee.kanjianki.backup
 
-import android.net.Uri
 import dev.bee.kanjianki.core.BackupExportPolicy
+import dev.bee.kanjianki.platform.PlatformFileAccess
+import dev.bee.kanjianki.platform.PlatformFileReference
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.zip.GZIPInputStream
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -40,10 +42,10 @@ class BackupExportOperationsTest {
         val prepared = (preparation as BackupExportPreparation.Ready).export
         val copied = ByteArrayOutputStream()
 
-        val result = BackupExportOperations.copyToUri(
+        val result = BackupExportOperations.copyToFile(
             prepared,
-            Uri.parse("content://test/export"),
-            UriStreams { copied },
+            PlatformFileReference.create("content://test/export", "export.db.gz"),
+            outputFiles { copied },
         )
 
         assertTrue(result.success)
@@ -61,10 +63,10 @@ class BackupExportOperationsTest {
             source.copyTo(destination)
         } as BackupExportPreparation.Ready).export
 
-        val result = BackupExportOperations.copyToUri(
+        val result = BackupExportOperations.copyToFile(
             prepared,
-            Uri.parse("content://test/failure"),
-            UriStreams { throw IOException("provider unavailable") },
+            PlatformFileReference.create("content://test/failure", "failure.db.gz"),
+            outputFiles { throw IOException("provider unavailable") },
         )
 
         assertFalse(result.success)
@@ -122,4 +124,11 @@ class BackupExportOperationsTest {
             else -> String.format(java.util.Locale.ROOT, "%.1f MB", bytes / 1_048_576.0)
         }
     }
+
+    private fun outputFiles(open: () -> OutputStream): PlatformFileAccess =
+        object : PlatformFileAccess {
+            override fun openInput(file: PlatformFileReference): InputStream? = null
+
+            override fun openOutput(file: PlatformFileReference): OutputStream = open()
+        }
 }

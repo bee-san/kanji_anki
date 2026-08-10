@@ -38,28 +38,49 @@ class LocalStoreFsrsWeightsTest {
         ShadowLog.clear()
     }
 
+    /**
+     * Valid FSRS-7 weights, built by projecting through the fitter's own bounds.
+     *
+     * Not a hand-written literal: FSRS-7's clipper has 35 per-index bounds plus three
+     * ordering constraints whose bound is another parameter, so an arbitrary
+     * `DoubleArray(35) { 0.1 }` is rejected. Deriving them here means these storage
+     * tests exercise persistence rather than re-encoding the engine's bounds table in
+     * a third place.
+     */
+    private fun validWeights(mutate: (DoubleArray) -> Unit = {}): DoubleArray =
+        FsrsWeightFitter.projectIntoBounds(FsrsPersonalization.defaultWeights().also(mutate))
+
     @Test
     fun fullPrecisionWeightsRoundTripWithoutPutDoubleRounding() {
-        val weights = DoubleArray(21) { index -> 0.1 + index / 1000.0 }.also {
-            it[0] = 0.12345678901234567
-            it[19] = 0.0658
-            it[20] = 0.1542
+        val weights = validWeights {
+            // In bounds for w[9] ([0.3, 3.0]) and w[26] ([0.0, 1.0]) respectively, and
+            // carrying more precision than SettingsRepository.putDouble's four decimals
+            // could survive — which is what this test is about.
+            it[9] = 1.2345678901234567
+            it[26] = 0.0658
         }
 
         store.saveSchedulerFsrsWeights(weights)
 
         assertArrayEquals(weights, store.schedulerFsrsWeights(), 0.0)
         val raw = store.getStringSetting(FsrsPersonalization.WEIGHTS_SETTING_KEY, "")!!
-        assertTrue(raw.startsWith("0.12345678901234566,"))
-        assertEquals("0.0658", raw.split(',')[19])
+        assertEquals(FsrsPersonalization.PARAMETER_COUNT, raw.split(',').size)
+        assertEquals("1.2345678901234567", raw.split(',')[9])
+        assertEquals("0.0658", raw.split(',')[26])
     }
 
     @Test
     fun malformedWeightsFallBackAndEmitOneSanitizedLinePerRead() {
+        val valid = FsrsPersonalization.defaultWeights()
         val malformed = listOf(
-            List(20) { "0.1" }.joinToString(","),
-            List(21) { if (it == 0) "NaN" else "0.1" }.joinToString(","),
-            List(21) { if (it == 20) "0" else "0.1" }.joinToString(","),
+            // A 21-long vector: the shape a device stored before the FSRS-7 switch.
+            // This is the case a real upgrade hits, so it is first — it must fall open
+            // to defaults with one log line rather than crash a read.
+            List(21) { "0.1" }.joinToString(","),
+            List(34) { "0.1" }.joinToString(","),
+            valid.clone().also { it[0] = Double.NaN }.joinToString(","),
+            // w[25] has an inclusive lower bound of 2.5.
+            valid.clone().also { it[25] = 0.0 }.joinToString(","),
         )
         malformed.forEach { encoded ->
             ShadowLog.clear()
@@ -79,7 +100,7 @@ class LocalStoreFsrsWeightsTest {
 
     @Test
     fun freshInstallAdoptsSuccessfulPersonalizedFit() {
-        val weights = DoubleArray(21) { 0.1 }.also { it[20] = 0.2 }
+        val weights = validWeights()
 
         val adopted = store.commitFsrsFitOutcome(
             weightsToAdopt = weights,
@@ -94,7 +115,7 @@ class LocalStoreFsrsWeightsTest {
 
     @Test
     fun toggleOffAndResetClearOnlyPersonalizationState() {
-        val weights = DoubleArray(21) { 0.1 }.also { it[20] = 0.2 }
+        val weights = validWeights()
         store.saveFsrsPersonalizationEnabled(true)
         store.saveSchedulerFsrsWeights(weights)
         store.saveFsrsFitSummaryJson("{\"adopted\":true}")
@@ -111,7 +132,7 @@ class LocalStoreFsrsWeightsTest {
 
     @Test
     fun liveWeightChangesInvalidateTheForecastCache() {
-        val weights = DoubleArray(21) { 0.1 }.also { it[20] = 0.2 }
+        val weights = validWeights()
         val cache = StatsCacheStore(store)
         val before = cache.currentSourceVersion()
 

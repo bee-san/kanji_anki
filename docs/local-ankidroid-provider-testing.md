@@ -68,13 +68,18 @@ KANJI_ANKIDROID_SYSTEM_IMAGE='system-images;android-35;google_apis;arm64-v8a' \
 ci/scripts/run_local_ankidroid_fixture.sh
 ```
 
-To run a provider-only smoke on a host where the app UI is not renderable but a
-real AnkiDroid provider is available, override the instrumentation class list:
+The fixture runs direct provider tests from the standalone
+`:provider-ankidroid` test host, uninstalls that host, then runs the foreground
+sync test from the app host. To run only the provider host where app UI is not
+renderable, use the backward-compatible provider-only override:
 
 ```sh
 KANJI_LIVE_TEST_CLASSES='dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest' \
 ci/scripts/run_local_ankidroid_fixture.sh
 ```
+
+For explicit per-host selection, use `KANJI_LIVE_PROVIDER_TEST_CLASSES` and
+`KANJI_LIVE_APP_TEST_CLASSES`; an empty value skips that host.
 
 This smoke verifies emulator boot, AnkiDroid install, fixture install, provider
 permission, provider probing, and direct provider reads. It is not a replacement
@@ -144,7 +149,9 @@ The fixture writes diagnostics to `${RUNNER_TEMP:-/tmp}`:
 
 - `ankidroid-fixture-logcat.txt`: dumped automatically when the gate fails.
 - `ankidroid-fixture-provider-probe.txt`: output of the provider model probe.
-- `ankidroid-fixture-instrumentation.txt`: raw instrumentation output.
+- `ankidroid-fixture-instrumentation.txt`: combined raw instrumentation output.
+- `ankidroid-fixture-provider-instrumentation.txt`: provider-host output.
+- `ankidroid-fixture-app-instrumentation.txt`: app-host output.
 
 The local wrapper also writes emulator logs under
 `${KANJI_ANKIDROID_WORK_DIR:-${TMPDIR:-/tmp}/kanji-ankidroid-fixture}`.

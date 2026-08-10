@@ -1,0 +1,35 @@
+# scope	operation	time_dependency	default_dependency	data_dependency	platform_dependency	goal179_injection
+v2	create timeline tables and backfill historical events	hook wall clock when source timestamp is zero	Kiku mature support threshold	settings, suspended imports/sources, dashboard, study items, review log	SQLite DDL, queries, and inserts	clock and migration defaults
+v3	add FSRS and example metric columns	none	SQL null/zero defaults	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v4	add legacy recognition and writing columns	none	SQL zero defaults	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v5	add suppression, mature interval, and answer signature columns	none	SQL empty/zero defaults	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v6	add task memory columns	none	SQL empty defaults	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v7	rebuild study_items with composite family key	none	COALESCE empty answer signature	existing study_items rows	SQLite rename/create/insert-select/drop/index	transactional schema manager
+v8	create learning repeat storage	none	SQL empty defaults	none	SQLite table and index DDL	SQL driver
+v9	create and backfill kanji inventory	system wall clock	RecordsSyncModels.Settings.kikuDefaults	settings, suspended imports, dashboard, study items, review log, timeline	SQLite DDL, queries, and upserts	clock and migration defaults
+v10	create similar-kanji pair storage	none	none	none	SQLite table and index DDL	SQL driver
+v11	create and rebuild similar-kanji practice	system wall clock	SimilarKanjiChoicePlanner policy	inventory, similar pairs, review counts, prior choice state	SQLite DDL, queries, upserts, and deletes	clock and migration defaults
+v12	create historical sync storage and backfill latest success	none	RecordsSyncModels.Settings.kikuDefaults	sync runs, source mirror, dashboard, review log	SQLite DDL, ALTER TABLE, queries, and upserts	migration defaults
+v13	repair historical identity columns	none	empty text and zero IDs	existing historical snapshots	SQLite ALTER TABLE and UPDATE	SQL driver
+v14	add typed-meaning memory	none	SQL empty default	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v15	create study task log	none	none	none	SQLite table and index DDL	SQL driver
+v16	rebuild study_items for ladder scheduler	none	frozen legacy rung and phase mapping	study_items; clears learning repeats and legacy similar repair state	SQLite rename/create/insert-select/drop/index	transactional schema manager
+v17	create stats aggregate storage	none	SQL empty/zero defaults	review log	SQLite DDL and ALTER TABLE	SQL driver
+v18	repair historical sync snapshots	none	RecordsSyncModels.Settings.kikuDefaults	sync runs, source mirror, dashboard	SQLite queries and upserts	migration defaults
+v19	add meaning-kanji memory	none	SQL empty default	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v20	create import audit storage	none	none	none	SQLite table and index DDL	SQL driver
+v21	ensure rich review columns	none	SQL empty/zero defaults	review log	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v22	create stats cache storage	none	stats source version seed 1	none	SQLite table DDL and INSERT OR IGNORE	SQL driver and cache constants
+v23	add stats cache format column	none	SQL default 1	stats screen cache	SQLite ALTER TABLE and PRAGMA table_info	SQL driver and cache constants
+v24	add similar review rung	none	SQL default similar_kanji	similar review log	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v25	clear stale suppression flags	none	empty task and zero timestamp	study_items	SQLite UPDATE	SQL driver
+v26	create kanji reading storage	none	SQL zero defaults	none	SQLite table and index DDL	SQL driver
+v27	add kanji-reading memory	none	SQL empty default	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v28	add reading-kanji memory	none	SQL empty default	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v29	add sentence-reading memory	none	SQL empty default	none	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v30	add bounded dashboard indexes	none	none	none	SQLite index DDL	SQL driver
+v31	add revision, routing, and evidence columns	none	SQL empty/zero/one defaults	study_items and review log	SQLite ALTER TABLE and PRAGMA table_info	SQL driver
+v32	create mnemonic note storage	none	none	none	SQLite table DDL	SQL driver
+v33	create Missing Kanji inventory and receipt storage	none	SQL default active 1	none	SQLite table and index DDL	SQL driver
+v34	mark eligible legacy Android source mirrors	none	source binding eligible marker and success status	successful sync history plus source notes/cards	SQLite bound INSERT OR REPLACE SELECT WHERE EXISTS	migration defaults
+downgrade	record source version while preserving all objects	system wall clock	downgraded_from_version setting key	all existing tables and rows	SQLiteOpenHelper transaction and conflict replace	clock and downgrade policy

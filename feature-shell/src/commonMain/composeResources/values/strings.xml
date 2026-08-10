@@ -1,0 +1,55 @@
+<resources>
+    <!--
+      The shell's own copy, resolved by Compose Multiplatform resources rather
+      than by each host. `NavigationCopy` in :core does the same job by branching
+      on `Locale.getDefault().language`, which is a JVM API :feature-shell cannot
+      reach and a mechanism that does not extend past two languages. The English
+      and Japanese wording is carried over from it verbatim so the Android host's
+      visible behavior is unchanged.
+    -->
+    <string name="nav_home">Home</string>
+    <string name="nav_study">Study</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_item_description">%1$s tab</string>
+    <string name="nav_item_description_selected">%1$s tab, selected</string>
+
+    <string name="shell_back">Back</string>
+
+    <string name="shell_loading">Loading…</string>
+    <string name="shell_retry">Retry</string>
+    <string name="shell_dismiss">Dismiss</string>
+
+    <!--
+      One line per PresentationFailure.Kind. The shell renders the failure's own
+      `message` when the host supplied one and falls back to these, so an
+      unclassified failure still says something true rather than showing an empty
+      error panel.
+    -->
+    <string name="failure_provider_unavailable">Kani cannot reach your Anki collection right now.</string>
+    <string name="failure_provider_auth_required">Kani needs permission to read your Anki collection.</string>
+    <string name="failure_configuration">Something is not configured correctly yet.</string>
+    <string name="failure_capability_missing">This is not available on this device.</string>
+    <string name="failure_transient">That did not go through. Please try again.</string>
+    <string name="failure_cancelled">That was cancelled.</string>
+    <string name="failure_conflict">Something else changed this first. Reload to see the latest.</string>
+    <string name="failure_unknown">Something went wrong.</string>
+
+    <!--
+      One line per PlatformCapability, shown when a screen gates an affordance on
+      a capability the host does not have. Each says what the host cannot do and
+      what happens instead, because "unavailable" alone reads as a bug.
+    -->
+    <string name="capability_provider_connectivity">No Anki collection is connected yet. Connect one in Settings to sync.</string>
+    <string name="capability_provider_fsrs_memory">This connection does not report Anki's FSRS memory state, so Kani estimates maturity from card intervals instead.</string>
+    <string name="capability_provider_note_tag_write">This connection cannot write note tags, so Kani cannot mark cards as archived or repaired.</string>
+    <string name="capability_provider_missing_kanji_write">This connection cannot add notes directly. Missing kanji are exported as CSV instead.</string>
+    <string name="capability_provider_browser_handoff">Kani cannot open Anki's browser here. The search is copied to your clipboard instead.</string>
+    <string name="capability_writing_recognition">Handwriting recognition is not available here, so writing practice is skipped.</string>
+    <string name="capability_tray_presence">This app has no tray icon.</string>
+    <string name="capability_notifications">Kani cannot post notifications here.</string>
+    <string name="capability_closed_app_scheduling">Reminders only fire while Kani is open on this device.</string>
+    <string name="capability_secret_persistence">This device cannot store your API key securely, so you will need to enter it each time Kani starts.</string>
+    <string name="capability_backup_restore">Automatic backups and restore are not available on this device version.</string>
+    <string name="capability_update_delivery">Kani cannot install updates here. Download the new version yourself.</string>
+</resources>

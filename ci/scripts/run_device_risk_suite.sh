@@ -2,15 +2,26 @@
 
 set -euo pipefail
 
+readonly risk_annotation='dev.bee.kanjianki.testing.DeviceRisk'
+readonly provider_test_package='dev.bee.kanjianki.provider.ankidroid.test'
+
+./gradlew :provider-ankidroid:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.annotation="${risk_annotation}" \
+  --no-daemon
+
+# Both debug hosts expose the same fake AnkiDroid authority. Remove the
+# standalone provider host before installing the app test host.
+adb uninstall "${provider_test_package}" >/dev/null 2>&1 || true
+
 ./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceRisk \
+  -Pandroid.testInstrumentationRunnerArguments.annotation="${risk_annotation}" \
   --no-daemon
 
 ./gradlew :app:assembleMinifiedSmoke --no-daemon
 
 readonly smoke_apk='app/build/outputs/apk/minifiedSmoke/app-minifiedSmoke.apk'
 readonly smoke_package='dev.bee.kanjianki.smoke'
-readonly smoke_activity='dev.bee.kanjianki.MainActivity'
+readonly smoke_activity='dev.bee.kanjianki.host.KaniHostActivity'
 readonly smoke_report_dir='app/build/reports/minifiedSmoke'
 
 capture_minified_smoke_diagnostics() {
@@ -52,5 +63,5 @@ if adb shell pidof -s "${smoke_package}" \
 fi
 
 capture_minified_smoke_diagnostics
-echo "::error::Minified smoke did not remain alive with MainActivity resumed"
+echo "::error::Minified smoke did not remain alive with the host activity resumed"
 exit 1

@@ -8,22 +8,23 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.anki.AnkiDroidGateway
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
 
 class AutoSyncJobService : JobService {
-    private lateinit var executor: JobExecutor
-    private lateinit var shutdown: Shutdown
-    private lateinit var autoSyncTask: AutoSyncTask
+    private val executor: JobExecutor
+    private val shutdown: Shutdown
+    private val autoSyncTask: AutoSyncTask
     private val activeRuns = ConcurrentHashMap<Int, JobRun>()
 
     constructor() {
-        val io = Executors.newSingleThreadExecutor()
-        executor = JobExecutor { job -> io.execute(job) }
-        shutdown = Shutdown { io.shutdownNow() }
+        executor = JobExecutor { job ->
+            requireKaniContainer().maintenanceExecutor.execute(job)
+        }
+        shutdown = Shutdown { }
         autoSyncTask = AutoSyncTask { run -> runAutoSync(run) }
     }
 
@@ -95,12 +96,15 @@ class AutoSyncJobService : JobService {
                 activeRuns.remove(run.key, run)
             }
         }
+        val container = requireKaniContainer()
         runAutoSync(
             this,
             run.params,
             SyncCancellation { run.isStopped() },
             run,
             lifecycleSafeFinisher,
+            storeFactory = container::openLocalStore,
+            gatewayFactory = container::newAnkiDroidGateway,
         )
     }
 
@@ -253,6 +257,8 @@ class AutoSyncJobService : JobService {
                     }
                 },
                 finisher,
+                storeFactory = { AppLocalStoreFactory.create(context) },
+                gatewayFactory = { cancellation -> AnkiDroidGateway(context, cancellation) },
             )
         }
 
@@ -262,11 +268,21 @@ class AutoSyncJobService : JobService {
             cancellation: SyncCancellation,
             completionGate: CompletionGate,
             finisher: JobFinisher,
+            storeFactory: () -> LocalStore,
+            gatewayFactory: (SyncCancellation) -> AnkiDroidGateway,
         ) {
-            val store = AppLocalStoreFactory.create(context)
+            val store = storeFactory()
             var result: AutoSyncRunner.Result? = null
             try {
-                result = AutoSyncRunner(context, store, AnkiDroidGateway(context, cancellation)).run()
+                result = createAutoSyncRunner(
+                    context,
+                    store,
+                    gatewayFactory(cancellation),
+                    sourceBindingGate = AndroidSourceBindingGate(
+                        dev.bee.kanjianki.data.SqliteSourceBindingStore(store),
+                    ),
+                    cancellation = cancellation,
+                ).run()
             } finally {
                 finishJob(
                     context,

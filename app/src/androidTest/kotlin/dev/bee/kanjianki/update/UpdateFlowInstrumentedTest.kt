@@ -26,6 +26,8 @@ import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
 import dev.bee.kanjianki.BuildConfig
+import dev.bee.kanjianki.KaniTestDatabase
+import dev.bee.kanjianki.KaniTestDeviceSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.testing.DeviceRisk
 import dev.bee.kanjianki.updatecore.SigningCertificateInfo
@@ -61,14 +63,15 @@ import kotlin.coroutines.EmptyCoroutineContext
 class UpdateFlowInstrumentedTest {
     private lateinit var context: Context
 
-    private companion object {
-        const val DATABASE_NAME = "kanji_anki_simple.db"
-    }
-
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
+        // Update state lives in SharedPreferences, not the database, so it survives the
+        // delete above and the whole instrumentation run. Without this every test that
+        // asserts an update default is order-dependent on its siblings -- see
+        // UpdateFixtureIsolationInstrumentedTest, which fails without this line.
+        KaniTestDeviceSettings.clearUpdateState(context)
         clearUpdatesCache()
         UpdateNotifier.cancelPendingUpdate(context)
     }
@@ -76,7 +79,8 @@ class UpdateFlowInstrumentedTest {
     @After
     fun tearDown() {
         UpdateNotifier.cancelPendingUpdate(context)
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
+        KaniTestDeviceSettings.clearUpdateState(context)
         clearUpdatesCache()
     }
 
@@ -674,9 +678,9 @@ class UpdateFlowInstrumentedTest {
         var session: GitHubUpdater.InstallerSession? = null
         try {
             session = backend.openSession(sessionId)
-            session!!.openWrite("kani-update.apk", 0, 3).use { output ->
+            session.openWrite("kani-update.apk", 0, 3).use { output ->
                 output.write(byteArrayOf(1, 2, 3))
-                session!!.fsync(output)
+                session.fsync(output)
             }
         } finally {
             session?.close()
@@ -684,7 +688,7 @@ class UpdateFlowInstrumentedTest {
         }
 
         try {
-            session!!.commit(dummyIntentSender())
+            session.commit(dummyIntentSender())
         } catch (ignored: RuntimeException) {
             assertNotNull(ignored.javaClass.simpleName)
         }

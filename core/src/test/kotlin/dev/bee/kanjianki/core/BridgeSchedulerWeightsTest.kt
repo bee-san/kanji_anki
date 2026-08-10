@@ -1,7 +1,7 @@
 package dev.bee.kanjianki.core
 
-import dev.bee.fsrs.FsrsEngine
-import dev.bee.fsrs.FsrsParameters
+import dev.bee.fsrs.Fsrs7Engine
+import dev.bee.fsrs.Fsrs7Parameters
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -22,14 +22,14 @@ class BridgeSchedulerWeightsTest {
         assertEquals(defaultResult.item.stability, nullResult.item.stability, 0.0)
         assertEquals(defaultResult.item.difficulty, nullResult.item.difficulty, 0.0)
 
-        val custom = FsrsParameters.latestDefaultValues().also { it[8] = 4.0 }
+        val custom = Fsrs7Parameters.latestDefaultValues().also { it[7] = 4.0 }
         val customResult = BridgeScheduler.withWeights(custom)
             .applyReview(item, request, HashSet(), 10L * BridgeScheduler.DAY)
         assertNotEquals(defaultResult.item.dueAtMillis, customResult.item.dueAtMillis)
 
-        val defaultAdapterResult = LatestFsrsAdapter().review(5.0, 5.0, StudyRatings.GOOD, 10, 0.9)
-        val customAdapterResult = LatestFsrsAdapter(FsrsEngine.create(FsrsParameters.of(custom)))
-            .review(5.0, 5.0, StudyRatings.GOOD, 10, 0.9)
+        val defaultAdapterResult = LatestFsrsAdapter().review(5.0, 5.0, StudyRatings.GOOD, 10.0, 0.9)
+        val customAdapterResult = LatestFsrsAdapter(Fsrs7Engine.create(Fsrs7Parameters.of(custom)))
+            .review(5.0, 5.0, StudyRatings.GOOD, 10.0, 0.9)
         assertNotEquals(
             defaultAdapterResult.promotionIntervalDays(),
             customAdapterResult.promotionIntervalDays(),

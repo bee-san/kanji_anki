@@ -1,0 +1,9 @@
+<resources>
+    <!--
+      Settings structural copy. Category titles/summaries, control labels, and
+      capability notices are host-computed and reach the surface as plain strings on
+      the portable model. Only the two chrome lines the shell adds itself are here.
+    -->
+    <string name="settings_placeholder">This section is coming to the desktop app.</string>
+    <string name="settings_placeholder_hint">It is available in the Android app today.</string>
+</resources>

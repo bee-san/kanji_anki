@@ -55,7 +55,23 @@ class StudySessionTrackerConcurrencyTest {
                         val key = "session:kanji_meaning:字$i:tok$i"
                         tracker.startActiveTask(key, "字$i", "kanji_meaning", i.toLong(), true)
                         tracker.recordReviewOutcome("字$i", "good", null, null)
-                        tracker.completeActiveTask(store, key, "good", (i + 1).toLong(), true)
+                        tracker.completeActiveTask(
+                            { timing ->
+                                store.recordStudyTaskAnswered(
+                                    timing.taskKey,
+                                    timing.kanji,
+                                    timing.taskType,
+                                    timing.startedAtMillis,
+                                    timing.answeredAtMillis,
+                                    timing.activeElapsedMillis,
+                                    timing.outcome,
+                                )
+                            },
+                            key,
+                            "good",
+                            (i + 1).toLong(),
+                            true,
+                        )
                     }
                 } catch (t: Throwable) {
                     error.compareAndSet(null, t)
