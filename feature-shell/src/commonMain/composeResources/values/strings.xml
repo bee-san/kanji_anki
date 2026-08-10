@@ -41,10 +41,10 @@
       what happens instead, because "unavailable" alone reads as a bug.
     -->
     <string name="capability_provider_connectivity">No Anki collection is connected yet. Connect one in Settings to sync.</string>
-    <string name="capability_provider_fsrs_memory">This connection does not report Anki\'s FSRS memory state, so Kani estimates maturity from card intervals instead.</string>
+    <string name="capability_provider_fsrs_memory">This connection does not report Anki's FSRS memory state, so Kani estimates maturity from card intervals instead.</string>
     <string name="capability_provider_note_tag_write">This connection cannot write note tags, so Kani cannot mark cards as archived or repaired.</string>
     <string name="capability_provider_missing_kanji_write">This connection cannot add notes directly. Missing kanji are exported as CSV instead.</string>
-    <string name="capability_provider_browser_handoff">Kani cannot open Anki\'s browser here. The search is copied to your clipboard instead.</string>
+    <string name="capability_provider_browser_handoff">Kani cannot open Anki's browser here. The search is copied to your clipboard instead.</string>
     <string name="capability_writing_recognition">Handwriting recognition is not available here, so writing practice is skipped.</string>
     <string name="capability_tray_presence">This app has no tray icon.</string>
     <string name="capability_notifications">Kani cannot post notifications here.</string>

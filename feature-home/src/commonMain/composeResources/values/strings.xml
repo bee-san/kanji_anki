@@ -31,7 +31,7 @@
 
     <string name="onboarding_ready_action">Sync cards</string>
 
-    <string name="onboarding_recover_authorization_body">Kani couldn\'t read your collection because access was refused. Grant access, then try syncing again.</string>
+    <string name="onboarding_recover_authorization_body">Kani couldn't read your collection because access was refused. Grant access, then try syncing again.</string>
     <string name="onboarding_recover_authorization_action">Fix access</string>
 
     <string name="onboarding_recover_sync_body">Last sync failed: %1$s. Check source settings, then try again.</string>
@@ -200,5 +200,5 @@
       disabling anything, so saying so is the only correct response.
     -->
     <string name="notice_reduced_fsrs_title">Reduced scheduling precision</string>
-    <string name="notice_reduced_fsrs_body">This collection doesn\'t report FSRS memory state, so Kani estimates it from each card\'s interval. Your first reviews may be scheduled a little differently.</string>
+    <string name="notice_reduced_fsrs_body">This collection doesn't report FSRS memory state, so Kani estimates it from each card's interval. Your first reviews may be scheduled a little differently.</string>
 </resources>

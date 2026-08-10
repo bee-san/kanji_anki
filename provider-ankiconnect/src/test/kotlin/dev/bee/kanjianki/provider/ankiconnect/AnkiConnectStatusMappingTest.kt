@@ -96,11 +96,18 @@ class AnkiConnectStatusMappingTest {
             .messageFor(AnkiConnectHandshake.Status.UnsupportedVersion(4L))
         assertTrue(version.contains("v4"))
         assertTrue(version.contains("v${AnkiConnectEnvelope.API_VERSION}"))
-        assertTrue(
-            AnkiConnectStatusMapping
-                .messageFor(AnkiConnectHandshake.Status.Unavailable("connection refused"))
-                .contains("connection refused"),
-        )
+        // The user-facing copy must NOT carry the internal detail. This previously
+        // asserted the opposite, which pinned a real defect as correct: the details are
+        // diagnostics like "permission probe failed", and that string reached the
+        // desktop onboarding panel where it sent the user looking for a permission
+        // setting desktop does not have. Found by screenshotting the running app.
+        val unreachable = AnkiConnectStatusMapping
+            .messageFor(AnkiConnectHandshake.Status.Unavailable("permission probe failed"))
+        assertFalse(unreachable.contains("permission probe failed"))
+        assertFalse(unreachable.contains("probe"))
+        // It still has to say what to do about it.
+        assertTrue(unreachable.contains("Start Anki"))
+        assertTrue(unreachable.contains("AnkiConnect"))
     }
 
     /** Missing actions are listed, sorted, so the copy is stable to read. */

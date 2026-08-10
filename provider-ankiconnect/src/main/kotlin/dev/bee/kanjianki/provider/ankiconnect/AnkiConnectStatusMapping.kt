@@ -49,7 +49,16 @@ object AnkiConnectStatusMapping {
             "This AnkiConnect is missing actions Kani needs: " +
                 status.actions.sorted().joinToString(", ")
         is AnkiConnectHandshake.Status.Unavailable ->
-            "Anki is not reachable (${status.detail})."
+            // Deliberately does NOT interpolate `status.detail`. Those details are
+            // internal diagnostics — "permission probe failed", "apiReflect failed" —
+            // and they were reaching the onboarding panel, where they misdirect: the
+            // usual cause is simply that Anki is not running, and "permission probe
+            // failed" sends a desktop user hunting for a permission setting that does
+            // not exist on desktop at all. The detail is still on the `Unavailable`
+            // status for logs and tests; this function is the user-facing copy, and
+            // every other branch here names what to fix and where.
+            "Anki is not reachable. Start Anki and make sure the AnkiConnect add-on " +
+                "is installed."
     }
 
     /** A response Kani could not parse as the action's documented shape. */

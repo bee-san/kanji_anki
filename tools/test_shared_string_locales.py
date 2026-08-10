@@ -154,6 +154,33 @@ class SharedStringLocaleParityTest(unittest.TestCase):
                     with self.subTest(module=module, locale=locale, name=name):
                         self.assertTrue(value.strip(), f"{module}/{name} is blank")
 
+    def test_no_value_carries_an_android_backslash_escape(self) -> None:
+        """No shared string may use Android's XML backslash escapes.
+
+        `\\'` and `\\"` are Android resource conventions. Compose Multiplatform's
+        resource reader does not interpret them, so it renders the backslash to the
+        user: desktop Home showed "This collection doesn\\'t report FSRS memory
+        state". XML needs no escape for an apostrophe at all, and a double quote
+        inside an element's text is equally fine, so the correct fix is always to
+        delete the backslash rather than to escape it differently.
+
+        Found by screenshotting the running desktop app — no test covered it, because
+        every existing check compares locales against each other and both locales
+        carried the same wrong bytes.
+        """
+        for module in resource_modules():
+            for locale in (None, *TRANSLATED_LOCALES):
+                strings = read_strings(module, locale)
+                for name, value in sorted(strings.items()):
+                    for escape in ("\\'", '\\"'):
+                        with self.subTest(module=module, locale=locale, name=name):
+                            self.assertNotIn(
+                                escape,
+                                value,
+                                f"{module}/{name} uses the Android escape {escape!r}; "
+                                "Compose Multiplatform renders the backslash literally",
+                            )
+
     def test_every_translation_differs_unless_deliberately_invariant(self) -> None:
         for module in resource_modules():
             default = read_strings(module)
