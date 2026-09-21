@@ -6,6 +6,21 @@ import java.util.LinkedHashSet
 object AdaptiveRepairPolicy {
     const val SYNTHETIC_REPAIR_STEP_MINUTES: Int = 10
 
+    /**
+     * Maximum repair appearances in one repair episode. Hard repeats and Again
+     * restarts would otherwise let a card loop on ten-minute repair steps with
+     * no exit (most visibly `write_kanji`, which downgrades Good to Hard until a
+     * clean write). Once this many appearances have been answered the episode is
+     * exhausted: the card returns to core revalidation and the same-cause
+     * history decides the next repair tool.
+     */
+    const val MAX_REPAIR_ATTEMPTS: Int = 6
+
+    /** True when answering one more appearance would exceed [MAX_REPAIR_ATTEMPTS]. */
+    @JvmStatic
+    fun isExhausted(attemptsBefore: Int, maxAttempts: Int = MAX_REPAIR_ATTEMPTS): Boolean =
+        saturatingAddNonNegative(attemptsBefore.coerceAtLeast(0), 1) >= maxAttempts.coerceAtLeast(1)
+
     data class RepairRequest(
         val coreSkill: CoreSkill,
         val failureKind: FailureKind,

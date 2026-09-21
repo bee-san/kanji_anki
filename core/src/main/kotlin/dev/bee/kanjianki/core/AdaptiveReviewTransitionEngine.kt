@@ -276,7 +276,8 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             rating,
         )
         val coreMemory = AdaptiveStudyItemPolicy.coreMemory(item, route.activeCore)
-        if (nextIndex >= route.activeRepairTasks.size) {
+        val exhausted = AdaptiveRepairPolicy.isExhausted(route.repairAttemptCount)
+        if (nextIndex >= route.activeRepairTasks.size || exhausted) {
             val coreDue = route.coreDueAtMillis.takeIf { it > 0L } ?: coreMemory.dueAtMillis
             val validationDue = min(coreDue, saturatingAdd(nowMillis, StudyLadderRules.DAY))
             val validationMemory = coreMemory.withSchedule(
