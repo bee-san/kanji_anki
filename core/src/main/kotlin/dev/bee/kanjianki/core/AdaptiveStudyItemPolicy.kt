@@ -106,6 +106,30 @@ object AdaptiveStudyItemPolicy {
             item.wordReadingMemory.consecutivePasses > 0
     }
 
+    /**
+     * Kani's own "this kanji is repaired" verdict: the terminal contextual core
+     * is in plain review with no repair or revalidation outstanding, it has
+     * passed at least [RecordsSyncModels.Settings.ladderPromotionMinPasses]
+     * consecutive real-due checks, and its scheduled interval has reached Anki
+     * maturity ([RecordsSyncModels.Settings.matureDays]).
+     *
+     * This is the scheduler signal that feeds the `kani_repaired` hand-off.
+     * Anki mature support cannot grow for a kanji whose only source cards are
+     * suspended, so without this predicate a suspended-only kanji could never be
+     * handed back to AnkiDroid no matter how well the learner knows it.
+     */
+    @JvmStatic
+    fun isKaniConfirmed(
+        item: RecordsStudyModels.StudyItem?,
+        settings: RecordsSyncModels.Settings?,
+    ): Boolean {
+        if (item == null || !isContextualComplete(item)) return false
+        val safeSettings = settings ?: RecordsSyncModels.Settings.kikuDefaults()
+        val memory = item.wordReadingMemory
+        return memory.consecutivePasses >= safeSettings.ladderPromotionMinPasses.coerceAtLeast(1) &&
+            memory.matureIntervalDays >= safeSettings.matureDays.coerceAtLeast(1)
+    }
+
     private fun coreSurface(
         item: RecordsStudyModels.StudyItem,
         core: CoreSkill,

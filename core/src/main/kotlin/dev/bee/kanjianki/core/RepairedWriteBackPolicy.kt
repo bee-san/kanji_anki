@@ -6,6 +6,15 @@ import dev.bee.kanjianki.syncdomain.ProviderArchiveCleanupPolicy
  * Proposes conservative note-level `kani_repaired` writes. A note is eligible only
  * when every card belonging to it is suspended and every suspended card is backed by
  * an unstamped source for a kanji whose repair evidence passes the gate.
+ *
+ * Three routes make a kanji eligible:
+ *  - it is retired (Anki mature support already met the threshold);
+ *  - Anki mature support meets the threshold and the cross-sync evidence is
+ *    improving with high confidence;
+ *  - Kani's own scheduler confirms it ([RepairState.kaniConfirmed]) and the
+ *    cross-sync evidence is not regressing. This is the only route available to a
+ *    kanji whose source cards are all suspended, because suspended cards never
+ *    count as mature support.
  */
 object RepairedWriteBackPolicy {
     const val MIN_EVIDENCE_CONFIDENCE: Double = 0.75
@@ -17,6 +26,7 @@ object RepairedWriteBackPolicy {
         val matureSupportCount: Int,
         val evidenceStatus: KanjiRepairEvidencePolicy.Status?,
         val evidenceConfidence: Double,
+        val kaniConfirmed: Boolean = false,
     )
 
     @JvmRecord
@@ -140,6 +150,9 @@ object RepairedWriteBackPolicy {
 
     private fun isEligible(state: RepairState, matureSupportThreshold: Int): Boolean {
         if (state.studyState == StudyLadderRules.STATE_RETIRED) {
+            return true
+        }
+        if (state.kaniConfirmed && state.evidenceStatus != KanjiRepairEvidencePolicy.Status.REGRESSING) {
             return true
         }
         return state.matureSupportCount >= matureSupportThreshold &&
