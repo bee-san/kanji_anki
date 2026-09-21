@@ -5,4 +5,4 @@ T+22d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T
 T+22d answer rating=good task=font_meaning rung=KANJI_MEANING->KANJI_MEANING phase=REVIEW->REVIEW due=T+44d reasons=[review_pass_fsrs_interval,promotion_blocked_min_passes] fsrs=[review:good:22]
 T+44d advance now=T+44d
 T+44d next selected=裂 task=kanji_meaning rung=KANJI_MEANING phase=REVIEW due=T+44d reasons=[due_now,review_due,selected_best_candidate]
-T+44d answer rating=good task=kanji_meaning rung=KANJI_MEANING->WORD_READING phase=REVIEW->REVIEW due=T+51d reasons=[review_pass_fsrs_interval,fsrs_interval_promotes,kanji_reading_unavailable] fsrs=[review:good:7]
+T+44d answer rating=good task=kanji_meaning rung=KANJI_MEANING->WORD_READING phase=REVIEW->REVIEW due=T+45d reasons=[review_pass_fsrs_interval,fsrs_interval_promotes,kanji_reading_unavailable] fsrs=[review:good:1]

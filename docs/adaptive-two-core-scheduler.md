@@ -130,9 +130,14 @@ differ, the last task or delay is reused so both sequences are honored.
 - Writing repeats until `writingLevel >= 2` from clean, hint-free passes.
 
 After repair, the same core is revalidated at
-`min(post-lapse core due, now + 1 day)`. Recognition promotes to contextual
-reading only when the fixed-0.90 strength and minimum real-due pass gates both
-hold.
+`min(post-lapse core due, now + 1 day)`. A revalidation pass proves the repair
+took; it consumes the due slot but does not count toward the promotion streak.
+Recognition promotes to contextual reading only when the fixed-0.90 strength
+and minimum real-due pass gates both hold. On promotion the contextual memory
+is seeded from FSRS's initial state for a first Good (carrying the kanji's
+learned difficulty), not cloned from recognition's stability, and its first
+check is capped at one third of the promotion threshold. Recognition keeps its
+own uncapped schedule.
 
 The legacy `similar_kanji_repair_queue` is retained only to drain existing rows
 for one compatibility release. No new row is enqueued; new repair state lives
