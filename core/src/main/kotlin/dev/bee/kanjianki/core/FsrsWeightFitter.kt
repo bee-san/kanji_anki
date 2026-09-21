@@ -183,6 +183,12 @@ class FsrsWeightFitter(
         val references = ArrayList<SampleReference>()
         sequences.forEachIndexed { sequenceIndex, sequence ->
             sequence.samples.forEachIndexed { sampleIndex, sample ->
+                // Same-day samples are never scored (see FsrsReplaySample.isScored), so
+                // they must not inflate the training/validation counts or the
+                // minimum-history gate either.
+                if (!sample.isScored()) {
+                    return@forEachIndexed
+                }
                 val key = FsrsReplayEvaluator.sampleKey(sequenceIndex, sampleIndex)
                 // Seeded xor is only a final tie-breaker; chronological ordering is
                 // always primary and sequence order remains the next stable key.
