@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.FsrsElapsedTime
 import dev.bee.kanjianki.core.RecordsStudyModels
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,10 +36,13 @@ class FsrsTrainingDataQueriesTest {
     @Test
     fun extractionDropsLegacyAndPracticeRowsKeepsSameDayAndGroupsWithoutKanaAssumptions() {
         insert("legacy", "good", 1L, "", "{\"phase\":\"review\"}")
+        insert("practice-again", "again", 1L, memory(dueDay = 1, intervalDays = 1), "{\"phase\":\"new_learning\"}")
         insert("practice", "good", 2L, memory(dueDay = 1, intervalDays = 1), "{\"phase\":\"new_learning\"}")
         insert("missing-phase", "good", 3L, memory(dueDay = 1, intervalDays = 1), "{}")
         insert("review-1", "good", 5 * DAY, memory(dueDay = 10, intervalDays = 5), "{\"phase\":\"review\"}")
         insert("review-2", "again", 25 * DAY, memory(dueDay = 20, intervalDays = 10), "{\"phase\":\"review\"}")
+        // Relearning practice after the first review must not overwrite the seed.
+        insert("relearn", "good", 25 * DAY + 1, memory(dueDay = 25, intervalDays = 0), "{\"phase\":\"relearning\"}")
 
         val sequences = FsrsTrainingDataQueries(store.readableDatabase).sequences()
 
@@ -46,9 +50,24 @@ class FsrsTrainingDataQueriesTest {
         val sequence = sequences.single()
         assertEquals(7.5, sequence.initialStability, 0.0)
         assertEquals(4.25, sequence.initialDifficulty, 0.0)
+        // The last new-learning grade before the first review row graduated the card.
+        assertEquals(3, sequence.graduationRating)
         assertEquals(listOf(0.0, 15.0), sequence.samples.map { it.elapsedDays })
         assertEquals(listOf(3, 1), sequence.samples.map { it.rating })
         assertEquals(listOf(true, false), sequence.samples.map { it.outcome })
+    }
+
+    @Test
+    fun evidenceSeededHistoryWithoutLearningRowsKeepsMemorySeed() {
+        insert("review-1", "good", 5 * DAY, memory(dueDay = 10, intervalDays = 5), "{\"phase\":\"review\"}")
+        // A learning row *after* the first review belongs to a later relearning
+        // climb and is not a graduation grade.
+        insert("late-learning", "again", 6 * DAY, memory(dueDay = 10, intervalDays = 5), "{\"phase\":\"new_learning\"}")
+
+        val sequence = FsrsTrainingDataQueries(store.readableDatabase).sequences().single()
+
+        assertNull(sequence.graduationRating)
+        assertEquals(1, sequence.samples.size)
     }
 
     @Test

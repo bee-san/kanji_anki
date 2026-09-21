@@ -64,10 +64,19 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val nextItemTotalReviews = saturatingAddNonNegative(item.totalReviews, 1)
         val nextCoreReviewCount = saturatingAddNonNegative(route.reviewCount(core), 1)
         val evidence = evidenceFor(request, core)
+        // Deterministic fuzz keyed by item, core and review ordinal spreads kanji
+        // with identical histories across neighbouring days (see IntervalFuzzPolicy).
+        val scheduledDays = IntervalFuzzPolicy.fuzzedIntervalDays(
+            result.intervalDays(),
+            item.kanji,
+            core,
+            nextCoreReviewCount,
+        )
+        val scheduledMillis = max(1L, scheduledDays.toLong()) * StudyLadderRules.DAY
 
         if (rating == StudyRatings.AGAIN) {
             val nextLapses = saturatingAddNonNegative(beforeMemory.lapses, 1)
-            val coreDue = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L))
+            val coreDue = saturatingAdd(nowMillis, scheduledMillis)
             val postLapseMemory = RecordsStudyModels.TaskMemory.fromFields(
                 RecordsStudyModels.TaskMemory.Fields(
                     state = StudyLadderRules.STATE_REVIEW,
@@ -78,7 +87,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                     lapses = nextLapses,
                     learningStep = 0,
                     lastRating = StudyRatings.AGAIN,
-                    matureIntervalDays = result.intervalDays(),
+                    matureIntervalDays = scheduledDays,
                     consecutivePasses = 0,
                     lastPassedDueAtMillis = 0L,
                     lastReviewedAtMillis = nowMillis,
@@ -144,22 +153,26 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             )
         }
 
-        val passStreak = if (realDue) {
+        // A pass one day after a repair (revalidation) proves the repair took, not
+        // that a distinct skill is retired; it consumes the due slot but does not
+        // count toward the promotion streak.
+        val countsTowardPromotion = realDue && !route.revalidationPending
+        val passStreak = if (countsTowardPromotion) {
             saturatingAddNonNegative(item.realPassStreak, 1)
         } else {
             item.realPassStreak
         }
-        var memory = RecordsStudyModels.TaskMemory.fromFields(
+        val memory = RecordsStudyModels.TaskMemory.fromFields(
             RecordsStudyModels.TaskMemory.Fields(
                 state = StudyLadderRules.STATE_REVIEW,
-                dueAtMillis = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L)),
+                dueAtMillis = saturatingAdd(nowMillis, scheduledMillis),
                 stability = result.stability,
                 difficulty = result.difficulty,
                 totalReviews = nextTotalReviews,
                 lapses = beforeMemory.lapses.coerceAtLeast(0),
                 learningStep = 0,
                 lastRating = rating,
-                matureIntervalDays = result.intervalDays(),
+                matureIntervalDays = scheduledDays,
                 consecutivePasses = passStreak,
                 lastPassedDueAtMillis = if (realDue) item.dueAtMillis else beforeMemory.lastPassedDueAtMillis,
                 lastReviewedAtMillis = nowMillis,
@@ -168,6 +181,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         var nextCore = core
         var nextPassStreak = passStreak
         var nextItem = item
+        var scheduledMemory = memory
         if (core == CoreSkill.RECOGNITION &&
             realDue &&
             result.promotionIntervalMillis > settings.ladderPromotionIntervalDays.toLong() * StudyLadderRules.DAY &&
@@ -175,16 +189,45 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         ) {
             nextCore = CoreSkill.CONTEXTUAL_READING
             nextPassStreak = 0
+            // Contextual reading is a different skill from recognition. Seed its
+            // memory from FSRS's own initial state for a first Good instead of
+            // cloning recognition's stability, so the new core has to earn its
+            // intervals; carry the kanji's learned difficulty across. The first
+            // check is still capped so promotion is validated soon.
             val capDays = max(1, settings.ladderPromotionIntervalDays / PROMOTION_REVALIDATION_DIVISOR)
-            if (memory.matureIntervalDays > capDays) {
-                memory = memory.withSchedule(
-                    saturatingAdd(nowMillis, capDays.toLong() * StudyLadderRules.DAY),
-                    capDays,
+            val seed = fsrs.initialReview(
+                StudyRatings.GOOD,
+                memory.stability,
+                memory.difficulty,
+                parameters.targetRetention,
+                true,
+            )
+            val seedDays = min(seed.intervalDays().coerceAtLeast(1), capDays)
+            scheduledMemory = RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = StudyLadderRules.STATE_REVIEW,
+                    dueAtMillis = saturatingAdd(nowMillis, seedDays.toLong() * StudyLadderRules.DAY),
+                    stability = seed.stability,
+                    difficulty = memory.difficulty,
+                    totalReviews = 0,
+                    lapses = 0,
+                    learningStep = 0,
+                    lastRating = "",
+                    matureIntervalDays = seedDays,
+                    consecutivePasses = 0,
+                    lastPassedDueAtMillis = 0L,
+                    lastReviewedAtMillis = nowMillis,
                 )
-            }
-            nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), memory)
+            )
+            nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), scheduledMemory)
         }
         nextItem = nextItem.withTaskMemory(ownerTask, memory)
+        val recurrence = AdaptiveRepairPolicy.recordPass(
+            AdaptiveRepairPolicy.FailureRecurrence(route.recurringFailure, route.recurringFailureCount),
+            realDue,
+            result.promotionIntervalMillis,
+            settings.ladderPromotionIntervalDays,
+        )
         val nextRoute = route.copy(
             activeCore = nextCore,
             recognitionReviewCount = if (core == CoreSkill.RECOGNITION) nextCoreReviewCount else route.recognitionReviewCount,
@@ -194,8 +237,8 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             repairStepMinutes = emptyList(),
             repairDueAtMillis = 0L,
             coreDueAtMillis = 0L,
-            recurringFailure = if (route.revalidationPending) null else route.recurringFailure,
-            recurringFailureCount = if (route.revalidationPending) 0 else route.recurringFailureCount,
+            recurringFailure = recurrence.kind,
+            recurringFailureCount = recurrence.count,
             repairAttemptCount = 0,
             repairStartedAtMillis = 0L,
             revalidationPending = false,
@@ -203,9 +246,9 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         )
         return updateItem(
             item = nextItem,
-            memory = memory,
+            memory = scheduledMemory,
             route = nextRoute,
-            dueAtMillis = memory.dueAtMillis,
+            dueAtMillis = scheduledMemory.dueAtMillis,
             phase = RecordsBase.SchedulerPhase.REVIEW,
             totalReviews = nextItemTotalReviews,
             lapses = item.lapses.coerceAtLeast(0),
@@ -242,7 +285,8 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             rating,
         )
         val coreMemory = AdaptiveStudyItemPolicy.coreMemory(item, route.activeCore)
-        if (nextIndex >= route.activeRepairTasks.size) {
+        val exhausted = AdaptiveRepairPolicy.isExhausted(route.repairAttemptCount)
+        if (nextIndex >= route.activeRepairTasks.size || exhausted) {
             val coreDue = route.coreDueAtMillis.takeIf { it > 0L } ?: coreMemory.dueAtMillis
             val validationDue = min(coreDue, saturatingAdd(nowMillis, StudyLadderRules.DAY))
             val validationMemory = coreMemory.withSchedule(
@@ -439,6 +483,12 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         CoreSkill.CONTEXTUAL_READING -> FailureKind.WRONG_READING
     }
 
+    /**
+     * Recognition can only fail for recognition reasons. The terminal contextual
+     * core accepts every cause: a kanji can still decay in shape or meaning while
+     * it is read in context, and the repair scaffold must be able to reach the
+     * recognition tools for it without demoting the core.
+     */
     private fun normalizedFailure(core: CoreSkill, failure: FailureKind?): FailureKind {
         val compatible = when (core) {
             CoreSkill.RECOGNITION -> failure in setOf(
@@ -447,11 +497,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 FailureKind.WRITING_SHAPE,
                 FailureKind.UNKNOWN,
             )
-            CoreSkill.CONTEXTUAL_READING -> failure in setOf(
-                FailureKind.WRONG_READING,
-                FailureKind.HOMOPHONE_CONFUSION,
-                FailureKind.UNKNOWN,
-            )
+            CoreSkill.CONTEXTUAL_READING -> failure != null
         }
         return if (compatible) failure!! else defaultFailure(core)
     }

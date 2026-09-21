@@ -23,6 +23,10 @@ repair tools.
 - A real-due core failure calls FSRS `Again` exactly once. Every following
   repair appearance is practice-only: it cannot add another lapse, change
   stability/difficulty, or move a long-term threshold.
+- Core intervals are fuzzed deterministically (`IntervalFuzzPolicy`, Anki's
+  bands, keyed by kanji, core and review ordinal) so items with identical
+  histories spread across neighbouring days while replays stay reproducible.
+  Promotion strength is judged on the unfuzzed fixed-0.90 interval.
 - Contextual reading is the terminal core. It never demotes back to recognition.
 - Kani's normal sync/write-back surface remains note tags only. The explicit
   Missing Kanji flow is a separate, capability-gated additive writer restricted
@@ -90,8 +94,18 @@ Recognition Fail asks for one cause before submitting:
 - "I didn't know the meaning" -> `meaning_unknown`.
 - "I mixed up the kanji" -> `visual_confusion`.
 
-Dismissing the cause dialog submits nothing. Word/sentence failure records
-`wrong_reading` and the exact rendered word/reading. Choice and handwriting
+Word/sentence Fail also asks for one cause:
+
+- "I didn't know the reading" -> `wrong_reading` (with the exact rendered
+  word/reading).
+- "I mixed up the kanji" -> `visual_confusion`.
+
+The terminal contextual core accepts every failure kind and routes shape and
+meaning causes to the recognition repair tools without demoting the core; an
+unknown cause prefers reading tools and falls back to shape tools only when no
+reading tool is usable. Recognition still accepts only recognition causes.
+
+Dismissing the cause dialog submits nothing. Choice and handwriting
 surfaces record objective/evaluator evidence automatically.
 
 `type_reading` is a repair-only wire. It compares the full word reading exactly
@@ -116,7 +130,11 @@ availability:
 | Unknown | nearest valid enabled support tool | same priority policy |
 
 Only a real-due core/revalidation failure increments same-issue recurrence. A
-different cause resets it; a validation pass clears it. The existing demotion
+different cause resets it. A pass does not clear it: the recurrence is resolved
+only when a real-due pass shows promotion-strength memory (the fixed-0.90
+interval exceeds `ladder_promotion_interval_days`), so the chronic
+fail-repair-pass-fail pattern still accumulates toward escalation. The existing
+demotion
 threshold setting is the same-issue escalation threshold.
 
 Repair appearances snapshot the configured relearning delays. An empty list is
@@ -127,11 +145,19 @@ differ, the last task or delay is reused so both sequences are honored.
 - `Hard`: repeat the current appearance.
 - `Good`: advance one appearance.
 - Writing repeats until `writingLevel >= 2` from clean, hint-free passes.
+- After `AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS` (6) answered appearances
+  the episode is exhausted regardless of rating and exits to revalidation, so
+  a card can never loop on repair steps without a way out.
 
 After repair, the same core is revalidated at
-`min(post-lapse core due, now + 1 day)`. Recognition promotes to contextual
-reading only when the fixed-0.90 strength and minimum real-due pass gates both
-hold.
+`min(post-lapse core due, now + 1 day)`. A revalidation pass proves the repair
+took; it consumes the due slot but does not count toward the promotion streak.
+Recognition promotes to contextual reading only when the fixed-0.90 strength
+and minimum real-due pass gates both hold. On promotion the contextual memory
+is seeded from FSRS's initial state for a first Good (carrying the kanji's
+learned difficulty), not cloned from recognition's stability, and its first
+check is capped at one third of the promotion threshold. Recognition keeps its
+own uncapped schedule.
 
 The legacy `similar_kanji_repair_queue` is retained only to drain existing rows
 for one compatibility release. No new row is enqueued; new repair state lives
@@ -183,6 +209,18 @@ contextual due-review pass. Legacy items continue to use the old fallback until
 conversion. Review commits and material sync/settings changes dirty the cache
 inside their owning transaction; readers accept only a same-day format-11
 snapshot whose source version still matches.
+
+## Kani-confirmed hand-off
+
+Anki mature support only counts unsuspended cards, so a kanji whose sources are
+all suspended can never retire through the support threshold. The scheduler
+therefore owns a second hand-off signal, `AdaptiveStudyItemPolicy.isKaniConfirmed`:
+the contextual core is complete (above), its memory has at least
+`ladder_promotion_min_passes` consecutive real-due passes, and its scheduled
+interval has reached `mature_days`. A confirmed kanji whose cross-sync evidence
+is not regressing is eligible for the `kani_repaired` note tag exactly like a
+retired one. Retirement itself still follows Anki support so the reopen gate
+cannot loop.
 
 ## Sync and backup integrity
 

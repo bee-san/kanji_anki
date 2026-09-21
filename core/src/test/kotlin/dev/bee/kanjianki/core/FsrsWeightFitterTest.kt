@@ -79,6 +79,25 @@ class FsrsWeightFitterTest {
         assertEquals(0, cancelled.epochsCompleted)
     }
 
+    @Test
+    fun sameDaySamplesDoNotCountTowardTrainingOrValidationPartitions() {
+        // 500 scored samples plus 500 same-day samples: the split and the
+        // minimum-history gate must see exactly the 500 scored ones.
+        val padded = syntheticSequences().map { sequence ->
+            sequence.copy(samples = listOf(FsrsReplaySample(0.0, 3, true, 0L)) + sequence.samples)
+        }
+
+        val result = FsrsWeightFitter(
+            FsrsWeightFitter.Config(maximumEpochs = 1, earlyStoppingPatience = 1),
+        ).fit(padded)
+
+        assertEquals(500, result.sampleCount)
+        assertEquals(400, result.trainingSampleCount)
+        assertEquals(100, result.validationSampleCount)
+        assertTrue(result.defaultValidationLoss.isFinite())
+        assertTrue(result.defaultValidationLoss < 5.0)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun fitterConfigurationRejectsInvalidEpochs() {
         FsrsWeightFitter.Config(maximumEpochs = 0)

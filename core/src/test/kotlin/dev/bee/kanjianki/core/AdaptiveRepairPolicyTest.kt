@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -67,6 +68,52 @@ class AdaptiveRepairPolicyTest {
     }
 
     @Test
+    fun unknownContextualFailurePrefersReadingToolsButCanReachShapeTools() {
+        val readingTools = setOf(StudyTaskTypes.READING_KANJI, StudyTaskTypes.KANJI_READING, StudyTaskTypes.TYPE_READING)
+        val readingFirst = AdaptiveRepairPolicy.select(
+            request(failure = FailureKind.UNKNOWN, count = 1, core = CoreSkill.CONTEXTUAL_READING),
+        )
+        assertEquals(1, readingFirst.taskTypes.size)
+        assertTrue(readingFirst.taskTypes.single() in readingTools)
+
+        val noReadingTools = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.UNKNOWN,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.WRITE_KANJI),
+            ),
+        )
+        assertEquals(listOf(StudyTaskTypes.MEANING_KANJI), noReadingTools.taskTypes)
+
+        // A known reading cause never receives an off-target shape drill.
+        val knownReadingCause = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.WRONG_READING,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.WRITE_KANJI),
+            ),
+        )
+        assertTrue(knownReadingCause.taskTypes.isEmpty())
+
+        // A shape cause on the contextual core uses the recognition scaffold.
+        val shapeCause = AdaptiveRepairPolicy.select(
+            request(failure = FailureKind.VISUAL_CONFUSION, count = 1, core = CoreSkill.CONTEXTUAL_READING),
+        )
+        assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI), shapeCause.taskTypes)
+        val shapeCauseNoSimilar = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.VISUAL_CONFUSION,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.KANJI_READING),
+            ),
+        )
+        assertEquals(listOf(StudyTaskTypes.MEANING_KANJI), shapeCauseNoSimilar.taskTypes)
+    }
+
+    @Test
     fun scheduleHonorsBothTaskSequenceAndConfiguredSteps() {
         assertEquals(
             AdaptiveRepairPolicy.RepairSchedule(
@@ -103,6 +150,44 @@ class AdaptiveRepairPolicyTest {
         assertEquals(2, repeated.count)
         assertEquals(AdaptiveRepairPolicy.FailureRecurrence(FailureKind.HOMOPHONE_CONFUSION, 1), changed)
         assertEquals(AdaptiveRepairPolicy.FailureRecurrence(), AdaptiveRepairPolicy.clearAfterValidationPass())
+    }
+
+    @Test
+    fun passResolvesRecurrenceOnlyOnRealDuePromotionStrengthMemory() {
+        val recurrence = AdaptiveRepairPolicy.FailureRecurrence(FailureKind.VISUAL_CONFUSION, 2)
+        val promotionDays = 21
+        val strong = (promotionDays + 1).toLong() * StudyLadderRules.DAY
+        val weak = promotionDays.toLong() * StudyLadderRules.DAY
+
+        // A one-day revalidation pass keeps the same-cause history alive.
+        assertEquals(recurrence, AdaptiveRepairPolicy.recordPass(recurrence, true, weak, promotionDays))
+        // Study-ahead passes never resolve it, however strong the memory looks.
+        assertEquals(recurrence, AdaptiveRepairPolicy.recordPass(recurrence, false, strong, promotionDays))
+        // A real-due pass with promotion-strength memory does.
+        assertEquals(
+            AdaptiveRepairPolicy.FailureRecurrence(),
+            AdaptiveRepairPolicy.recordPass(recurrence, true, strong, promotionDays),
+        )
+        // Nothing to resolve stays untouched, and a non-positive threshold is clamped to one day.
+        val empty = AdaptiveRepairPolicy.FailureRecurrence()
+        assertSame(empty, AdaptiveRepairPolicy.recordPass(empty, true, strong, promotionDays))
+        assertEquals(
+            AdaptiveRepairPolicy.FailureRecurrence(),
+            AdaptiveRepairPolicy.recordPass(recurrence, true, 2L * StudyLadderRules.DAY, 0),
+        )
+    }
+
+    @Test
+    fun exhaustionTriggersOnTheLastAllowedAppearanceAndSaturates() {
+        val limit = AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS
+        assertFalse(AdaptiveRepairPolicy.isExhausted(0))
+        assertFalse(AdaptiveRepairPolicy.isExhausted(limit - 2))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(limit - 1))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(limit))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(Int.MAX_VALUE))
+        assertFalse(AdaptiveRepairPolicy.isExhausted(-5))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(0, maxAttempts = 0))
+        assertEquals(limit, AdaptiveStudyHealthPolicy.STUCK_REPAIR_ATTEMPTS)
     }
 
     @Test

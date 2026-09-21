@@ -6,6 +6,21 @@ import java.util.LinkedHashSet
 object AdaptiveRepairPolicy {
     const val SYNTHETIC_REPAIR_STEP_MINUTES: Int = 10
 
+    /**
+     * Maximum repair appearances in one repair episode. Hard repeats and Again
+     * restarts would otherwise let a card loop on ten-minute repair steps with
+     * no exit (most visibly `write_kanji`, which downgrades Good to Hard until a
+     * clean write). Once this many appearances have been answered the episode is
+     * exhausted: the card returns to core revalidation and the same-cause
+     * history decides the next repair tool.
+     */
+    const val MAX_REPAIR_ATTEMPTS: Int = 6
+
+    /** True when answering one more appearance would exceed [MAX_REPAIR_ATTEMPTS]. */
+    @JvmStatic
+    fun isExhausted(attemptsBefore: Int, maxAttempts: Int = MAX_REPAIR_ATTEMPTS): Boolean =
+        saturatingAddNonNegative(attemptsBefore.coerceAtLeast(0), 1) >= maxAttempts.coerceAtLeast(1)
+
     data class RepairRequest(
         val coreSkill: CoreSkill,
         val failureKind: FailureKind,
@@ -98,6 +113,31 @@ object AdaptiveRepairPolicy {
         }
     }
 
+    /**
+     * Same-cause history survives a pass. A single revalidation pass one day
+     * after a repair is not evidence that the underlying confusion is gone; the
+     * chronic pattern (fail, repair, pass, fail again for the same cause weeks
+     * later) must still accumulate toward the escalation threshold. The
+     * recurrence is resolved only when a real-due pass shows promotion-strength
+     * memory: the FSRS interval at fixed 0.90 retention exceeds
+     * `ladder_promotion_interval_days`, the same gate recognition uses to
+     * unlock contextual reading.
+     */
+    @JvmStatic
+    fun recordPass(
+        current: FailureRecurrence,
+        realDue: Boolean,
+        promotionIntervalMillis: Long,
+        promotionIntervalDays: Int,
+    ): FailureRecurrence {
+        if (current.kind == null && current.count == 0) {
+            return current
+        }
+        val resolved = realDue &&
+            promotionIntervalMillis > promotionIntervalDays.coerceAtLeast(1).toLong() * StudyLadderRules.DAY
+        return if (resolved) FailureRecurrence() else current
+    }
+
     @JvmStatic
     fun clearAfterValidationPass(): FailureRecurrence = FailureRecurrence()
 
@@ -136,27 +176,57 @@ object AdaptiveRepairPolicy {
         FailureKind.UNKNOWN -> emptyList()
     }
 
+    /**
+     * Fallback when the cause's preferred chain has no usable tool. Each tier is
+     * searched in the learner's stored priority order first, then in the tier's
+     * own order; a later tier is consulted only when nothing earlier is usable.
+     *
+     * A known cause stays inside its own tool family (reading causes -> reading
+     * tools, shape/meaning causes -> recognition tools) so a reading failure with
+     * no usable reading tool still exits to revalidation rather than receiving an
+     * off-target drill. An unknown cause on the contextual core prefers reading
+     * tools but can reach the shape/meaning tools, so it is never unrepairable
+     * when the reading tools are disabled or lack data.
+     */
     private fun priorityFallback(request: RepairRequest): List<String> {
-        val relevant = relevantRepairs(request.coreSkill)
-        val selected = request.priorityTaskTypes.firstOrNull { it in relevant && request.isUsable(it) }
-            ?: relevant.firstOrNull { request.isUsable(it) }
-        return selected?.let(::listOf).orEmpty()
+        for (tier in fallbackTiers(request.coreSkill, request.failureKind)) {
+            val selected = request.priorityTaskTypes.firstOrNull { it in tier && request.isUsable(it) }
+                ?: tier.firstOrNull { request.isUsable(it) }
+            if (selected != null) {
+                return listOf(selected)
+            }
+        }
+        return emptyList()
     }
 
-    private fun relevantRepairs(coreSkill: CoreSkill): List<String> = when (coreSkill) {
-        CoreSkill.RECOGNITION -> listOf(
-            StudyTaskTypes.SIMILAR_KANJI,
-            StudyTaskTypes.MEANING_KANJI,
-            StudyTaskTypes.TYPE_MEANING,
-            StudyTaskTypes.WRITE_KANJI,
-        )
+    private fun fallbackTiers(coreSkill: CoreSkill, failureKind: FailureKind): List<List<String>> = when (failureKind) {
+        FailureKind.WRONG_READING,
+        FailureKind.HOMOPHONE_CONFUSION,
+        -> listOf(READING_REPAIRS)
 
-        CoreSkill.CONTEXTUAL_READING -> listOf(
-            StudyTaskTypes.READING_KANJI,
-            StudyTaskTypes.KANJI_READING,
-            StudyTaskTypes.TYPE_READING,
-        )
+        FailureKind.MEANING_UNKNOWN,
+        FailureKind.VISUAL_CONFUSION,
+        FailureKind.WRITING_SHAPE,
+        -> listOf(RECOGNITION_REPAIRS)
+
+        FailureKind.UNKNOWN -> when (coreSkill) {
+            CoreSkill.RECOGNITION -> listOf(RECOGNITION_REPAIRS)
+            CoreSkill.CONTEXTUAL_READING -> listOf(READING_REPAIRS, RECOGNITION_REPAIRS)
+        }
     }
+
+    private val RECOGNITION_REPAIRS = listOf(
+        StudyTaskTypes.SIMILAR_KANJI,
+        StudyTaskTypes.MEANING_KANJI,
+        StudyTaskTypes.TYPE_MEANING,
+        StudyTaskTypes.WRITE_KANJI,
+    )
+
+    private val READING_REPAIRS = listOf(
+        StudyTaskTypes.READING_KANJI,
+        StudyTaskTypes.KANJI_READING,
+        StudyTaskTypes.TYPE_READING,
+    )
 
     private fun List<String>.distinctInOrder(): List<String> = LinkedHashSet(this).toList()
 }

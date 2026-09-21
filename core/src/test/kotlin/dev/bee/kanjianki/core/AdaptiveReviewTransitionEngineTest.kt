@@ -143,9 +143,79 @@ class AdaptiveReviewTransitionEngineTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, promoted.rung)
         assertEquals(0, promoted.realPassStreak)
         assertEquals(0, AdaptiveStudyItemPolicy.routeState(promoted)!!.contextualReadingReviewCount)
-        assertEquals(7, promoted.wordReadingMemory.matureIntervalDays)
-        assertEquals(NOW + 7 * StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        // The contextual core starts from FSRS's initial state for a first Good
+        // (the fake adapter reports a one-day initial interval), not from a clone
+        // of recognition's 30-day memory.
+        assertEquals(1, adapter.initialReviewCalls)
+        assertEquals(0, promoted.wordReadingMemory.totalReviews)
+        assertEquals(0, promoted.wordReadingMemory.consecutivePasses)
+        assertEquals(1, promoted.wordReadingMemory.matureIntervalDays)
+        assertEquals(NOW + StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        assertEquals(NOW + StudyLadderRules.DAY, promoted.dueAtMillis)
+        // Recognition keeps its real, uncapped FSRS schedule (30 days, within the
+        // deterministic ±5% fuzz band).
+        assertEquals(
+            IntervalFuzzPolicy.fuzzedIntervalDays(30, promoted.kanji, CoreSkill.RECOGNITION, 1),
+            promoted.kanjiMeaningMemory.matureIntervalDays,
+        )
+        assertTrue(promoted.kanjiMeaningMemory.matureIntervalDays in 28..32)
+        assertEquals(5, promoted.kanjiMeaningMemory.totalReviews)
         assertEquals(StudyTaskTypes.WORD_READING, AdaptiveStudyItemPolicy.taskTypeFor(promoted, ladder))
+    }
+
+    @Test
+    fun promotionCapsTheSeededContextualFirstCheck() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30, initialIntervalDays = 40)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION))
+            .copyBuilder()
+            .realPassStreak(settings.ladderPromotionMinPasses - 1)
+            .build()
+
+        val promoted = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+
+        val capDays = settings.ladderPromotionIntervalDays / 3
+        assertEquals(capDays, promoted.wordReadingMemory.matureIntervalDays)
+        assertEquals(NOW + capDays * StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        // Difficulty is the kanji's learned difficulty; stability is the fresh seed.
+        assertEquals(5.0, promoted.wordReadingMemory.difficulty, 0.0)
+        assertEquals(CountingAdapter.INITIAL_STABILITY, promoted.wordReadingMemory.stability, 0.0)
+    }
+
+    @Test
+    fun revalidationPassDoesNotCountTowardPromotion() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION, revalidationPending = true)
+        val item = adaptiveItem(route)
+            .copyBuilder()
+            .realPassStreak(settings.ladderPromotionMinPasses - 1)
+            .build()
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertFalse(passedRoute.revalidationPending)
+        assertEquals(CoreSkill.RECOGNITION, passedRoute.activeCore)
+        assertEquals(settings.ladderPromotionMinPasses - 1, passed.realPassStreak)
+        assertEquals(settings.ladderPromotionMinPasses - 1, passed.kanjiMeaningMemory.consecutivePasses)
+        // The due slot was still consumed.
+        assertEquals(item.dueAtMillis, passed.lastRealReviewDueAtMillis)
     }
 
     @Test
@@ -475,7 +545,7 @@ class AdaptiveReviewTransitionEngineTest {
     }
 
     @Test
-    fun repairAdvanceSaturatesAttemptCounterAndDelay() {
+    fun repairAdvanceSaturatesAttemptCounterAndExitsWhenExhausted() {
         val now = Long.MAX_VALUE - 1L
         val route = AdaptiveRouteState(
             activeCore = CoreSkill.RECOGNITION,
@@ -504,11 +574,86 @@ class AdaptiveReviewTransitionEngineTest {
         )
         val advancedRoute = AdaptiveStudyItemPolicy.routeState(advanced.item)!!
 
+        // A saturated attempt counter is far past the exhaustion limit: the
+        // episode exits to revalidation and the counter stays saturated.
         assertFalse(advanced.fsrsCalled)
-        assertEquals(1, advancedRoute.repairTaskIndex)
+        assertFalse(advancedRoute.isRepairActive())
+        assertTrue(advancedRoute.revalidationPending)
         assertEquals(Int.MAX_VALUE, advancedRoute.repairAttemptCount)
-        assertEquals(Long.MAX_VALUE, advancedRoute.repairDueAtMillis)
         assertEquals(Long.MAX_VALUE, advanced.item.dueAtMillis)
+    }
+
+    @Test
+    fun hardLoopOnWritingRepairExitsToRevalidationAfterMaxAttempts() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+        val coreDue = NOW + 5 * StudyLadderRules.DAY
+        var item = adaptiveItem(
+            AdaptiveRouteState(
+                activeCore = CoreSkill.RECOGNITION,
+                activeRepairTasks = listOf(StudyTaskTypes.WRITE_KANJI),
+                repairStepMinutes = listOf(10),
+                repairDueAtMillis = NOW,
+                coreDueAtMillis = coreDue,
+            ),
+        ).copyBuilder()
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .state(StudyLadderRules.STATE_LEARNING)
+            .dueAtMillis(NOW)
+            .build()
+
+        // Messy writes never raise writingLevel, so Good is downgraded to Hard and
+        // the appearance repeats. Before the exit rule this loop had no end.
+        var appearances = 0
+        while (AdaptiveStudyItemPolicy.routeState(item)!!.isRepairActive()) {
+            appearances++
+            assertTrue("repair must exit within the attempt limit", appearances <= AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS)
+            val transition = engine.apply(
+                item.copyBuilder().dueAtMillis(NOW).activeToken("token").build(),
+                request("good", StudyTaskTypes.WRITE_KANJI, null),
+                NOW, parameters, settings, steps, ladder,
+            )
+            assertFalse(transition.fsrsCalled)
+            item = transition.item
+        }
+        val route = AdaptiveStudyItemPolicy.routeState(item)!!
+
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS, appearances)
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS, route.repairAttemptCount)
+        assertTrue(route.revalidationPending)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, item.phase)
+        assertEquals(NOW + StudyLadderRules.DAY, item.dueAtMillis)
+        assertEquals(0, adapter.reviewCalls)
+    }
+
+    @Test
+    fun repairBelowTheAttemptLimitStillAdvancesNormally() {
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI),
+            repairStepMinutes = listOf(10, 20),
+            repairDueAtMillis = NOW,
+            coreDueAtMillis = NOW + 5 * StudyLadderRules.DAY,
+            repairAttemptCount = AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS - 2,
+        )
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .copyBuilder()
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .state(StudyLadderRules.STATE_LEARNING)
+            .dueAtMillis(NOW)
+            .build()
+
+        val advanced = AdaptiveReviewTransitionEngine(CountingAdapter(5, 5)).apply(
+            item,
+            request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+            NOW, parameters, settings, steps, ladder,
+        )
+        val advancedRoute = AdaptiveStudyItemPolicy.routeState(advanced.item)!!
+
+        assertTrue(advancedRoute.isRepairActive())
+        assertEquals(1, advancedRoute.repairTaskIndex)
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS - 1, advancedRoute.repairAttemptCount)
+        assertEquals(NOW + 20 * 60_000L, advanced.item.dueAtMillis)
     }
 
     private fun adaptiveItem(
@@ -594,8 +739,10 @@ class AdaptiveReviewTransitionEngineTest {
     private class CountingAdapter(
         private val intervalDays: Int,
         private val promotionDays: Int,
+        private val initialIntervalDays: Int = 1,
     ) : KaniFsrsAdapter {
         var reviewCalls = 0
+        var initialReviewCalls = 0
         var elapsedDays = -1.0
 
         override fun initialReview(
@@ -604,7 +751,11 @@ class AdaptiveReviewTransitionEngineTest {
             currentDifficulty: Double,
             targetRetention: Double,
             isNewLearning: Boolean,
-        ): KaniFsrsReviewResult = KaniFsrsReviewResult(currentStability, currentDifficulty, StudyLadderRules.DAY)
+        ): KaniFsrsReviewResult {
+            initialReviewCalls++
+            val stability = if (isNewLearning) INITIAL_STABILITY else currentStability
+            return KaniFsrsReviewResult(stability, currentDifficulty, initialIntervalDays * StudyLadderRules.DAY)
+        }
 
         override fun review(
             stability: Double,
@@ -621,6 +772,10 @@ class AdaptiveReviewTransitionEngineTest {
                 intervalDays * StudyLadderRules.DAY,
                 promotionDays * StudyLadderRules.DAY,
             )
+        }
+
+        companion object {
+            const val INITIAL_STABILITY = 2.5
         }
     }
 
@@ -754,6 +909,151 @@ class AdaptiveReviewTransitionEngineTest {
         assertTrue(failedRoute.activeRepairTasks.contains(StudyTaskTypes.WRITE_KANJI))
         assertTrue(failedRoute.recurringFailureCount >= settings.ladderDemotionFailStreak)
         assertTrue(failedRoute.isRepairActive())
+    }
+
+    @Test
+    fun goldenChronicSameCauseAcrossRevalidationPassesReachesEscalation() {
+        // Interval stays below the promotion threshold, so a revalidation pass
+        // does not resolve the same-cause history.
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+        var item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION), hasSimilarKanji = true)
+
+        for (cycle in 1..settings.ladderDemotionFailStreak) {
+            // Each cycle happens on a fresh due slot weeks later, so every core
+            // failure is a real-due failure.
+            val now = NOW + cycle * 30L * StudyLadderRules.DAY
+            val failed = engine.apply(
+                item.copyBuilder().dueAtMillis(now).activeToken("token").build(),
+                request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION),
+                now, parameters, settings, steps, ladder,
+            ).item
+            val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+            assertEquals(cycle, failedRoute.recurringFailureCount)
+            if (cycle == settings.ladderDemotionFailStreak) {
+                // Third same-cause real-due failure: the full escalation chain is required.
+                assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI), failedRoute.activeRepairTasks)
+                return
+            }
+            assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI), failedRoute.activeRepairTasks)
+            val repaired = engine.apply(
+                failed.copyBuilder().dueAtMillis(now).activeToken("token").build(),
+                request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+                now, parameters, settings, steps, ladder,
+            ).item
+            assertTrue(AdaptiveStudyItemPolicy.routeState(repaired)!!.revalidationPending)
+            val revalidationAt = now + StudyLadderRules.DAY
+            item = engine.apply(
+                repaired.copyBuilder().dueAtMillis(revalidationAt).activeToken("token").build(),
+                request("good", StudyTaskTypes.KANJI_MEANING, null),
+                revalidationAt, parameters, settings, steps, ladder,
+            ).item
+            val passedRoute = AdaptiveStudyItemPolicy.routeState(item)!!
+            assertFalse(passedRoute.revalidationPending)
+            // History survives the pass.
+            assertEquals(FailureKind.VISUAL_CONFUSION, passedRoute.recurringFailure)
+            assertEquals(cycle, passedRoute.recurringFailureCount)
+        }
+        throw AssertionError("escalation threshold was never reached")
+    }
+
+    @Test
+    fun goldenPromotionStrengthPassResolvesSameCauseHistory() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = 6,
+            recurringFailure = FailureKind.WRONG_READING,
+            recurringFailureCount = 2,
+        )
+        val item = adaptiveItem(route)
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.WORD_READING, null),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertNull(passedRoute.recurringFailure)
+        assertEquals(0, passedRoute.recurringFailureCount)
+    }
+
+    @Test
+    fun studyAheadPassKeepsSameCauseHistoryEvenWithStrongMemory() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            recurringFailure = FailureKind.MEANING_UNKNOWN,
+            recurringFailureCount = 1,
+        )
+        val early = adaptiveItem(route).copyBuilder().dueAtMillis(NOW + 60_000L).build()
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            early,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertEquals(FailureKind.MEANING_UNKNOWN, passedRoute.recurringFailure)
+        assertEquals(1, passedRoute.recurringFailureCount)
+    }
+
+    @Test
+    fun shapeCauseOnContextualCoreRoutesToRecognitionRepairWithoutDemoting() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING, contextualReadingReviewCount = 6)
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .copyBuilder()
+            .hasKanjiReading(true)
+            .build()
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.WORD_READING, FailureKind.VISUAL_CONFUSION),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertEquals(CoreSkill.CONTEXTUAL_READING, failedRoute.activeCore)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, failed.rung)
+        assertEquals(FailureKind.VISUAL_CONFUSION, failedRoute.recurringFailure)
+        assertEquals(FailureKind.VISUAL_CONFUSION, failedRoute.answerEvidence?.failureKind)
+        assertEquals(StudyTaskTypes.SIMILAR_KANJI, failedRoute.activeRepairTask())
+        assertEquals(1, failed.wordReadingMemory.lapses)
+    }
+
+    @Test
+    fun meaningCauseOnContextualCoreRoutesToMeaningRepair() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING, contextualReadingReviewCount = 6))
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.WORD_READING, FailureKind.MEANING_UNKNOWN),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(FailureKind.MEANING_UNKNOWN, failedRoute.recurringFailure)
+        assertEquals(StudyTaskTypes.MEANING_KANJI, failedRoute.activeRepairTask())
+    }
+
+    @Test
+    fun readingCauseOnRecognitionCoreStillCollapsesToUnknown() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION))
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.WRONG_READING),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(FailureKind.UNKNOWN, failedRoute.recurringFailure)
     }
 
     private companion object {

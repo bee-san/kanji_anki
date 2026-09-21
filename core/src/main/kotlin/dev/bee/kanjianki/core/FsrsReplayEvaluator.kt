@@ -25,20 +25,36 @@ data class FsrsReplaySample(
         }
         FsrsRating.fromValue(rating)
     }
+
+    /**
+     * Same-day samples (elapsed 0) carry no forgetting-curve information:
+     * retrievability is exactly 1 at zero elapsed time, so a pass scores ~0 and a
+     * fail scores the clamp ceiling (~27 nats), which would dominate the fit.
+     * Upstream FSRS also excludes same-day reviews from evaluation. They still
+     * advance the replayed memory state.
+     */
+    fun isScored(): Boolean = elapsedDays > 0
 }
 
 /**
- * One card/task history. The first real review's exact pre-review memory is
- * the replay seed; learning/relearning practice is intentionally absent.
+ * One card/task history. When [graduationRating] is known the replay seeds the
+ * memory from the engine's own initial state for that grade, so the initial
+ * stability/difficulty parameters (w0–w5) are fitted too. Otherwise the first
+ * real review's exact pre-review memory is the seed. Learning/relearning
+ * practice is intentionally absent from [samples].
  */
 data class FsrsReplaySequence(
     val initialStability: Double,
     val initialDifficulty: Double,
     val samples: List<FsrsReplaySample>,
+    val graduationRating: Int? = null,
 ) {
     init {
         FsrsMemoryState(initialStability, initialDifficulty)
+        graduationRating?.let { FsrsRating.fromValue(it) }
     }
+
+    fun scoredSampleCount(): Int = samples.count { it.isScored() }
 }
 
 /** Pure FSRS replay and binary recall log-loss evaluator. */
@@ -64,11 +80,13 @@ object FsrsReplayEvaluator {
         var total = 0.0
         var count = 0
         sequences.forEachIndexed { sequenceIndex, sequence ->
-            var state = FsrsMemoryState(sequence.initialStability, sequence.initialDifficulty)
+            var state = initialState(engine, sequence)
             sequence.samples.forEachIndexed { sampleIndex, sample ->
-                val retrievability = engine.retrievability(state, sample.elapsedDays)
-                    .coerceIn(MIN_PROBABILITY, MAX_PROBABILITY)
-                if (includedSamples == null || sampleKey(sequenceIndex, sampleIndex) in includedSamples) {
+                val scored = sample.isScored() &&
+                    (includedSamples == null || sampleKey(sequenceIndex, sampleIndex) in includedSamples)
+                if (scored) {
+                    val retrievability = engine.retrievability(state, sample.elapsedDays)
+                        .coerceIn(MIN_PROBABILITY, MAX_PROBABILITY)
                     total -= if (sample.outcome) ln(retrievability) else ln(1.0 - retrievability)
                     count++
                 }
@@ -76,6 +94,12 @@ object FsrsReplayEvaluator {
             }
         }
         return Evaluation(count, total)
+    }
+
+    private fun initialState(engine: Fsrs7Engine, sequence: FsrsReplaySequence): FsrsMemoryState {
+        val rating = sequence.graduationRating
+            ?: return FsrsMemoryState(sequence.initialStability, sequence.initialDifficulty)
+        return engine.initialState(FsrsRating.fromValue(rating))
     }
 
     internal fun sampleKey(sequenceIndex: Int, sampleIndex: Int): Long =
