@@ -185,6 +185,12 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), memory)
         }
         nextItem = nextItem.withTaskMemory(ownerTask, memory)
+        val recurrence = AdaptiveRepairPolicy.recordPass(
+            AdaptiveRepairPolicy.FailureRecurrence(route.recurringFailure, route.recurringFailureCount),
+            realDue,
+            result.promotionIntervalMillis,
+            settings.ladderPromotionIntervalDays,
+        )
         val nextRoute = route.copy(
             activeCore = nextCore,
             recognitionReviewCount = if (core == CoreSkill.RECOGNITION) nextCoreReviewCount else route.recognitionReviewCount,
@@ -194,8 +200,8 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             repairStepMinutes = emptyList(),
             repairDueAtMillis = 0L,
             coreDueAtMillis = 0L,
-            recurringFailure = if (route.revalidationPending) null else route.recurringFailure,
-            recurringFailureCount = if (route.revalidationPending) 0 else route.recurringFailureCount,
+            recurringFailure = recurrence.kind,
+            recurringFailureCount = recurrence.count,
             repairAttemptCount = 0,
             repairStartedAtMillis = 0L,
             revalidationPending = false,

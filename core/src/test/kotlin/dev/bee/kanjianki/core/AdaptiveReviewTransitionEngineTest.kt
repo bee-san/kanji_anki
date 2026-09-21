@@ -753,6 +753,95 @@ class AdaptiveReviewTransitionEngineTest {
         assertTrue(failedRoute.isRepairActive())
     }
 
+    @Test
+    fun goldenChronicSameCauseAcrossRevalidationPassesReachesEscalation() {
+        // Interval stays below the promotion threshold, so a revalidation pass
+        // does not resolve the same-cause history.
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+        var item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION), hasSimilarKanji = true)
+
+        for (cycle in 1..settings.ladderDemotionFailStreak) {
+            // Each cycle happens on a fresh due slot weeks later, so every core
+            // failure is a real-due failure.
+            val now = NOW + cycle * 30L * StudyLadderRules.DAY
+            val failed = engine.apply(
+                item.copyBuilder().dueAtMillis(now).activeToken("token").build(),
+                request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.VISUAL_CONFUSION),
+                now, parameters, settings, steps, ladder,
+            ).item
+            val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+            assertEquals(cycle, failedRoute.recurringFailureCount)
+            if (cycle == settings.ladderDemotionFailStreak) {
+                // Third same-cause real-due failure: the full escalation chain is required.
+                assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI), failedRoute.activeRepairTasks)
+                return
+            }
+            assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI), failedRoute.activeRepairTasks)
+            val repaired = engine.apply(
+                failed.copyBuilder().dueAtMillis(now).activeToken("token").build(),
+                request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+                now, parameters, settings, steps, ladder,
+            ).item
+            assertTrue(AdaptiveStudyItemPolicy.routeState(repaired)!!.revalidationPending)
+            val revalidationAt = now + StudyLadderRules.DAY
+            item = engine.apply(
+                repaired.copyBuilder().dueAtMillis(revalidationAt).activeToken("token").build(),
+                request("good", StudyTaskTypes.KANJI_MEANING, null),
+                revalidationAt, parameters, settings, steps, ladder,
+            ).item
+            val passedRoute = AdaptiveStudyItemPolicy.routeState(item)!!
+            assertFalse(passedRoute.revalidationPending)
+            // History survives the pass.
+            assertEquals(FailureKind.VISUAL_CONFUSION, passedRoute.recurringFailure)
+            assertEquals(cycle, passedRoute.recurringFailureCount)
+        }
+        throw AssertionError("escalation threshold was never reached")
+    }
+
+    @Test
+    fun goldenPromotionStrengthPassResolvesSameCauseHistory() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = 6,
+            recurringFailure = FailureKind.WRONG_READING,
+            recurringFailureCount = 2,
+        )
+        val item = adaptiveItem(route)
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.WORD_READING, null),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertNull(passedRoute.recurringFailure)
+        assertEquals(0, passedRoute.recurringFailureCount)
+    }
+
+    @Test
+    fun studyAheadPassKeepsSameCauseHistoryEvenWithStrongMemory() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            recurringFailure = FailureKind.MEANING_UNKNOWN,
+            recurringFailureCount = 1,
+        )
+        val early = adaptiveItem(route).copyBuilder().dueAtMillis(NOW + 60_000L).build()
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            early,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertEquals(FailureKind.MEANING_UNKNOWN, passedRoute.recurringFailure)
+        assertEquals(1, passedRoute.recurringFailureCount)
+    }
+
     private companion object {
         const val NOW = 1_700_000_000_000L
     }
