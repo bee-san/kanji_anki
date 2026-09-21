@@ -476,6 +476,12 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         CoreSkill.CONTEXTUAL_READING -> FailureKind.WRONG_READING
     }
 
+    /**
+     * Recognition can only fail for recognition reasons. The terminal contextual
+     * core accepts every cause: a kanji can still decay in shape or meaning while
+     * it is read in context, and the repair scaffold must be able to reach the
+     * recognition tools for it without demoting the core.
+     */
     private fun normalizedFailure(core: CoreSkill, failure: FailureKind?): FailureKind {
         val compatible = when (core) {
             CoreSkill.RECOGNITION -> failure in setOf(
@@ -484,11 +490,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                 FailureKind.WRITING_SHAPE,
                 FailureKind.UNKNOWN,
             )
-            CoreSkill.CONTEXTUAL_READING -> failure in setOf(
-                FailureKind.WRONG_READING,
-                FailureKind.HOMOPHONE_CONFUSION,
-                FailureKind.UNKNOWN,
-            )
+            CoreSkill.CONTEXTUAL_READING -> failure != null
         }
         return if (compatible) failure!! else defaultFailure(core)
     }

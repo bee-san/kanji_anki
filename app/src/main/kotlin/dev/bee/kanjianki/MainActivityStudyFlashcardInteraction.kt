@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.PresentationVariant
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
+import dev.bee.kanjianki.core.StudyFailureCausePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.StudyTextCopy
@@ -339,8 +340,7 @@ internal class MainActivityStudyFlashcardInteraction(private val activity: MainA
     }
 
     private fun requiresRecognitionFailureCause(session: RecordsSchedulerModels.StudySession): Boolean {
-        return session.item?.phase == RecordsBase.SchedulerPhase.REVIEW &&
-            (session.taskType == StudyTaskTypes.KANJI_MEANING || session.taskType == StudyTaskTypes.FONT_MEANING)
+        return StudyFailureCausePolicy.requiresCause(session.taskType, session.item?.phase)
     }
 }
 

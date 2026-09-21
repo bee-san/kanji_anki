@@ -7,10 +7,12 @@ import android.view.MotionEvent
 import android.widget.LinearLayout
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.StudyFailureCausePolicy
 import dev.bee.kanjianki.core.StudyRatings
 import dev.bee.kanjianki.core.StudyTaskTypes
 import org.junit.After
@@ -43,15 +45,43 @@ class MainActivityStudyFlashcardGestureTest {
 
     @Test
     fun swipesFromRevealedAnswerPanelGradeEvenWhenReleaseLeavesCardBounds() {
-        assertSwipeGradesWhenReleaseLeavesCardBounds(
-            tokenSuffix = "left",
-            releaseX = -80f,
-            expectedRating = StudyRatings.AGAIN,
-        )
+        // A Fail swipe on a word-reading core check now opens the cause dialog
+        // (reading vs shape) instead of submitting directly; see
+        // failSwipeOnWordReadingOpensCauseDialogAndSubmitsNothing. The Good path
+        // grades directly.
         assertSwipeGradesWhenReleaseLeavesCardBounds(
             tokenSuffix = "right",
             releaseX = 480f,
             expectedRating = StudyRatings.GOOD,
+        )
+    }
+
+    @Test
+    fun failSwipeOnWordReadingOpensCauseDialogAndSubmitsNothing() {
+        val token = "flashcard-token-word-fail"
+        val activity = createActivity()
+        val reviewIo = QueueingExecutorService()
+        replaceField(activity, "io", reviewIo)
+        revealWordReadingSession(activity, token, "分")
+        activity.setFlashcardGestureBounds(0f, 0f, 400f, 640f)
+        val causeState = RecognitionFailureCauseState()
+        activity.recognitionFailureCauseState = causeState
+        val beforeReviewCount = reviewLogCount(activity)
+        val downTime = SystemClock.uptimeMillis()
+
+        activity.handleFlashcardGesture(motionEvent(MotionEvent.ACTION_DOWN, 210f, 520f, downTime, downTime))
+        assertTrue(
+            activity.handleFlashcardGesture(
+                motionEvent(MotionEvent.ACTION_UP, -80f, 520f, downTime, downTime + 120L),
+            ),
+        )
+
+        assertTrue(causeState.visible)
+        assertEquals(0, reviewIo.pendingCount())
+        assertEquals(beforeReviewCount, reviewLogCount(activity))
+        assertEquals(
+            listOf(FailureKind.WRONG_READING, FailureKind.VISUAL_CONFUSION),
+            StudyFailureCausePolicy.choices(StudyTaskTypes.WORD_READING),
         )
     }
 

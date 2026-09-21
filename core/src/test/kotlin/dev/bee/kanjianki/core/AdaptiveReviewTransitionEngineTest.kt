@@ -992,6 +992,62 @@ class AdaptiveReviewTransitionEngineTest {
         assertEquals(1, passedRoute.recurringFailureCount)
     }
 
+    @Test
+    fun shapeCauseOnContextualCoreRoutesToRecognitionRepairWithoutDemoting() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING, contextualReadingReviewCount = 6)
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .copyBuilder()
+            .hasKanjiReading(true)
+            .build()
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.WORD_READING, FailureKind.VISUAL_CONFUSION),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertEquals(CoreSkill.CONTEXTUAL_READING, failedRoute.activeCore)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, failed.rung)
+        assertEquals(FailureKind.VISUAL_CONFUSION, failedRoute.recurringFailure)
+        assertEquals(FailureKind.VISUAL_CONFUSION, failedRoute.answerEvidence?.failureKind)
+        assertEquals(StudyTaskTypes.SIMILAR_KANJI, failedRoute.activeRepairTask())
+        assertEquals(1, failed.wordReadingMemory.lapses)
+    }
+
+    @Test
+    fun meaningCauseOnContextualCoreRoutesToMeaningRepair() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.CONTEXTUAL_READING, contextualReadingReviewCount = 6))
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.WORD_READING, FailureKind.MEANING_UNKNOWN),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(FailureKind.MEANING_UNKNOWN, failedRoute.recurringFailure)
+        assertEquals(StudyTaskTypes.MEANING_KANJI, failedRoute.activeRepairTask())
+    }
+
+    @Test
+    fun readingCauseOnRecognitionCoreStillCollapsesToUnknown() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION))
+
+        val failed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("again", StudyTaskTypes.KANJI_MEANING, FailureKind.WRONG_READING),
+            NOW, parameters, settings, steps, ladder,
+        ).item
+        val failedRoute = AdaptiveStudyItemPolicy.routeState(failed)!!
+
+        assertEquals(FailureKind.UNKNOWN, failedRoute.recurringFailure)
+    }
+
     private companion object {
         const val NOW = 1_700_000_000_000L
     }

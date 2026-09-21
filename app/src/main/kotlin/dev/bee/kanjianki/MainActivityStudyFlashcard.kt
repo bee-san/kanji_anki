@@ -13,12 +13,9 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.AnswerEvidence
-import dev.bee.kanjianki.core.CoreSkill
-import dev.bee.kanjianki.core.EvidenceSource
 import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.HomeTextCopy
-import dev.bee.kanjianki.core.PresentationVariant
-import dev.bee.kanjianki.core.RecordsBase
+import dev.bee.kanjianki.core.StudyFailureCausePolicy
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 
@@ -54,6 +51,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                 }
                 RecognitionFailureCauseDialog(
                     preparedRoute.model.failureCauseState,
+                    preparedRoute.model.taskType,
                     preparedRoute.model.onFailureCause,
                 )
             },
@@ -134,6 +132,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
             swipeFeedback = swipeFeedback,
             swipeGestureEnabled = swipeGestureEnabled,
             sessionToken = session.token,
+            taskType = session.taskType,
             activeRecovery = activeUiRecovery,
             failureCauseState = failureCauseState,
             continueAction = activity.studyContinueAction(feedback) {
@@ -149,7 +148,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
                     expectedRecovery = activeUiRecovery,
                     rating = MainActivityBase.RATING_AGAIN,
                     interactionSource = source,
-                    answerEvidence = recognitionFailureEvidence(session, cause),
+                    answerEvidence = activity.selfReportedFailureEvidence(session, cause),
                 )
             },
         )
@@ -374,9 +373,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
     }
 
     private fun requiresRecognitionFailureCause(session: RecordsSchedulerModels.StudySession): Boolean {
-        return session.item?.phase == RecordsBase.SchedulerPhase.REVIEW &&
-            (session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.KANJI_MEANING ||
-                session.taskType == dev.bee.kanjianki.core.StudyTaskTypes.FONT_MEANING)
+        return StudyFailureCausePolicy.requiresCause(session.taskType, session.item?.phase)
     }
 
     private fun submitReviewForRoute(
@@ -395,21 +392,6 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         )
     }
 
-    private fun recognitionFailureEvidence(
-        session: RecordsSchedulerModels.StudySession,
-        cause: FailureKind,
-    ): AnswerEvidence = AnswerEvidence(
-        coreSkill = CoreSkill.RECOGNITION,
-        failureKind = cause,
-        evidenceSource = EvidenceSource.SELF_REPORT,
-        presentationVariant = if (StudyTaskCopy.isFontRecognitionTask(session)) {
-            PresentationVariant.FONT_GLYPH
-        } else {
-            PresentationVariant.STANDARD_GLYPH
-        },
-        renderedExpression = session.item?.kanji.orEmpty(),
-    )
-
     private data class ComposeFlashcardRouteModel(
         val cardModel: FlashcardCardModel,
         val actionBarState: FlashcardActionBarState,
@@ -417,6 +399,7 @@ internal class MainActivityStudyFlashcard(private val activity: MainActivityStud
         val swipeFeedback: StudySwipeFeedbackState?,
         val swipeGestureEnabled: Boolean,
         val sessionToken: String,
+        val taskType: String,
         val activeRecovery: StoredActiveStudyRecovery?,
         val failureCauseState: RecognitionFailureCauseState,
         val continueAction: StudyContinueAction,

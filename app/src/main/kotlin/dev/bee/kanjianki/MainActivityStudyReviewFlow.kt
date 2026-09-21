@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import dev.bee.kanjianki.core.AppliedReviewSnapshot
+import dev.bee.kanjianki.core.AdaptiveCorePolicy
 import dev.bee.kanjianki.core.BridgeScheduler
 import dev.bee.kanjianki.core.AnswerEvidence
 import dev.bee.kanjianki.core.CoreSkill
@@ -225,6 +226,24 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         return runTokenReviewWrite(session, interactionSource, frameRating = rating) { diagnostics ->
             performNormalReview(session, request, ladder, diagnostics)
         }
+    }
+
+    /**
+     * Evidence for a Fail whose cause the learner picked in the cause dialog. Reuses
+     * the inferred evidence (core, variant, rendered word/reading, aligned answer)
+     * so a contextual-reading fail that reports a shape cause still carries the
+     * word context the repair tools need, then overrides the cause and source.
+     */
+    fun selfReportedFailureEvidence(
+        session: RecordsSchedulerModels.StudySession,
+        cause: FailureKind,
+    ): AnswerEvidence {
+        val inferred = inferredAnswerEvidence(session, StudyRatings.AGAIN)
+            ?: AnswerEvidence(
+                coreSkill = AdaptiveCorePolicy.coreForTaskType(session.taskType),
+                renderedExpression = session.item?.kanji.orEmpty(),
+            )
+        return inferred.copy(failureKind = cause, evidenceSource = EvidenceSource.SELF_REPORT)
     }
 
     private fun inferredAnswerEvidence(

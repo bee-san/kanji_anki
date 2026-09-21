@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.bee.kanjianki.core.FailureKind
+import dev.bee.kanjianki.core.StudyFailureCausePolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class RecognitionFailureCauseState {
@@ -26,12 +27,20 @@ internal class RecognitionFailureCauseState {
     }
 }
 
+/**
+ * Two-button cause picker for a core Fail. The choices come from
+ * [StudyFailureCausePolicy] for the session's task: recognition checks ask
+ * meaning-vs-shape, contextual reading checks ask reading-vs-shape.
+ */
 @Composable
 internal fun RecognitionFailureCauseDialog(
     state: RecognitionFailureCauseState,
+    taskType: String?,
     onCause: (FailureKind, String) -> Unit,
 ) {
     if (!state.visible) return
+    val choices = StudyFailureCausePolicy.choices(taskType)
+    if (choices.size < 2) return
     AlertDialog(
         onDismissRequest = state::dismiss,
         title = { Text(StudyTextCopy.recognitionFailureTitle()) },
@@ -40,18 +49,18 @@ internal fun RecognitionFailureCauseDialog(
             TextButton(onClick = {
                 val source = state.interactionSource
                 state.dismiss()
-                onCause(FailureKind.MEANING_UNKNOWN, source)
+                onCause(choices[0], source)
             }) {
-                Text(StudyTextCopy.recognitionFailureMeaningChoice())
+                Text(StudyFailureCausePolicy.label(choices[0]))
             }
         },
         dismissButton = {
             TextButton(onClick = {
                 val source = state.interactionSource
                 state.dismiss()
-                onCause(FailureKind.VISUAL_CONFUSION, source)
+                onCause(choices[1], source)
             }) {
-                Text(StudyTextCopy.recognitionFailureVisualChoice())
+                Text(StudyFailureCausePolicy.label(choices[1]))
             }
         },
     )
