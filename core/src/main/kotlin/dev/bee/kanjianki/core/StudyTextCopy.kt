@@ -128,6 +128,9 @@ object StudyTextCopy {
     fun recognitionFailureVisualChoice(): String = localizedText("I mixed up the kanji", "漢字を見間違えた")
 
     @JvmStatic
+    fun contextualFailureReadingChoice(): String = localizedText("I didn't know the reading", "読みが分からなかった")
+
+    @JvmStatic
     fun openInBrowseLabel(): String = localizedText("Open in Browse", "Browseで開く")
 
     @JvmStatic

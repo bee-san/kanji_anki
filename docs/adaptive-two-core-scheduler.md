@@ -87,8 +87,18 @@ Recognition Fail asks for one cause before submitting:
 - "I didn't know the meaning" -> `meaning_unknown`.
 - "I mixed up the kanji" -> `visual_confusion`.
 
-Dismissing the cause dialog submits nothing. Word/sentence failure records
-`wrong_reading` and the exact rendered word/reading. Choice and handwriting
+Word/sentence Fail also asks for one cause:
+
+- "I didn't know the reading" -> `wrong_reading` (with the exact rendered
+  word/reading).
+- "I mixed up the kanji" -> `visual_confusion`.
+
+The terminal contextual core accepts every failure kind and routes shape and
+meaning causes to the recognition repair tools without demoting the core; an
+unknown cause prefers reading tools and falls back to shape tools only when no
+reading tool is usable. Recognition still accepts only recognition causes.
+
+Dismissing the cause dialog submits nothing. Choice and handwriting
 surfaces record objective/evaluator evidence automatically.
 
 `type_reading` is a repair-only wire. It compares the full word reading exactly

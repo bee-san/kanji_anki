@@ -8,6 +8,7 @@ import android.widget.EditText
 import androidx.lifecycle.ViewModelProvider
 import dev.bee.kanjianki.core.DictionaryLookup
 import dev.bee.kanjianki.core.AnswerEvidence
+import dev.bee.kanjianki.core.FailureKind
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -486,6 +487,11 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     ) {
         writingCheck.recognizeWriting(recognizer, captured, sample, guide, target, token)
     }
+
+    fun selfReportedFailureEvidence(
+        session: RecordsSchedulerModels.StudySession,
+        cause: FailureKind,
+    ): AnswerEvidence = writingReview.selfReportedFailureEvidence(session, cause)
 
     fun submitReview(
         rating: String,

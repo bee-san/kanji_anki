@@ -68,6 +68,52 @@ class AdaptiveRepairPolicyTest {
     }
 
     @Test
+    fun unknownContextualFailurePrefersReadingToolsButCanReachShapeTools() {
+        val readingTools = setOf(StudyTaskTypes.READING_KANJI, StudyTaskTypes.KANJI_READING, StudyTaskTypes.TYPE_READING)
+        val readingFirst = AdaptiveRepairPolicy.select(
+            request(failure = FailureKind.UNKNOWN, count = 1, core = CoreSkill.CONTEXTUAL_READING),
+        )
+        assertEquals(1, readingFirst.taskTypes.size)
+        assertTrue(readingFirst.taskTypes.single() in readingTools)
+
+        val noReadingTools = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.UNKNOWN,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.WRITE_KANJI),
+            ),
+        )
+        assertEquals(listOf(StudyTaskTypes.MEANING_KANJI), noReadingTools.taskTypes)
+
+        // A known reading cause never receives an off-target shape drill.
+        val knownReadingCause = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.WRONG_READING,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.WRITE_KANJI),
+            ),
+        )
+        assertTrue(knownReadingCause.taskTypes.isEmpty())
+
+        // A shape cause on the contextual core uses the recognition scaffold.
+        val shapeCause = AdaptiveRepairPolicy.select(
+            request(failure = FailureKind.VISUAL_CONFUSION, count = 1, core = CoreSkill.CONTEXTUAL_READING),
+        )
+        assertEquals(listOf(StudyTaskTypes.SIMILAR_KANJI), shapeCause.taskTypes)
+        val shapeCauseNoSimilar = AdaptiveRepairPolicy.select(
+            request(
+                failure = FailureKind.VISUAL_CONFUSION,
+                count = 1,
+                core = CoreSkill.CONTEXTUAL_READING,
+                available = setOf(StudyTaskTypes.MEANING_KANJI, StudyTaskTypes.KANJI_READING),
+            ),
+        )
+        assertEquals(listOf(StudyTaskTypes.MEANING_KANJI), shapeCauseNoSimilar.taskTypes)
+    }
+
+    @Test
     fun scheduleHonorsBothTaskSequenceAndConfiguredSteps() {
         assertEquals(
             AdaptiveRepairPolicy.RepairSchedule(

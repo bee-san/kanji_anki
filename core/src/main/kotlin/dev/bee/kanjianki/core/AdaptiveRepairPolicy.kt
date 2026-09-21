@@ -176,27 +176,57 @@ object AdaptiveRepairPolicy {
         FailureKind.UNKNOWN -> emptyList()
     }
 
+    /**
+     * Fallback when the cause's preferred chain has no usable tool. Each tier is
+     * searched in the learner's stored priority order first, then in the tier's
+     * own order; a later tier is consulted only when nothing earlier is usable.
+     *
+     * A known cause stays inside its own tool family (reading causes -> reading
+     * tools, shape/meaning causes -> recognition tools) so a reading failure with
+     * no usable reading tool still exits to revalidation rather than receiving an
+     * off-target drill. An unknown cause on the contextual core prefers reading
+     * tools but can reach the shape/meaning tools, so it is never unrepairable
+     * when the reading tools are disabled or lack data.
+     */
     private fun priorityFallback(request: RepairRequest): List<String> {
-        val relevant = relevantRepairs(request.coreSkill)
-        val selected = request.priorityTaskTypes.firstOrNull { it in relevant && request.isUsable(it) }
-            ?: relevant.firstOrNull { request.isUsable(it) }
-        return selected?.let(::listOf).orEmpty()
+        for (tier in fallbackTiers(request.coreSkill, request.failureKind)) {
+            val selected = request.priorityTaskTypes.firstOrNull { it in tier && request.isUsable(it) }
+                ?: tier.firstOrNull { request.isUsable(it) }
+            if (selected != null) {
+                return listOf(selected)
+            }
+        }
+        return emptyList()
     }
 
-    private fun relevantRepairs(coreSkill: CoreSkill): List<String> = when (coreSkill) {
-        CoreSkill.RECOGNITION -> listOf(
-            StudyTaskTypes.SIMILAR_KANJI,
-            StudyTaskTypes.MEANING_KANJI,
-            StudyTaskTypes.TYPE_MEANING,
-            StudyTaskTypes.WRITE_KANJI,
-        )
+    private fun fallbackTiers(coreSkill: CoreSkill, failureKind: FailureKind): List<List<String>> = when (failureKind) {
+        FailureKind.WRONG_READING,
+        FailureKind.HOMOPHONE_CONFUSION,
+        -> listOf(READING_REPAIRS)
 
-        CoreSkill.CONTEXTUAL_READING -> listOf(
-            StudyTaskTypes.READING_KANJI,
-            StudyTaskTypes.KANJI_READING,
-            StudyTaskTypes.TYPE_READING,
-        )
+        FailureKind.MEANING_UNKNOWN,
+        FailureKind.VISUAL_CONFUSION,
+        FailureKind.WRITING_SHAPE,
+        -> listOf(RECOGNITION_REPAIRS)
+
+        FailureKind.UNKNOWN -> when (coreSkill) {
+            CoreSkill.RECOGNITION -> listOf(RECOGNITION_REPAIRS)
+            CoreSkill.CONTEXTUAL_READING -> listOf(READING_REPAIRS, RECOGNITION_REPAIRS)
+        }
     }
+
+    private val RECOGNITION_REPAIRS = listOf(
+        StudyTaskTypes.SIMILAR_KANJI,
+        StudyTaskTypes.MEANING_KANJI,
+        StudyTaskTypes.TYPE_MEANING,
+        StudyTaskTypes.WRITE_KANJI,
+    )
+
+    private val READING_REPAIRS = listOf(
+        StudyTaskTypes.READING_KANJI,
+        StudyTaskTypes.KANJI_READING,
+        StudyTaskTypes.TYPE_READING,
+    )
 
     private fun List<String>.distinctInOrder(): List<String> = LinkedHashSet(this).toList()
 }
