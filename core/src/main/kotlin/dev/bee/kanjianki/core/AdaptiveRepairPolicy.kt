@@ -98,6 +98,31 @@ object AdaptiveRepairPolicy {
         }
     }
 
+    /**
+     * Same-cause history survives a pass. A single revalidation pass one day
+     * after a repair is not evidence that the underlying confusion is gone; the
+     * chronic pattern (fail, repair, pass, fail again for the same cause weeks
+     * later) must still accumulate toward the escalation threshold. The
+     * recurrence is resolved only when a real-due pass shows promotion-strength
+     * memory: the FSRS interval at fixed 0.90 retention exceeds
+     * `ladder_promotion_interval_days`, the same gate recognition uses to
+     * unlock contextual reading.
+     */
+    @JvmStatic
+    fun recordPass(
+        current: FailureRecurrence,
+        realDue: Boolean,
+        promotionIntervalMillis: Long,
+        promotionIntervalDays: Int,
+    ): FailureRecurrence {
+        if (current.kind == null && current.count == 0) {
+            return current
+        }
+        val resolved = realDue &&
+            promotionIntervalMillis > promotionIntervalDays.coerceAtLeast(1).toLong() * StudyLadderRules.DAY
+        return if (resolved) FailureRecurrence() else current
+    }
+
     @JvmStatic
     fun clearAfterValidationPass(): FailureRecurrence = FailureRecurrence()
 

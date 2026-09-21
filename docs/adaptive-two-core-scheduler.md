@@ -113,7 +113,11 @@ availability:
 | Unknown | nearest valid enabled support tool | same priority policy |
 
 Only a real-due core/revalidation failure increments same-issue recurrence. A
-different cause resets it; a validation pass clears it. The existing demotion
+different cause resets it. A pass does not clear it: the recurrence is resolved
+only when a real-due pass shows promotion-strength memory (the fixed-0.90
+interval exceeds `ladder_promotion_interval_days`), so the chronic
+fail-repair-pass-fail pattern still accumulates toward escalation. The existing
+demotion
 threshold setting is the same-issue escalation threshold.
 
 Repair appearances snapshot the configured relearning delays. An empty list is

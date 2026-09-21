@@ -2,6 +2,7 @@ package dev.bee.kanjianki.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -103,6 +104,31 @@ class AdaptiveRepairPolicyTest {
         assertEquals(2, repeated.count)
         assertEquals(AdaptiveRepairPolicy.FailureRecurrence(FailureKind.HOMOPHONE_CONFUSION, 1), changed)
         assertEquals(AdaptiveRepairPolicy.FailureRecurrence(), AdaptiveRepairPolicy.clearAfterValidationPass())
+    }
+
+    @Test
+    fun passResolvesRecurrenceOnlyOnRealDuePromotionStrengthMemory() {
+        val recurrence = AdaptiveRepairPolicy.FailureRecurrence(FailureKind.VISUAL_CONFUSION, 2)
+        val promotionDays = 21
+        val strong = (promotionDays + 1).toLong() * StudyLadderRules.DAY
+        val weak = promotionDays.toLong() * StudyLadderRules.DAY
+
+        // A one-day revalidation pass keeps the same-cause history alive.
+        assertEquals(recurrence, AdaptiveRepairPolicy.recordPass(recurrence, true, weak, promotionDays))
+        // Study-ahead passes never resolve it, however strong the memory looks.
+        assertEquals(recurrence, AdaptiveRepairPolicy.recordPass(recurrence, false, strong, promotionDays))
+        // A real-due pass with promotion-strength memory does.
+        assertEquals(
+            AdaptiveRepairPolicy.FailureRecurrence(),
+            AdaptiveRepairPolicy.recordPass(recurrence, true, strong, promotionDays),
+        )
+        // Nothing to resolve stays untouched, and a non-positive threshold is clamped to one day.
+        val empty = AdaptiveRepairPolicy.FailureRecurrence()
+        assertSame(empty, AdaptiveRepairPolicy.recordPass(empty, true, strong, promotionDays))
+        assertEquals(
+            AdaptiveRepairPolicy.FailureRecurrence(),
+            AdaptiveRepairPolicy.recordPass(recurrence, true, 2L * StudyLadderRules.DAY, 0),
+        )
     }
 
     @Test
