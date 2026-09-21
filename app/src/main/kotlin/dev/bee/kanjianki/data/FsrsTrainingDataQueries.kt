@@ -20,6 +20,10 @@ internal class FsrsTrainingDataQueries(
 
     fun sequences(): List<FsrsReplaySequence> {
         val groups = linkedMapOf<GroupKey, MutableList<TrainingRow>>()
+        // The grade of the last new-learning answer before a group's first review
+        // row is the grade that graduated it: production seeds FSRS from
+        // `initialState(graduationRating)` at that moment, so the replay can too.
+        val graduationRatings = HashMap<GroupKey, Int>()
         db.rawQuery(
             "SELECT kanji, answer_signature, task_type, rating, reviewed_at, " +
                 "memory_before, scheduler_state_before_json, core_skill FROM review_log " +
@@ -27,14 +31,8 @@ internal class FsrsTrainingDataQueries(
             null,
         ).use { cursor ->
             while (cursor.moveToNext()) {
-                val memoryText = cursor.getString(5).orEmpty()
-                val schedulerJson = cursor.getString(6).orEmpty()
-                if (memoryText.isEmpty() || phase(schedulerJson) != REVIEW_PHASE) {
-                    continue
-                }
-                val memory = decodedMemory(memoryText) ?: continue
                 val rating = ratingValue(cursor.getString(3)) ?: continue
-                val reviewedAt = cursor.getLong(4)
+                val phase = phase(cursor.getString(6).orEmpty())
                 val taskType = when (CoreSkill.fromWireName(cursor.getString(7))) {
                     CoreSkill.RECOGNITION -> BridgeScheduler.TASK_KANJI_MEANING
                     CoreSkill.CONTEXTUAL_READING -> BridgeScheduler.TASK_WORD_READING
@@ -45,12 +43,22 @@ internal class FsrsTrainingDataQueries(
                     cursor.getString(1).orEmpty(),
                     taskType,
                 )
+                if (phase == NEW_LEARNING_PHASE && groups[key].isNullOrEmpty()) {
+                    graduationRatings[key] = rating
+                    continue
+                }
+                val memoryText = cursor.getString(5).orEmpty()
+                if (memoryText.isEmpty() || phase != REVIEW_PHASE) {
+                    continue
+                }
+                val memory = decodedMemory(memoryText) ?: continue
+                val reviewedAt = cursor.getLong(4)
                 groups.getOrPut(key) { ArrayList() }.add(
                     TrainingRow(memory, reviewedAt, rating),
                 )
             }
         }
-        return groups.values.mapNotNull { rows ->
+        return groups.entries.mapNotNull { (key, rows) ->
             val first = rows.firstOrNull() ?: return@mapNotNull null
             FsrsReplaySequence(
                 first.memory.stability,
@@ -63,6 +71,7 @@ internal class FsrsTrainingDataQueries(
                         reviewedAtMillis = row.reviewedAtMillis,
                     )
                 },
+                graduationRating = graduationRatings[key],
             )
         }
     }
@@ -100,6 +109,7 @@ internal class FsrsTrainingDataQueries(
 
     companion object {
         private const val REVIEW_PHASE = "review"
+        private const val NEW_LEARNING_PHASE = "new_learning"
         private const val DAY_MILLIS = 86_400_000L
 
         /** Exact mirror of ReviewContext.elapsedReviewDays(). */
