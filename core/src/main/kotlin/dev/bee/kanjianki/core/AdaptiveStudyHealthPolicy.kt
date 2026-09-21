@@ -10,7 +10,8 @@ import java.util.LinkedHashMap
  * values are overlays, so an item in repair still belongs to exactly one core.
  */
 object AdaptiveStudyHealthPolicy {
-    const val STUCK_REPAIR_ATTEMPTS: Int = 6
+    /** A repair episode at this many appearances is exhausted and exits to revalidation. */
+    const val STUCK_REPAIR_ATTEMPTS: Int = AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS
 
     @JvmStatic
     fun summarize(
