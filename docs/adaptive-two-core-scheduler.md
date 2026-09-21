@@ -128,6 +128,9 @@ differ, the last task or delay is reused so both sequences are honored.
 - `Hard`: repeat the current appearance.
 - `Good`: advance one appearance.
 - Writing repeats until `writingLevel >= 2` from clean, hint-free passes.
+- After `AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS` (6) answered appearances
+  the episode is exhausted regardless of rating and exits to revalidation, so
+  a card can never loop on repair steps without a way out.
 
 After repair, the same core is revalidated at
 `min(post-lapse core due, now + 1 day)`. Recognition promotes to contextual

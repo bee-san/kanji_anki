@@ -472,7 +472,7 @@ class AdaptiveReviewTransitionEngineTest {
     }
 
     @Test
-    fun repairAdvanceSaturatesAttemptCounterAndDelay() {
+    fun repairAdvanceSaturatesAttemptCounterAndExitsWhenExhausted() {
         val now = Long.MAX_VALUE - 1L
         val route = AdaptiveRouteState(
             activeCore = CoreSkill.RECOGNITION,
@@ -501,11 +501,86 @@ class AdaptiveReviewTransitionEngineTest {
         )
         val advancedRoute = AdaptiveStudyItemPolicy.routeState(advanced.item)!!
 
+        // A saturated attempt counter is far past the exhaustion limit: the
+        // episode exits to revalidation and the counter stays saturated.
         assertFalse(advanced.fsrsCalled)
-        assertEquals(1, advancedRoute.repairTaskIndex)
+        assertFalse(advancedRoute.isRepairActive())
+        assertTrue(advancedRoute.revalidationPending)
         assertEquals(Int.MAX_VALUE, advancedRoute.repairAttemptCount)
-        assertEquals(Long.MAX_VALUE, advancedRoute.repairDueAtMillis)
         assertEquals(Long.MAX_VALUE, advanced.item.dueAtMillis)
+    }
+
+    @Test
+    fun hardLoopOnWritingRepairExitsToRevalidationAfterMaxAttempts() {
+        val adapter = CountingAdapter(intervalDays = 5, promotionDays = 5)
+        val engine = AdaptiveReviewTransitionEngine(adapter)
+        val coreDue = NOW + 5 * StudyLadderRules.DAY
+        var item = adaptiveItem(
+            AdaptiveRouteState(
+                activeCore = CoreSkill.RECOGNITION,
+                activeRepairTasks = listOf(StudyTaskTypes.WRITE_KANJI),
+                repairStepMinutes = listOf(10),
+                repairDueAtMillis = NOW,
+                coreDueAtMillis = coreDue,
+            ),
+        ).copyBuilder()
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .state(StudyLadderRules.STATE_LEARNING)
+            .dueAtMillis(NOW)
+            .build()
+
+        // Messy writes never raise writingLevel, so Good is downgraded to Hard and
+        // the appearance repeats. Before the exit rule this loop had no end.
+        var appearances = 0
+        while (AdaptiveStudyItemPolicy.routeState(item)!!.isRepairActive()) {
+            appearances++
+            assertTrue("repair must exit within the attempt limit", appearances <= AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS)
+            val transition = engine.apply(
+                item.copyBuilder().dueAtMillis(NOW).activeToken("token").build(),
+                request("good", StudyTaskTypes.WRITE_KANJI, null),
+                NOW, parameters, settings, steps, ladder,
+            )
+            assertFalse(transition.fsrsCalled)
+            item = transition.item
+        }
+        val route = AdaptiveStudyItemPolicy.routeState(item)!!
+
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS, appearances)
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS, route.repairAttemptCount)
+        assertTrue(route.revalidationPending)
+        assertEquals(RecordsBase.SchedulerPhase.REVIEW, item.phase)
+        assertEquals(NOW + StudyLadderRules.DAY, item.dueAtMillis)
+        assertEquals(0, adapter.reviewCalls)
+    }
+
+    @Test
+    fun repairBelowTheAttemptLimitStillAdvancesNormally() {
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.RECOGNITION,
+            activeRepairTasks = listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI),
+            repairStepMinutes = listOf(10, 20),
+            repairDueAtMillis = NOW,
+            coreDueAtMillis = NOW + 5 * StudyLadderRules.DAY,
+            repairAttemptCount = AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS - 2,
+        )
+        val item = adaptiveItem(route, hasSimilarKanji = true)
+            .copyBuilder()
+            .phase(RecordsBase.SchedulerPhase.RELEARNING)
+            .state(StudyLadderRules.STATE_LEARNING)
+            .dueAtMillis(NOW)
+            .build()
+
+        val advanced = AdaptiveReviewTransitionEngine(CountingAdapter(5, 5)).apply(
+            item,
+            request("good", StudyTaskTypes.SIMILAR_KANJI, null),
+            NOW, parameters, settings, steps, ladder,
+        )
+        val advancedRoute = AdaptiveStudyItemPolicy.routeState(advanced.item)!!
+
+        assertTrue(advancedRoute.isRepairActive())
+        assertEquals(1, advancedRoute.repairTaskIndex)
+        assertEquals(AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS - 1, advancedRoute.repairAttemptCount)
+        assertEquals(NOW + 20 * 60_000L, advanced.item.dueAtMillis)
     }
 
     private fun adaptiveItem(

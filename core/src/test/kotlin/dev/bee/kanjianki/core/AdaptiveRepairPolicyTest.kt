@@ -132,6 +132,19 @@ class AdaptiveRepairPolicyTest {
     }
 
     @Test
+    fun exhaustionTriggersOnTheLastAllowedAppearanceAndSaturates() {
+        val limit = AdaptiveRepairPolicy.MAX_REPAIR_ATTEMPTS
+        assertFalse(AdaptiveRepairPolicy.isExhausted(0))
+        assertFalse(AdaptiveRepairPolicy.isExhausted(limit - 2))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(limit - 1))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(limit))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(Int.MAX_VALUE))
+        assertFalse(AdaptiveRepairPolicy.isExhausted(-5))
+        assertTrue(AdaptiveRepairPolicy.isExhausted(0, maxAttempts = 0))
+        assertEquals(limit, AdaptiveStudyHealthPolicy.STUCK_REPAIR_ATTEMPTS)
+    }
+
+    @Test
     fun recurrenceAndTaskProgressionSaturateAtIntegerLimits() {
         val recurrence = AdaptiveRepairPolicy.recordFailure(
             AdaptiveRepairPolicy.FailureRecurrence(FailureKind.WRONG_READING, Int.MAX_VALUE),
