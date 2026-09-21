@@ -23,6 +23,10 @@ repair tools.
 - A real-due core failure calls FSRS `Again` exactly once. Every following
   repair appearance is practice-only: it cannot add another lapse, change
   stability/difficulty, or move a long-term threshold.
+- Core intervals are fuzzed deterministically (`IntervalFuzzPolicy`, Anki's
+  bands, keyed by kanji, core and review ordinal) so items with identical
+  histories spread across neighbouring days while replays stay reproducible.
+  Promotion strength is judged on the unfuzzed fixed-0.90 interval.
 - Contextual reading is the terminal core. It never demotes back to recognition.
 - Kani's AnkiDroid write surface remains note tags only.
 
