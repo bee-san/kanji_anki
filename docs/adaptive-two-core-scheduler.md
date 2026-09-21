@@ -164,6 +164,18 @@ conversion. Review commits and material sync/settings changes dirty the cache
 inside their owning transaction; readers accept only a same-day format-11
 snapshot whose source version still matches.
 
+## Kani-confirmed hand-off
+
+Anki mature support only counts unsuspended cards, so a kanji whose sources are
+all suspended can never retire through the support threshold. The scheduler
+therefore owns a second hand-off signal, `AdaptiveStudyItemPolicy.isKaniConfirmed`:
+the contextual core is complete (above), its memory has at least
+`ladder_promotion_min_passes` consecutive real-due passes, and its scheduled
+interval has reached `mature_days`. A confirmed kanji whose cross-sync evidence
+is not regressing is eligible for the `kani_repaired` note tag exactly like a
+retired one. Retirement itself still follows Anki support so the reopen gate
+cannot loop.
+
 ## Sync and backup integrity
 
 The seeded queue replacement and pending `sync_runs -> success` transition are

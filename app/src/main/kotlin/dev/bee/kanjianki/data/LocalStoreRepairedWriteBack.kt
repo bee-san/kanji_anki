@@ -3,9 +3,11 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import androidx.core.database.sqlite.transaction
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
 import dev.bee.kanjianki.core.RepairedWriteBackPolicy
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.core.TimelineCopy
 
 internal const val REPAIRED_HANDOFF_SETTING_KEY = "repaired_handoff_kanji"
@@ -36,6 +38,7 @@ internal fun LocalStore.repairedWriteBackProposal(
         }
     }
     val evidenceByKanji = kanjiRepairEvidence().associateBy { it.kanji }
+    val settings = SyncSettings.fromStore(this)
     val states = sourceKanji.map { kanji ->
         val items = itemsByKanji[kanji].orEmpty()
         val state = if (items.any { it.state == StudyLadderRules.STATE_RETIRED }) {
@@ -50,6 +53,7 @@ internal fun LocalStore.repairedWriteBackProposal(
             matureSupportCount = matureSupportByKanji[kanji] ?: 0,
             evidenceStatus = evidence?.status,
             evidenceConfidence = evidence?.confidence ?: 0.0,
+            kaniConfirmed = items.any { AdaptiveStudyItemPolicy.isKaniConfirmed(it, settings) },
         )
     }
     return RepairedWriteBackPolicy.plan(

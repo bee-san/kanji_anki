@@ -114,6 +114,36 @@ class RepairedWriteBackPolicyTest {
         assertEquals(listOf("微", "徴"), proposal.repairedKanji)
     }
 
+    @Test
+    fun kaniConfirmedSuspendedOnlyKanjiIsEligibleWithoutMatureSupport() {
+        // Suspended-only source: mature support can never grow, no cross-sync
+        // evidence yet. Kani's own scheduler verdict must be enough.
+        val proposal = plan(
+            states = listOf(state("徴", "review", 0, null, 0.0, kaniConfirmed = true)),
+            sources = listOf(source("徴", 10, 1)),
+            cards = listOf(card(10, 1, true)),
+        )
+
+        assertEquals(setOf(1L), proposal.noteIdsToTag)
+        assertEquals(listOf("徴"), proposal.repairedKanji)
+    }
+
+    @Test
+    fun kaniConfirmedIsBlockedByRegressingEvidenceAndUnconfirmedStaysIneligible() {
+        val states = listOf(
+            state("徴", "review", 0, KanjiRepairEvidencePolicy.Status.REGRESSING, 0.9, kaniConfirmed = true),
+            state("微", "review", 0, KanjiRepairEvidencePolicy.Status.STABLE, 0.9, kaniConfirmed = true),
+            state("撤", "review", 0, KanjiRepairEvidencePolicy.Status.IMPROVING, 0.9, kaniConfirmed = false),
+        )
+        val sources = states.mapIndexed { index, value -> source(value.kanji, (10 + index).toLong(), (1 + index).toLong()) }
+        val cards = sources.map { card(it.cardId, it.noteId, true) }
+
+        val proposal = plan(states, sources, cards)
+
+        assertEquals(setOf(2L), proposal.noteIdsToTag)
+        assertEquals(listOf("微"), proposal.repairedKanji)
+    }
+
     private fun plan(
         states: List<RepairedWriteBackPolicy.RepairState>,
         sources: List<RepairedWriteBackPolicy.Source>,
@@ -126,7 +156,8 @@ class RepairedWriteBackPolicyTest {
         mature: Int,
         status: KanjiRepairEvidencePolicy.Status?,
         confidence: Double,
-    ) = RepairedWriteBackPolicy.RepairState(kanji, studyState, mature, status, confidence)
+        kaniConfirmed: Boolean = false,
+    ) = RepairedWriteBackPolicy.RepairState(kanji, studyState, mature, status, confidence, kaniConfirmed)
 
     private fun source(kanji: String, cardId: Long, noteId: Long, restoredAt: Long? = null) =
         RepairedWriteBackPolicy.Source(kanji, cardId, noteId, restoredAt)

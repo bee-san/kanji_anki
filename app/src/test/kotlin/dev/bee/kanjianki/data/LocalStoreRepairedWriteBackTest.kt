@@ -3,11 +3,16 @@ package dev.bee.kanjianki.data
 import android.content.ContentValues
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.core.AdaptiveRouteState
+import dev.bee.kanjianki.core.AdaptiveRouteStateCodec
+import dev.bee.kanjianki.core.AdaptiveStudyItemPolicy
+import dev.bee.kanjianki.core.CoreSkill
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
+import dev.bee.kanjianki.core.StudyTaskTypes
 import dev.bee.kanjianki.core.TimelineCopy
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -89,6 +94,30 @@ class LocalStoreRepairedWriteBackTest {
         assertTrue(proposal.isEmpty())
     }
 
+    @Test
+    fun kaniConfirmedSuspendedOnlyKanjiIsProposedWithoutMatureSupport() {
+        seedSuspendedSource("徴", 10L, 1L)
+        // Suspended-only row: zero mature support, so the Anki-support route can
+        // never fire. The scheduler's own confirmed contextual core must suffice.
+        store.saveRows(store.writableDatabase, listOf(row("徴")), NOW)
+        store.saveStudyItem(kaniConfirmedItem("徴"))
+
+        val confirmed = store.repairedWriteBackProposal(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), listOf(card(10L, 1L, true))),
+            2,
+        )
+        assertEquals(setOf(1L), confirmed.noteIdsToTag)
+        assertEquals(listOf("徴"), confirmed.repairedKanji)
+
+        // The same item one real-due pass short of confirmation is not proposed.
+        store.saveStudyItem(kaniConfirmedItem("徴", consecutivePasses = 1))
+        val unconfirmed = store.repairedWriteBackProposal(
+            RecordsSyncModels.CollectionSnapshot(emptyList(), listOf(card(10L, 1L, true))),
+            2,
+        )
+        assertTrue(unconfirmed.isEmpty())
+    }
+
     private fun seedSuspendedSource(kanji: String, cardId: Long, noteId: Long) {
         val db = store.writableDatabase
         db.insertOrThrow(
@@ -147,6 +176,40 @@ class LocalStoreRepairedWriteBackTest {
         .rung(RecordsBase.LadderRung.KANJI_MEANING)
         .phase(RecordsBase.SchedulerPhase.REVIEW)
         .build()
+
+    private fun kaniConfirmedItem(kanji: String, consecutivePasses: Int = 2): RecordsStudyModels.StudyItem {
+        val intervalDays = 30
+        val memory = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = StudyLadderRules.STATE_REVIEW,
+                dueAtMillis = NOW + intervalDays * StudyLadderRules.DAY,
+                stability = intervalDays.toDouble(),
+                difficulty = 5.0,
+                totalReviews = 6,
+                lapses = 0,
+                learningStep = 0,
+                lastRating = "good",
+                matureIntervalDays = intervalDays,
+                consecutivePasses = consecutivePasses,
+                lastPassedDueAtMillis = NOW - StudyLadderRules.DAY,
+                lastReviewedAtMillis = NOW,
+            ),
+        )
+        val route = AdaptiveRouteState(
+            activeCore = CoreSkill.CONTEXTUAL_READING,
+            contextualReadingReviewCount = 6,
+        )
+        return RecordsStudyModels.StudyItem(
+            kanji, StudyLadderRules.STATE_REVIEW, NOW + intervalDays * StudyLadderRules.DAY, 30.0, 5.0, 6, 0, 0, 2, null, NOW,
+        ).copyBuilder()
+            .rung(RecordsBase.LadderRung.WORD_READING)
+            .phase(RecordsBase.SchedulerPhase.REVIEW)
+            .matureIntervalDays(intervalDays)
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .build()
+            .withTaskMemory(StudyTaskTypes.WORD_READING, memory)
+    }
 
     private fun card(cardId: Long, noteId: Long, suspended: Boolean) = RecordsSyncModels.Card(
         cardId, noteId, 0, "Mining", if (suspended) -1 else 2, 0, 0, 0, 0, 0, suspended,
