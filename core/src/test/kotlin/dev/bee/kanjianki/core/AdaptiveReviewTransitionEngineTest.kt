@@ -143,9 +143,74 @@ class AdaptiveReviewTransitionEngineTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, promoted.rung)
         assertEquals(0, promoted.realPassStreak)
         assertEquals(0, AdaptiveStudyItemPolicy.routeState(promoted)!!.contextualReadingReviewCount)
-        assertEquals(7, promoted.wordReadingMemory.matureIntervalDays)
-        assertEquals(NOW + 7 * StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        // The contextual core starts from FSRS's initial state for a first Good
+        // (the fake adapter reports a one-day initial interval), not from a clone
+        // of recognition's 30-day memory.
+        assertEquals(1, adapter.initialReviewCalls)
+        assertEquals(0, promoted.wordReadingMemory.totalReviews)
+        assertEquals(0, promoted.wordReadingMemory.consecutivePasses)
+        assertEquals(1, promoted.wordReadingMemory.matureIntervalDays)
+        assertEquals(NOW + StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        assertEquals(NOW + StudyLadderRules.DAY, promoted.dueAtMillis)
+        // Recognition keeps its real, uncapped FSRS schedule.
+        assertEquals(30, promoted.kanjiMeaningMemory.matureIntervalDays)
+        assertEquals(5, promoted.kanjiMeaningMemory.totalReviews)
         assertEquals(StudyTaskTypes.WORD_READING, AdaptiveStudyItemPolicy.taskTypeFor(promoted, ladder))
+    }
+
+    @Test
+    fun promotionCapsTheSeededContextualFirstCheck() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30, initialIntervalDays = 40)
+        val item = adaptiveItem(AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION))
+            .copyBuilder()
+            .realPassStreak(settings.ladderPromotionMinPasses - 1)
+            .build()
+
+        val promoted = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+
+        val capDays = settings.ladderPromotionIntervalDays / 3
+        assertEquals(capDays, promoted.wordReadingMemory.matureIntervalDays)
+        assertEquals(NOW + capDays * StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
+        // Difficulty is the kanji's learned difficulty; stability is the fresh seed.
+        assertEquals(5.0, promoted.wordReadingMemory.difficulty, 0.0)
+        assertEquals(CountingAdapter.INITIAL_STABILITY, promoted.wordReadingMemory.stability, 0.0)
+    }
+
+    @Test
+    fun revalidationPassDoesNotCountTowardPromotion() {
+        val adapter = CountingAdapter(intervalDays = 30, promotionDays = 30)
+        val route = AdaptiveRouteState(activeCore = CoreSkill.RECOGNITION, revalidationPending = true)
+        val item = adaptiveItem(route)
+            .copyBuilder()
+            .realPassStreak(settings.ladderPromotionMinPasses - 1)
+            .build()
+
+        val passed = AdaptiveReviewTransitionEngine(adapter).apply(
+            item,
+            request("good", StudyTaskTypes.KANJI_MEANING, null),
+            NOW,
+            parameters,
+            settings,
+            steps,
+            ladder,
+        ).item
+        val passedRoute = AdaptiveStudyItemPolicy.routeState(passed)!!
+
+        assertEquals(1, adapter.reviewCalls)
+        assertFalse(passedRoute.revalidationPending)
+        assertEquals(CoreSkill.RECOGNITION, passedRoute.activeCore)
+        assertEquals(settings.ladderPromotionMinPasses - 1, passed.realPassStreak)
+        assertEquals(settings.ladderPromotionMinPasses - 1, passed.kanjiMeaningMemory.consecutivePasses)
+        // The due slot was still consumed.
+        assertEquals(item.dueAtMillis, passed.lastRealReviewDueAtMillis)
     }
 
     @Test
@@ -666,8 +731,10 @@ class AdaptiveReviewTransitionEngineTest {
     private class CountingAdapter(
         private val intervalDays: Int,
         private val promotionDays: Int,
+        private val initialIntervalDays: Int = 1,
     ) : KaniFsrsAdapter {
         var reviewCalls = 0
+        var initialReviewCalls = 0
         var elapsedDays = -1
 
         override fun initialReview(
@@ -676,7 +743,11 @@ class AdaptiveReviewTransitionEngineTest {
             currentDifficulty: Double,
             targetRetention: Double,
             isNewLearning: Boolean,
-        ): KaniFsrsReviewResult = KaniFsrsReviewResult(currentStability, currentDifficulty, StudyLadderRules.DAY)
+        ): KaniFsrsReviewResult {
+            initialReviewCalls++
+            val stability = if (isNewLearning) INITIAL_STABILITY else currentStability
+            return KaniFsrsReviewResult(stability, currentDifficulty, initialIntervalDays * StudyLadderRules.DAY)
+        }
 
         override fun review(
             stability: Double,
@@ -693,6 +764,10 @@ class AdaptiveReviewTransitionEngineTest {
                 intervalDays * StudyLadderRules.DAY,
                 promotionDays * StudyLadderRules.DAY,
             )
+        }
+
+        companion object {
+            const val INITIAL_STABILITY = 2.5
         }
     }
 

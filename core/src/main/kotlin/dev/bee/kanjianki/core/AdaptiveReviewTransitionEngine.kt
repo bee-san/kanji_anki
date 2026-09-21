@@ -144,12 +144,16 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             )
         }
 
-        val passStreak = if (realDue) {
+        // A pass one day after a repair (revalidation) proves the repair took, not
+        // that a distinct skill is retired; it consumes the due slot but does not
+        // count toward the promotion streak.
+        val countsTowardPromotion = realDue && !route.revalidationPending
+        val passStreak = if (countsTowardPromotion) {
             saturatingAddNonNegative(item.realPassStreak, 1)
         } else {
             item.realPassStreak
         }
-        var memory = RecordsStudyModels.TaskMemory.fromFields(
+        val memory = RecordsStudyModels.TaskMemory.fromFields(
             RecordsStudyModels.TaskMemory.Fields(
                 state = StudyLadderRules.STATE_REVIEW,
                 dueAtMillis = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L)),
@@ -168,6 +172,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         var nextCore = core
         var nextPassStreak = passStreak
         var nextItem = item
+        var scheduledMemory = memory
         if (core == CoreSkill.RECOGNITION &&
             realDue &&
             result.promotionIntervalMillis > settings.ladderPromotionIntervalDays.toLong() * StudyLadderRules.DAY &&
@@ -175,14 +180,37 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         ) {
             nextCore = CoreSkill.CONTEXTUAL_READING
             nextPassStreak = 0
+            // Contextual reading is a different skill from recognition. Seed its
+            // memory from FSRS's own initial state for a first Good instead of
+            // cloning recognition's stability, so the new core has to earn its
+            // intervals; carry the kanji's learned difficulty across. The first
+            // check is still capped so promotion is validated soon.
             val capDays = max(1, settings.ladderPromotionIntervalDays / PROMOTION_REVALIDATION_DIVISOR)
-            if (memory.matureIntervalDays > capDays) {
-                memory = memory.withSchedule(
-                    saturatingAdd(nowMillis, capDays.toLong() * StudyLadderRules.DAY),
-                    capDays,
+            val seed = fsrs.initialReview(
+                StudyRatings.GOOD,
+                memory.stability,
+                memory.difficulty,
+                parameters.targetRetention,
+                true,
+            )
+            val seedDays = min(seed.intervalDays().coerceAtLeast(1), capDays)
+            scheduledMemory = RecordsStudyModels.TaskMemory.fromFields(
+                RecordsStudyModels.TaskMemory.Fields(
+                    state = StudyLadderRules.STATE_REVIEW,
+                    dueAtMillis = saturatingAdd(nowMillis, seedDays.toLong() * StudyLadderRules.DAY),
+                    stability = seed.stability,
+                    difficulty = memory.difficulty,
+                    totalReviews = 0,
+                    lapses = 0,
+                    learningStep = 0,
+                    lastRating = "",
+                    matureIntervalDays = seedDays,
+                    consecutivePasses = 0,
+                    lastPassedDueAtMillis = 0L,
+                    lastReviewedAtMillis = nowMillis,
                 )
-            }
-            nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), memory)
+            )
+            nextItem = nextItem.withTaskMemory(AdaptiveCorePolicy.memoryOwnerTaskType(nextCore), scheduledMemory)
         }
         nextItem = nextItem.withTaskMemory(ownerTask, memory)
         val recurrence = AdaptiveRepairPolicy.recordPass(
@@ -209,9 +237,9 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         )
         return updateItem(
             item = nextItem,
-            memory = memory,
+            memory = scheduledMemory,
             route = nextRoute,
-            dueAtMillis = memory.dueAtMillis,
+            dueAtMillis = scheduledMemory.dueAtMillis,
             phase = RecordsBase.SchedulerPhase.REVIEW,
             totalReviews = nextItemTotalReviews,
             lapses = item.lapses.coerceAtLeast(0),

@@ -109,10 +109,12 @@ class LadderCompletionForecastPolicyTest {
             listOf(RecordsBase.LadderRung.KANJI_MEANING),
         )
         val result = forecast(listOf(row("裂")), ladder = ladder, horizonDays = 60)
-        assertEquals(1_701_388_800_000L, result.projectedCompletionMonthMillis)
+        // The seeded contextual core is checked within days of promotion (not
+        // after a cloned 7-day cap), so completion lands in the promotion month.
+        assertEquals(1_698_796_800_000L, result.projectedCompletionMonthMillis)
         assertEquals(
             listOf(
-                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 0, 1),
+                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 1, 0),
                 LadderCompletionForecastPolicy.MonthPoint(1_701_388_800_000L, 1, 0),
                 LadderCompletionForecastPolicy.MonthPoint(1_704_067_200_000L, 1, 0),
             ),
