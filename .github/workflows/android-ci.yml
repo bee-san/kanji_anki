@@ -8,18 +8,41 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
-      - 'fsrs-java/**'
+      - 'bee-fsrs/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
       - 'dictionary-core/**'
       - 'update-core/**'
+      - 'application/**'
+      - 'automation-android/**'
+      - 'backup-core/**'
+      - 'branding/**'
+      - 'data-api/**'
+      - 'data-android/**'
+      - 'data-desktop/**'
+      - 'data-sql/**'
+      - 'desktop-app/**'
+      - 'feature-*/**'
+      - 'platform-android/**'
+      - 'platform-contracts/**'
+      - 'platform-desktop/**'
+      - 'presentation-api/**'
+      - 'provider-ankiconnect/**'
+      - 'provider-ankidroid/**'
+      - 'reference-assets/**'
+      - 'sync-api/**'
+      - 'sync-engine/**'
+      - 'ui-common/**'
+      - 'feature-shell/**'
+      - 'widget/**'
       - 'build-logic/**'
       - 'ci/scripts/**'
       - 'ci/tests/**'
       - 'ci/fixtures/ankidroid/**'
       - 'scripts/**'
       - 'tools/**'
+      - '.gitattributes'
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/scripts/**'
@@ -36,18 +59,41 @@ on:
     paths:
       - 'app/**'
       - 'core/**'
-      - 'fsrs-java/**'
+      - 'bee-fsrs/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
       - 'dictionary-core/**'
       - 'update-core/**'
+      - 'application/**'
+      - 'automation-android/**'
+      - 'backup-core/**'
+      - 'branding/**'
+      - 'data-api/**'
+      - 'data-android/**'
+      - 'data-desktop/**'
+      - 'data-sql/**'
+      - 'desktop-app/**'
+      - 'feature-*/**'
+      - 'platform-android/**'
+      - 'platform-contracts/**'
+      - 'platform-desktop/**'
+      - 'presentation-api/**'
+      - 'provider-ankiconnect/**'
+      - 'provider-ankidroid/**'
+      - 'reference-assets/**'
+      - 'sync-api/**'
+      - 'sync-engine/**'
+      - 'ui-common/**'
+      - 'feature-shell/**'
+      - 'widget/**'
       - 'build-logic/**'
       - 'ci/scripts/**'
       - 'ci/tests/**'
       - 'ci/fixtures/ankidroid/**'
       - 'scripts/**'
       - 'tools/**'
+      - '.gitattributes'
       - '.github/workflows/**'
       - '.github/actions/**'
       - '.github/scripts/**'
@@ -83,22 +129,46 @@ jobs:
               build-logic/build/test-results/**
           - id: jvm
             label: JVM tests and coverage
-            tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :domain:test :domain:jacocoTestReport :domain:jacocoTestCoverageVerification :sync-domain:test :sync-domain:jacocoTestReport :sync-domain:jacocoTestCoverageVerification :writing-core:test :writing-core:jacocoTestReport :writing-core:jacocoTestCoverageVerification :dictionary-core:test :dictionary-core:jacocoTestReport :dictionary-core:jacocoTestCoverageVerification :update-core:test :update-core:jacocoTestReport :update-core:jacocoTestCoverageVerification'
+            tasks: ':bee-fsrs:test :bee-fsrs:jacocoTestReport :bee-fsrs:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :domain:test :domain:jacocoTestReport :domain:jacocoTestCoverageVerification :sync-domain:test :sync-domain:jacocoTestReport :sync-domain:jacocoTestCoverageVerification :writing-core:test :writing-core:jacocoTestReport :writing-core:jacocoTestCoverageVerification :dictionary-core:test :dictionary-core:jacocoTestReport :dictionary-core:jacocoTestCoverageVerification :update-core:test :update-core:jacocoTestReport :update-core:jacocoTestCoverageVerification'
             reports: |
               core/build/reports/**
-              fsrs-java/build/reports/**
+              bee-fsrs/build/reports/**
               domain/build/reports/**
               sync-domain/build/reports/**
               writing-core/build/reports/**
               dictionary-core/build/reports/**
               update-core/build/reports/**
               core/build/test-results/**
-              fsrs-java/build/test-results/**
+              bee-fsrs/build/test-results/**
               domain/build/test-results/**
               sync-domain/build/test-results/**
               writing-core/build/test-results/**
               dictionary-core/build/test-results/**
               update-core/build/test-results/**
+          - id: presentation-api
+            label: Portable presentation contracts (Android target)
+            tasks: ':presentation-api:testAndroidHostTest :presentation-api:compileAndroidDeviceTest :presentation-api:lintAnalyzeAndroidHostTest'
+            reports: |
+              presentation-api/build/reports/**
+              presentation-api/build/test-results/**
+          - id: ui-common
+            label: Shared Compose UI (Android target)
+            tasks: ':ui-common:testAndroidHostTest :ui-common:compileAndroidDeviceTest :ui-common:lintAnalyzeAndroidHostTest'
+            reports: |
+              ui-common/build/reports/**
+              ui-common/build/test-results/**
+          - id: feature-shell
+            label: Shared product shell (Android target)
+            tasks: ':feature-shell:testAndroidHostTest :feature-shell:compileAndroidDeviceTest :feature-shell:lintAnalyzeAndroidHostTest'
+            reports: |
+              feature-shell/build/reports/**
+              feature-shell/build/test-results/**
+          - id: feature-home
+            label: Shared Home and onboarding (Android target)
+            tasks: ':feature-home:testAndroidHostTest :feature-home:compileAndroidDeviceTest :feature-home:lintAnalyzeAndroidHostTest'
+            reports: |
+              feature-home/build/reports/**
+              feature-home/build/test-results/**
           - id: app-unit
             label: App unit tests and coverage
             tasks: ':app:testDebugUnitTest :app:jacocoDebugUnitTestReport'
@@ -199,6 +269,53 @@ jobs:
       - name: Review dependency changes
         continue-on-error: true
         uses: "actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294"
+
+  tryout-apk:
+    name: Installable debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
+
+      - name: Set up Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install Android SDK packages
+        uses: ./.github/actions/setup-android-sdk
+
+      # Debug, not release. An unsigned release APK will not install on a device at
+      # all; the debug APK is signed with the standard debug key, so it installs and
+      # runs. This is a build to try, never a release — publication keeps its own
+      # signed path in android-release.yml.
+      - name: Assemble the debug APK
+        run: ./gradlew :app:assembleDebug --parallel
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: kani-android-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          # Errors rather than warns: a single known path, so a miss means the build
+          # layout changed, and an empty artifact would only be discovered at install
+          # time on a phone.
+          if-no-files-found: error
+          retention-days: 14
 
   fast-confidence-gate:
     name: Fast confidence gate

@@ -1,0 +1,141 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       |  |-Node
+       |    CollectionInfo = 'CollectionInfo(rowCount=6, columnCount=1)'
+       |    IsTraversalGroup = 'true'
+       |    Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       |    VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=100.0, reverseScrolling=false)'
+       |    Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+       |     |-Node
+       |     | Focused = 'false'
+       |     | Role = 'Button'
+       |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     | Actions = [OnClick, RequestFocus]
+       |     | MergeDescendants = 'true'
+       |     |  |-Node
+       |     |    Text = '[Home]'
+       |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Missing Kanji]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Find useful kanji that do not appear anywhere in Anki.]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Scan needs attention]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Kani could not read the AnkiDroid collection provider. Close any collection maintenance in AnkiDroid, then try again.]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Jiten frequency range]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Smaller rank numbers are more frequent. Rank bounds are inclusive.]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | CollectionInfo = 'CollectionInfo(rowCount=1, columnCount=5)'
+       |     | HorizontalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=100.0, reverseScrolling=false)'
+       |     | IsTraversalGroup = 'true'
+       |     | Shape = 'androidx.compose.foundation.HorizontalScrollableClipShape@<id>'
+       |     | Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+       |     |  |-Node
+       |     |  | Focused = 'false'
+       |     |  | Role = 'Checkbox'
+       |     |  | Selected = 'false'
+       |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     |  | Actions = [OnClick, RequestFocus]
+       |     |  | MergeDescendants = 'true'
+       |     |  |  |-Node
+       |     |  |    Text = '[Top 1,000]'
+       |     |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |  |-Node
+       |     |  | Focused = 'false'
+       |     |  | Role = 'Checkbox'
+       |     |  | Selected = 'true'
+       |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     |  | Actions = [OnClick, RequestFocus]
+       |     |  | MergeDescendants = 'true'
+       |     |  |  |-Node
+       |     |  |    Text = '[Top 2,000]'
+       |     |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |  |-Node
+       |     |  | Focused = 'false'
+       |     |  | Role = 'Checkbox'
+       |     |  | Selected = 'false'
+       |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     |  | Actions = [OnClick, RequestFocus]
+       |     |  | MergeDescendants = 'true'
+       |     |  |  |-Node
+       |     |  |    Text = '[Top 3,000]'
+       |     |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |  |-Node
+       |     |    Focused = 'false'
+       |     |    Role = 'Checkbox'
+       |     |    Selected = 'false'
+       |     |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     |    Actions = [OnClick, RequestFocus]
+       |     |    MergeDescendants = 'true'
+       |     |     |-Node
+       |     |       Text = '[Top 5,000]'
+       |     |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |       Focused = 'false'
+       |       Role = 'Button'
+       |       Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |       Actions = [OnClick, RequestFocus]
+       |       MergeDescendants = 'true'
+       |        |-Node
+       |          Text = '[Scan again]'
+       |          Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'false'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

@@ -1,10 +1,12 @@
 package dev.bee.kanjianki
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import dev.bee.kanjianki.platform.PlatformFileReference
+import dev.bee.kanjianki.platform.ShareRequest
+import dev.bee.kanjianki.platform.android.AndroidShareService
 import java.io.File
 import java.io.RandomAccessFile
 import java.nio.file.AtomicMoveNotSupportedException
@@ -79,13 +81,15 @@ internal object DebugLogShare {
             return null
         }
 
-        return Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, subject)
-            clipData = ClipData.newRawUri(subject, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        return AndroidShareService.intentFor(
+            ShareRequest(
+                title = subject,
+                attachments = listOf(
+                    PlatformFileReference.create(uri.toString(), snapshotFile.name),
+                ),
+                mimeType = "text/plain",
+            ),
+        )
     }
 
     private fun prepareShareDirectory(context: Context): Path? {

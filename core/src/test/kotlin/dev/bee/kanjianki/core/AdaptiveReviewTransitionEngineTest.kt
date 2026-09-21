@@ -379,7 +379,10 @@ class AdaptiveReviewTransitionEngineTest {
             ladder,
         ).item
 
-        assertEquals(3, adapter.elapsedDays)
+        // 3.5, not 3: the elapsed time is measured from the exact last-review
+        // timestamp, which is what this test exists to check, and FSRS-7 no longer
+        // discards the half day on the way into the engine.
+        assertEquals(3.5, adapter.elapsedDays, 0.0)
         assertEquals(revalidationAt, reviewed.kanjiMeaningMemory.lastReviewedAtMillis)
     }
 
@@ -740,7 +743,7 @@ class AdaptiveReviewTransitionEngineTest {
     ) : KaniFsrsAdapter {
         var reviewCalls = 0
         var initialReviewCalls = 0
-        var elapsedDays = -1
+        var elapsedDays = -1.0
 
         override fun initialReview(
             rating: String?,
@@ -758,7 +761,7 @@ class AdaptiveReviewTransitionEngineTest {
             stability: Double,
             difficulty: Double,
             rating: String?,
-            elapsedDays: Int,
+            elapsedDays: Double,
             targetRetention: Double,
         ): KaniFsrsReviewResult {
             reviewCalls++

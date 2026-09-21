@@ -6,6 +6,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.toRepositorySnapshot
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -147,15 +148,15 @@ class ProgressAnalyticsPerformancePathTest {
         val freshReads = mutableListOf<Long>()
         var directRecomputes = 0
 
-        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot? {
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long) =
+            fresh?.toRepositorySnapshot().also {
             freshReads += nowMillis
-            return fresh
-        }
+            }
 
-        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long) =
+            direct.toRepositorySnapshot().also {
             directRecomputes += 1
-            return direct
-        }
+            }
 
         override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {
             error("unexpected live review-day SQL for $days days")

@@ -70,7 +70,9 @@ class WritingRecognizerTest {
         )
 
         val bridge = WritingRecognizer::class.java.declaredMethods.single { it.name == "recognitionCandidates" }
+        @Suppress("UNCHECKED_CAST")
         val candidates = bridge.invoke(null, result) as List<RecognitionCandidate>
+        @Suppress("UNCHECKED_CAST")
         val nullResult = bridge.invoke(null, null) as List<RecognitionCandidate>
 
         assertEquals(2, candidates.size)

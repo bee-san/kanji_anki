@@ -3,6 +3,7 @@ package dev.bee.kanjianki.data
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.ReminderAntiSpamPolicy
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -96,8 +97,10 @@ class LocalStoreReminderStateTest {
     fun reviewReminderCounterSaturatesAtMaximumValue() {
         val dayStart = utc(2026, Calendar.MAY, 15, 0, 0)
         val now = utc(2026, Calendar.MAY, 15, 9, 0)
-        store.putLongSetting("review_reminder_day_start", dayStart)
-        store.putIntSetting("review_reminder_count", Int.MAX_VALUE)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.reviewReminderDayStart, dayStart)
+            put(DeviceSettingKeys.reviewReminderCount, Int.MAX_VALUE)
+        }
 
         store.recordReviewReminderNotificationShown(now)
 
@@ -108,10 +111,12 @@ class LocalStoreReminderStateTest {
     fun reminderFamilyCountersSaturateAtMaximumValue() {
         val dayStart = utc(2026, Calendar.MAY, 15, 0, 0)
         val now = utc(2026, Calendar.MAY, 15, 9, 0)
-        store.putLongSetting("reminder_state_day_start", dayStart)
-        store.putIntSetting("reminder_due_shown_today", Int.MAX_VALUE)
-        store.putIntSetting("reminder_streak_shown_today", Int.MAX_VALUE)
-        store.putIntSetting("reminder_sync_shown_today", Int.MAX_VALUE)
+        store.deviceSettingsStore().edit {
+            put(DeviceSettingKeys.reminderStateDayStart, dayStart)
+            put(DeviceSettingKeys.reminderDueShownToday, Int.MAX_VALUE)
+            put(DeviceSettingKeys.reminderStreakShownToday, Int.MAX_VALUE)
+            put(DeviceSettingKeys.reminderSyncShownToday, Int.MAX_VALUE)
+        }
 
         store.recordReminderPosted(now, "DUE", "due", false)
         store.recordReminderPosted(now, "STREAK", "streak", false)

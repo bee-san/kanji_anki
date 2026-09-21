@@ -1124,7 +1124,7 @@ class LadderSchedulerTest {
                 stability: Double,
                 difficulty: Double,
                 rating: String?,
-                elapsedDays: Int,
+                elapsedDays: Double,
                 targetRetention: Double,
             ) = KaniFsrsReviewResult(stability, difficulty, Long.MAX_VALUE, BridgeScheduler.DAY)
         }
@@ -1845,7 +1845,7 @@ class LadderSchedulerTest {
                 stability: Double,
                 difficulty: Double,
                 rating: String?,
-                elapsedDays: Int,
+                elapsedDays: Double,
                 targetRetention: Double
         ): KaniFsrsReviewResult {
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)

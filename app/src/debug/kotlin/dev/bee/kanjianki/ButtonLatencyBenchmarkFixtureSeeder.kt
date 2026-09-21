@@ -3,13 +3,14 @@ package dev.bee.kanjianki
 import android.content.Context
 import android.util.Log
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.ManualSyncEngine
+import dev.bee.kanjianki.sync.createManualSyncEngine
 
 /**
  * Debug-only fixture for the button-latency benchmark's normal-app routes.
@@ -23,12 +24,12 @@ internal object ButtonLatencyBenchmarkFixtureSeeder {
     private val representativeDashboardKanji = setOf(
         "認", "改", "善", "統", "計", "復", "習", "集", "書", "字", "記", "録", "検", "索", "類", "似", "未", "熟", "弱", "点", "保", "留",
     )
-    private val representativeStudyKanji = setOf("保", "弱", "点")
+    private val representativeStudyKanji = setOf("未", "弱", "点")
 
     @JvmStatic
     fun seedIfNeeded(context: Context, store: LocalStore) {
         val settings = benchmarkSettings()
-        val result = ManualSyncEngine(
+        val result = createManualSyncEngine(
             context,
             store,
             FixtureGateway(representativeSnapshot(settings)),

@@ -3,11 +3,9 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.application.ManualSyncQueuePlanner
 import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.RecordsImportModels
-import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
 import org.junit.After
@@ -26,7 +24,6 @@ class ManualSyncEngineEvidenceMapTest {
     private lateinit var context: Context
     private lateinit var store: LocalStore
     private lateinit var db: SQLiteDatabase
-    private lateinit var engine: ManualSyncEngine
 
     @Before
     fun setUp() {
@@ -34,12 +31,6 @@ class ManualSyncEngineEvidenceMapTest {
         context.deleteDatabase(LocalStoreSchema.DB_NAME)
         store = LocalStore(context)
         db = store.writableDatabase
-        engine = ManualSyncEngine(
-            context,
-            store,
-            UnusedGateway(),
-            RecordsSyncModels.Settings.kikuDefaults(),
-        )
     }
 
     @After
@@ -54,7 +45,10 @@ class ManualSyncEngineEvidenceMapTest {
         seedImprovingEvidence("他")
         insertStudyItem("未")
 
-        val map = engine.repairEvidenceStatusByKanji(listOf(row("弱"), row("未")))
+        val map = ManualSyncQueuePlanner.repairEvidenceStatusByKanji(
+            listOf(row("弱"), row("未")),
+            store.kanjiRepairEvidenceInputs(),
+        )
 
         assertEquals(KanjiRepairEvidencePolicy.Status.IMPROVING, map["弱"])
         assertEquals(KanjiRepairEvidencePolicy.Status.INSUFFICIENT_EVIDENCE, map["未"])
@@ -66,15 +60,21 @@ class ManualSyncEngineEvidenceMapTest {
     fun evidenceMapIsEmptyForEmptyRows() {
         seedImprovingEvidence("弱")
 
-        assertTrue(engine.repairEvidenceStatusByKanji(emptyList()).isEmpty())
+        assertTrue(
+            ManualSyncQueuePlanner.repairEvidenceStatusByKanji(
+                emptyList(),
+                store.kanjiRepairEvidenceInputs(),
+            ).isEmpty(),
+        )
     }
 
     @Test
     fun evidenceMapUsesCurrentIncomingRowInsteadOfPreviousSuccessfulSnapshot() {
         seedImprovingEvidence("弱")
 
-        val map = engine.repairEvidenceStatusByKanji(
-            listOf(row("弱", weakness = 90, matureSupport = 3)),
+        val map = ManualSyncQueuePlanner.repairEvidenceStatusByKanji(
+            rows = listOf(row("弱", weakness = 90, matureSupport = 3)),
+            inputs = store.kanjiRepairEvidenceInputs(),
             currentSyncAtMillis = 6_000L,
         )
 
@@ -139,15 +139,4 @@ class ManualSyncEngineEvidenceMapTest {
         )
     }
 
-    private class UnusedGateway : CollectionGateway {
-        override fun readCollection(settings: RecordsSyncModels.Settings): RecordsSyncModels.CollectionSnapshot {
-            throw AnkiDroidGateway.SyncFailure.permanent("not used in this test")
-        }
-
-        override fun removeArchivedSuspendedCards(
-            snapshot: RecordsSyncModels.CollectionSnapshot,
-        ): AnkiDroidGateway.RemovalSummary {
-            throw AssertionError("not used in this test")
-        }
-    }
 }

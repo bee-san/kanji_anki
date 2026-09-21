@@ -49,7 +49,13 @@ jobs:
         uses: ./.github/actions/setup-android-sdk
 
       - name: Build debug and androidTest APKs
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --parallel -Dorg.gradle.parallel=true
+        run: >-
+          ./gradlew
+          :provider-ankidroid:assembleDebugAndroidTest
+          :app:assembleDebug
+          :app:assembleDebugAndroidTest
+          --parallel
+          -Dorg.gradle.parallel=true
 
       - name: Cache pinned AnkiDroid APK
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
@@ -141,6 +147,10 @@ jobs:
             ${{ runner.temp }}/ankidroid-fixture-logcat.txt
             ${{ runner.temp }}/ankidroid-fixture-provider-probe.txt
             ${{ runner.temp }}/ankidroid-fixture-instrumentation.txt
+            ${{ runner.temp }}/ankidroid-fixture-provider-instrumentation.txt
+            ${{ runner.temp }}/ankidroid-fixture-app-instrumentation.txt
             ${{ runner.temp }}/ankidroid-retired-lifecycle-*.txt
             app/build/reports/**
             app/build/outputs/androidTest-results/**
+            provider-ankidroid/build/reports/**
+            provider-ankidroid/build/outputs/androidTest-results/**

@@ -3,6 +3,7 @@ package dev.bee.kanjianki.reminders
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.backup.DatabaseBackupScheduler
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
 import dev.bee.kanjianki.receivers.ReceiverAsyncWork
@@ -21,7 +22,12 @@ class BootReminderReceiver internal constructor(
         }
         // Reschedules four subsystems, each opening its own LocalStore; run off the
         // main thread and keep the broadcast alive until it completes.
-        ReceiverAsyncWork.run(this) {
+        ReceiverAsyncWork.run(
+            this,
+            executorProvider = {
+                requireNotNull(context).requireKaniContainer().maintenanceExecutor
+            },
+        ) {
             handle(context, action, actions)
         }
     }
@@ -37,9 +43,11 @@ class BootReminderReceiver internal constructor(
     companion object {
         private val ANDROID_RESCHEDULE_ACTIONS = RescheduleActions { context ->
             val receiverContext = context!!
-            ReminderScheduler.schedule(receiverContext)
-            AutoSyncScheduler.schedule(receiverContext)
-            AutoUpdateScheduler.schedule(receiverContext)
+            receiverContext.requireKaniContainer().openLocalStore().use { store ->
+                ReminderScheduler.schedule(receiverContext, store)
+                AutoSyncScheduler.schedule(receiverContext, store, store.autoSyncSettings())
+                AutoUpdateScheduler.schedule(receiverContext, store)
+            }
             DatabaseBackupScheduler.schedule(receiverContext)
         }
 

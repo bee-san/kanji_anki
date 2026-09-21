@@ -3,8 +3,8 @@ package dev.bee.kanjianki.widget
 import android.content.Context
 import android.content.Intent
 import androidx.test.core.app.ApplicationProvider
-import dev.bee.kanjianki.MainActivity
-import dev.bee.kanjianki.MainActivityBase
+import dev.bee.kanjianki.host.KaniHostActivity
+import dev.bee.kanjianki.host.KaniLaunchIntents
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -25,11 +25,11 @@ class KaniWidgetLaunchTest {
             KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 3),
         )
 
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
-        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+        assertTrue(intent.getBooleanExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STATS))
     }
 
     @Test
@@ -39,11 +39,11 @@ class KaniWidgetLaunchTest {
             KaniWidgetSnapshot(KaniWidgetState.NOTHING_DUE),
         )
 
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STATS))
     }
 
     @Test
@@ -55,9 +55,9 @@ class KaniWidgetLaunchTest {
         ).forEach { state ->
             val intent = kaniWidgetLaunchIntent(context, KaniWidgetSnapshot(state))
 
-            assertEquals(MainActivity::class.java.name, intent.component?.className)
-            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
-            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+            assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
+            assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
+            assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STATS))
             assertTrue(intent.extras?.keySet().orEmpty().isEmpty())
         }
     }
@@ -66,10 +66,10 @@ class KaniWidgetLaunchTest {
     fun bodyTapOpensHomeWithTaskReuseFlagsAndNeverForcesStudy() {
         val intent = kaniWidgetHomeIntent(context)
 
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
     }
 
     @Test
@@ -89,12 +89,12 @@ class KaniWidgetLaunchTest {
     fun focusDetailsTapCarriesOnlyExactGlyphAndTaskReuseFlags() {
         val intent = kaniFocusDetailIntent(context, "学")
 
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
-        assertEquals("学", intent.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
+        assertEquals("学", intent.getStringExtra(KaniLaunchIntents.EXTRA_OPEN_KANJI_DETAIL))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STATS))
     }
 
     @Test
@@ -104,32 +104,32 @@ class KaniWidgetLaunchTest {
             KaniWidgetSnapshot(KaniWidgetState.DUE_NOW, dueCount = 1),
         )
 
-        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STUDY, false))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL))
+        assertTrue(intent.getBooleanExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY, false))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_KANJI_DETAIL))
     }
 
     @Test
     fun heatmapTapOpensStatsWithTaskReuseFlags() {
         val intent = kaniWidgetStatsIntent(context)
 
-        assertEquals(MainActivity::class.java.name, intent.component?.className)
+        assertEquals(KaniHostActivity::class.java.name, intent.component?.className)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP != 0)
         assertTrue(intent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
-        assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
-        assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+        assertTrue(intent.getBooleanExtra(KaniLaunchIntents.EXTRA_OPEN_STATS, false))
+        assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
     }
 
     @Test
     fun activityHistoryAndEmptyHistoryOpenStatsButUnavailableStatesOpenHome() {
         listOf(ActivityWidgetState.HISTORY, ActivityWidgetState.NO_HISTORY).forEach { state ->
             val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
-            assertTrue(intent.getBooleanExtra(MainActivityBase.EXTRA_OPEN_STATS, false))
-            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+            assertTrue(intent.getBooleanExtra(KaniLaunchIntents.EXTRA_OPEN_STATS, false))
+            assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
         }
         listOf(ActivityWidgetState.NOT_SET_UP, ActivityWidgetState.ERROR).forEach { state ->
             val intent = kaniActivityLaunchIntent(context, ActivityWidgetSnapshot(state))
-            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STATS))
-            assertFalse(intent.hasExtra(MainActivityBase.EXTRA_OPEN_STUDY))
+            assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STATS))
+            assertFalse(intent.hasExtra(KaniLaunchIntents.EXTRA_OPEN_STUDY))
         }
     }
 }

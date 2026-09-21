@@ -194,6 +194,67 @@ class ProviderCardPolicyTest {
         assertTrue(ProviderCardPolicy.shouldReportCardProgress(100, 1500))
     }
 
+    /**
+     * Kani's suspension rule is deliberately wider than Anki's own `queue == -1`:
+     * a buried card is not active study material either, and counting one as
+     * mature support would credit repair for a kanji the learner is not shown.
+     */
+    @Test
+    fun anyNegativeQueueCountsAsSuspended() {
+        assertFalse(ProviderCardPolicy.isSuspendedQueue(0L))
+        assertFalse(ProviderCardPolicy.isSuspendedQueue(1L))
+        assertFalse(ProviderCardPolicy.isSuspendedQueue(2L))
+        assertTrue(ProviderCardPolicy.isSuspendedQueue(-1L))
+        assertTrue(ProviderCardPolicy.isSuspendedQueue(-2L))
+        assertTrue(ProviderCardPolicy.isSuspendedQueue(-3L))
+    }
+
+    /** One card per note: the front template only, or a note double-counts. */
+    @Test
+    fun onlyTheFrontTemplateOrdinalIsAccepted() {
+        assertTrue(ProviderCardPolicy.isAcceptedTemplateOrd(0L))
+        assertFalse(ProviderCardPolicy.isAcceptedTemplateOrd(1L))
+        assertFalse(ProviderCardPolicy.isAcceptedTemplateOrd(2L))
+        assertFalse(ProviderCardPolicy.isAcceptedTemplateOrd(-1L))
+    }
+
+    /**
+     * Anki encodes a sub-day interval as a negative `ivl` meaning seconds. Passed
+     * through it would be read as a negative *day* count, and maturity compares
+     * days against a positive threshold — so a card answered minutes ago would
+     * sort as further from mature than one at a genuine long interval.
+     */
+    @Test
+    fun subDayIntervalsFloorToZeroDays() {
+        assertEquals(30, ProviderCardPolicy.intervalDays(30L))
+        assertEquals(1, ProviderCardPolicy.intervalDays(1L))
+        assertEquals(0, ProviderCardPolicy.intervalDays(0L))
+        assertEquals(0, ProviderCardPolicy.intervalDays(-600L))
+        assertEquals(0, ProviderCardPolicy.intervalDays(Long.MIN_VALUE))
+        assertEquals(Int.MAX_VALUE, ProviderCardPolicy.intervalDays(Int.MAX_VALUE.toLong()))
+        assertEquals(Int.MAX_VALUE, ProviderCardPolicy.intervalDays(Long.MAX_VALUE))
+    }
+
+    /** A wrapped counter would read as a negative number of lapses. */
+    @Test
+    fun countersFloorAtZeroAndSaturateAtTheTop() {
+        assertEquals(7, ProviderCardPolicy.counter(7L))
+        assertEquals(0, ProviderCardPolicy.counter(0L))
+        assertEquals(0, ProviderCardPolicy.counter(-5L))
+        assertEquals(0, ProviderCardPolicy.counter(Long.MIN_VALUE))
+        assertEquals(Int.MAX_VALUE, ProviderCardPolicy.counter(Long.MAX_VALUE))
+    }
+
+    /** `queue` and `due` keep their sign, because the sign carries meaning. */
+    @Test
+    fun signedValuesKeepTheirSignAndSaturateAtBothBounds() {
+        assertEquals(500, ProviderCardPolicy.signed(500L))
+        assertEquals(0, ProviderCardPolicy.signed(0L))
+        assertEquals(-2, ProviderCardPolicy.signed(-2L))
+        assertEquals(Int.MIN_VALUE, ProviderCardPolicy.signed(Long.MIN_VALUE))
+        assertEquals(Int.MAX_VALUE, ProviderCardPolicy.signed(Long.MAX_VALUE))
+    }
+
     private fun repeatText(value: String, count: Int): String = buildString(value.length * count) {
         repeat(count) {
             append(value)

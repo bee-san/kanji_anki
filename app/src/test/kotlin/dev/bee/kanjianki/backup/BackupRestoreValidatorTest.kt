@@ -46,7 +46,7 @@ class BackupRestoreValidatorTest {
         assertEquals(BackupRestorePolicy.CopyId.READY, result.policy.copyId)
         assertNotNull(result.validatedBackup)
         assertTrue(result.validatedBackup!!.databaseFile.isFile)
-        assertEquals("fixture.db.gz", result.validatedBackup!!.sourceName)
+        assertEquals("fixture.db.gz", result.validatedBackup.sourceName)
         assertFalse(orphan.exists())
         assertEquals(1, spaceProbeCalls)
     }

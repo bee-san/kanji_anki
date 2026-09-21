@@ -23,7 +23,8 @@ the follow-up change set, and the remaining open design decisions.
 ## 1. System Overview
 
 Through database version 30, the scheduler was a single ladder state machine
-layered on top of an FSRS-6 spaced-repetition engine. Every persisted study
+layered on top of an FSRS spaced-repetition engine (FSRS-6 at the time;
+FSRS-7 today, see section 5). Every persisted study
 item had exactly one current **rung** (which study skill was being drilled) and
 one **phase** (where the card was in Anki-style
 learning/review/relearning semantics). Database version 31 retains these
@@ -34,7 +35,7 @@ Module layout:
 
 | Module | Role | Key files |
 | --- | --- | --- |
-| `fsrs-java` | Pure FSRS-6 memory math (stability, difficulty, retrievability, intervals) | `DefaultFsrsEngine.kt`, `FsrsParameters.kt` |
+| `bee-fsrs` | Pure memory math (stability, difficulty, retrievability, intervals). Vendored, not editable here | `DefaultFsrsEngine.kt`, `FsrsParameters.kt` |
 | `core` | Scheduler: queue seeding, session selection, review transitions, ladder rules, settings models | `BridgeScheduler.kt`, `ReviewTransitionEngine.kt`, `StudyQueueSeeder.kt`, `StudySessionSelector.kt`, `StudyLadderRules.kt`, `RecordsBase.kt` |
 | `domain` | Rating wire names | `StudyRatings.kt` |
 | `writing-core` | Handwriting analysis and rating mapping for the writing rung | `WritingAnalysisEngine.kt`, `WritingRatingMapper.kt` |
@@ -410,11 +411,44 @@ engine, but is unreachable from the current UI (open decision D1).
 
 ---
 
-## 5. The FSRS Engine (`fsrs-java`)
+## 5. The FSRS Engine (`bee-fsrs`)
 
-`DefaultFsrsEngine` implements FSRS with the 21-parameter model
-(FSRS-6-style, including the trainable decay in `values[20]`;
-`FsrsParameters.kt:60-70` holds the default weights).
+`DefaultFsrs7Engine` implements **FSRS-7** with the 35-parameter model:
+fractional intervals, a two-power-law forgetting curve, and a continuous
+long/short-term stability blend. `Fsrs7Parameters.kt` holds the default weights.
+
+This module is a **vendored checkout** of
+[`bee-san/bee-fsrs`](https://github.com/bee-san/bee-fsrs) 0.2.0, shared with BeeCode.
+Do not change the mathematics here — change it upstream and re-vendor, or the two
+consumers silently diverge. `FsrsVendoringTest` in `:core` asserts this copy is the
+version it claims to be, and which of the two engines the scheduler reaches for.
+
+FSRS-6 (`DefaultFsrsEngine`, 21 parameters) is still vendored — the checkout is
+byte-identical to upstream, which keeps both — but nothing in Kani reaches for it.
+It remains covered by its own 38 reference vectors in `:bee-fsrs`.
+
+Three FSRS-7 properties cross the engine boundary into `:core`:
+
+- **Elapsed time is fractional days.** `FsrsElapsedTime` is the single definition,
+  used by the review context, the adaptive engine, and the fitter's training-data
+  query. Those were three hand-copied integer versions before the switch, one
+  annotated "exact mirror of `ReviewContext.elapsedReviewDays()`". Do not
+  reintroduce a copy: the fitter training on a different elapsed time than the
+  scheduler schedules with would only show up as a slightly wrong loss.
+- **Scheduled intervals are floored at one day, in `LatestFsrsAdapter`.** FSRS-6
+  clamped this inside the engine and FSRS-7 correctly does not — an engine should
+  answer "when does retrievability reach the target" without assuming what the
+  caller does with sub-day answers. Kani's `review` phase is a day-granularity
+  long-term queue; sub-day repetition is already learning/relearning steps, which
+  are practice-only. Without the floor a lapsed card would schedule seconds out and
+  could demote a rung inside one session.
+- **Memory state carried over without migration.** `FsrsMemoryState` is shared by
+  both engines, so persisted stability/difficulty and AnkiDroid-seeded admission
+  state stayed readable. Intervals did move, because the mathematics applied to that
+  state changed.
+
+`bee-fsrs/PROVENANCE.md` records the pinned upstream commit and the byte-identity
+check.
 
 Key formulas (`DefaultFsrsEngine.kt`):
 
@@ -446,7 +480,7 @@ retention ∈ [0.01, 0.99], elapsed ≥ 0) and two operations:
 
 Correctness is pinned by golden/parity test resources
 (`core/src/test/resources/dev/bee/kanjianki/core/scheduler-goldens/`,
-`scheduler-parity/`) and `fsrs-java` unit tests.
+`scheduler-parity/`) and `bee-fsrs` unit tests.
 
 ### 5.1 Scheduler parameters and retention
 
@@ -464,12 +498,21 @@ stored under `scheduler_*` settings keys (`LocalStoreStudySettings.kt`).
 ### 5.2 Optional personalized weights (Goals 92–93 / D-S7)
 
 `BridgeScheduler.withWeights` is the single production construction seam.
-With no stored vector it follows the exact pre-personalization default path;
-with a vector it validates all 21 finite values through `FsrsParameters.of`
-and constructs the same `LatestFsrsAdapter` around that engine. The setting
+With no stored vector it follows the exact default path; with a vector it
+validates all 35 finite values through `Fsrs7Parameters.of` and constructs the
+same `LatestFsrsAdapter` around that engine. The setting
 `scheduler_fsrs_weights` is a comma-separated, full-precision string (never
 `SettingsRepository.putDouble`, which rounds to four decimals). Invalid
 stored data produces one sanitized diagnostic and fails open to defaults.
+
+A stored 21-value FSRS-6 vector is invalid by that definition, and deliberately
+so: 21 weights fitted for a single power law do not describe FSRS-7's blended
+pair, so padding or reinterpreting them would schedule against a parameter set
+no optimizer ever validated. Anyone who had opted into personalization before
+the engine switch therefore returns to defaults and the weekly fitter re-earns
+a vector from the history already on the device. This is the one user-visible
+cost of the switch, and `FsrsPersonalizationTest` pins it rather than leaving
+it to the generic wrong-length case.
 
 Every scheduler consumer uses that seam: foreground reviews, sync queue
 seeding, and ladder forecast simulation. Consequently personalized weights
@@ -483,9 +526,10 @@ groups `review_log` by `(kanji, answer_signature, task_type)`, drops legacy
 rows without rich memory/phase data, and excludes learning/relearning
 practice from prediction loss. The first `review` row's exact
 `memory_before` is the sequence seed (also the documented approximation for
-evidence-seeded items); elapsed whole days mirror
-`ReviewContext.elapsedReviewDays`, including zero-day short-term samples.
-`FsrsReplayEvaluator` replays ratings through the production FSRS-6 engine
+evidence-seeded items); elapsed *fractional* days come from the shared
+`FsrsElapsedTime`, the same helper the scheduler uses, so the fitter cannot
+optimize against a different elapsed time than production schedules with.
+`FsrsReplayEvaluator` replays ratings through the production FSRS-7 engine
 and scores binary recall log-loss. `FsrsWeightFitter` uses bounded,
 deterministic finite-difference Adam with an oldest-80% / newest-20%
 time-ordered split and early stopping.
@@ -1202,7 +1246,8 @@ contextual-reading core or its failure evidence.
   ladder legible to users.
 - **I3 — FSRS parameter optimization. (Closed by Goal 93.)** The opt-in
   on-device fitter now replays real `review`-phase histories with the
-  production FSRS-6 engine, uses bounded finite-difference Adam and a
+  production FSRS engine (FSRS-7 since the engine switch), uses bounded
+  finite-difference Adam and a
   time-ordered 80/20 split, and adopts only with at least 400 training samples
   (about 500 total samples) and a ≥1% validation log-loss improvement over
   defaults. The full-precision

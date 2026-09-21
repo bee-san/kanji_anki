@@ -184,8 +184,8 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertTrue(session!!.writingRequired)
-        assertEquals("write_kanji", session!!.taskType)
+        assertTrue(session.writingRequired)
+        assertEquals("write_kanji", session.taskType)
     }
 
     @Test
@@ -204,13 +204,13 @@ public class BridgeSchedulerTest {
                 RecordsBase.StudyLadderSettings.defaults()
         )!!
         assertNotNull(session)
-        assertEquals("keep-token", session!!.token)
-        assertEquals("keep-token", session!!.item!!.activeToken)
+        assertEquals("keep-token", session.token)
+        assertEquals("keep-token", session.item!!.activeToken)
         assertSame(existing, scheduler.targetedStudyItem(listOf(existing), "裂", 1234L, RecordsBase.StudyLadderSettings.defaults()))
-        assertEquals(RecordsBase.LadderRung.WORD_READING, session!!.item!!.rung)
-        assertEquals("word_reading", session!!.taskType)
-        assertEquals("split", session!!.prompt)
-        assertFalse(session!!.writingRequired)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item.rung)
+        assertEquals("word_reading", session.taskType)
+        assertEquals("split", session.prompt)
+        assertFalse(session.writingRequired)
     }
 
     @Test
@@ -225,20 +225,20 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
-        assertEquals("new", session!!.item!!.state)
-        assertEquals(1234L, session!!.item!!.dueAtMillis)
-        assertEquals(1234L, session!!.item!!.createdAtMillis)
+        assertEquals("謎", session.item!!.kanji)
+        assertEquals("new", session.item.state)
+        assertEquals(1234L, session.item.dueAtMillis)
+        assertEquals(1234L, session.item.createdAtMillis)
         // New default order (Goal 65): with kanji_meaning disabled and no
         // similar-kanji content, the nearest enabled rung by distance is
         // font_meaning (the content-less similar_kanji directly below is
         // unavailable, so the mapping falls to the closer higher rung).
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, session!!.item!!.rung)
-        assertEquals("font_meaning", session!!.taskType)
-        assertEquals("local reason", session!!.prompt)
-        assertFalse(session!!.writingRequired)
-        assertTrue(session!!.token.startsWith("謎-"))
-        assertEquals(session!!.token, session!!.item!!.activeToken)
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, session.item.rung)
+        assertEquals("font_meaning", session.taskType)
+        assertEquals("local reason", session.prompt)
+        assertFalse(session.writingRequired)
+        assertTrue(session.token.startsWith("謎-"))
+        assertEquals(session.token, session.item.activeToken)
     }
 
     @Test
@@ -261,9 +261,9 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
-        assertEquals("kanji_meaning", session!!.taskType)
-        assertFalse(session!!.writingRequired)
+        assertEquals("謎", session.item!!.kanji)
+        assertEquals("kanji_meaning", session.taskType)
+        assertFalse(session.writingRequired)
     }
 
     @Test
@@ -793,7 +793,7 @@ public class BridgeSchedulerTest {
         )
         var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(result.items, rows, 2000L, 0L, null, difficultySort)!!
         assertNotNull(session)
-        assertEquals("難", session!!.item!!.kanji)
+        assertEquals("難", session.item!!.kanji)
     }
 
     @Test
@@ -815,7 +815,7 @@ public class BridgeSchedulerTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, active.get(0).rung)
         assertEquals(1, scheduler.dueCount(items, rows, 1000L))
         assertNotNull(session)
-        assertEquals(RecordsBase.LadderRung.WORD_READING, session!!.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.WORD_READING, session.item!!.rung)
     }
 
     @Test
@@ -953,7 +953,7 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("裂", session!!.item!!.kanji)
+        assertEquals("裂", session.item!!.kanji)
     }
 
     @Test
@@ -1019,12 +1019,18 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 dueAt
         )
+        // matureIntervalDays ceils the real interval, which under FSRS-7 is fractional:
+        // ~17.76 days here, so 18. The due time keeps the fraction rather than snapping
+        // to the whole-day multiple it used to equal exactly.
         assertEquals(18, result.item.matureIntervalDays)
-        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis)
-        // Persistence now keeps full FSRS precision (was rounded to 2 dp). Assert with a
-        // tolerance instead of the previously-rounded 18.01 / 5.99 literals.
-        assertEquals(18.005, result.item.stability, 0.01)
-        assertEquals(5.99, result.item.difficulty, 0.01)
+        assertTrue(
+            "due time should keep FSRS-7's fractional interval",
+            result.item.dueAtMillis > dueAt + 17L * BridgeScheduler.DAY &&
+                result.item.dueAtMillis < dueAt + 18L * BridgeScheduler.DAY,
+        )
+        // Persistence keeps full FSRS precision (it was once rounded to 2 dp).
+        assertEquals(12.3806, result.item.stability, 0.01)
+        assertEquals(5.968, result.item.difficulty, 0.01)
     }
 
     @Test
@@ -1059,13 +1065,13 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 now
         )
-        assertEquals(9, adapter.elapsedDays)
+        assertEquals(9.0, adapter.elapsedDays, 0.0)
         assertEquals(now + 3L * BridgeScheduler.DAY, result.item.dueAtMillis)
         assertEquals(3, result.item.matureIntervalDays)
     }
 
     @Test
-    public fun reviewTransitionFloorsFractionalElapsedDaysForFsrs() {
+    public fun reviewTransitionPassesFractionalElapsedDaysToFsrs() {
         var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(4L * BridgeScheduler.DAY)
         var scheduler: BridgeScheduler = BridgeScheduler(adapter)
         var halfDay: Long = BridgeScheduler.DAY / 2L
@@ -1093,7 +1099,10 @@ public class BridgeSchedulerTest {
                 HashSet(),
                 now
         )
-        assertEquals(9, adapter.elapsedDays)
+        // 9.5, not 9. This test used to assert the floor; FSRS-7 takes fractional
+        // days, and dropping the half day here would discard the sub-day resolution
+        // at the boundary rather than in the engine.
+        assertEquals(9.5, adapter.elapsedDays, 0.0)
         assertEquals(now + 4L * BridgeScheduler.DAY, result.item.dueAtMillis)
         assertEquals(4, result.item.matureIntervalDays)
     }
@@ -1131,7 +1140,7 @@ public class BridgeSchedulerTest {
                 now
         )
 
-        assertEquals(7, adapter.elapsedDays)
+        assertEquals(7.5, adapter.elapsedDays, 0.0)
         assertEquals(now, result.item.kanjiMeaningMemory.lastReviewedAtMillis)
     }
 
@@ -1196,7 +1205,11 @@ public class BridgeSchedulerTest {
                 dueAt
         )
         assertEquals(18, result.item.matureIntervalDays)
-        assertEquals(dueAt + 18L * BridgeScheduler.DAY, result.item.dueAtMillis)
+        assertTrue(
+            "due time should keep FSRS-7's fractional interval",
+            result.item.dueAtMillis > dueAt + 17L * BridgeScheduler.DAY &&
+                result.item.dueAtMillis < dueAt + 18L * BridgeScheduler.DAY,
+        )
         assertEquals(18, result.item.fontMeaningMemory.matureIntervalDays)
     }
 
@@ -1341,7 +1354,7 @@ public class BridgeSchedulerTest {
         assertEquals(1, activeItems.size)
         assertEquals("提", activeItems.get(0).kanji)
         assertNotNull(session)
-        assertEquals("提", session!!.item!!.kanji)
+        assertEquals("提", session.item!!.kanji)
     }
 
     @Test
@@ -1727,7 +1740,7 @@ public class BridgeSchedulerTest {
                 1000L
         )!!
         assertNotNull(session)
-        assertEquals("学", session!!.item!!.kanji)
+        assertEquals("学", session.item!!.kanji)
     }
 
     @Test
@@ -1804,7 +1817,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -1831,7 +1844,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -1901,7 +1914,7 @@ public class BridgeSchedulerTest {
         )!!
         assertNotNull(session)
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, session.item!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, session.item.rung)
     }
 
     @Test
@@ -2061,8 +2074,8 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         assertNotNull(session)
-        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, session!!.item!!.rung)
-        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session!!.taskType)
+        assertEquals(RecordsBase.LadderRung.SIMILAR_KANJI, session.item!!.rung)
+        assertEquals(BridgeScheduler.TASK_SIMILAR_KANJI, session.taskType)
     }
 
     @Test
@@ -2093,7 +2106,7 @@ public class BridgeSchedulerTest {
                 ladder
         )!!
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
-                session!!.item!!.withToken("meaning-pass"),
+                session.item!!.withToken("meaning-pass"),
                 RecordsSchedulerModels.ReviewRequest("裂", "meaning-pass", "good", false, false, false, 0),
                 HashSet(),
                 1000L,
@@ -2182,7 +2195,7 @@ public class BridgeSchedulerTest {
                 listOf(ahead), rows, now, 15L * 60_000L, null
         )!!
         assertNotNull(session)
-        assertEquals("謎", session!!.item!!.kanji)
+        assertEquals("謎", session.item!!.kanji)
     }
 
     @Test
@@ -2251,7 +2264,7 @@ public class BridgeSchedulerTest {
                 listOf(dueIn5, dueNow), rows, now, 15L * 60_000L, null
         )!!
         assertNotNull(session)
-        assertEquals("裂", session!!.item!!.kanji)
+        assertEquals("裂", session.item!!.kanji)
     }
 
     @Test
@@ -2365,14 +2378,14 @@ public class BridgeSchedulerTest {
             return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
         }
 
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
+        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Double, targetRetention: Double): KaniFsrsReviewResult {
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }
     }
 
     private class RecordingFsrsAdapter : KaniFsrsAdapter {
         private val reviewIntervalMillis: Long
-        var elapsedDays: Int = -1
+        var elapsedDays: Double = -1.0
         constructor(reviewIntervalMillis: Long) {
             this.reviewIntervalMillis = reviewIntervalMillis
         }
@@ -2381,7 +2394,7 @@ public class BridgeSchedulerTest {
             return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
         }
 
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
+        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Double, targetRetention: Double): KaniFsrsReviewResult {
             this.elapsedDays = elapsedDays
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }

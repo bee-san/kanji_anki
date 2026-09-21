@@ -390,7 +390,7 @@ launch_screenshot_route() {
   local scroll_position="$3"
   local scroll_y="$4"
   adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
-  local -a start_args=(am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}")
+  local -a start_args=(am start -W -n "${package_name}/.host.KaniHostActivity" --es "${screen_route_extra}" "${launch_target}")
   if [ -n "${theme_choice}" ]; then
     start_args+=(--es "${screen_theme_extra}" "${theme_choice}")
   fi

@@ -1,0 +1,192 @@
+name: Desktop CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  classify:
+    name: Classify desktop impact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      run_desktop: ${{ steps.impact.outputs.run_desktop }}
+      reason: ${{ steps.impact.outputs.reason }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: impact
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          readonly zero_sha='0000000000000000000000000000000000000000'
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
+          elif [ "${EVENT_NAME}" = "pull_request" ]; then
+            git diff --name-only --diff-filter=ACDMRT -z "${BASE_SHA}" "${HEAD_SHA}" \
+              | python3 ci/scripts/classify_desktop_ci.py --null >> "${GITHUB_OUTPUT}"
+          elif [ "${BEFORE_SHA}" = "${zero_sha}" ] \
+            || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            python3 ci/scripts/classify_desktop_ci.py --force run >> "${GITHUB_OUTPUT}"
+          else
+            git diff --name-only --diff-filter=ACDMRT -z "${BEFORE_SHA}" "${HEAD_SHA}" \
+              | python3 ci/scripts/classify_desktop_ci.py --null >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Report selected lane
+        env:
+          REASON: ${{ steps.impact.outputs.reason }}
+          RUN_DESKTOP: ${{ steps.impact.outputs.run_desktop }}
+        run: echo "run_desktop=${RUN_DESKTOP} - ${REASON}"
+
+  desktop_matrix:
+    name: Desktop ${{ matrix.host_id }} (${{ matrix.runner_arch }})
+    needs: classify
+    if: needs.classify.outputs.run_desktop == 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_id: linux
+            runner: ubuntu-24.04
+            runner_arch: X64
+            gradle_command: xvfb-run -a ./gradlew
+          - host_id: windows
+            runner: windows-2025
+            runner_arch: X64
+            gradle_command: ./gradlew.bat
+          - host_id: macos
+            runner: macos-15
+            runner_arch: ARM64
+            gradle_command: ./gradlew
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
+
+      # The exact patch version matters, not just '17'. This JDK's runtime is what
+      # jpackage copies into the installed application, so it ships to users and is
+      # release evidence. `java-version: '17'` would let a runner image bump change the
+      # shipped JVM silently. Keep in lockstep with `KaniPackagingJdk`, which fails the
+      # build when the resolved JDK is not this exact build; see
+      # docs/desktop-packaging-jdk.md.
+      - name: Set up the pinned packaging Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
+        with:
+          distribution: temurin
+          java-version: '17.0.19+10'
+
+      - name: Set up Gradle without shared state
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-disabled: true
+
+      - name: Install Android SDK packages
+        uses: ./.github/actions/setup-android-sdk
+
+      - name: Confirm runner architecture
+        env:
+          EXPECTED_ARCH: ${{ matrix.runner_arch }}
+        run: >-
+          python -c "import os;
+          actual = os.environ['RUNNER_ARCH'];
+          expected = os.environ['EXPECTED_ARCH'];
+          assert actual == expected, f'expected {expected}, got {actual}'"
+
+      - name: Run strict desktop gate
+        run: >-
+          ${{ matrix.gradle_command }}
+          ciDesktop ciDesktopPackage
+          --dependency-verification=strict
+          --no-daemon --no-build-cache
+
+      # Kept, not discarded: `ciDesktopPackage` above already built this host's
+      # installer, so retaining it turns the PR into the place a build is downloaded
+      # from. No `if:` guard is needed or wanted: a step runs only when prior steps
+      # succeeded, so a run that failed its gate uploads nothing — and an explicit
+      # condition here trips the contract test that keeps the strict gate block free
+      # of `if:`, which exists so the gate cannot be quietly made skippable.
+      - name: Upload the installable package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: kani-desktop-${{ matrix.host_id }}
+          # All three format directories are listed for every host; jpackage builds
+          # only the current OS's, so the other two simply do not exist. That is why
+          # this warns rather than errors on a miss, unlike a single-format upload.
+          path: |
+            desktop-app/build/compose/binaries/main/deb/*.deb
+            desktop-app/build/compose/binaries/main/msi/*.msi
+            desktop-app/build/compose/binaries/main/dmg/*.dmg
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload failed desktop diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: desktop-diagnostics-${{ matrix.host_id }}
+          path: |
+            desktop-app/build/compose/logs/
+            **/build/test-results/test/
+            **/build/reports/tests/test/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Confirm tracked change scope
+        run: python ci/scripts/assert_verification_metadata_scope.py
+
+      - name: Assert strict mode did not mutate verification metadata
+        run: git diff --exit-code -- gradle/verification-metadata.xml
+
+  desktop_confidence_gate:
+    name: Desktop confidence gate
+    needs:
+      - classify
+      - desktop_matrix
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+
+    steps:
+      - name: Confirm required desktop jobs passed
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          MATRIX_RESULT: ${{ needs.desktop_matrix.result }}
+          RUN_DESKTOP: ${{ needs.classify.outputs.run_desktop }}
+        run: |
+          set -euo pipefail
+          test "${CLASSIFY_RESULT}" = "success"
+          if [ "${RUN_DESKTOP}" = "true" ]; then
+            test "${MATRIX_RESULT}" = "success"
+          else
+            test "${MATRIX_RESULT}" = "skipped"
+          fi

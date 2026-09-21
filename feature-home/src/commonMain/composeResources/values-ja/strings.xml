@@ -1,0 +1,139 @@
+<resources>
+    <!--
+      Japanese Home and onboarding copy, carried over from
+      `HomeImportOnboardingPolicy` and `HomeTextCopy` in :core so the Android host's
+      Japanese behavior is unchanged. Where the original named AnkiDroid the wording
+      is generic here and the host supplies the specific sentence.
+
+      Japanese has one plural form, so each `plurals` entry carries only `other`.
+    -->
+
+    <string name="onboarding_connect_body">コレクションを接続してから、戻って漢字を同期してください。</string>
+    <string name="onboarding_connect_action">コレクションを接続</string>
+
+    <string name="onboarding_authorize_body">Kaniがコレクションを読み取るには権限が必要です。データは端末内にとどまります。</string>
+    <string name="onboarding_authorize_action">アクセスを許可</string>
+
+    <string name="onboarding_choose_source_body">同期前にインポート元を選んでください。</string>
+    <string name="onboarding_choose_source_action">インポート設定を確認</string>
+
+    <string name="onboarding_ready_action">カードを同期</string>
+
+    <string name="onboarding_recover_authorization_body">アクセスが拒否されたため、Kaniはコレクションを読み取れませんでした。アクセスを許可してから、もう一度同期してください。</string>
+    <string name="onboarding_recover_authorization_action">アクセスを修正</string>
+
+    <string name="onboarding_recover_sync_body">前回の同期に失敗しました: %1$s。インポート元設定を確認してから、もう一度試してください。</string>
+    <string name="onboarding_recover_sync_action">もう一度同期</string>
+
+    <string name="onboarding_synced_action">もう一度同期</string>
+
+    <plurals name="onboarding_synced_body">
+        <item quantity="other">前回の同期で%1$d件の漢字をインポートしました。</item>
+    </plurals>
+    <string name="onboarding_source_and_model">ノートタイプ %1$s。ソース: %2$s。</string>
+    <string name="onboarding_source_query">クエリ: %1$s。</string>
+    <string name="onboarding_source_none">なし</string>
+
+    <string name="import_source_active_cards">アクティブカード</string>
+    <string name="import_source_suspended_cards">停止中カード</string>
+    <string name="import_source_tagged_cards">タグ付きカード</string>
+    <string name="import_source_weak_cards">弱いカード</string>
+    <string name="import_source_browser_query">ブラウザ検索</string>
+
+    <plurals name="onboarding_repaired_tagging">
+        <item quantity="other">この同期では、修復済みの漢字%1$d件もコレクションでタグ付けします。</item>
+    </plurals>
+
+    <string name="sync_failure_fallback">コレクションのアクセス権を確認してから、もう一度試してください。</string>
+
+    <string name="sync_confirm_title">コレクションを同期</string>
+    <string name="sync_confirm_body">Kaniは停止中の%1$sカードを端末内に保持します。アクティブカードも必要な場合はオンにしてください。</string>
+    <string name="sync_confirm_action">カードを同期</string>
+    <string name="sync_cancel">キャンセル</string>
+
+    <string name="sync_in_progress_title">コレクションを同期中</string>
+    <string name="sync_cancel_action">同期を停止</string>
+    <string name="sync_already_running">すでに同期が実行中です。</string>
+
+    <string name="note_type_title">ノートタイプ</string>
+    <string name="note_type_label">%1$s (%2$s)</string>
+    <plurals name="note_type_field_count">
+        <item quantity="other">%1$d フィールド</item>
+    </plurals>
+    <string name="note_type_too_few_fields">このノートタイプはフィールドが少なすぎて、Kaniがインポートできません。</string>
+
+    <string name="field_role_expression">単語</string>
+    <string name="field_role_reading">読み</string>
+    <string name="field_role_meaning">意味</string>
+    <string name="field_role_sentence">例文</string>
+    <string name="field_role_frequency">頻度</string>
+    <string name="field_role_frequency_sort">頻度ソート</string>
+
+    <string name="field_role_required">必須</string>
+    <string name="field_role_optional">任意</string>
+    <string name="field_unmapped">未設定</string>
+    <string name="field_missing_required">同期する前に%1$sのフィールドを選んでください。</string>
+    <string name="field_stale">%1$sは、このノートタイプに存在しないフィールドを指しています。</string>
+
+    <string name="provider_status_title">コレクション</string>
+    <string name="provider_status_absent">未接続</string>
+    <string name="provider_status_unauthorized">アクセスが必要</string>
+    <string name="provider_status_ready">接続済み</string>
+
+    <string name="repaired_handoff_title">修復済みの漢字</string>
+    <plurals name="repaired_handoff_body">
+        <item quantity="other">修復済みの漢字%1$d件がコレクションでタグ付けされています。Anki側で検索してカードの停止を解除してください。</item>
+    </plurals>
+    <string name="repaired_handoff_query">tag:kani_repaired is:suspended</string>
+    <string name="repaired_handoff_copy">検索をコピー</string>
+    <string name="repaired_handoff_copied">検索をコピーしました。</string>
+
+    <string name="home_title">カニ</string>
+    <string name="home_metric_sync">同期</string>
+    <string name="home_metric_streak">連続日数</string>
+    <string name="home_metric_focus">集中</string>
+    <string name="home_metric_card_description">ホームの指標カード</string>
+
+    <string name="home_sync_action">コレクションを同期</string>
+    <string name="home_study_action">今すぐ学習</string>
+    <plurals name="home_study_remaining">
+        <item quantity="other">残り%1$d件</item>
+    </plurals>
+
+    <string name="home_today_title">今日</string>
+    <string name="home_deck_overview_title">デッキ概要</string>
+
+    <string name="focus_queue_title">集中キュー</string>
+    <string name="focus_queue_view_all">すべて見る</string>
+    <string name="focus_queue_nothing_imported_title">キューに漢字がありません</string>
+    <string name="focus_queue_nothing_imported_body">コレクションを同期して漢字キューを読み込みます。</string>
+    <string name="focus_queue_nothing_active_title">学習中の漢字はまだありません</string>
+    <string name="focus_queue_nothing_active_body">今すぐ学習すると次の漢字が追加されます。</string>
+    <string name="focus_queue_card_description">%1$sの学習カード、%2$s</string>
+
+    <string name="browse_title">漢字を閲覧</string>
+    <string name="browse_search_hint">漢字、意味、読み、例文を検索</string>
+    <string name="browse_search_action">検索</string>
+    <string name="browse_similar_filter">類似漢字のみ</string>
+    <string name="browse_show_suspended">停止中を表示</string>
+    <string name="browse_result_none">該当なし</string>
+    <string name="browse_result_truncated">最初の%1$d件を表示</string>
+    <plurals name="browse_result_count">
+        <item quantity="other">%1$d件の漢字</item>
+    </plurals>
+    <string name="browse_selection_none">未選択</string>
+    <string name="browse_selection_all">すべて選択済み</string>
+    <string name="browse_selection_partial">%1$d/%2$d件を選択</string>
+    <string name="browse_select_all">すべて選択</string>
+    <string name="browse_deselect_all">すべてクリア</string>
+    <string name="browse_studied_toggle">%1$sを学習対象にする</string>
+    <string name="browse_row_description">%1$sの詳細を開く</string>
+    <string name="browse_suspended_chip">停止中</string>
+    <string name="browse_row_selected">選択済み</string>
+    <string name="browse_row_not_selected">未選択</string>
+    <string name="browse_empty_title">ローカル漢字が見つかりません</string>
+    <string name="browse_empty_body">先にコレクションを同期するか、別の検索を試してください。</string>
+
+    <string name="notice_reduced_fsrs_title">スケジューリング精度の低下</string>
+    <string name="notice_reduced_fsrs_body">このコレクションはFSRSの記憶状態を報告しないため、Kaniは各カードの間隔から推定します。最初の復習の予定が少し異なる場合があります。</string>
+</resources>

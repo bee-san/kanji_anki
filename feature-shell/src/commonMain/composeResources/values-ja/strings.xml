@@ -1,0 +1,42 @@
+<resources>
+    <!--
+      The four labels and the two content descriptions are `NavigationCopy`'s
+      Japanese strings, unchanged. The rest of the shell had no Japanese copy on
+      Android (the Android host has no ja resource qualifier for it), so it is
+      translated here rather than carried over.
+    -->
+    <string name="nav_home">ホーム</string>
+    <string name="nav_study">学習</string>
+    <string name="nav_stats">統計</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_item_description">%1$sタブ</string>
+    <string name="nav_item_description_selected">%1$sタブ、選択中</string>
+
+    <string name="shell_back">戻る</string>
+
+    <string name="shell_loading">読み込み中…</string>
+    <string name="shell_retry">再試行</string>
+    <string name="shell_dismiss">閉じる</string>
+
+    <string name="failure_provider_unavailable">Ankiのコレクションに接続できません。</string>
+    <string name="failure_provider_auth_required">Ankiのコレクションを読む権限が必要です。</string>
+    <string name="failure_configuration">設定がまだ正しくありません。</string>
+    <string name="failure_capability_missing">この端末では利用できません。</string>
+    <string name="failure_transient">失敗しました。もう一度お試しください。</string>
+    <string name="failure_cancelled">キャンセルされました。</string>
+    <string name="failure_conflict">先に他の変更が保存されました。再読み込みしてください。</string>
+    <string name="failure_unknown">問題が発生しました。</string>
+
+    <string name="capability_provider_connectivity">Ankiのコレクションが未接続です。設定から接続してください。</string>
+    <string name="capability_provider_fsrs_memory">この接続ではAnkiのFSRS記憶状態を取得できないため、間隔から習熟度を推定します。</string>
+    <string name="capability_provider_note_tag_write">この接続ではノートのタグを書き込めないため、アーカイブ済み・修復済みの記録はできません。</string>
+    <string name="capability_provider_missing_kanji_write">この接続ではノートを直接追加できません。未収録の漢字はCSVで書き出します。</string>
+    <string name="capability_provider_browser_handoff">ここではAnkiのブラウザを開けません。検索条件をクリップボードにコピーします。</string>
+    <string name="capability_writing_recognition">手書き認識が利用できないため、書き取り練習は省略されます。</string>
+    <string name="capability_tray_presence">このアプリにトレイアイコンはありません。</string>
+    <string name="capability_notifications">ここでは通知を表示できません。</string>
+    <string name="capability_closed_app_scheduling">この端末では、Kaniを開いている間のみリマインダーが通知されます。</string>
+    <string name="capability_secret_persistence">この端末ではAPIキーを安全に保存できないため、起動ごとに入力が必要です。</string>
+    <string name="capability_backup_restore">このバージョンの端末では自動バックアップと復元を利用できません。</string>
+    <string name="capability_update_delivery">ここでは更新をインストールできません。新しいバージョンを手動で入手してください。</string>
+</resources>

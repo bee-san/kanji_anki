@@ -1,0 +1,96 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       | IsTraversalGroup = 'true'
+       | Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       | VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=3714.0, reverseScrolling=false)'
+       | Actions = [ScrollBy, ScrollByOffset]
+       |  |-Node
+       |  | Text = '[How Kani works]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[What Kani reads from AnkiDroid]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Kani reads your note text, card scheduling data, and suspension status through AnkiDroid's content provider. It never modifies your review schedule, card queue, due dates, or deck assignments. The only writes Kani makes to AnkiDroid are note-level tags (kani_archived and kani_repaired) — and those are always manual-confirm-only.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Two core checks]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Every kanji in your deck has two core memories that Kani tracks independently: recognition (can you identify the kanji's meaning?) and contextual reading (can you read it in a real word?). Each core has its own FSRS-scheduled review cycle.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Variants]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Font variation and sentence reading are optional presentations of the same core memories — they keep practice fresh without adding separate scheduler queues. You can enable or disable them in Settings.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Repair tasks]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[When you confuse similar kanji or struggle with a reading, Kani inserts targeted repair tasks inline — similar-kanji discrimination, reading-choice cards, or writing practice. These are practice-only: they help you correct the confusion but don't create separate long-term memories.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Pass, fail, and revalidation]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Pass and Fail are the two study answers. A due Fail updates that core memory once, starts practice-only repair, then rechecks the same core. Strong recognition unlocks contextual reading only after the memory-strength and pass-count gates; contextual reading never demotes back to recognition.]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | Text = '[Backups]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |    Text = '[Kani automatically backs up its database daily with a tiered retention policy (7 daily, 4 weekly). You can also export a fresh snapshot or restore from a backup in Settings > Automation > Backup & restore.]'
+       |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab, selected]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'true'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

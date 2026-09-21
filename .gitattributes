@@ -1,0 +1,36 @@
+# Files whose *bytes* are the contract, not their text.
+#
+# GitHub's Windows runners check out with core.autocrlf=true, so any tracked text file
+# without an explicit rule here arrives with CRLF line endings on that host alone. For a
+# golden fixture that is compared byte-for-byte against something a codec emits, or hashed,
+# that turns a passing gate into a Windows-only failure that reproduces nowhere else --
+# which is exactly how `ReleaseManifestGoldenTest` failed the Desktop CI matrix.
+#
+# Add a fixture here when a test compares its bytes, hashes it, or asserts its length. Do
+# not fix such a failure by normalizing line endings inside the test: the manifest bytes are
+# what a release signature covers, so a test that strips \r would stop checking the thing
+# that actually gets signed.
+gradle/verification-metadata.xml text eol=lf
+branding/kani-app-icon.svg text eol=lf
+
+# Golden fixtures compared byte-for-byte against generated output.
+core/src/test/resources/**/*.txt text eol=lf
+update-core/src/test/resources/**/*.txt text eol=lf
+ci/fixtures/**/*.txt text eol=lf
+
+# Checksum files, whose digests are computed over exact bytes.
+ci/fixtures/**/*.sha256 text eol=lf
+
+# Schema and fixture inputs read by digest-pinning migration tests.
+app/src/test/resources/**/*.sql text eol=lf
+app/src/test/resources/**/*.tsv text eol=lf
+app/src/test/resources/**/*.txt text eol=lf
+app/src/test/resources/**/*.properties text eol=lf
+
+# Reference-asset inputs whose checksums are pinned.
+reference-assets/src/test/resources/**/*.csv text eol=lf
+
+# Binary fixtures: never touched, but declared so no future rule can claim them.
+*.db binary
+*.db.gz binary
+*.otf binary

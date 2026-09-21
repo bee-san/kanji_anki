@@ -1,0 +1,194 @@
+import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+import org.gradle.testing.jacoco.tasks.JacocoReport
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.kotlin.multiplatform.library")
+    id("org.jetbrains.compose")
+    id("org.jetbrains.kotlin.plugin.compose")
+    jacoco
+}
+
+val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
+val javaVersion = libs.findVersion("jvmTarget").get().requiredVersion.toInt()
+val androidTargetSdk = libs.findVersion("androidTargetSdk").get().requiredVersion.toInt()
+val generatedPackageSegment = project.name.replace('-', '.')
+
+kotlin {
+    jvmToolchain(javaVersion)
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+    }
+
+    android {
+        namespace = "dev.bee.kanjianki.$generatedPackageSegment"
+        compileSdk = libs.findVersion("androidCompileSdk").get().requiredVersion.toInt()
+        minSdk = libs.findVersion("androidMinSdk").get().requiredVersion.toInt()
+        androidResources {
+            enable = true
+        }
+        withHostTestBuilder {}.configure {
+            isIncludeAndroidResources = true
+            enableCoverage = true
+            targetSdk {
+                version = release(androidTargetSdk)
+            }
+        }
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }.configure {
+            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            enableCoverage = true
+            targetSdk {
+                version = release(androidTargetSdk)
+            }
+        }
+        testCoverage {
+            jacocoVersion = libs.findVersion("jacoco").get().requiredVersion
+        }
+        lint {
+            abortOnError = true
+            warningsAsErrors = true
+            disable += setOf("GradleDependency", "OldTargetApi")
+        }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.fromTarget(javaVersion.toString()))
+        }
+    }
+
+    jvm("desktop") {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.fromTarget(javaVersion.toString()))
+        }
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(libs.findLibrary("compose-multiplatform-resources").get())
+            implementation(libs.findLibrary("compose-multiplatform-runtime").get())
+            implementation(libs.findLibrary("compose-multiplatform-ui").get())
+            implementation(libs.findLibrary("compose-multiplatform-foundation").get())
+            implementation(libs.findLibrary("compose-multiplatform-material3").get())
+            implementation(libs.findLibrary("compose-navigation").get())
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            // `runComposeUiTest` renders and asserts on semantics with no window
+            // and no emulator, so a shared composable is provable in commonTest
+            // rather than only in each host's own test source set.
+            implementation(libs.findLibrary("compose-multiplatform-ui-test").get())
+        }
+        getByName("androidHostTest").dependencies {
+            implementation(kotlin("test-junit"))
+            implementation(libs.findLibrary("robolectric").get())
+            implementation(libs.findLibrary("androidx-test-core").get())
+            implementation(libs.findLibrary("androidx-test-ext-junit").get())
+            // `runComposeUiTest` launches a ComponentActivity to host the
+            // composition. On Android that activity is declared by
+            // ui-test-manifest, which is otherwise absent here: without it every
+            // shared render test fails under Robolectric with "Unable to resolve
+            // activity for Intent ... ComponentActivity". The BOM comes along
+            // because ui-test-manifest is BOM-versioned.
+            implementation(project.dependencies.platform(libs.findLibrary("compose-bom").get()))
+            implementation(libs.findLibrary("compose-ui-test-manifest").get())
+        }
+        getByName("androidDeviceTest").dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.findLibrary("androidx-test-core").get())
+            implementation(libs.findLibrary("androidx-test-runner").get())
+            implementation(libs.findLibrary("androidx-test-ext-junit").get())
+        }
+        getByName("desktopTest").dependencies {
+            implementation(kotlin("test-junit"))
+            // `runComposeUiTest` composes into a real Skia surface, so the desktop
+            // test JVM needs Skiko's native library for the host it runs on.
+            // `commonMain` deliberately depends on the platform-agnostic Compose
+            // artifacts, which carry `skiko-awt` but no native runtime; without this
+            // every rendering test dies in a static initializer with
+            // "Cannot find libskiko-<host>.so, proper native dependency missing".
+            implementation(compose.desktop.currentOs)
+        }
+    }
+}
+
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "dev.bee.kanjianki.$generatedPackageSegment.generated.resources"
+}
+
+jacoco {
+    toolVersion = libs.findVersion("jacoco").get().requiredVersion
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnit()
+}
+
+val desktopMainClasses = kotlin.targets
+    .getByName("desktop")
+    .compilations
+    .getByName("main")
+    .output
+    .classesDirs
+/**
+ * Classes the compiler writes that no source line can reach.
+ *
+ * `*Res` is the generated compose-resource accessor. `*$DefaultImpls` is the
+ * Java-interop bridge kotlinc emits for an interface with a default member: every
+ * Kotlin implementation gets its own copy of the accessor, so the bridge is only
+ * ever called from Java, which this project does not do. Neither is coverable, and
+ * leaving them in would push the 100% CLASS gate below into demanding tests that
+ * cannot be written.
+ */
+val uncoverableGeneratedExcludes = listOf(
+    "**/generated/resources/**",
+    "**/*Res.class",
+    "**/*Res\$*.class",
+    "**/*\$DefaultImpls.class",
+)
+val desktopCoverageClasses = desktopMainClasses.asFileTree.matching {
+    uncoverableGeneratedExcludes.forEach(::exclude)
+}
+
+val jacocoDesktopTestReport = tasks.register<JacocoReport>("jacocoDesktopTestReport") {
+    dependsOn(tasks.named("desktopTest"))
+    executionData(layout.buildDirectory.file("jacoco/desktopTest.exec"))
+    classDirectories.setFrom(desktopCoverageClasses)
+    sourceDirectories.setFrom(
+        layout.projectDirectory.dir("src/commonMain/kotlin"),
+        layout.projectDirectory.dir("src/desktopMain/kotlin"),
+    )
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+val jacocoDesktopTestCoverageVerification =
+    tasks.register<JacocoCoverageVerification>("jacocoDesktopTestCoverageVerification") {
+        dependsOn(tasks.named("desktopTest"))
+        executionData(layout.buildDirectory.file("jacoco/desktopTest.exec"))
+        classDirectories.setFrom(desktopCoverageClasses)
+        violationRules {
+            rule {
+                limit {
+                    counter = "CLASS"
+                    value = "COVEREDRATIO"
+                    minimum = "1.00".toBigDecimal()
+                }
+            }
+        }
+    }
+
+tasks.named("check") {
+    dependsOn(jacocoDesktopTestReport, jacocoDesktopTestCoverageVerification)
+}
+
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}

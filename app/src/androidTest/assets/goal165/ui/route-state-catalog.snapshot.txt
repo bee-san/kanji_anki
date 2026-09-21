@@ -1,0 +1,58 @@
+goal165 android route baseline v1
+viewport=360x640 density=160dpi theme=light locale=en-GB
+durable-font-scales=1.0,2.0
+state-font-scale=1.0
+
+[durable-routes]
+home route=home renderer=home anchors=裂 ready-tags=goal165-home-data-ready|home-focus-queue-card-裂
+focus-queue route=focus-queue renderer=home-focus-queue anchors=Focus queue|裂 ready-tags=home-section-action-button-Home|home-focus-queue-card-裂
+recent-mistakes route=recent-mistakes renderer=home-recent-mistakes anchors=Recent mistakes|Again · 14 Nov 2023 ready-tags=home-section-action-button-Home|home-recent-mistakes-card-裂
+browse route=browse renderer=home-browse anchors=Browse Kanji|1 kanji ready-tags=home-full-width-home-button-Home|browse-kanji-row-裂
+detail route=detail renderer=home-detail anchors=裂|Back to Browse|Last seen 14 Nov 2023
+read-only-detail route=read-only-detail renderer=home-read-only-detail anchors=裂|Back to Browse|This kanji is not in your deck.
+games route=games renderer=screenshot-intent anchors=Games
+missing-kanji route=missing-kanji renderer=screenshot-intent anchors=Missing Kanji
+study route=study renderer=study anchors=Pass|Fail
+stats route=stats renderer=screenshot-intent anchors=Stats overview
+settings route=settings renderer=screenshot-intent anchors=Settings
+settings-import-sync route=settings/import-sync renderer=screenshot-intent anchors=Import & sync
+settings-study-behavior route=settings/study-behavior renderer=screenshot-intent anchors=Study settings
+settings-automation route=settings/automation renderer=screenshot-intent anchors=Automation
+settings-appearance route=settings/appearance renderer=screenshot-intent anchors=Appearance
+settings-display-data route=settings/display-data renderer=screenshot-intent anchors=Display & data
+settings-update route=settings/automation/update renderer=screenshot-intent anchors=App updates
+settings-licenses route=settings/display-data/licenses renderer=screenshot-intent anchors=Data licenses
+settings-how-kani-works route=settings/display-data/how-kani-works renderer=screenshot-intent anchors=How Kani works
+
+[representative-states]
+shared-loading route=shared state=loading renderer=shared-loading anchors=Loading
+shared-error route=shared state=error renderer=shared-error anchors=Try again
+home-empty route=home state=empty renderer=home anchors=Sync AnkiDroid ready-tags=goal165-home-empty-ready
+focus-empty route=focus-queue state=empty renderer=home-focus-queue anchors=Focus queue|Adaptive focus is waiting for sync ready-tags=home-section-action-button-Home
+recent-empty route=recent-mistakes state=empty renderer=home-recent-mistakes anchors=Recent mistakes|No mistakes yet ready-tags=home-section-action-button-Home
+browse-empty route=browse state=empty renderer=home-browse anchors=Browse Kanji|No local kanji found ready-tags=home-full-width-home-button-Home
+detail-missing route=detail state=missing renderer=home-detail anchors=Kanji not found
+read-only-detail-missing route=read-only-detail state=missing renderer=home-read-only-detail anchors=Kanji not found
+stats-empty route=stats state=empty renderer=stats anchors=Stats overview|Your story starts here
+study-loading route=study state=loading renderer=study anchors=Loading
+study-error route=study state=error renderer=study anchors=Try again
+study-empty route=study state=empty renderer=study anchors=Study
+study-active route=study state=active renderer=study anchors=Pass|Fail
+study-done route=study state=done renderer=study anchors=Today's focus done
+games-unavailable route=games state=unavailable renderer=games anchors=Needs more data
+games-question route=games state=question renderer=games anchors=Round|Score
+games-result route=games state=result renderer=games anchors=Score
+missing-scanning route=missing-kanji state=scanning renderer=missing-kanji anchors=Scanning
+missing-provider-error route=missing-kanji state=provider-error renderer=missing-kanji anchors=Scan needs attention
+missing-empty route=missing-kanji state=empty renderer=missing-kanji anchors=0 missing
+sync-skipped route=home state=sync-skipped renderer=home-sync anchors=Sync already running
+sync-success route=home state=sync-success renderer=home-sync anchors=Sync complete
+sync-failure route=home state=sync-failure renderer=home-sync anchors=AnkiDroid needs attention|Try sync again
+settings-loading route=settings state=loading renderer=settings-loading anchors=Loading
+settings-error route=settings state=error renderer=settings-error anchors=Try again
+
+[capture-counts]
+durable=19
+durable-images-and-semantics=38
+representative-images-and-semantics=25
+total=63

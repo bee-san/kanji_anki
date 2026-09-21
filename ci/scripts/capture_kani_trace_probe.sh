@@ -106,7 +106,7 @@ launch_route() {
 
   adb shell am force-stop "${package_name}" >/dev/null 2>&1 || true
   adb logcat -c >/dev/null 2>&1 || true
-  adb shell am start -W -n "${package_name}/.MainActivity" --es "${screen_route_extra}" "${launch_target}" | tee "${start_output_path}"
+  adb shell am start -W -n "${package_name}/.host.KaniHostActivity" --es "${screen_route_extra}" "${launch_target}" | tee "${start_output_path}"
 }
 
 write_route_manifest() {

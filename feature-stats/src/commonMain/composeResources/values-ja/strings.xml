@@ -1,0 +1,8 @@
+<resources>
+    <!-- Japanese stats dashboard structural copy; analytics prose is host-computed. -->
+    <string name="stats_range_7">7日</string>
+    <string name="stats_range_30">30日</string>
+    <string name="stats_range_90">90日</string>
+    <string name="stats_empty_title">データがまだ足りません</string>
+    <string name="stats_empty_body">カードを数枚学習すると表示されます。</string>
+</resources>

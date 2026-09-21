@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="study_overview_widget_label">学習概要</string>
+    <string name="quick_study_widget_label">クイック学習</string>
+    <string name="activity_widget_label">学習履歴</string>
+    <string name="focus_kanji_widget_label">注目漢字</string>
+    <string name="activity_widget_description">35日間の連続学習と復習履歴を確認します。</string>
+    <string name="focus_kanji_widget_description">漢字1字を意味と読みと一緒に復習します。</string>
+    <string name="kani_widget_description">今日の学習状況をひと目で確認します。</string>
+    <string name="quick_study_widget_description">次の学習セッションをワンタップで開始します。</string>
+    <string name="activity_widget_loading">学習記録を読み込み中…</string>
+    <string name="activity_widget_preview_best">最長21日</string>
+    <string name="activity_widget_preview_streak">5日連続</string>
+    <string name="activity_widget_preview_total">35日間で復習87件</string>
+    <string name="focus_kanji_widget_loading">今日の漢字を読み込み中…</string>
+    <string name="focus_kanji_widget_preview_details">詳細</string>
+    <string name="focus_kanji_widget_preview_kanji">学</string>
+    <string name="focus_kanji_widget_preview_meaning">学ぶ</string>
+    <string name="focus_kanji_widget_preview_reading">がく</string>
+    <string name="focus_kanji_widget_preview_status">期限</string>
+    <string name="kani_widget_loading">カニを読み込み中…</string>
+    <string name="kani_widget_preview_count">復習できるカード12件</string>
+    <string name="kani_widget_preview_streak">5日連続</string>
+    <string name="quick_study_widget_loading">クイック学習を読み込み中…</string>
+    <string name="quick_study_widget_preview_action">学習</string>
+    <string name="quick_study_widget_preview_count">12</string>
+    <string name="quick_study_widget_preview_status">期限</string>
+    <string name="shortcut_study_long_label">今すぐ学習</string>
+</resources>

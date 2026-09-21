@@ -4,7 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
@@ -40,7 +40,7 @@ class ManualSyncEngineFailureTest {
     }
 
     private fun engine(gateway: CollectionGateway): ManualSyncEngine {
-        return ManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults())
+        return createManualSyncEngine(context, store, gateway, RecordsSyncModels.Settings.kikuDefaults())
     }
 
     private fun latestSyncRun(): Pair<String, String?> {

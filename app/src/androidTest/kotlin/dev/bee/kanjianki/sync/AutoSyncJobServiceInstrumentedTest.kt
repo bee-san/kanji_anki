@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.data.LocalStore
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -24,7 +25,7 @@ private const val DATABASE_NAME = "kanji_anki_simple.db"
 class AutoSyncJobServiceInstrumentedTest {
     @After
     fun cleanDatabase() {
-        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @Test
@@ -71,7 +72,7 @@ class AutoSyncJobServiceInstrumentedTest {
         service.onDestroy()
 
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         val stoppedValue = AtomicReference<Boolean?>(null)
         try {
             AutoSyncJobService.runAutoSync(
@@ -80,7 +81,7 @@ class AutoSyncJobServiceInstrumentedTest {
                 SyncCancellation.NONE,
             ) { _, needsReschedule -> stoppedValue.set(needsReschedule) }
         } finally {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
 
         assertTrue(stoppedValue.get() == false)
@@ -89,7 +90,7 @@ class AutoSyncJobServiceInstrumentedTest {
     @Test
     fun runAutoSyncDoesNotFinishAfterBeingStopped() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         val stoppedValue = AtomicReference<Boolean?>(null)
         try {
             // onStopJob's true return value owns rescheduling, so a stopped run must
@@ -100,7 +101,7 @@ class AutoSyncJobServiceInstrumentedTest {
                 SyncCancellation { true },
             ) { _, needsReschedule -> stoppedValue.set(needsReschedule) }
         } finally {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
 
         assertNull(stoppedValue.get())
@@ -109,7 +110,7 @@ class AutoSyncJobServiceInstrumentedTest {
     @Test
     fun realRunnerReschedulesEnabledSettingsAfterProviderFailure() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         try {
             LocalStore(context).use { store ->
                 store.saveAutoSyncSettings(dev.bee.kanjianki.data.LocalStoreBase.AutoSyncSettings(true, true, 23, 59, 0L, 0L, 0L))
@@ -128,14 +129,14 @@ class AutoSyncJobServiceInstrumentedTest {
             }
             assertTrue(stoppedValue.get() == false)
         } finally {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 
     @Test
     fun defaultServiceRunnerCanUseAttachedTargetContext() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         val service = AutoSyncJobService()
         attachBaseContext(service, context)
         val factoryUsed = AtomicBoolean()
@@ -169,7 +170,7 @@ class AutoSyncJobServiceInstrumentedTest {
     @Test
     fun defaultServiceStartJobRunsBoundAutoSyncTaskWithAttachedContext() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         val service = AutoSyncJobService()
         attachBaseContext(service, context)
         replaceField(service, "executor", AutoSyncJobService.JobExecutor { job -> job.run() })
@@ -183,7 +184,7 @@ class AutoSyncJobServiceInstrumentedTest {
         } finally {
             replaceJobFinisherFactory(originalFactory)
             service.onDestroy()
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 

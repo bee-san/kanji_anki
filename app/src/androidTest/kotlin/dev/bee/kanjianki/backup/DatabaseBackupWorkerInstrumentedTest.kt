@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import androidx.work.impl.utils.futures.SettableFuture
 import androidx.work.impl.utils.taskexecutor.SerialExecutor
 import androidx.work.impl.utils.taskexecutor.TaskExecutor
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.testing.DeviceRisk
 import kotlin.coroutines.EmptyCoroutineContext
 import org.junit.After
@@ -148,7 +149,7 @@ class DatabaseBackupWorkerInstrumentedTest {
     }
 
     private fun deleteDatabaseFiles() {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         deleteIfExists(context.getDatabasePath("$DATABASE_NAME-wal"))
         deleteIfExists(context.getDatabasePath("$DATABASE_NAME-shm"))
     }

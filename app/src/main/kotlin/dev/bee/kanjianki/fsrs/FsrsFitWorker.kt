@@ -1,11 +1,11 @@
 package dev.bee.kanjianki.fsrs
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import dev.bee.kanjianki.AndroidContainerProvider
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.FsrsWeightFitter
 import dev.bee.kanjianki.data.FsrsFitSummary
 import dev.bee.kanjianki.data.FsrsFitSummaryCodec
@@ -23,14 +23,21 @@ internal object FsrsFitExecutionGate {
     }
 }
 
-class FsrsFitWorker(
+class FsrsFitWorker internal constructor(
     context: Context,
     workerParams: WorkerParameters,
+    private val containerProvider: AndroidContainerProvider,
 ) : Worker(context, workerParams) {
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        AndroidContainerProvider { context.requireKaniContainer() },
+    )
+
     override fun doWork(): Result {
         if (!FsrsFitExecutionGate.tryAcquire()) return Result.retry()
         return try {
-            AppLocalStoreFactory.create(applicationContext).use { store ->
+            containerProvider.get().openLocalStore().use { store ->
                 if (!store.fsrsPersonalizationEnabled()) {
                     Result.success()
                 } else try {

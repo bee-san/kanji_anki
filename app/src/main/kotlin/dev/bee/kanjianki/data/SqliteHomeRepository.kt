@@ -19,13 +19,25 @@ internal class SqliteHomeRepository(
                 studyStreak = store.studyStreak(nowMillis).toRepositorySnapshot(),
                 dueLegacyWritingRepairs = store.dueSimilarWritingRepairs(nowMillis).toList(),
                 repairedHandoffKanji = store.pendingRepairedHandoffKanji().toList(),
-                updateCheckFailedAtMillis = store.updateCheckFailedAt(),
+                consecutiveFailedSyncs = store.consecutiveFailedSyncCount(),
             )
         }
     }
 
     override suspend fun searchInventory(query: String, onlySimilarKanji: Boolean) = safeStoreCall {
         store.searchKanjiInventory(query, onlySimilarKanji).toList()
+    }
+
+    override suspend fun searchStudyInventory(
+        query: String,
+        onlySimilarKanji: Boolean,
+        includeLocallySuspended: Boolean,
+    ) = safeStoreCall {
+        store.searchStudyQueueInventory(
+            query,
+            onlySimilarKanji,
+            includeLocallySuspended,
+        ).toList()
     }
 
     override suspend fun loadKanjiDetail(kanji: String, nowMillis: Long) = safeStoreCall {
@@ -43,6 +55,34 @@ internal class SqliteHomeRepository(
                 locallySuspended = store.isKanjiLocallySuspended(kanji),
             )
         }
+    }
+
+    override suspend fun loadGameData() = safeStoreCall {
+        store.readSnapshot {
+            HomeGameDataSnapshot(
+                activeRows = store.activeDashboardRows().toList(),
+                inventory = store.searchKanjiInventory("").toList(),
+                similarPairs = store.allLocalSimilarPairs().toList(),
+            )
+        }
+    }
+
+    override suspend fun loadNewCardSortPreviewData() = safeStoreCall {
+        store.readSnapshot {
+            HomeNewCardSortPreviewSnapshot(
+                activeRows = store.activeDashboardRows().toList(),
+                similarPairs = store.allLocalSimilarPairs().toList(),
+                sourceVersion = store.newCardSortPreviewCacheVersion(),
+            )
+        }
+    }
+
+    override suspend fun loadNewCardSortPreviewVersion() = safeStoreCall {
+        store.newCardSortPreviewCacheVersion()
+    }
+
+    override suspend fun consumeDowngradeNotice() = safeStoreCall {
+        store.consumeDowngradeNotice()
     }
 
     override suspend fun saveMnemonic(command: SaveMnemonicCommand) = safeStoreCall {

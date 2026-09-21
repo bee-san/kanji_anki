@@ -81,11 +81,11 @@ class CaptureKaniTraceProbeTest(unittest.TestCase):
 
     def test_probe_records_pid_filtered_logcat_and_gfxinfo_for_stats_route(self) -> None:
         fake_adb = base_fake_adb(
-            extra_cases="""  shell\\ am\\ start\\ -W\\ -n\\ dev.bee.kanjianki/.MainActivity\\ --es\\ dev.bee.kanjianki.extra.SCREENSHOT_ROUTE\\ stats*)
+            extra_cases="""  shell\\ am\\ start\\ -W\\ -n\\ dev.bee.kanjianki/.host.KaniHostActivity\\ --es\\ dev.bee.kanjianki.extra.SCREENSHOT_ROUTE\\ stats*)
     cat <<'OUT'
-Starting: Intent { cmp=dev.bee.kanjianki/.MainActivity }
+Starting: Intent { cmp=dev.bee.kanjianki/.host.KaniHostActivity }
 Status: ok
-Activity: dev.bee.kanjianki/.MainActivity
+Activity: dev.bee.kanjianki/.host.KaniHostActivity
 ThisTime: 321
 TotalTime: 456
 WaitTime: 500
@@ -123,7 +123,7 @@ OUT
         self.assertEqual(0, result.returncode, result.stdout)
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertIn(
-            "shell am start -W -n dev.bee.kanjianki/.MainActivity --es dev.bee.kanjianki.extra.SCREENSHOT_ROUTE stats",
+            "shell am start -W -n dev.bee.kanjianki/.host.KaniHostActivity --es dev.bee.kanjianki.extra.SCREENSHOT_ROUTE stats",
             adb_calls,
         )
         self.assertIn("shell pidof -s dev.bee.kanjianki", adb_calls)

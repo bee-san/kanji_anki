@@ -1,10 +1,9 @@
 package dev.bee.kanjianki.reminders
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.ReminderReceiverPolicy
 import dev.bee.kanjianki.core.TimeOfDaySettingsPolicy
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -28,7 +27,12 @@ class ReminderReceiver : BroadcastReceiver() {
         ) == true
         // Reads the full dashboard + all study items + streaks; do it off the main
         // thread and keep the broadcast alive until it completes.
-        ReceiverAsyncWork.run(this) {
+        ReceiverAsyncWork.run(
+            this,
+            executorProvider = {
+                requireNotNull(context).requireKaniContainer().maintenanceExecutor
+            },
+        ) {
             handle(action, family, hour, minute, snoozeRepost, AndroidReceiverActions(context))
         }
     }
@@ -63,7 +67,7 @@ class ReminderReceiver : BroadcastReceiver() {
         }
 
         override fun handleDailyReminder(snoozeRepost: Boolean, family: String) {
-            AppLocalStoreFactory.create(context).use { store ->
+            requireNotNull(context).requireKaniContainer().openLocalStore().use { store ->
                 handleDailyReminder(
                     store.reminderSettings(),
                     snoozeRepost,
@@ -75,11 +79,11 @@ class ReminderReceiver : BroadcastReceiver() {
 
         override fun handleReminderDismissed(family: String) {
             val safeContext = context ?: return
-            AppLocalStoreFactory.create(safeContext).use { store ->
+            safeContext.requireKaniContainer().openLocalStore().use { store ->
                 // Swipe-dismiss is the user's strongest anti-spam signal: suppress
                 // this family for the rest of the local day, then re-arm from fresh
                 // state so the next eligible time reflects the dismissal.
-                store.recordReminderDismissed(dev.bee.kanjianki.time.AppClock.systemClock().nowMillis(), family)
+                store.recordReminderDismissed(dev.bee.kanjianki.platform.AppClock.systemClock().nowMillis(), family)
             }
             ReminderScheduler.schedule(safeContext)
         }

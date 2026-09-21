@@ -159,7 +159,23 @@ class RepositoryAdaptersTest {
         )
 
         assertEquals(1, repository.loadItems(listOf("痛")).valueOrNull()?.size)
+        assertEquals(1, repository.loadAllItems().valueOrNull()?.size)
         assertEquals(1, repository.annotateCapabilities(listOf(before)).valueOrNull()?.size)
+        assertTrue(repository.saveItem(before).isOk())
+        assertTrue(
+            repository.recordTaskTiming(
+                ReviewTaskTiming(
+                    "repository-task",
+                    "痛",
+                    "kanji_meaning",
+                    100L,
+                    200L,
+                    50L,
+                    "good",
+                ),
+            ).valueOrNull() == true,
+        )
+        assertNull(repository.loadQueueVersion().valueOrNull())
 
         val committed = repository.commitReview(
             ReviewCommitCommand(
@@ -215,6 +231,12 @@ class RepositoryAdaptersTest {
             ).valueOrNull() ?: true,
         )
         assertEquals("", repository.loadMnemonic("痛").valueOrNull())
+        assertTrue(
+            repository.saveMnemonic(
+                SaveMnemonicCommand("痛", "pain mnemonic", FINISHED_AT),
+            ).isOk(),
+        )
+        assertEquals("pain mnemonic", repository.loadMnemonic("痛").valueOrNull())
     }
 
     @Test
@@ -240,34 +262,37 @@ class RepositoryAdaptersTest {
             SettingsSaveCommand.StudyLadder(initial.studyLadder),
             SettingsSaveCommand.NewCardSort(initial.sync.newCardSortMode),
             SettingsSaveCommand.Theme(initial.themeChoice),
-            SettingsSaveCommand.Reminder(ReminderSettingsSnapshot(true, 8, 30)),
-            SettingsSaveCommand.ReminderAntiSpam(initial.reminderAntiSpam),
-            SettingsSaveCommand.ReminderPosted(FINISHED_AT, "due", "signature", true),
-            SettingsSaveCommand.ReminderDismissed(FINISHED_AT, "due"),
-            SettingsSaveCommand.AutoSync(initial.autoSync),
-            SettingsSaveCommand.AutoSyncEnabled(true),
-            SettingsSaveCommand.AutoSyncScheduled(FINISHED_AT),
-            SettingsSaveCommand.AutoSyncAttempt(FINISHED_AT, true),
-            SettingsSaveCommand.AutoUpdateEnabled(true),
-            SettingsSaveCommand.AutoUpdateResult(
-                FINISHED_AT,
-                "downloaded",
-                "v9.9.9",
-                "update.apk",
-                "ready",
-            ),
-            SettingsSaveCommand.ClearPendingAutoUpdate("installed"),
-            SettingsSaveCommand.UpdateCheckFailed(FINISHED_AT),
-            SettingsSaveCommand.ClearUpdateCheckFailed,
-            SettingsSaveCommand.InstallPermissionPrompted("v9.9.9"),
-            SettingsSaveCommand.DebugLogEnabled(true),
             SettingsSaveCommand.SchedulerParameters(initial.schedulerParameters),
             SettingsSaveCommand.SchedulerFsrsWeights(null),
             SettingsSaveCommand.FsrsPersonalizationEnabled(true),
-            SettingsSaveCommand.FlashcardSwipeGestureEnabled(false),
             SettingsSaveCommand.FsrsFitSummary("{\"status\":\"tested\"}"),
             SettingsSaveCommand.ResetFsrsPersonalization,
             SettingsSaveCommand.LearningSteps(initial.learningSteps),
+            SettingsSaveCommand.NoteTypeFields(
+                "Custom Japanese",
+                "Front",
+                "Kana",
+                "Back",
+                "Sentence",
+                "Frequency",
+                "FrequencySort",
+            ),
+            SettingsSaveCommand.ImportFilters(
+                activeCards = true,
+                suspendedCards = false,
+                taggedCards = true,
+                tags = "focus",
+                weakCards = true,
+                weakDifficulty = 8.0,
+                weakLapses = 4,
+                minMatchingCards = 2,
+                browserQueryCards = true,
+                browserQuery = "tag:focus",
+                tagRepairedCards = true,
+            ),
+            SettingsSaveCommand.FrequencyRange(100, 2_000),
+            SettingsSaveCommand.DeckLimits(12, 40),
+            SettingsSaveCommand.LadderThresholds(30, 4),
         )
 
         commands.forEach { command ->
@@ -285,10 +310,21 @@ class RepositoryAdaptersTest {
         )
 
         val actual = repository.load().valueOrNull()
-        assertTrue(actual?.debugLogEnabled == true)
         assertEquals(15, actual?.studyAheadMinutes)
-        assertEquals("v9.9.9", actual?.installPermissionPromptLastVersion)
-        assertEquals(false, actual?.flashcardSwipeGestureEnabled)
+        assertEquals(initial.themeChoice, actual?.themeChoice)
+        assertEquals("Custom Japanese", actual?.sync?.modelName)
+        assertEquals("Front", actual?.sync?.expressionField)
+        assertTrue(actual?.sync?.importActiveCards == true)
+        assertFalse(actual?.sync?.importSuspendedCards ?: true)
+        assertEquals("tag:focus", actual?.sync?.importBrowserQuery)
+        assertTrue(actual?.tagRepairedCards == true)
+        assertEquals(100, actual?.sync?.suspendedRankMin)
+        assertEquals(2_000, actual?.sync?.suspendedRankMax)
+        assertEquals(12, actual?.sync?.newPerDay)
+        assertEquals(40, actual?.sync?.activeQueueCap)
+        assertEquals(30, actual?.sync?.ladderPromotionIntervalDays)
+        assertEquals(4, actual?.sync?.ladderDemotionFailStreak)
+        assertEquals(4, actual?.sync?.realDueReviewsToMove)
     }
 
     @Test
