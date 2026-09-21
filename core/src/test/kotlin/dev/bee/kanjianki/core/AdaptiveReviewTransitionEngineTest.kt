@@ -152,8 +152,13 @@ class AdaptiveReviewTransitionEngineTest {
         assertEquals(1, promoted.wordReadingMemory.matureIntervalDays)
         assertEquals(NOW + StudyLadderRules.DAY, promoted.wordReadingMemory.dueAtMillis)
         assertEquals(NOW + StudyLadderRules.DAY, promoted.dueAtMillis)
-        // Recognition keeps its real, uncapped FSRS schedule.
-        assertEquals(30, promoted.kanjiMeaningMemory.matureIntervalDays)
+        // Recognition keeps its real, uncapped FSRS schedule (30 days, within the
+        // deterministic ±5% fuzz band).
+        assertEquals(
+            IntervalFuzzPolicy.fuzzedIntervalDays(30, promoted.kanji, CoreSkill.RECOGNITION, 1),
+            promoted.kanjiMeaningMemory.matureIntervalDays,
+        )
+        assertTrue(promoted.kanjiMeaningMemory.matureIntervalDays in 28..32)
         assertEquals(5, promoted.kanjiMeaningMemory.totalReviews)
         assertEquals(StudyTaskTypes.WORD_READING, AdaptiveStudyItemPolicy.taskTypeFor(promoted, ladder))
     }

@@ -64,10 +64,19 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val nextItemTotalReviews = saturatingAddNonNegative(item.totalReviews, 1)
         val nextCoreReviewCount = saturatingAddNonNegative(route.reviewCount(core), 1)
         val evidence = evidenceFor(request, core)
+        // Deterministic fuzz keyed by item, core and review ordinal spreads kanji
+        // with identical histories across neighbouring days (see IntervalFuzzPolicy).
+        val scheduledDays = IntervalFuzzPolicy.fuzzedIntervalDays(
+            result.intervalDays(),
+            item.kanji,
+            core,
+            nextCoreReviewCount,
+        )
+        val scheduledMillis = max(1L, scheduledDays.toLong()) * StudyLadderRules.DAY
 
         if (rating == StudyRatings.AGAIN) {
             val nextLapses = saturatingAddNonNegative(beforeMemory.lapses, 1)
-            val coreDue = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L))
+            val coreDue = saturatingAdd(nowMillis, scheduledMillis)
             val postLapseMemory = RecordsStudyModels.TaskMemory.fromFields(
                 RecordsStudyModels.TaskMemory.Fields(
                     state = StudyLadderRules.STATE_REVIEW,
@@ -78,7 +87,7 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
                     lapses = nextLapses,
                     learningStep = 0,
                     lastRating = StudyRatings.AGAIN,
-                    matureIntervalDays = result.intervalDays(),
+                    matureIntervalDays = scheduledDays,
                     consecutivePasses = 0,
                     lastPassedDueAtMillis = 0L,
                     lastReviewedAtMillis = nowMillis,
@@ -156,14 +165,14 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val memory = RecordsStudyModels.TaskMemory.fromFields(
             RecordsStudyModels.TaskMemory.Fields(
                 state = StudyLadderRules.STATE_REVIEW,
-                dueAtMillis = saturatingAdd(nowMillis, result.intervalMillis.coerceAtLeast(1L)),
+                dueAtMillis = saturatingAdd(nowMillis, scheduledMillis),
                 stability = result.stability,
                 difficulty = result.difficulty,
                 totalReviews = nextTotalReviews,
                 lapses = beforeMemory.lapses.coerceAtLeast(0),
                 learningStep = 0,
                 lastRating = rating,
-                matureIntervalDays = result.intervalDays(),
+                matureIntervalDays = scheduledDays,
                 consecutivePasses = passStreak,
                 lastPassedDueAtMillis = if (realDue) item.dueAtMillis else beforeMemory.lastPassedDueAtMillis,
                 lastReviewedAtMillis = nowMillis,
