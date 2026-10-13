@@ -315,7 +315,7 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
 
     def test_release_path_has_no_emulator_or_cross_workflow_check_polling(self) -> None:
         # The release path must stay fast and self-contained. The AnkiDroid
-        # emulator fixture (nightly/dispatch only) and cross-workflow
+        # emulator fixture (dispatch only) and cross-workflow
         # check-run polling (SonarQube/CodeQL names) were the top causes of
         # blocked and multi-hour releases. Keep them out of this workflow.
         # Comments are stripped so prose explaining the removal doesn't trip
@@ -425,10 +425,14 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.workflow = ANDROID_INSTRUMENTED_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_live_fixture_runs_nightly_and_on_dispatch_only(self) -> None:
+    def test_live_fixture_runs_on_dispatch_only(self) -> None:
+        # The nightly schedule was removed in the 2026-10-13 GitHub Actions cost
+        # audit (two emulator API levels per run, ~570 minutes a month); the
+        # fixture is run on demand and must not pick up push/PR/schedule triggers.
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("schedule:", self.workflow)
-        self.assertIn("17 5 * * *", self.workflow)
+        self.assertNotIn("schedule:", self.workflow)
+        self.assertNotIn("pull_request:", self.workflow)
+        self.assertNotIn("push:", self.workflow)
         self.assertIn("concurrency:", self.workflow)
         self.assertIn("cancel-in-progress: true", self.workflow)
         # The fixture must never rejoin the release path as a callable gate.

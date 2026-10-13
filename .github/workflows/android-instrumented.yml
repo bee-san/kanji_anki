@@ -1,6 +1,6 @@
 name: Android Instrumented
 
-# Live AnkiDroid provider coverage runs nightly and on demand. It is
+# Live AnkiDroid provider coverage runs on demand. It is
 # deliberately NOT part of the release path: the emulator + provider readiness
 # dance is inherently flaky and was the top cause of blocked releases. The
 # stricter local real-collection gate (AGENTS.md) covers provider/sync
