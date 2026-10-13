@@ -2,7 +2,6 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabaseLockedException
 import android.database.sqlite.SQLiteException
-import dev.bee.kanjianki.core.StoreResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -1,0 +1,178 @@
+package dev.bee.kanjianki.desktop
+
+import dev.bee.kanjianki.core.ReadingExposureModels
+import dev.bee.kanjianki.data.desktop.DesktopDictionaryStore
+import java.nio.file.Files
+import java.nio.file.Path
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class DesktopSyncAssetReadersTest {
+    private lateinit var profile: Path
+
+    @Before
+    fun setUp() {
+        profile = Files.createTempDirectory("kani-desktop-assets-")
+    }
+
+    @After
+    fun tearDown() {
+        Files.walk(profile).use { paths ->
+            paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+        }
+    }
+
+    private fun referenceDir(): Path =
+        profile.resolve(DesktopSyncAssetReaders.REFERENCE_DIR_NAME)
+            .also { Files.createDirectories(it) }
+
+    private fun writeSimilarKanji(directory: Path, body: String): Path =
+        directory.resolve(DesktopSyncAssetReaders.SIMILAR_KANJI_FILE_NAME)
+            .also { Files.writeString(it, body) }
+
+    @Test
+    fun aProfileWithNoReferenceAssetsReportsNoDictionaryRatherThanAnEmptyOne() {
+        val readers = DesktopSyncAssetReaders.forProfile(profile)
+
+        // Null, not an empty lookup. The report renders "no assets" and "no candidates"
+        // differently, and collapsing them would tell a user their collection is complete
+        // when Kani simply cannot check.
+        assertNull(readers.loadDictionary())
+        // The other three still answer, because a sync needing only ranks must not fail
+        // for want of a dictionary.
+        assertEquals(0, readers.loadRanks().size())
+        assertEquals(0, readers.loadSimilarKanjiIndex().pairCount())
+        assertSame(
+            ReadingExposureModels.ExposureIndex.EMPTY,
+            readers.loadReadingExposure(),
+        )
+    }
+
+    @Test
+    fun aDictionaryInTheProfileIsFoundAndReturned() {
+        val reference = referenceDir()
+        val dictionaryFile = reference.resolve(DesktopSyncAssetReaders.DICTIONARY_FILE_NAME)
+        // The real shipped asset, so this exercises the schema users actually install.
+        org.junit.Assume.assumeTrue(
+            "the checked-in dictionary asset is required for this case",
+            DictionaryFixture.seed(dictionaryFile),
+        )
+
+        val readers = DesktopSyncAssetReaders.forProfile(profile)
+
+        val dictionary = readers.loadDictionary()
+        assertNotNull(dictionary)
+        assertTrue("the shipped dictionary is not empty", (dictionary?.kanjiCount() ?: 0) > 1_000)
+        assertNotNull(dictionary?.lookupKanji("脱"))
+        // Ranks come from the dictionary's own table, so there is one source of truth for
+        // them rather than a CSV that could disagree after a partial update.
+        assertTrue("ranks load from the dictionary", readers.loadRanks().size() > 1_000)
+    }
+
+    @Test
+    fun theInstalledImageWinsOverAHandPlacedProfileCopy() {
+        val reference = referenceDir()
+        writeSimilarKanji(reference, "脱\t抜\n")
+        val install = Files.createDirectories(profile.resolve("install-reference"))
+        writeSimilarKanji(install, "脱\t抜\n脱\t説\n")
+
+        val readers = DesktopSyncAssetReaders.forProfile(profile, installReferenceDir = install)
+
+        // The packaged copy is what the installer just wrote; a stale hand-placed file
+        // must not shadow it after an update.
+        assertTrue(readers.loadSimilarKanjiIndex().pairCount() >= 1)
+        assertEquals(
+            2,
+            readers.loadSimilarKanjiIndex().similarTo("脱").size,
+        )
+    }
+
+    @Test
+    fun theProfileIsUsedWhenTheInstalledImageHasNoCopy() {
+        val reference = referenceDir()
+        writeSimilarKanji(reference, "脱\t抜\n")
+        val install = Files.createDirectories(profile.resolve("empty-install"))
+
+        val readers = DesktopSyncAssetReaders.forProfile(profile, installReferenceDir = install)
+
+        // A portable install unpacks into the profile, so this is the supported path.
+        assertEquals(1, readers.loadSimilarKanjiIndex().similarTo("脱").size)
+    }
+
+    @Test
+    fun anUnreadableSimilarKanjiFileDegradesToEmpty() {
+        val directory = Files.createDirectories(
+            profile.resolve(DesktopSyncAssetReaders.REFERENCE_DIR_NAME)
+                .resolve(DesktopSyncAssetReaders.SIMILAR_KANJI_FILE_NAME),
+        )
+        assertTrue(Files.isDirectory(directory))
+
+        // A directory wearing the file's name: `forProfile` requires a regular file, so
+        // this resolves to no asset rather than an open failure mid-sync.
+        val readers = DesktopSyncAssetReaders.forProfile(profile)
+        assertEquals(0, readers.loadSimilarKanjiIndex().pairCount())
+    }
+
+    @Test
+    fun aMalformedSimilarKanjiFileDoesNotFailTheSync() {
+        val readers = DesktopSyncAssetReaders(
+            dictionary = DesktopDictionaryStore.absent(),
+            similarKanjiFile = referenceDir().let { writeSimilarKanji(it, "not a tsv at all") },
+        )
+
+        // Whatever the parser makes of this, a sync that only needed the dictionary must
+        // not fail because the discrimination asset is broken.
+        assertNotNull(readers.loadSimilarKanjiIndex())
+    }
+
+    @Test
+    fun aThrowingReadingExposureSourceYieldsTheEmptyIndex() {
+        val readers = DesktopSyncAssetReaders(
+            dictionary = DesktopDictionaryStore.absent(),
+            similarKanjiFile = null,
+            readingExposure = { throw IllegalStateException("media directory unavailable") },
+        )
+
+        // Contextual scheduling turns off rather than going wrong, and the sync commits.
+        assertSame(
+            ReadingExposureModels.ExposureIndex.EMPTY,
+            readers.loadReadingExposure(),
+        )
+    }
+
+    @Test
+    fun aSuppliedReadingExposureSourceIsUsed() {
+        val supplied = ReadingExposureModels.ExposureIndex(emptyList())
+        val readers = DesktopSyncAssetReaders(
+            dictionary = DesktopDictionaryStore.absent(),
+            similarKanjiFile = null,
+            readingExposure = { supplied },
+        )
+
+        assertSame(supplied, readers.loadReadingExposure())
+    }
+
+    @Test
+    fun aNonDesktopLookupIsTreatedAsPresent() {
+        // The absence check is specific to `DesktopDictionaryStore`; any other
+        // `DictionaryLookup` a caller supplies is by definition a real one, and returning
+        // null for it would discard a working dictionary.
+        val readers = DesktopSyncAssetReaders(
+            dictionary = object : dev.bee.kanjianki.core.DictionaryLookup() {
+                override fun lookupKanji(literal: String?): KanjiEntry? = null
+
+                override fun kanjiCount(): Int = 12
+            },
+            similarKanjiFile = null,
+        )
+
+        assertNotNull(readers.loadDictionary())
+        assertEquals(12, readers.loadDictionary()?.kanjiCount())
+    }
+}

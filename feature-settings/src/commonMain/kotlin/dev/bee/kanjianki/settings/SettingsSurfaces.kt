@@ -1,0 +1,452 @@
+package dev.bee.kanjianki.settings
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.bee.kanjianki.presentation.KaniAction
+import dev.bee.kanjianki.presentation.SettingsCategory
+import dev.bee.kanjianki.presentation.SettingsControl
+import dev.bee.kanjianki.presentation.SettingsKeybindingChoice
+import dev.bee.kanjianki.presentation.SettingsKeybindingRow
+import dev.bee.kanjianki.presentation.SettingsRoot
+import dev.bee.kanjianki.presentation.SettingsScreen
+import dev.bee.kanjianki.presentation.SettingsSectionContent
+import dev.bee.kanjianki.ui.KaniTheme
+import dev.bee.kanjianki.ui.KaniUiTokens
+
+const val SETTINGS_SCREEN_TEST_TAG: String = "kani-settings"
+const val SETTINGS_ROOT_TEST_TAG: String = "kani-settings-root"
+const val SETTINGS_CONTROLS_TEST_TAG: String = "kani-settings-controls"
+const val SETTINGS_PLACEHOLDER_TEST_TAG: String = "kani-settings-placeholder"
+const val SETTINGS_KEYBINDINGS_TEST_TAG: String = "kani-settings-keybindings"
+const val SETTINGS_PROSE_TEST_TAG: String = "kani-settings-prose"
+
+/** One root category card, tagged by its section route. */
+fun settingsCategoryTestTag(route: String): String = "kani-settings-category-$route"
+
+/** One control, tagged by its label. */
+fun settingsControlTestTag(label: String): String = "kani-settings-control-$label"
+
+/** One keybinding row, tagged by its command label. */
+fun settingsKeybindingRowTestTag(label: String): String = "kani-settings-keybinding-$label"
+
+/** A keybinding row's current-accelerator line, tagged by its command label. */
+fun settingsKeybindingAcceleratorTestTag(label: String): String =
+    "kani-settings-keybinding-accelerator-$label"
+
+/** One bind/unbind key chip, tagged by its own label. */
+fun settingsKeybindingChoiceTestTag(label: String): String = "kani-settings-keybinding-key-$label"
+
+/** A stepper's decrement/increment button, tagged by its control label and direction. */
+fun settingsStepperButtonTestTag(label: String, up: Boolean): String =
+    "kani-settings-stepper-${if (up) "up" else "down"}-$label"
+
+/**
+ * The Settings surface, from one [SettingsScreen].
+ *
+ * The root category menu at [SettingsScreen.root], a section's controls when shared,
+ * or the honest not-yet-shared placeholder. Capability notices ride on the category
+ * and info controls, so a platform limitation is stated where the user meets it
+ * rather than hidden. Every toggle/choice/button dispatches; nothing is decided here.
+ */
+@Composable
+fun SettingsScreenView(
+    screen: SettingsScreen,
+    copy: SettingsCopy,
+    dispatch: (KaniAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(SETTINGS_SCREEN_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        val root = screen.root
+        if (root != null) {
+            RootMenu(root, dispatch)
+        }
+        when (val content = screen.content) {
+            SettingsSectionContent.Placeholder -> if (root == null) PlaceholderPanel(copy)
+            is SettingsSectionContent.Controls -> ControlsPanel(content, dispatch)
+            is SettingsSectionContent.Keybindings -> KeybindingsPanel(content, dispatch)
+            is SettingsSectionContent.Prose -> ProsePanel(content)
+        }
+    }
+}
+
+@Composable
+private fun RootMenu(root: SettingsRoot, dispatch: (KaniAction) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_ROOT_TEST_TAG),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = root.title,
+            modifier = Modifier.semantics { heading() },
+            color = KaniTheme.colors.ink,
+            fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        for (category in root.categories) {
+            CategoryCard(category, dispatch)
+        }
+    }
+}
+
+@Composable
+private fun CategoryCard(category: SettingsCategory, dispatch: (KaniAction) -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(settingsCategoryTestTag(category.section.route))
+            .semantics { contentDescription = "${category.title}. ${category.summary}" },
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panel,
+        onClick = { dispatch(category.action) },
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = category.title, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp, fontWeight = FontWeight.Medium)
+            Text(text = category.summary, color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp)
+            for (notice in category.notices) {
+                Text(text = notice, color = KaniTheme.colors.coral, fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ControlsPanel(content: SettingsSectionContent.Controls, dispatch: (KaniAction) -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_CONTROLS_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = content.title,
+                modifier = Modifier.semantics { heading() },
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            for (control in content.controls) {
+                ControlRow(control, dispatch)
+            }
+        }
+    }
+}
+
+/**
+ * The Study keybinding editor: one row per command, its keys, and a reset.
+ *
+ * The candidate keys are laid out as a wrapping row of buttons rather than a dropdown,
+ * because there are ~50 of them and a Compose Multiplatform menu is the least
+ * keyboard-accessible control available — an editor a user cannot reach by keyboard is a
+ * poor joke. A candidate the platform or another command holds is rendered disabled with
+ * its reason as its accessible description, so a screen reader reaches the same answer
+ * the sighted user does.
+ */
+@Composable
+private fun KeybindingsPanel(
+    content: SettingsSectionContent.Keybindings,
+    dispatch: (KaniAction) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_KEYBINDINGS_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = content.title,
+                modifier = Modifier.semantics { heading() },
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            for (row in content.rows) {
+                KeybindingRow(row, dispatch)
+            }
+            ControlRow(content.reset, dispatch)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KeybindingRow(row: SettingsKeybindingRow, dispatch: (KaniAction) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(settingsKeybindingRowTestTag(row.label)),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = row.label,
+                color = KaniTheme.colors.ink,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                // The row's own accelerator line is the answer to "what is this bound to
+                // now", so it is read out with the command rather than left to the
+                // per-key buttons below.
+                text = row.accelerator,
+                modifier = Modifier
+                    .testTag(settingsKeybindingAcceleratorTestTag(row.label))
+                    .semantics { contentDescription = "${row.label}: ${row.accelerator}" },
+                color = KaniTheme.colors.muted,
+                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+            )
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (bound in row.unbind) {
+                KeybindingChoiceChip(bound, bound.label, dispatch)
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (candidate in row.candidates) {
+                KeybindingChoiceChip(
+                    choice = candidate,
+                    description = candidate.unavailableReason
+                        ?.let { "${candidate.label}. $it" }
+                        ?: "${row.label}: ${candidate.label}",
+                    dispatch = dispatch,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeybindingChoiceChip(
+    choice: SettingsKeybindingChoice,
+    description: String,
+    dispatch: (KaniAction) -> Unit,
+) {
+    OutlinedButton(
+        onClick = { dispatch(choice.action) },
+        modifier = Modifier
+            .heightIn(min = KaniUiTokens.MinTouchTarget)
+            .testTag(settingsKeybindingChoiceTestTag(choice.label))
+            .semantics { contentDescription = description },
+        enabled = choice.enabled,
+        shape = KaniUiTokens.ButtonShape,
+        border = BorderStroke(
+            1.dp,
+            if (choice.enabled) KaniTheme.colors.borderSoft else KaniTheme.colors.panelSoft,
+        ),
+    ) {
+        Text(
+            text = choice.label,
+            color = if (choice.enabled) KaniTheme.colors.ink else KaniTheme.colors.muted,
+            fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp,
+        )
+    }
+}
+
+@Composable
+private fun ControlRow(control: SettingsControl, dispatch: (KaniAction) -> Unit) {
+    val tag = Modifier.testTag(settingsControlTestTag(control.label))
+    when (control) {
+        is SettingsControl.Toggle -> Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = KaniUiTokens.MinTouchTarget)
+                .then(tag)
+                .toggleable(
+                    value = control.checked,
+                    enabled = control.enabled,
+                    onValueChange = { dispatch(control.onChange(it)) },
+                )
+                .semantics { contentDescription = control.label },
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = control.checked, onCheckedChange = null, enabled = control.enabled)
+            Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+        }
+
+        is SettingsControl.Choice -> Column(modifier = tag, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp, fontWeight = FontWeight.Medium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (option in control.options) {
+                    val selected = option.id == control.selectedId
+                    OutlinedButton(
+                        onClick = { dispatch(option.action) },
+                        modifier = Modifier.heightIn(min = KaniUiTokens.MinTouchTarget),
+                        shape = KaniUiTokens.ButtonShape,
+                        border = BorderStroke(1.dp, if (selected) KaniTheme.colors.primary else KaniTheme.colors.borderSoft),
+                    ) {
+                        Text(
+                            text = option.label,
+                            color = if (selected) KaniTheme.colors.primary else KaniTheme.colors.ink,
+                        )
+                    }
+                }
+            }
+        }
+
+        is SettingsControl.Stepper -> Row(
+            modifier = Modifier.fillMaxWidth().then(tag),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(
+                    onClick = { dispatch(control.onChange(control.decremented())) },
+                    enabled = control.canDecrement,
+                    shape = KaniUiTokens.ButtonShape,
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(settingsStepperButtonTestTag(control.label, up = false)),
+                ) {
+                    Text(text = "−", color = KaniTheme.colors.ink)
+                }
+                Text(
+                    text = control.displayValue,
+                    color = KaniTheme.colors.ink,
+                    fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                OutlinedButton(
+                    onClick = { dispatch(control.onChange(control.incremented())) },
+                    enabled = control.canIncrement,
+                    shape = KaniUiTokens.ButtonShape,
+                    modifier = Modifier
+                        .heightIn(min = KaniUiTokens.MinTouchTarget)
+                        .testTag(settingsStepperButtonTestTag(control.label, up = true)),
+                ) {
+                    Text(text = "+", color = KaniTheme.colors.ink)
+                }
+            }
+        }
+
+        is SettingsControl.ActionButton -> if (control.destructive) {
+            OutlinedButton(
+                onClick = { dispatch(control.action) },
+                modifier = tag.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT),
+                enabled = control.enabled,
+                shape = KaniUiTokens.ButtonShape,
+                border = BorderStroke(1.dp, KaniTheme.colors.coral),
+            ) {
+                Text(text = control.label, color = KaniTheme.colors.coral, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Button(
+                onClick = { dispatch(control.action) },
+                modifier = tag.fillMaxWidth().heightIn(min = ACTION_MIN_HEIGHT),
+                enabled = control.enabled,
+                shape = KaniUiTokens.ButtonShape,
+            ) {
+                Text(text = control.label, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        is SettingsControl.Info -> Row(
+            modifier = Modifier.fillMaxWidth().then(tag),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(text = control.label, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+            Text(text = control.value, color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp)
+        }
+    }
+}
+
+/**
+ * An explainer or attribution page: the page title, then titled paragraphs.
+ *
+ * Selectable text, because this is the one Settings surface a user has a reason to copy
+ * out of — a licence obligation is only satisfiable if the credit can be quoted, and a
+ * user reporting a problem tends to paste an explainer line back at us.
+ *
+ * A block's title is rendered as a heading so assistive technology can jump between
+ * sections; a blank one is skipped rather than emitted as an empty heading, which would
+ * announce a heading that is not there.
+ */
+@Composable
+private fun ProsePanel(content: SettingsSectionContent.Prose) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().testTag(SETTINGS_PROSE_TEST_TAG),
+        shape = KaniUiTokens.PanelShape,
+        color = KaniTheme.colors.panel,
+    ) {
+        SelectionContainer {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    text = content.title,
+                    modifier = Modifier.semantics { heading() },
+                    color = KaniTheme.colors.ink,
+                    fontSize = KaniUiTokens.StudyHeadingTextSizeSp.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                for (block in content.blocks) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (block.title.isNotBlank()) {
+                            Text(
+                                text = block.title,
+                                modifier = Modifier.semantics { heading() },
+                                color = KaniTheme.colors.ink,
+                                fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Text(
+                            text = block.body,
+                            color = KaniTheme.colors.muted,
+                            fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderPanel(copy: SettingsCopy) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(SETTINGS_PLACEHOLDER_TEST_TAG)
+            .semantics { contentDescription = "${copy.placeholder} ${copy.placeholderHint}" },
+        shape = KaniUiTokens.LeafShape,
+        color = KaniTheme.colors.panelSoft,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = copy.placeholder, color = KaniTheme.colors.ink, fontSize = KaniUiTokens.StudyBodyTextSizeSp.sp, fontWeight = FontWeight.Medium)
+            Text(text = copy.placeholderHint, color = KaniTheme.colors.muted, fontSize = KaniUiTokens.StudyCaptionTextSizeSp.sp)
+        }
+    }
+}
+
+private val ACTION_MIN_HEIGHT = 54.dp

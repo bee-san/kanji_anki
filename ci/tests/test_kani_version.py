@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -9,7 +11,14 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ci/scripts"))
 
 from kani_version import (  # noqa: E402
+    CHECKSUMS_NAME,
+    MANIFEST_NAME,
+    MANIFEST_SIGNATURE_NAME,
+    MSI_MAJOR_MINOR_MAX,
+    MSI_PATCH_MAX,
     Version,
+    checksums_text,
+    desktop_metadata_lines,
     metadata_lines,
     next_patch_tag,
     parse_tag,
@@ -138,6 +147,96 @@ class KaniVersionTest(unittest.TestCase):
     def test_android_version_code_bound_is_enforced(self) -> None:
         with self.assertRaisesRegex(ValueError, "Android"):
             _ = Version(2_101, 0, 0).code
+
+
+class DesktopPackagingContractTest(unittest.TestCase):
+    def test_desktop_metadata_derives_every_version_and_asset_from_the_tag(self) -> None:
+        self.assertEqual(
+            [
+                "release_tag=v0.4.33",
+                "version_name=0.4.33",
+                "msi_version=0.4.33",
+                # jpackage rejects a zero leading component, so the macOS short
+                # version offsets the major; the build version is the version code.
+                "macos_short_version=1.4.33",
+                "macos_build_version=4033",
+                "deb_version=0.4.33-1",
+                f"manifest_name={MANIFEST_NAME}",
+                f"manifest_signature_name={MANIFEST_SIGNATURE_NAME}",
+                f"checksums_name={CHECKSUMS_NAME}",
+                "desktop_assets="
+                "kani-desktop-windows-x64-0.4.33.msi "
+                "kani-desktop-macos-arm64-0.4.33.dmg "
+                "kani-desktop-linux-x64-0.4.33.deb "
+                "kani-desktop-linux-x64-0.4.33.tar.gz",
+            ],
+            desktop_metadata_lines("v0.4.33"),
+        )
+
+    def test_msi_version_fails_closed_above_the_installer_bounds(self) -> None:
+        self.assertEqual(
+            f"{MSI_MAJOR_MINOR_MAX}.{MSI_MAJOR_MINOR_MAX}.999",
+            Version(MSI_MAJOR_MINOR_MAX, MSI_MAJOR_MINOR_MAX, 999).msi_version,
+        )
+        with self.assertRaisesRegex(ValueError, "MSI major"):
+            _ = Version(MSI_MAJOR_MINOR_MAX + 1, 0, 0).msi_version
+        with self.assertRaisesRegex(ValueError, "MSI minor"):
+            _ = Version(0, MSI_MAJOR_MINOR_MAX + 1, 0).msi_version
+        with self.assertRaisesRegex(ValueError, "MSI patch"):
+            _ = Version(0, 0, MSI_PATCH_MAX + 1).msi_version
+
+    def test_macos_build_version_is_monotonic_across_a_minor_bump(self) -> None:
+        self.assertLess(
+            int(parse_tag("v0.4.999").macos_build_version),
+            int(parse_tag("v0.5.0").macos_build_version),
+        )
+
+    def test_checksums_are_sorted_by_filename_and_use_basenames(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            names = (
+                "kani-desktop-windows-x64-1.0.0.msi",
+                "kani-desktop-linux-x64-1.0.0.deb",
+                "kani-desktop-macos-arm64-1.0.0.dmg",
+            )
+            for index, name in enumerate(names):
+                (root / name).write_bytes(b"payload-%d" % index)
+
+            # Collected in an arbitrary order, as a release job would.
+            text = checksums_text([root / name for name in names])
+
+            lines = text.splitlines()
+            self.assertEqual(
+                sorted(names),
+                [line.split("  ", 1)[1] for line in lines],
+            )
+            expected = hashlib.sha256(b"payload-1").hexdigest()
+            self.assertEqual(
+                f"{expected}  kani-desktop-linux-x64-1.0.0.deb",
+                lines[0],
+            )
+            # Reproducible: the same asset set in any order yields the same bytes.
+            self.assertEqual(
+                text,
+                checksums_text([root / name for name in reversed(names)]),
+            )
+            self.assertTrue(text.endswith("\n"))
+
+    def test_duplicate_asset_filenames_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "a").mkdir()
+            (root / "b").mkdir()
+            for parent in ("a", "b"):
+                (root / parent / "kani-desktop-linux-x64-1.0.0.deb").write_bytes(b"x")
+
+            with self.assertRaisesRegex(ValueError, "duplicate asset filename"):
+                checksums_text(
+                    [
+                        root / "a" / "kani-desktop-linux-x64-1.0.0.deb",
+                        root / "b" / "kani-desktop-linux-x64-1.0.0.deb",
+                    ],
+                )
 
 
 if __name__ == "__main__":

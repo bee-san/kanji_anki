@@ -1,10 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <queries>
-        <package android:name="com.ichi2.anki" />
-        <package android:name="com.ichi2.anki.debug" />
-    </queries>
-
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -13,9 +8,6 @@
         android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"
         tools:ignore="ProtectedPermissions"
         tools:targetApi="s" />
-    <uses-permission android:name="com.ichi2.anki.permission.READ_WRITE_DATABASE" />
-    <uses-permission android:name="com.ichi2.anki.debug.permission.READ_WRITE_DATABASE" />
-
     <application
         android:name=".KaniApplication"
         android:allowBackup="false"
@@ -30,8 +22,21 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/AppTheme"
         tools:targetApi="tiramisu">
+        <!--
+            The thin shared-graph host (Goal 199) is now the launcher. It owns the four
+            host responsibilities and hands navigation, content, and effects to the shared
+            graph both hosts run.
+
+            singleTop is load-bearing and not stylistic: every deep link into the app —
+            reminder notification, widget tap, launcher shortcut — is delivered to the
+            running instance through onNewIntent, and without it each one would stack a
+            second copy of the app over the first.
+
+            The shortcuts meta-data stays on whichever activity is the launcher, because
+            that is where the system reads the static shortcut definitions from.
+        -->
         <activity
-            android:name=".MainActivity"
+            android:name=".host.KaniHostActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
@@ -44,7 +49,7 @@
                 android:resource="@xml/shortcuts" />
         </activity>
         <!--
-            Kani initializes scheduler/update work explicitly from MainActivityStartup,
+            Kani initializes scheduler/update work explicitly from its own host,
             and does not use AndroidX Startup consumers. Removing the provider keeps
             transitive EmojiCompat/ProcessLifecycle/ProfileInstaller initializers out
             of the cold activity-start path.
@@ -95,62 +100,6 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
-        <receiver
-            android:name=".widget.KaniWidgetReceiver"
-            android:exported="false"
-            android:label="@string/study_overview_widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/kani_widget_info" />
-        </receiver>
-        <receiver
-            android:name=".widget.QuickStudyWidgetReceiver"
-            android:exported="false"
-            android:label="@string/quick_study_widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/quick_study_widget_info" />
-        </receiver>
-        <receiver
-            android:name=".widget.ActivityWidgetReceiver"
-            android:exported="false"
-            android:label="@string/activity_widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/activity_widget_info" />
-        </receiver>
-        <receiver
-            android:name=".widget.FocusKanjiWidgetReceiver"
-            android:exported="false"
-            android:label="@string/focus_kanji_widget_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/focus_kanji_widget_info" />
-        </receiver>
-        <receiver
-            android:name=".widget.KaniWidgetRefreshReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="dev.bee.kanjianki.widget.action.REFRESH" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.LOCALE_CHANGED" />
-            </intent-filter>
-        </receiver>
         <receiver
             android:name=".update.PackageInstallStatusReceiver"
             android:exported="false" />

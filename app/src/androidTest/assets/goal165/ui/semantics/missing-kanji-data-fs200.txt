@@ -1,0 +1,110 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       |  |-Node
+       |  | CollectionInfo = 'CollectionInfo(rowCount=11, columnCount=1)'
+       |  | IsTraversalGroup = 'true'
+       |  | Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       |  | VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=100.0, reverseScrolling=false)'
+       |  | Actions = [GetScrollViewportLength, IndexForKey, ScrollBy, ScrollByOffset, ScrollToIndex]
+       |  |  |-Node
+       |  |  | Focused = 'false'
+       |  |  | Role = 'Button'
+       |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  |  | Actions = [OnClick, RequestFocus]
+       |  |  | MergeDescendants = 'true'
+       |  |  |  |-Node
+       |  |  |    Text = '[Home]'
+       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Missing Kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Find useful kanji that do not appear anywhere in Anki.]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Last scan: 23 Jul 2026 08:30]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[12,480 notes scanned]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[1,842 unique kanji in Anki]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[5,000 eligible dictionary kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    Text = '[4 missing]'
+       |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |    IsContainer = 'true'
+       |    Shape = 'RectangleShape'
+       |     |-Node
+       |     | Focused = 'false'
+       |     | Role = 'Button'
+       |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     | Actions = [OnClick, RequestFocus]
+       |     | MergeDescendants = 'true'
+       |     |  |-Node
+       |     |    Text = '[Add to Kani]'
+       |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |       Focused = 'false'
+       |       Role = 'Button'
+       |       Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |       Actions = [OnClick, RequestFocus]
+       |       MergeDescendants = 'true'
+       |        |-Node
+       |          Text = '[Export to Anki]'
+       |          Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab, selected]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'true'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'false'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

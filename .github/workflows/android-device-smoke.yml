@@ -111,10 +111,7 @@ jobs:
           disable-linux-hw-accel: false
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: >-
-            ./gradlew :app:connectedDebugAndroidTest
-            -Pandroid.testInstrumentationRunnerArguments.annotation=dev.bee.kanjianki.testing.DeviceSmoke
-            --no-daemon
+          script: bash ci/scripts/run_device_smoke_suite.sh
 
       - name: Upload compact-smoke diagnostics
         if: failure()
@@ -125,6 +122,8 @@ jobs:
           path: |
             app/build/reports/androidTests/**
             app/build/outputs/androidTest-results/**
+            provider-ankidroid/build/reports/androidTests/**
+            provider-ankidroid/build/outputs/androidTest-results/**
 
   full-risk-suite:
     name: Device risk suite (API 35)
@@ -192,3 +191,5 @@ jobs:
             app/build/outputs/androidTest-results/**
             app/build/outputs/apk/minifiedSmoke/**
             app/build/outputs/mapping/minifiedSmoke/**
+            provider-ankidroid/build/reports/androidTests/**
+            provider-ankidroid/build/outputs/androidTest-results/**

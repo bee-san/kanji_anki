@@ -4,6 +4,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
+import dev.bee.kanjianki.automation.PendingWorkOperation
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -50,7 +52,7 @@ class FsrsFitSchedulerTest {
         FsrsFitExecutionGate.release()
     }
 
-    private class Backend : FsrsFitScheduler.SchedulerBackend {
+    private class Backend : WorkManagerGateway {
         var periodicEnqueued = false
         var periodicName: String? = null
         var periodicPolicy: ExistingPeriodicWorkPolicy? = null
@@ -64,25 +66,28 @@ class FsrsFitSchedulerTest {
             uniqueWorkName: String,
             policy: ExistingPeriodicWorkPolicy,
             request: PeriodicWorkRequest,
-        ) {
+        ): PendingWorkOperation {
             periodicEnqueued = true
             periodicName = uniqueWorkName
             periodicPolicy = policy
             periodicRequest = request
+            return PendingWorkOperation { }
         }
 
         override fun enqueueUniqueWork(
             uniqueWorkName: String,
             policy: ExistingWorkPolicy,
             request: OneTimeWorkRequest,
-        ) {
+        ): PendingWorkOperation {
             oneShotName = uniqueWorkName
             oneShotPolicy = policy
             oneShotRequest = request
+            return PendingWorkOperation { }
         }
 
-        override fun cancelUniqueWork(uniqueWorkName: String) {
+        override fun cancelUniqueWork(uniqueWorkName: String): PendingWorkOperation {
             cancelled += uniqueWorkName
+            return PendingWorkOperation { }
         }
     }
 }

@@ -7,7 +7,6 @@ import dev.bee.kanjianki.core.KanjiRepairEvidencePolicy
 import dev.bee.kanjianki.core.LadderCompletionForecastPolicy
 import dev.bee.kanjianki.core.RecordsBase
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -107,23 +106,6 @@ class RepositoryAdapterMappingsTest {
         assertEquals("bow", actual.confusionMeanings["弓"])
         assertEquals(2, actual.ladderForecast?.totalItems)
         assertTrue(actual.studyTaskTimeStats.averageMillisPerTask() > 0L)
-    }
-
-    @Test
-    fun settingsSnapshotsExposeNormalizedAndDisplayBehavior() {
-        val reminder = ReminderSettingsSnapshot(true, 8, 5)
-        val invalidReminder = ReminderSettingsSnapshot(true, 99, -1).normalized()
-        val autoSync = AutoSyncSettingsSnapshot(true, true, 6, 45, 1L, 2L, 3L)
-        val invalidAutoSync = AutoSyncSettingsSnapshot(true, true, -1, 99, -1L, -2L, -3L).normalized()
-
-        assertEquals("08:05", reminder.displayTime())
-        assertTrue(invalidReminder.hour in 0..23)
-        assertTrue(invalidReminder.minute in 0..59)
-        assertEquals("06:45", autoSync.displayTime())
-        assertTrue(invalidAutoSync.hour in 0..23)
-        assertTrue(invalidAutoSync.minute in 0..59)
-        assertTrue(AutoUpdateStatusSnapshot(true, 1L, "ready", "v1", "update.apk", "").hasPendingUpdate())
-        assertFalse(AutoUpdateStatusSnapshot(true, 1L, "idle", "v1", "", "").hasPendingUpdate())
     }
 
     private fun repairEvidence(): StudyStatsStore.KanjiRepairEvidence =

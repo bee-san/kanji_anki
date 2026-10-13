@@ -3,6 +3,10 @@ package dev.bee.kanjianki.sync
 import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequest
+import dev.bee.kanjianki.automation.PendingWorkOperation
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -62,7 +66,7 @@ class AutoSyncRetrySchedulerTest {
         assertTrue(backend.awaited)
     }
 
-    private class Backend : AutoSyncRetryScheduler.SchedulerBackend {
+    private class Backend : WorkManagerGateway {
         var enqueuedName: String? = null
         var cancelledName: String? = null
         var policy: ExistingWorkPolicy? = null
@@ -73,18 +77,24 @@ class AutoSyncRetrySchedulerTest {
             uniqueWorkName: String,
             policy: ExistingWorkPolicy,
             request: OneTimeWorkRequest,
-        ): AutoSyncRetryScheduler.PendingOperation {
+        ): PendingWorkOperation {
             enqueuedName = uniqueWorkName
             this.policy = policy
             this.request = request
-            return AutoSyncRetryScheduler.PendingOperation { awaited = true }
+            return PendingWorkOperation { awaited = true }
         }
 
         override fun cancelUniqueWork(
             uniqueWorkName: String,
-        ): AutoSyncRetryScheduler.PendingOperation {
+        ): PendingWorkOperation {
             cancelledName = uniqueWorkName
-            return AutoSyncRetryScheduler.PendingOperation { awaited = true }
+            return PendingWorkOperation { awaited = true }
         }
+
+        override fun enqueueUniquePeriodicWork(
+            uniqueWorkName: String,
+            policy: ExistingPeriodicWorkPolicy,
+            request: PeriodicWorkRequest,
+        ): PendingWorkOperation = error("Unexpected periodic work")
     }
 }

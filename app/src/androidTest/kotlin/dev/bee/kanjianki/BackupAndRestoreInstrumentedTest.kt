@@ -17,7 +17,9 @@ import dev.bee.kanjianki.backup.BackupExportOperations
 import dev.bee.kanjianki.backup.BackupExportPreparation
 import dev.bee.kanjianki.backup.BackupRestoreStager
 import dev.bee.kanjianki.backup.StagedRestoreApplier
-import dev.bee.kanjianki.backup.UriStreams
+import dev.bee.kanjianki.host.KaniLaunchIntents
+import dev.bee.kanjianki.platform.PlatformFileAccess
+import dev.bee.kanjianki.platform.PlatformFileReference
 import dev.bee.kanjianki.backup.ValidatedBackup
 import dev.bee.kanjianki.core.AnkiKanjiInventory
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
@@ -25,8 +27,8 @@ import dev.bee.kanjianki.core.MissingKanjiCandidate
 import dev.bee.kanjianki.core.MissingKanjiFrequencyRange
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
-import dev.bee.kanjianki.data.MissingKanjiExportReceipt
-import dev.bee.kanjianki.data.MissingKanjiPreferences
+import dev.bee.kanjianki.core.MissingKanjiExportReceipt
+import dev.bee.kanjianki.core.MissingKanjiPreferences
 import dev.bee.kanjianki.testing.DeviceRisk
 import java.io.File
 import java.io.FileOutputStream
@@ -49,77 +51,21 @@ class BackupAndRestoreInstrumentedTest {
 
     @After
     fun cleanUp() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         BackupRestoreStager.restoreDir(context.filesDir).deleteRecursively()
         File(context.cacheDir, "backup-export").deleteRecursively()
         File(context.cacheDir, "backup-export-test.db.gz").delete()
     }
 
-    @Test
-    @SdkSuppress(minSdkVersion = 30)
-    fun panelRendersAndExportProducesStandaloneSqliteGzip() {
-        val panel = SettingsBackupPanelModel(
-            title = "Backup & restore",
-            body = "Export or restore Kani data.",
-            lastBackupLine = "Last automatic backup: not yet",
-            archiveCountLine = "0 automatic backups kept on this device",
-            exportLabel = "Export now",
-            onExport = Runnable {},
-            restoreLabel = "Restore from backup…",
-            onRestore = Runnable {},
-        )
-        composeRule.setContent {
-            SettingsSubmenuScreen(
-                SettingsSubmenuScreenModel(
-                    "Home",
-                    Runnable {},
-                    "Back",
-                    Runnable {},
-                    "Automation",
-                    "Manage automation.",
-                    listOf(panel),
-                ),
-            )
-        }
-        composeRule.onNodeWithTag("settings-panel-backup").assertIsDisplayed()
-        composeRule.onNodeWithText("Export now").assertIsDisplayed()
-
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
-        val dbFile = context.getDatabasePath(LocalStoreSchema.DB_NAME)
-        val preparation = LocalStore(context).use { store ->
-            store.writableDatabase.execSQL(
-                "INSERT OR REPLACE INTO settings(key, value, updated_at) VALUES ('export_probe', 'yes', 1)",
-            )
-            BackupExportOperations.prepare(context.cacheDir, dbFile, 1_778_832_000_000L) { _, destination ->
-                store.snapshotInto(destination)
-            }
-        }
-        assertTrue(preparation is BackupExportPreparation.Ready)
-        val prepared = (preparation as BackupExportPreparation.Ready).export
-        val destination = File(context.cacheDir, "backup-export-test.db.gz")
-        val copied = BackupExportOperations.copyToUri(
-            prepared,
-            Uri.fromFile(destination),
-            UriStreams { FileOutputStream(destination) },
-        )
-        assertTrue(copied.success)
-        val header = GZIPInputStream(destination.inputStream()).use { gzip ->
-            ByteArray(16).also { bytes ->
-                var offset = 0
-                while (offset < bytes.size) {
-                    val read = gzip.read(bytes, offset, bytes.size - offset)
-                    assertTrue(read > 0)
-                    offset += read
-                }
-            }
-        }
-        assertEquals("SQLite format 3\u0000", header.toString(Charsets.US_ASCII))
-    }
-
+    // `panelRendersAndExportProducesStandaloneSqliteGzip` was removed with the
+    // `MainActivity*` chain: it rendered the old Settings backup panel, which no longer
+    // exists. Export is covered without a screen by `AndroidBackupExportTest`, and the two
+    // restore tests below are store-level, which is where the atomic-publication contract
+    // actually lives.
     @Test
     @SdkSuppress(minSdkVersion = 30)
     fun applicationStartupHookAppliesStagedOlderFixtureBeforeActivityOpen() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "fixture.db")
         fixture.parentFile!!.mkdirs()
         // Build a complete current schema, plant a sentinel, then lower user_version so the
@@ -134,7 +80,7 @@ class BackupAndRestoreInstrumentedTest {
         SQLiteDatabase.openDatabase(fixture.absolutePath, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.execSQL("PRAGMA user_version = 28")
         }
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         assertTrue(
             BackupRestoreStager.stage(
                 ValidatedBackup(fixture, "known-fixture.db.gz"),
@@ -150,22 +96,22 @@ class BackupAndRestoreInstrumentedTest {
         assertFalse(BackupRestoreStager.stagedFile(context.filesDir).exists())
         assertFalse(BackupRestoreStager.markerFile(context.filesDir).exists())
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(MainActivityBase.EXTRA_SCREENSHOT_ROUTE, MainActivityBase.NAV_SETTINGS_ROUTE)
-        }
-        ActivityScenario.launch<MainActivity>(intent).use { scenario ->
-            scenario.onActivity { activity ->
-                activity.store.readableDatabase.rawQuery(
-                    "SELECT value FROM settings WHERE key = 'restore_probe'",
-                    null,
-                ).use { cursor ->
-                    assertTrue(cursor.moveToFirst())
-                    assertEquals("visible", cursor.getString(0))
-                }
-                activity.store.readableDatabase.rawQuery("PRAGMA user_version", null).use { cursor ->
-                    assertTrue(cursor.moveToFirst())
-                    assertEquals(LocalStoreSchema.DB_VERSION, cursor.getInt(0))
-                }
+        // Read the published database directly rather than through an activity's `store`.
+        // The restore's contract is about what startup published, not about which screen
+        // happens to open afterwards, and a fresh `LocalStore` opens exactly the file the
+        // atomic replacement left behind. This also drops the last reason for this test to
+        // know an Activity type at all.
+        LocalStore(context).use { store ->
+            store.readableDatabase.rawQuery(
+                "SELECT value FROM settings WHERE key = 'restore_probe'",
+                null,
+            ).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals("visible", cursor.getString(0))
+            }
+            store.readableDatabase.rawQuery("PRAGMA user_version", null).use { cursor ->
+                assertTrue(cursor.moveToFirst())
+                assertEquals(LocalStoreSchema.DB_VERSION, cursor.getInt(0))
             }
         }
     }
@@ -173,7 +119,7 @@ class BackupAndRestoreInstrumentedTest {
     @Test
     @SdkSuppress(minSdkVersion = 30)
     fun missingKanjiStateSurvivesSnapshotAndRestoreRoundTrip() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         val fixture = File(BackupRestoreStager.restoreDir(context.filesDir), "missing-kanji.db")
         fixture.parentFile!!.mkdirs()
         LocalStore(context).use { store ->
@@ -216,7 +162,7 @@ class BackupAndRestoreInstrumentedTest {
             store.snapshotInto(fixture)
         }
 
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        KaniTestDatabase.delete(context)
         assertTrue(
             BackupRestoreStager.stage(
                 ValidatedBackup(fixture, "missing-kanji.db.gz"),

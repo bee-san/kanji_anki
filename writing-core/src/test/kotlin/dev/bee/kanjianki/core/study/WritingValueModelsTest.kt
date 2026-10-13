@@ -112,7 +112,7 @@ class WritingValueModelsTest {
             String::class.java,
             Boolean::class.javaPrimitiveType!!,
             String::class.java,
-            java.util.List::class.java,
+            List::class.java,
             StrokeOrderEvaluator.StrokeOrderResult::class.java,
         )
         val hintArray: Constructor<WritingAnalysis> = WritingAnalysis::class.java.getConstructor(
@@ -120,7 +120,7 @@ class WritingValueModelsTest {
             String::class.java,
             Boolean::class.javaPrimitiveType!!,
             String::class.java,
-            java.util.List::class.java,
+            List::class.java,
             StrokeOrderEvaluator.StrokeOrderResult::class.java,
             Array<Any>::class.java,
         )
@@ -129,7 +129,7 @@ class WritingValueModelsTest {
             String::class.java,
             Boolean::class.javaPrimitiveType!!,
             String::class.java,
-            java.util.List::class.java,
+            List::class.java,
             StrokeOrderEvaluator.StrokeOrderResult::class.java,
             Any::class.java,
         )
@@ -138,7 +138,7 @@ class WritingValueModelsTest {
             String::class.java,
             Boolean::class.javaPrimitiveType!!,
             String::class.java,
-            java.util.List::class.java,
+            List::class.java,
             StrokeOrderEvaluator.StrokeOrderResult::class.java,
             Any::class.java,
             Any::class.java,

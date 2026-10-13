@@ -1,0 +1,4 @@
+<resources>
+    <string name="settings_placeholder">このセクションはデスクトップ版に対応予定です。</string>
+    <string name="settings_placeholder_hint">現在はAndroid版で利用できます。</string>
+</resources>

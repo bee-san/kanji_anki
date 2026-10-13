@@ -155,6 +155,25 @@ object AdaptiveRouteStateCodec {
     }
 }
 
+/** Dependency-free JSON codec for small persisted arrays of strings. */
+object StringListJsonCodec {
+    @JvmStatic
+    fun encode(values: List<String>): String = CompactJson.encodeArray(values)
+
+    @JvmStatic
+    fun decode(encoded: String?): List<String> {
+        val decoded = CompactJson.decodeArray(encoded) ?: return emptyList()
+        val values = LinkedHashSet<String>()
+        for (value in decoded) {
+            val item = (value as? String)?.trim().orEmpty()
+            if (item.isNotEmpty()) {
+                values += item
+            }
+        }
+        return values.toList()
+    }
+}
+
 /**
  * Dependency-free JSON support for the two tiny persisted payloads above.
  * It deliberately accepts unknown object fields so newer writers remain
@@ -168,12 +187,27 @@ private object CompactJson {
         appendObject(this, values)
     }
 
+    fun encodeArray(values: List<*>): String = buildString {
+        appendArray(this, values)
+    }
+
     fun decodeObject(encoded: String?): Map<String, Any?>? {
         if (encoded.isNullOrBlank() || encoded.length > MAX_INPUT_CHARS) {
             return null
         }
         return try {
             Reader(encoded).readRootObject()
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+
+    fun decodeArray(encoded: String?): List<Any?>? {
+        if (encoded.isNullOrBlank() || encoded.length > MAX_INPUT_CHARS) {
+            return null
+        }
+        return try {
+            Reader(encoded).readRootArray()
         } catch (_: IllegalArgumentException) {
             null
         }
@@ -247,6 +281,14 @@ private object CompactJson {
         fun readRootObject(): Map<String, Any?> {
             skipWhitespace()
             val root = readObject(0)
+            skipWhitespace()
+            require(index == source.length) { "Trailing JSON input" }
+            return root
+        }
+
+        fun readRootArray(): List<Any?> {
+            skipWhitespace()
+            val root = readArray(0)
             skipWhitespace()
             require(index == source.length) { "Trailing JSON input" }
             return root

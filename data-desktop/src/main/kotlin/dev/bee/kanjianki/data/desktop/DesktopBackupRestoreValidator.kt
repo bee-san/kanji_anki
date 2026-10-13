@@ -1,0 +1,216 @@
+package dev.bee.kanjianki.data.desktop
+
+import dev.bee.kanjianki.backup.core.BackupSpaceBudget
+import dev.bee.kanjianki.backup.core.InsufficientBackupStorageException
+import dev.bee.kanjianki.core.BackupRestorePolicy
+import dev.bee.kanjianki.data.sql.SchemaManager
+import dev.bee.kanjianki.data.sql.SqlConnection
+import dev.bee.kanjianki.data.sql.SqlConnectionMode
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.zip.GZIPInputStream
+
+/**
+ * Desktop counterpart to the Android `BackupRestoreValidator`: decompresses a
+ * user-selected gzip backup into a staging file under a hard decompressed-size
+ * cap and a running free-space reserve, verifies the SQLite magic, then opens
+ * the staged file read-only through the bundled driver to gather
+ * [BackupRestorePolicy.ValidationFacts]. The pure accept/reject decision and all
+ * user copy stay in `:core`; the cap/reserve arithmetic stays in `:backup-core`.
+ *
+ * On acceptance the staged file is returned for the atomic apply step; on any
+ * rejection the staged file is deleted.
+ */
+object DesktopBackupRestoreValidator {
+    // "SQLite format 3<NUL>" — the 16-byte header magic.
+    private val SQLITE_MAGIC = byteArrayOf(
+        0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66,
+        0x6f, 0x72, 0x6d, 0x61, 0x74, 0x20, 0x33, 0x00,
+    )
+    private const val VALIDATING_SUFFIX = ".validating.tmp"
+
+    data class Validation(
+        val result: BackupRestorePolicy.ValidationResult,
+        /** The staged, decompressed database file when [result] is accepted. */
+        val stagedDatabase: Path? = null,
+        val sourceName: String? = null,
+    )
+
+    /** Probes the bytes that may still be allocated on the restore filesystem. */
+    fun interface AllocatableSpaceProbe {
+        fun allocatableBytes(directory: Path): Long
+    }
+
+    private val DEFAULT_SPACE_PROBE = AllocatableSpaceProbe { directory ->
+        try {
+            Files.getFileStore(directory).usableSpace
+        } catch (_: IOException) {
+            0L
+        }
+    }
+
+    /**
+     * Validates the gzip stream produced by [input] against a [restoreDir]
+     * staging area.
+     *
+     * @param maxDecompressedBytes hard cap on decompressed output.
+     * @param freeSpaceReserveBytes free space that must remain after each write.
+     */
+    fun validate(
+        restoreDir: Path,
+        sourceName: String,
+        input: () -> InputStream?,
+        maxDecompressedBytes: Long = BackupSpaceBudget.MAX_DECOMPRESSED_BYTES,
+        freeSpaceReserveBytes: Long = BackupSpaceBudget.FREE_SPACE_RESERVE_BYTES,
+        spaceProbe: AllocatableSpaceProbe = DEFAULT_SPACE_PROBE,
+    ): Validation {
+        require(maxDecompressedBytes > 0L) { "maxDecompressedBytes must be positive" }
+        require(freeSpaceReserveBytes >= 0L) { "freeSpaceReserveBytes must not be negative" }
+        Files.createDirectories(restoreDir)
+        val staged = restoreDir.resolve("restore-${stagingToken(restoreDir)}$VALIDATING_SUFFIX")
+
+        val decompressionFailure = try {
+            val budget = BackupSpaceBudget(spaceProbe.allocatableBytes(restoreDir), freeSpaceReserveBytes)
+            budget.requireWrite(1)
+            val source = input() ?: throw IOException("No input stream")
+            source.use { rawInput ->
+                GZIPInputStream(rawInput).use { gzip ->
+                    Files.newOutputStream(staged).use { output ->
+                        copyBounded(gzip, output, maxDecompressedBytes, budget)
+                    }
+                }
+            }
+            null
+        } catch (_: BackupTooLargeException) {
+            BackupRestorePolicy.CopyId.BACKUP_TOO_LARGE
+        } catch (_: InsufficientBackupStorageException) {
+            BackupRestorePolicy.CopyId.INSUFFICIENT_STORAGE
+        } catch (_: IOException) {
+            BackupRestorePolicy.CopyId.TRUNCATED_GZIP
+        } catch (_: RuntimeException) {
+            BackupRestorePolicy.CopyId.TRUNCATED_GZIP
+        }
+        if (decompressionFailure != null) {
+            deleteBestEffort(staged)
+            return rejected(decompressionFailure)
+        }
+
+        if (!hasSqliteMagic(staged)) {
+            deleteBestEffort(staged)
+            return rejected(BackupRestorePolicy.CopyId.BAD_SQLITE_MAGIC)
+        }
+
+        val facts = try {
+            readValidationFacts(staged)
+        } catch (_: Exception) {
+            deleteBestEffort(staged)
+            return rejected(BackupRestorePolicy.CopyId.QUICK_CHECK_FAILED)
+        }
+
+        val policy = BackupRestorePolicy.validate(facts, SchemaManager.DATABASE_VERSION)
+        if (!policy.accepted) {
+            deleteBestEffort(staged)
+            return Validation(policy)
+        }
+        return Validation(policy, staged, sourceName)
+    }
+
+    private fun readValidationFacts(staged: Path): BackupRestorePolicy.ValidationFacts {
+        BundledSqlDriver(staged.toString()).use { driver ->
+            driver.openConnection(SqlConnectionMode.READ_ONLY).use { connection ->
+                return BackupRestorePolicy.ValidationFacts(
+                    gzipReadable = true,
+                    sqliteMagicPresent = true,
+                    userVersion = scalarLong(connection, "PRAGMA user_version").toInt(),
+                    settingsTablePresent = hasSettingsTable(connection),
+                    quickCheckOk = quickCheckOk(connection),
+                )
+            }
+        }
+    }
+
+    private fun hasSettingsTable(connection: SqlConnection): Boolean =
+        connection
+            .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'settings' LIMIT 1")
+            .use { statement -> statement.query().use { it.next() } }
+
+    private fun quickCheckOk(connection: SqlConnection): Boolean =
+        connection.prepare("PRAGMA quick_check").use { statement ->
+            statement.query().use { rows ->
+                if (!rows.next()) return false
+                do {
+                    if (!rows.row.text(0).equals("ok", ignoreCase = true)) return false
+                } while (rows.next())
+                true
+            }
+        }
+
+    private fun scalarLong(connection: SqlConnection, sql: String): Long =
+        connection.prepare(sql).use { statement ->
+            statement.query().use { rows ->
+                check(rows.next()) { "no scalar row for $sql" }
+                rows.row.long(0)
+            }
+        }
+
+    private fun copyBounded(
+        input: InputStream,
+        output: OutputStream,
+        maxDecompressedBytes: Long,
+        budget: BackupSpaceBudget,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var totalBytes = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) return
+            if (read == 0) continue
+            if (totalBytes > maxDecompressedBytes - read) throw BackupTooLargeException()
+            budget.requireWrite(read)
+            output.write(buffer, 0, read)
+            budget.recordWrite(read)
+            totalBytes += read
+        }
+    }
+
+    private fun hasSqliteMagic(file: Path): Boolean {
+        if (!Files.isRegularFile(file) || Files.size(file) < SQLITE_MAGIC.size) return false
+        Files.newInputStream(file).use { input ->
+            val actual = ByteArray(SQLITE_MAGIC.size)
+            var offset = 0
+            while (offset < actual.size) {
+                val read = input.read(actual, offset, actual.size - offset)
+                if (read < 0) return false
+                offset += read
+            }
+            return actual.contentEquals(SQLITE_MAGIC)
+        }
+    }
+
+    private fun stagingToken(restoreDir: Path): String {
+        // Deterministic, collision-avoiding token without a wall clock: the first
+        // free index. Orphan validation files from a crashed run are reused-past,
+        // not overwritten, so a concurrent stale file never clashes.
+        var index = 0
+        while (Files.exists(restoreDir.resolve("restore-$index$VALIDATING_SUFFIX"))) {
+            index += 1
+        }
+        return index.toString()
+    }
+
+    private fun deleteBestEffort(path: Path) {
+        try {
+            Files.deleteIfExists(path)
+        } catch (_: IOException) {
+            // Orphan validation files are swept on the next validate call.
+        }
+    }
+
+    private fun rejected(copyId: BackupRestorePolicy.CopyId): Validation =
+        Validation(BackupRestorePolicy.rejection(copyId))
+
+    private class BackupTooLargeException : IOException()
+}

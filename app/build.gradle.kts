@@ -143,6 +143,13 @@ android {
             applicationIdSuffix = ".smoke"
             versionNameSuffix = "-smoke"
             signingConfig = signingConfigs.getByName("debug")
+            // `minifiedSmoke` exists only here, so every library module the app depends
+            // on must be told which of its own variants to serve. `initWith(release)`
+            // copies this build type's settings but not its variant-matching rules, and
+            // without the fallback AGP fails resolution outright ("No matching variant of
+            // project :automation-android"). Fall back to `release` so the smoke APK
+            // exercises the same minified library code the real release ships.
+            matchingFallbacks += "release"
             ndk {
                 abiFilters.clear()
                 abiFilters += "x86_64"
@@ -158,6 +165,12 @@ android {
         abortOnError = true
         warningsAsErrors = true
         disable += setOf("GradleDependency", "OldTargetApi", "ChromeOsAbiSupport")
+    }
+}
+
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
     }
 }
 
@@ -232,22 +245,39 @@ dependencies {
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
+    implementation(project(":application"))
+    implementation(project(":automation-android"))
+    implementation(project(":backup-core"))
     implementation(project(":core"))
+    implementation(project(":data-api"))
     implementation(project(":dictionary-core"))
+    implementation(project(":platform-contracts"))
+    implementation(project(":platform-android"))
+    // The shared product shell and its host-neutral presentation mapping. The new thin
+    // KaniHostActivity (Goal 199) renders every route through :feature-shell's surfaces
+    // and assembles content through :host-presentation's KaniRouteLoader, the same as
+    // desktop. The legacy MainActivity* chain still renders in parallel until the thin
+    // host passes the instrumented gate and replaces it.
+    implementation(project(":feature-shell"))
+    implementation(project(":host-presentation"))
+    implementation(project(":presentation-api"))
+    implementation(project(":progress-core"))
+    implementation(project(":provider-ankidroid"))
+    implementation(project(":sync-api"))
+    implementation(project(":sync-engine"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material3.wsc)
     implementation(libs.compose.ui)
     implementation(libs.androidx.profileinstaller)
     implementation(project(":update-core"))
+    implementation(project(":widget"))
     implementation(project(":writing-core"))
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.glance.appwidget)
-    implementation(libs.mlkit.digital.ink)
     testImplementation(composeBom)
     testImplementation(libs.junit)
     testImplementation(libs.androidx.test.core)
@@ -258,10 +288,12 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.glance.appwidget.testing)
+    testImplementation(testFixtures(project(":data-api")))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(testFixtures(project(":sync-api")))
     debugImplementation(libs.compose.ui.test.manifest)
 }

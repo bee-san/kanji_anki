@@ -1,0 +1,5 @@
+<resources>
+    <string name="games_sync">コレクションを同期</string>
+    <string name="games_unavailable_title">ゲームにはコレクションが必要です</string>
+    <string name="games_unavailable_body">漢字を同期するとゲームが解放されます。</string>
+</resources>

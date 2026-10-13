@@ -1,6 +1,6 @@
 package dev.bee.kanjianki.core
 
-import dev.bee.fsrs.FsrsEngine
+import dev.bee.fsrs.Fsrs7Engine
 import dev.bee.fsrs.FsrsRating
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,7 +20,7 @@ import org.junit.Test
 class RelearningGraduationDifficultyTest {
     @Test
     fun relearningGraduationAppliesNextDifficultyOnceOnTopOfPostLapseState() {
-        val engine = FsrsEngine.latestDefault()
+        val engine = Fsrs7Engine.latestDefault()
         val adapter = LatestFsrsAdapter(engine)
 
         // Post-lapse memory state carried into relearning graduation.
@@ -45,7 +45,7 @@ class RelearningGraduationDifficultyTest {
 
     @Test
     fun newLearningGraduationUsesInitialStateAloneNotTheCarriedDifficulty() {
-        val engine = FsrsEngine.latestDefault()
+        val engine = Fsrs7Engine.latestDefault()
         val adapter = LatestFsrsAdapter(engine)
 
         // For new-learning graduation the carried stability/difficulty are ignored;

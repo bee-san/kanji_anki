@@ -4,6 +4,7 @@ import dev.bee.kanjianki.core.AppliedReviewSnapshot
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
+import dev.bee.kanjianki.core.SyncSettings
 
 internal class SqliteStudyRepository(
     private val store: LocalStore,
@@ -14,6 +15,7 @@ internal class SqliteStudyRepository(
             val dayStart = LocalDayPolicy.localDayStart(nowMillis)
             StudyQueueSnapshot(
                 activeRows = rows.toList(),
+                availableRows = store.activeDashboardRows().toList(),
                 studyItems = if (rows.isEmpty()) {
                     emptyList()
                 } else {
@@ -22,6 +24,7 @@ internal class SqliteStudyRepository(
                 locallySuspendedKanji = store.locallySuspendedKanji().toSet(),
                 latestSuccessfulSyncAtMillis = store.latestSuccessfulSyncFinishedAt(),
                 studyLadder = store.studyLadderSettings(),
+                syncSettings = SyncSettings.fromStore(store),
                 schedulerParameters = store.schedulerParameters(),
                 schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
                 learningSteps = store.learningStepSettings(),
@@ -35,8 +38,13 @@ internal class SqliteStudyRepository(
                 recentReviewStats = store.reviewStatsSince(nowMillis - RECENT_REVIEW_WINDOW_MILLIS),
                 studiedKanjiToday = store.studiedKanjiSince(dayStart).toSet(),
                 dueLegacyWritingRepairs = store.dueSimilarWritingRepairs(nowMillis).toList(),
+                consecutiveFailedSyncs = store.consecutiveFailedSyncCount(),
             )
         }
+    }
+
+    override suspend fun loadAllItems() = safeStoreCall {
+        store.studyItems().toList()
     }
 
     override suspend fun loadItems(kanji: Collection<String>) = safeStoreCall {
@@ -58,12 +66,32 @@ internal class SqliteStudyRepository(
             store.annotateSimilarKanjiAvailability(items).toList()
         }
 
+    override suspend fun saveItem(item: RecordsStudyModels.StudyItem) = safeStoreCall {
+        store.saveStudyItem(item)
+    }
+
+    override suspend fun recordTaskTiming(timing: ReviewTaskTiming) = safeStoreCall {
+        store.recordStudyTaskAnswered(
+            timing.taskKey,
+            timing.kanji,
+            timing.taskType,
+            timing.startedAtMillis,
+            timing.answeredAtMillis,
+            timing.activeElapsedMillis,
+            timing.outcome,
+        )
+    }
+
     override suspend fun commitReview(command: ReviewCommitCommand) = safeStoreCall {
         store.commitReview(command)
     }
 
     override suspend fun undoLastReview(snapshot: AppliedReviewSnapshot) = safeStoreCall {
         store.undoLastAppliedReview(snapshot)
+    }
+
+    override suspend fun loadQueueVersion() = safeStoreCall {
+        store.latestSuccessfulSyncFinishedAt()
     }
 
     override suspend fun reviewTokenStatus(query: ReviewTokenQuery) = safeStoreCall {
@@ -153,6 +181,10 @@ internal class SqliteStudyRepository(
 
     override suspend fun loadMnemonic(kanji: String) = safeStoreCall {
         store.kanjiMnemonicNote(kanji)
+    }
+
+    override suspend fun saveMnemonic(command: SaveMnemonicCommand) = safeStoreCall {
+        store.saveKanjiMnemonicNote(command.kanji, command.note, command.updatedAtMillis)
     }
 
     private companion object {

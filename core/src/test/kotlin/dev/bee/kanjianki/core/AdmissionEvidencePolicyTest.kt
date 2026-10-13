@@ -87,6 +87,55 @@ class AdmissionEvidencePolicyTest {
         assertEquals(55.0, seed.stability, 0.001)
     }
 
+    /**
+     * A provider that exposes no FSRS memory at all (AnkiConnect) must still seed
+     * from interval/lapses evidence rather than having a memory state invented for
+     * it. This pins the whole-row case, not just one example: every example is
+     * FSRS-free, as an entire AnkiConnect snapshot would be.
+     */
+    @Test
+    fun seedsFromIntervalAndLapsesWhenTheProviderExposesNoFsrsMemory() {
+        val row = row(
+            "裂",
+            active = 2,
+            suspended = 0,
+            mature = 1,
+            examples = listOf(
+                activeExample(mature = true, intervalDays = 30, stability = null, difficulty = null),
+                activeExample(mature = false, intervalDays = 12, stability = null, difficulty = null),
+            ),
+        )
+        val seed = AdmissionEvidencePolicy.seedFor(row, ladder, settings)
+
+        assertTrue(seed.isReviewSeed())
+        // Best available interval evidence, not a fabricated stability.
+        assertEquals(30.0, seed.stability, 0.001)
+        assertEquals(30, seed.matureIntervalDays)
+        // No FSRS difficulty and no lapses on these examples, so difficulty stays
+        // at the neutral base rather than being derived from a fabricated memory.
+        assertEquals(5.0, seed.difficulty, 0.001)
+    }
+
+    /**
+     * With no FSRS memory and no interval evidence either, stability falls back to
+     * the configured mature-days floor. It must stay a real bounded value rather
+     * than 0 (which would schedule the validation review immediately).
+     */
+    @Test
+    fun fallsBackToMatureDaysWhenNoIntervalEvidenceExistsEither() {
+        val row = row(
+            "裂",
+            active = 1,
+            suspended = 0,
+            mature = 1,
+            examples = listOf(activeExample(mature = true, intervalDays = 0, stability = null, difficulty = null)),
+        )
+        val seed = AdmissionEvidencePolicy.seedFor(row, ladder, settings)
+
+        assertTrue(seed.isReviewSeed())
+        assertEquals(settings.matureDays.toDouble(), seed.stability, 0.001)
+    }
+
     @Test
     fun nullRowSeedsPlainNewCard() {
         val seed = AdmissionEvidencePolicy.seedFor(null, ladder, settings)

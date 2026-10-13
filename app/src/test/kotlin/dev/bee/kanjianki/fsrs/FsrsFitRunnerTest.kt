@@ -3,6 +3,7 @@ package dev.bee.kanjianki.fsrs
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.core.BridgeScheduler
+import dev.bee.kanjianki.core.FsrsPersonalization
 import dev.bee.kanjianki.core.FsrsWeightFitter
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSchedulerModels
@@ -161,13 +162,20 @@ class FsrsFitRunnerTest {
         return scheduler.applyReview(item, request, HashSet(), 10L * BridgeScheduler.DAY).item.dueAtMillis
     }
 
-    private fun customWeights(): DoubleArray = doubleArrayOf(
-        0.212, 1.2931, 2.3065, 8.2956, 6.4133,
-        0.8334, 3.0194, 0.001, 4.0, 0.1666,
-        0.796, 1.4835, 0.0614, 0.2629, 1.6483,
-        0.6014, 1.8729, 0.5425, 0.0912, 0.0658,
-        0.1542,
-    )
+    /**
+     * FSRS-7 defaults with the long-term stability increase base at its ceiling.
+     *
+     * Derived rather than spelled out as 35 literals: FSRS-7's clipper has per-index
+     * bounds plus three ordering constraints, and this test cares only that the vector
+     * is valid and *not* the default — `adoptedFitPersistsFullPrecisionWeightsUsedByNextScheduler`
+     * asserts the fitted vector changes the scheduled due time, which a default-equal
+     * vector could not do.
+     *
+     * w[7] is the long-term `increaseBase`, bounded [0, 4] and defaulting to 2.3054, so
+     * 4.0 is a real perturbation with no ordering partner to violate.
+     */
+    private fun customWeights(): DoubleArray =
+        FsrsPersonalization.defaultWeights().also { it[7] = 4.0 }
 
     private fun fitResult(weights: DoubleArray, adopted: Boolean, reason: String) = FsrsWeightFitter.Result(
         weights = weights,

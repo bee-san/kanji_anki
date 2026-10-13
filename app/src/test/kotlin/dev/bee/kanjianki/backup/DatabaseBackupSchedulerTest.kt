@@ -1,7 +1,11 @@
 package dev.bee.kanjianki.backup
 
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
+import dev.bee.kanjianki.automation.PendingWorkOperation
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,7 +38,7 @@ class DatabaseBackupSchedulerTest {
         assertEquals(TimeUnit.HOURS.toMillis(6), backend.request?.workSpec?.flexDuration)
     }
 
-    private class Backend : DatabaseBackupScheduler.SchedulerBackend {
+    private class Backend : WorkManagerGateway {
         var enqueued = false
         var enqueuedName: String? = null
         var cancelledName: String? = null
@@ -45,15 +49,23 @@ class DatabaseBackupSchedulerTest {
             uniqueWorkName: String,
             policy: ExistingPeriodicWorkPolicy,
             request: PeriodicWorkRequest,
-        ) {
+        ): PendingWorkOperation {
             enqueued = true
             enqueuedName = uniqueWorkName
             this.policy = policy
             this.request = request
+            return PendingWorkOperation { }
         }
 
-        override fun cancelUniqueWork(workName: String) {
-            cancelledName = workName
+        override fun cancelUniqueWork(uniqueWorkName: String): PendingWorkOperation {
+            cancelledName = uniqueWorkName
+            return PendingWorkOperation { }
         }
+
+        override fun enqueueUniqueWork(
+            uniqueWorkName: String,
+            policy: ExistingWorkPolicy,
+            request: OneTimeWorkRequest,
+        ): PendingWorkOperation = error("Unexpected one-time work")
     }
 }

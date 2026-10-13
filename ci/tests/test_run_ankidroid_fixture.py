@@ -102,19 +102,19 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         self.assertIn("logcat -c", (tmp_path / "adb-calls.log").read_text())
         self.assertEqual(SCRIPT.read_text(encoding="utf-8").count("adb logcat -c"), 1)
 
-    def test_fixture_derives_external_storage_owner_uid_and_gid(self):
+    def test_fixture_derives_owner_from_package_managed_internal_storage(self):
         source = SCRIPT.read_text(encoding="utf-8")
 
         self.assertIn(
+            "owner_uid=\\$(stat -c '%u' /data/user/0/com.ichi2.anki",
+            source,
+        )
+        self.assertNotIn(
             "owner_uid=\\$(stat -c '%u' /storage/emulated/0/Android/data/com.ichi2.anki",
             source,
         )
-        self.assertIn(
-            "owner_gid=\\$(stat -c '%g' /storage/emulated/0/Android/data/com.ichi2.anki",
-            source,
-        )
-        self.assertIn('chown -R \\"\\$owner_uid\\":\\"\\$owner_gid\\"', source)
-        self.assertNotIn("ext_data_rw", source)
+        self.assertIn('chown -R \\"\\$owner_uid\\":ext_data_rw', source)
+        self.assertIn('chown -R \\"\\$owner_uid\\":media_rw', source)
 
     def test_fixture_retries_transient_external_storage_mount_failure(self):
         fake_adb = base_fake_adb(
@@ -134,7 +134,7 @@ class RunAnkiDroidFixtureTest(unittest.TestCase):
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "4")
+        self.assertEqual((tmp_path / "mkdir-count").read_text().strip(), "5")
 
     def test_fixture_fails_when_instrumentation_output_contains_failures(self):
         fake_adb = base_fake_adb(
@@ -152,7 +152,7 @@ OUT
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("FAILURES!!!", result.stdout)
-        self.assertIn("Instrumentation reported a failure", result.stdout)
+        self.assertIn("provider instrumentation reported a failure", result.stdout)
 
     def test_fixture_retries_transient_instrumentation_process_crash(self):
         fake_adb = base_fake_adb(
@@ -173,7 +173,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "2")
+        self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "3")
         self.assertIn("transient runner/process failure", result.stdout)
 
     def test_fixture_fails_after_repeated_instrumentation_process_crashes(self):
@@ -188,8 +188,11 @@ OUT
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Process crashed", result.stdout)
-        self.assertIn("Instrumentation reported a failure", result.stdout)
-        self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+        self.assertIn("provider instrumentation reported a failure", result.stdout)
+        self.assertIn(
+            "provider instrumentation reported a non-retriable failure",
+            result.stdout,
+        )
 
     def test_fixture_does_not_retry_known_fake_provider_classpath_crash(self):
         fake_adb = base_fake_adb(
@@ -237,7 +240,7 @@ OUT
 
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
-        self.assertIn("Instrumentation reported a failure", result.stdout)
+        self.assertIn("provider instrumentation reported a failure", result.stdout)
 
     def test_fixture_retries_ankidroid_install_when_package_service_is_not_ready(self):
         fake_adb = base_fake_adb(
@@ -308,8 +311,11 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "6")
-        self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
+        self.assertEqual((tmp_path / "package-service-count").read_text().strip(), "8")
+        self.assertEqual(
+            (tmp_path / "install-count").read_text().strip().splitlines(),
+            ["installed", "installed", "installed", "installed"],
+        )
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertGreaterEqual(adb_calls.count("shell cmd package list packages"), 3)
         self.assertIn("settings get global package_verifier_enable", adb_calls)
@@ -340,8 +346,11 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "settings-provider-count").read_text().strip(), "6")
-        self.assertEqual((tmp_path / "install-count").read_text().strip().splitlines(), ["installed", "installed", "installed"])
+        self.assertEqual((tmp_path / "settings-provider-count").read_text().strip(), "8")
+        self.assertEqual(
+            (tmp_path / "install-count").read_text().strip().splitlines(),
+            ["installed", "installed", "installed", "installed"],
+        )
         self.assertIn("Android package service readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_falls_back_to_explicit_ankidroid_activity_start(self):
@@ -401,9 +410,9 @@ OUT
 
         self.assertEqual(result.returncode, 0, result.stdout)
         adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
-        last_repair = max(i for i, call in enumerate(adb_calls) if "chmod -R" in call)
+        first_repair = next(i for i, call in enumerate(adb_calls) if "chmod -R" in call)
         first_probe = next(i for i, call in enumerate(adb_calls) if "content query" in call)
-        self.assertLess(last_repair, first_probe)
+        self.assertLess(first_repair, first_probe)
 
     def test_fixture_retries_provider_probe_when_permission_repair_fails(self):
         fake_adb = base_fake_adb(
@@ -431,7 +440,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "2")
+        self.assertEqual((tmp_path / "post-grant-repair-count").read_text().strip(), "3")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_writes_deck_path_preference_for_app_private_collection(self):
@@ -472,7 +481,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
+        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "3")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_retries_provider_probe_until_kiku_model_is_visible_not_any_row(self):
@@ -494,7 +503,7 @@ OUT
         result, tmp_path = self.run_fixture_in_tmp(fake_adb)
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "2")
+        self.assertEqual((tmp_path / "provider-probe-count").read_text().strip(), "3")
         self.assertIn("AnkiDroid provider model readiness failed on attempt 1/12", result.stdout)
 
     def test_fixture_removes_default_collection_sqlite_sidecars_around_push(self):
@@ -532,7 +541,10 @@ OUT
         result, _ = self.run_fixture_in_tmp(fake_adb)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Instrumentation did not report a successful test completion marker", result.stdout)
+        self.assertIn(
+            "provider instrumentation did not report a successful test completion marker",
+            result.stdout,
+        )
 
     def test_fixture_dumps_logcat_when_instrumentation_fails(self):
         fake_adb = base_fake_adb(
@@ -569,8 +581,11 @@ OUT
 
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((tmp_path / "instrument-count").read_text().strip(), "1")
-        self.assertIn("Running live-provider instrumentation attempt 1/1", result.stdout)
-        self.assertIn("Instrumentation reported a non-retriable failure", result.stdout)
+        self.assertIn("Running provider instrumentation attempt 1/1", result.stdout)
+        self.assertIn(
+            "provider instrumentation reported a non-retriable failure",
+            result.stdout,
+        )
 
     def test_fixture_regrants_permission_and_reprobes_before_transient_retry(self):
         fake_adb = base_fake_adb(
@@ -608,6 +623,60 @@ OUT
         self.assertIn("kanjiLiveAnkiDroid true", adb_calls)
         self.assertIn("kanjiLiveMinimumNotes 1", adb_calls)
 
+    def test_fixture_runs_provider_and_app_hosts_sequentially(self):
+        result, tmp_path = self.run_fixture_in_tmp(base_fake_adb())
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        adb_calls = (tmp_path / "adb-calls.log").read_text().splitlines()
+        provider_run = next(
+            index
+            for index, call in enumerate(adb_calls)
+            if "dev.bee.kanjianki.provider.ankidroid.test/"
+            "androidx.test.runner.AndroidJUnitRunner" in call
+        )
+        uninstall = next(
+            index
+            for index, call in enumerate(adb_calls)
+            if call == "uninstall dev.bee.kanjianki.provider.ankidroid.test"
+        )
+        app_run = next(
+            index
+            for index, call in enumerate(adb_calls)
+            if "dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner"
+            in call
+        )
+        self.assertLess(provider_run, uninstall)
+        self.assertLess(uninstall, app_run)
+
+    def test_fixture_allows_skipping_either_instrumentation_host(self):
+        provider_only, provider_tmp = self.run_fixture_in_tmp(
+            base_fake_adb(),
+            extra_env={"KANJI_LIVE_APP_TEST_CLASSES": ""},
+        )
+        self.assertEqual(provider_only.returncode, 0, provider_only.stdout)
+        provider_calls = (provider_tmp / "adb-calls.log").read_text()
+        self.assertIn("dev.bee.kanjianki.provider.ankidroid.test/", provider_calls)
+        self.assertNotIn(
+            "dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner",
+            provider_calls,
+        )
+
+        app_only, app_tmp = self.run_fixture_in_tmp(
+            base_fake_adb(),
+            extra_env={"KANJI_LIVE_PROVIDER_TEST_CLASSES": ""},
+        )
+        self.assertEqual(app_only.returncode, 0, app_only.stdout)
+        app_calls = (app_tmp / "adb-calls.log").read_text()
+        self.assertNotIn(
+            "dev.bee.kanjianki.provider.ankidroid.test/"
+            "androidx.test.runner.AndroidJUnitRunner",
+            app_calls,
+        )
+        self.assertIn(
+            "dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner",
+            app_calls,
+        )
+
     def test_fixture_can_omit_lowered_minimum_notes_for_real_collection_gate(self):
         result, tmp_path = self.run_fixture_in_tmp(
             base_fake_adb(),
@@ -628,7 +697,13 @@ OUT
         self.assertEqual(result.returncode, 0, result.stdout)
         adb_calls = (tmp_path / "adb-calls.log").read_text()
         self.assertIn("dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest", adb_calls)
-        self.assertNotIn("MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid", adb_calls)
+        # The override replaces the default app test class rather than adding to it, so the
+        # default must be absent. Named in full because a substring like "KaniHost" would
+        # also match the override's own class and the assertion would pass vacuously.
+        self.assertNotIn(
+            "KaniHostLiveSyncInstrumentedTest#theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid",
+            adb_calls,
+        )
 
 
 if __name__ == "__main__":

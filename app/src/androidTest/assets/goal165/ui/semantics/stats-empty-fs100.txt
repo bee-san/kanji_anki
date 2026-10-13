@@ -1,0 +1,386 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       | IsTraversalGroup = 'true'
+       | Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       | VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=1498.0, reverseScrolling=false)'
+       | Actions = [ScrollBy, ScrollByOffset]
+       |  |-Node
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |  |-Node
+       |  |  | Text = '[Practice forecast]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Nothing to forecast yet]'
+       |  |     | [Heading]
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[Your completion forecast appears when weak kanji enter the ladder.]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |  |-Node
+       |  |  | Text = '[Stats overview]'
+       |  |  | [Heading]
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Your learning at a glance]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | ContentDescription = '[Total reviews 0 · Accuracy 0% · Streak 0 days]'
+       |  |  | IsContainer = 'true'
+       |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  |  |-Node
+       |  |  |  | Text = '[0 days]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Text = '[Streak]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Text = '[0%]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Text = '[Accuracy]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Text = '[0]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Text = '[Reviews today]'
+       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  |  |-Node
+       |  |  |  | ContentDescription = '[Total reviews, 0]'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |  | IsContainer = 'true'
+       |  |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  |  |-Node
+       |  |  |  |  | Text = '[Total reviews]'
+       |  |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[0]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | ContentDescription = '[Kanji practiced, 0]'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |  | IsContainer = 'true'
+       |  |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  |  |-Node
+       |  |  |  |  | Text = '[Kanji practiced]'
+       |  |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[0]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | ContentDescription = '[Tasks answered, 0]'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |  | IsContainer = 'true'
+       |  |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  |  |-Node
+       |  |  |  |  | Text = '[Tasks answered]'
+       |  |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[0]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    ContentDescription = '[Study time, 0m]'
+       |  |  |    IsContainer = 'true'
+       |  |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  |    MergeDescendants = 'true'
+       |  |  |     |-Node
+       |  |  |     | IsContainer = 'true'
+       |  |  |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |     |-Node
+       |  |  |     | Text = '[Study time]'
+       |  |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |     |-Node
+       |  |  |       Text = '[0m]'
+       |  |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Your story starts here 🦀]'
+       |  |     | [Heading]
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[Complete a few reviews to reveal your learning trends.]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |  |-Node
+       |  |  | Text = '[Reviews analytics]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | ContentDescription = '[Current streak 0 days · Longest streak 0 days. Start a short review session today to build momentum.]'
+       |  |  | IsContainer = 'true'
+       |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |  | MergeDescendants = 'true'
+       |  |  |  |-Node
+       |  |  |  |  |-Node
+       |  |  |  |  | Text = '[0 days]'
+       |  |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[Current streak]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  |  |-Node
+       |  |  |  |  | Text = '[0 days]'
+       |  |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[Longest streak]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Text = '[Start a short review session today to build momentum.]'
+       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  |  |-Node
+       |  |  |  | Focused = 'false'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Role = 'RadioButton'
+       |  |  |  | Selected = 'true'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  | Actions = [OnClick, RequestFocus]
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[7 days]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Focused = 'false'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Role = 'RadioButton'
+       |  |  |  | Selected = 'false'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  | Actions = [OnClick, RequestFocus]
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[30 days]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Focused = 'false'
+       |  |  |    IsContainer = 'true'
+       |  |  |    Role = 'RadioButton'
+       |  |  |    Selected = 'false'
+       |  |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |    Actions = [OnClick, RequestFocus]
+       |  |  |    MergeDescendants = 'true'
+       |  |  |     |-Node
+       |  |  |       Text = '[90 days]'
+       |  |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Your story starts here 🦀]'
+       |  |     | [Heading]
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[Complete a few reviews to reveal your learning trends.]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |  |-Node
+       |  |  | Text = '[Accuracy by rung group]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  |  |-Node
+       |  |  |  | Focused = 'false'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Role = 'RadioButton'
+       |  |  |  | Selected = 'false'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  | Actions = [OnClick, RequestFocus]
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[7 days]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |  | Focused = 'false'
+       |  |  |  | IsContainer = 'true'
+       |  |  |  | Role = 'RadioButton'
+       |  |  |  | Selected = 'true'
+       |  |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |  | Actions = [OnClick, RequestFocus]
+       |  |  |  | MergeDescendants = 'true'
+       |  |  |  |  |-Node
+       |  |  |  |    Text = '[30 days]'
+       |  |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Focused = 'false'
+       |  |  |    IsContainer = 'true'
+       |  |  |    Role = 'RadioButton'
+       |  |  |    Selected = 'false'
+       |  |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 50.0%), topEnd = CornerSize(size = 50.0%), bottomEnd = CornerSize(size = 50.0%), bottomStart = CornerSize(size = 50.0%))'
+       |  |  |    Actions = [OnClick, RequestFocus]
+       |  |  |    MergeDescendants = 'true'
+       |  |  |     |-Node
+       |  |  |       Text = '[90 days]'
+       |  |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Your story starts here 🦀]'
+       |  |     | [Heading]
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[Complete a few reviews to reveal your learning trends.]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | IsContainer = 'true'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |  |  |-Node
+       |  |  | Text = '[Ladder rung distribution]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Write kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Type meaning]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Meaning to kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Reading to kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Similar kanji]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Kanji meaning]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Font meaning]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Kanji reading]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Word reading]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[0 · 0%]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | Text = '[Sentence reading]'
+       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    Text = '[0 · 0%]'
+       |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |    IsContainer = 'true'
+       |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |     |-Node
+       |     | Text = '[Weakness insights]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | IsContainer = 'true'
+       |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |     |  |-Node
+       |     |  | Text = '[No recent mix-ups]'
+       |     |  | [Heading]
+       |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |  |-Node
+       |     |    Text = '[Nice work. Choice mistakes from the last 90 days will appear here.]'
+       |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |       IsContainer = 'true'
+       |       Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+       |        |-Node
+       |        | Text = '[Your story starts here 🦀]'
+       |        | [Heading]
+       |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |        |-Node
+       |          Text = '[Complete a few reviews to reveal your learning trends.]'
+       |          Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab, selected]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'true'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'false'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

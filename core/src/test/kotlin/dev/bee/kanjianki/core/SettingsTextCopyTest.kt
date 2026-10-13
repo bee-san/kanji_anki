@@ -479,7 +479,9 @@ class SettingsTextCopyTest {
                         SettingsTextCopy.ladderThresholdsSavedToast()
                 )
         )
-        assertThrows(NullPointerException::class.java) { SettingsTextCopy.settingsLadderRungLabel(null as RecordsBase.LadderRung) }
+        assertThrows(NullPointerException::class.java) {
+            SettingsTextCopy.settingsLadderRungLabel(emptyList<RecordsBase.LadderRung>().firstOrNull()!!)
+        }
     }
 
     @Test

@@ -26,7 +26,7 @@ class ReviewTokenConsumptionTest {
             stability: Double,
             difficulty: Double,
             rating: String?,
-            elapsedDays: Int,
+            elapsedDays: Double,
             targetRetention: Double,
         ): KaniFsrsReviewResult {
             failIfNeeded()

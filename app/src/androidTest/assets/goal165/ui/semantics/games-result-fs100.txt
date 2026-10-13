@@ -1,0 +1,138 @@
+Printing with useUnmergedTree = 'true'
+Node
+ |-Node
+    |-Node
+      Shape = 'RectangleShape'
+       |-Node
+       | IsTraversalGroup = 'true'
+       | Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@<id>'
+       | VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=0.0, reverseScrolling=false)'
+       | Actions = [ScrollBy, ScrollByOffset]
+       |  |-Node
+       |  | Focused = 'false'
+       |  | Role = 'Button'
+       |  | Text = '[Meaning Pop]'
+       |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, OnClick, RequestFocus, SetTextSubstitution, ShowTextSubstitution]
+       |  | MergeDescendants = 'true'
+       |  |-Node
+       |  | Focused = 'false'
+       |  | Role = 'Button'
+       |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |  | Actions = [OnClick, RequestFocus]
+       |  | MergeDescendants = 'true'
+       |  |  |-Node
+       |  |    Text = '[Games]'
+       |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |  | ContentDescription = '[Score 1 out of 10]'
+       |  | MergeDescendants = 'true'
+       |  |  |-Node
+       |  |  | IsContainer = 'true'
+       |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+       |  |  |  |-Node
+       |  |  |  | Text = '[Round]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Text = '[2/10]'
+       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |  | IsContainer = 'true'
+       |  |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+       |  |  |  |-Node
+       |  |  |  | Text = '[Score]'
+       |  |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |  |-Node
+       |  |  |    Text = '[1/10]'
+       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |  |-Node
+       |  |    IsContainer = 'true'
+       |  |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 8.0.dp), topEnd = CornerSize(size = 8.0.dp), bottomEnd = CornerSize(size = 8.0.dp), bottomStart = CornerSize(size = 8.0.dp))'
+       |  |     |-Node
+       |  |     | Text = '[Streak]'
+       |  |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |     |-Node
+       |  |       Text = '[1]'
+       |  |       Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |  |-Node
+       |    IsContainer = 'true'
+       |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+       |    MergeDescendants = 'true'
+       |     |-Node
+       |     | Text = '[Correct]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[Answer: language]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[You chose language]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | Text = '[語 means language.]'
+       |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |     | ContentDescription = '[Next]'
+       |     | Focused = 'false'
+       |     | Role = 'Button'
+       |     | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |     | Actions = [OnClick, RequestFocus]
+       |     | MergeDescendants = 'true'
+       |     |  |-Node
+       |     |    Text = '[Next]'
+       |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |     |-Node
+       |       ContentDescription = '[Games]'
+       |       Focused = 'false'
+       |       Role = 'Button'
+       |       Shape = 'RoundedCornerShape(topStart = CornerSize(size = 12.0.dp), topEnd = CornerSize(size = 12.0.dp), bottomEnd = CornerSize(size = 12.0.dp), bottomStart = CornerSize(size = 12.0.dp))'
+       |       Actions = [OnClick, RequestFocus]
+       |       MergeDescendants = 'true'
+       |        |-Node
+       |          Text = '[Games]'
+       |          Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+       |-Node
+         IsContainer = 'true'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 24.0.dp), topEnd = CornerSize(size = 24.0.dp), bottomEnd = CornerSize(size = 24.0.dp), bottomStart = CornerSize(size = 24.0.dp))'
+          |-Node
+          | ContentDescription = '[Home tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Home]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Study tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Study]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+          | ContentDescription = '[Stats tab]'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node
+          |    Text = '[Stats]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node
+            ContentDescription = '[Settings tab]'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'false'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 18.0.dp), topEnd = CornerSize(size = 18.0.dp), bottomEnd = CornerSize(size = 18.0.dp), bottomStart = CornerSize(size = 18.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node
+               Text = '[Settings]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]

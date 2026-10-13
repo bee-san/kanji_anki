@@ -4,14 +4,15 @@ import android.content.Context
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.anki.CollectionGateway
+import dev.bee.kanjianki.syncapi.CollectionGateway
 import dev.bee.kanjianki.anki.FakeAnkiDroidProvider
 import dev.bee.kanjianki.core.SyncSettings
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
 import dev.bee.kanjianki.core.RecordsSyncModels
-import dev.bee.kanjianki.time.AppClock
+import dev.bee.kanjianki.platform.AppClock
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,7 +27,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-private const val DATABASE_NAME = "kanji_anki_simple.db"
 
 @RunWith(AndroidJUnit4::class)
 class AutoSyncRunnerInstrumentedTest {
@@ -36,7 +36,7 @@ class AutoSyncRunnerInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         store = LocalStore(context)
         resetProvider()
     }
@@ -47,7 +47,7 @@ class AutoSyncRunnerInstrumentedTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
             resetProvider()
         }
     }
@@ -55,7 +55,7 @@ class AutoSyncRunnerInstrumentedTest {
     @Test
     fun disabledAutoSyncSkipsWithoutReadingProvider() {
         val now = localDayStart(fixedNow()) + 60_000L
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
@@ -78,7 +78,7 @@ class AutoSyncRunnerInstrumentedTest {
         val now = localDayStart(fixedNow()) + 60_000L
         store.saveAutoSyncSettings(LocalStoreBase.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L))
 
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
@@ -104,7 +104,7 @@ class AutoSyncRunnerInstrumentedTest {
         val now = localDayStart(fixedNow()) + 2L * 60L * 60L * 1000L
         store.saveAutoSyncSettings(LocalStoreBase.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L))
         assertTrue(
-            ManualSyncEngine(
+            createManualSyncEngine(
                 context,
                 store,
                 AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
@@ -115,7 +115,7 @@ class AutoSyncRunnerInstrumentedTest {
         )
         resetProvider()
 
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             AnkiDroidGateway.testProvider(context, FakeAnkiDroidProvider.AUTHORITY),
@@ -138,7 +138,7 @@ class AutoSyncRunnerInstrumentedTest {
         val now = localDayStart(fixedNow()) + 60_000L
         store.saveAutoSyncSettings(LocalStoreBase.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L))
 
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             AnkiDroidGateway.testProvider(context, "dev.bee.kanjianki.missing_auto_sync_provider"),
@@ -162,7 +162,7 @@ class AutoSyncRunnerInstrumentedTest {
         val now = localDayStart(fixedNow()) + 60_000L
         store.saveAutoSyncSettings(LocalStoreBase.AutoSyncSettings(true, true, 19, 0, 0L, 0L, 0L))
 
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             RetryableGateway(),
@@ -195,7 +195,7 @@ class AutoSyncRunnerInstrumentedTest {
         val firstSync = Thread {
             try {
                 firstResult.set(
-                    ManualSyncEngine(
+                    createManualSyncEngine(
                         context,
                         store,
                         blockingGateway,
@@ -212,7 +212,7 @@ class AutoSyncRunnerInstrumentedTest {
         firstSync.start()
         assertTrue(blockingGateway.awaitStarted())
 
-        val result = AutoSyncRunner(
+        val result = createAutoSyncRunner(
             context,
             store,
             RetryableGateway(),

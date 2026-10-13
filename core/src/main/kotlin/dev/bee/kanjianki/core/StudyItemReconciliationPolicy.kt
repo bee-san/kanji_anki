@@ -176,7 +176,7 @@ internal object StudyItemReconciliationPolicy {
             append(item.suppressedAtMillis).append('|').append(item.matureIntervalDays).append('|')
             append(item.realPassStreak).append('|').append(item.realAgainStreak).append('|')
             append(item.lastRealReviewDueAtMillis).append('|')
-            append(item.rung?.wireName().orEmpty()).append('|').append(item.phase?.wireName().orEmpty()).append('|')
+            append(item.rung.wireName()).append('|').append(item.phase.wireName()).append('|')
             append(item.hasSimilarKanji).append('|').append(item.hasKanjiReading).append('|')
             append(item.hasReadingKanji).append('|').append(item.hasSentenceReading).append('|')
             append(item.answerSignature).append('|').append(item.activeToken).append('|')

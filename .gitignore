@@ -13,3 +13,6 @@ __pycache__/
 .ralph-loop/
 .tmp/ralph-android-designer-loop/
 .sisyphus/
+
+# JVM heap dumps land next to the module that ran out of memory.
+*.hprof

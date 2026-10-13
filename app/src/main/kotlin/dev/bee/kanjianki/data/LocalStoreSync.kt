@@ -53,8 +53,56 @@ internal abstract class LocalStoreSync(
             tableHasRows(db, TABLE_SOURCE_CARDS, COLUMN_CARD_ID)
     }
 
+    fun isEmptyKaniProfile(): Boolean {
+        val db = readableDatabase
+        val hasSuccessfulSync = db.query(
+            TABLE_SYNC_RUNS,
+            arrayOf("id"),
+            "$COLUMN_STATUS=?",
+            arrayOf(STATUS_SUCCESS),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor -> cursor.moveToFirst() }
+        return !hasSuccessfulSync && PROFILE_STATE_TABLES.none { table ->
+            tableHasRows(db, table)
+        }
+    }
+
+    fun collectionMirrorIdentityEvidence(): CollectionMirrorIdentityEvidence =
+        CollectionMirrorIdentityEvidence(
+            stableNoteIds = stableIdSample(TABLE_SOURCE_NOTES, COLUMN_NOTE_ID),
+            stableCardIds = stableIdSample(TABLE_SOURCE_CARDS, COLUMN_CARD_ID),
+        )
+
+    private fun stableIdSample(table: String, column: String): List<Long> {
+        val ids = ArrayList<Long>(64)
+        readableDatabase.query(
+            table,
+            arrayOf(column),
+            null,
+            null,
+            null,
+            null,
+            "($column < 0) ASC, $column ASC",
+            "64",
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                ids += cursor.getLong(0)
+            }
+        }
+        return ids
+    }
+
     private fun tableHasRows(db: SQLiteDatabase, table: String, idColumn: String): Boolean {
         return db.query(table, arrayOf(idColumn), null, null, null, null, null, "1").use { it.moveToFirst() }
+    }
+
+    private fun tableHasRows(db: SQLiteDatabase, table: String): Boolean {
+        return db.rawQuery("SELECT 1 FROM $table LIMIT 1", null).use { cursor ->
+            cursor.moveToFirst()
+        }
     }
 
     private fun syncRunRepository(): SyncRunRepository {
@@ -271,8 +319,81 @@ internal abstract class LocalStoreSync(
         db.delete(TABLE_KANJI_EXAMPLES, null, null)
     }
 
+    fun clearProviderStateForSourceRebind(db: SQLiteDatabase) {
+        val providerTables = listOf(
+            TABLE_SOURCE_CARDS,
+            TABLE_SOURCE_NOTES,
+            TABLE_DASHBOARD_ROWS,
+            TABLE_KANJI_EXAMPLES,
+            TABLE_SIMILAR_KANJI_PAIRS,
+            TABLE_KANJI_READING_USAGE,
+            TABLE_KANJI_READING_POOL,
+            TABLE_KANJI_INVENTORY,
+            TABLE_ANKI_KANJI_INVENTORY,
+            TABLE_ANKI_KANJI_INVENTORY_SCANS,
+            TABLE_MISSING_KANJI_EXPORTS,
+            TABLE_STATS_SCREEN_CACHE,
+        )
+        for (table in providerTables) {
+            db.delete(table, null, null)
+        }
+        // Stable-ID overlap preserves retained provider history; only its prior
+        // successful write receipt must be invalidated for the replacement binding.
+        db.execSQL(
+            "UPDATE $TABLE_SUSPENDED_ARCHIVE SET restored_at=NULL WHERE restored_at IS NOT NULL",
+        )
+        db.delete(
+            TABLE_SETTINGS,
+            WHERE_SETTING_KEY,
+            arrayOf(REPAIRED_HANDOFF_SETTING_KEY),
+        )
+        StatsCacheStore(this as LocalStore).markDirty(db)
+    }
+
+    fun invalidateProviderStateAfterSourceRebind() {
+        clearDashboardRowsCache()
+        clearStudyItemsCache()
+        clearKanjiInventoryAllCache()
+    }
+
     fun saveFailedSync(startedAt: Long, finishedAt: Long, status: String, errorCode: String, errorMessage: String?) {
         syncRunRepository().saveFailedSync(startedAt, finishedAt, status, errorCode, errorMessage)
+    }
+
+    private companion object {
+        // Product settings and failed-sync diagnostics do not establish a profile
+        // origin. Every retained content/progress table below does.
+        val PROFILE_STATE_TABLES = listOf(
+            TABLE_SOURCE_NOTES,
+            TABLE_SOURCE_CARDS,
+            TABLE_SUSPENDED_ARCHIVE,
+            TABLE_SUSPENDED_IMPORTS,
+            TABLE_SUSPENDED_SOURCES,
+            TABLE_IMPORT_RULE_AUDITS,
+            TABLE_IMPORT_DECISIONS,
+            TABLE_DASHBOARD_ROWS,
+            TABLE_KANJI_EXAMPLES,
+            TABLE_STUDY_ITEMS,
+            TABLE_LEARNING_REPEATS,
+            TABLE_REVIEW_LOG,
+            TABLE_KANJI_INVENTORY,
+            TABLE_KANJI_MNEMONIC_NOTES,
+            TABLE_ANKI_KANJI_INVENTORY,
+            TABLE_ANKI_KANJI_INVENTORY_SCANS,
+            TABLE_MANUAL_KANJI_SOURCES,
+            TABLE_MISSING_KANJI_EXPORTS,
+            TABLE_LOCAL_KANJI_SUSPENSIONS,
+            TABLE_SIMILAR_KANJI_CHOICE_STATE,
+            TABLE_SIMILAR_KANJI_REPAIR_QUEUE,
+            TABLE_SIMILAR_KANJI_REVIEW_LOG,
+            TABLE_KANJI_READING_USAGE,
+            TABLE_KANJI_READING_POOL,
+            TABLE_STUDY_TASK_LOG,
+            TABLE_KANJI_TIMELINE_EVENTS,
+            TABLE_SYNC_CARD_SNAPSHOTS,
+            TABLE_SYNC_NOTE_SNAPSHOTS,
+            TABLE_SYNC_KANJI_SNAPSHOTS,
+        )
     }
 
     fun updateSyncRemovalMessage(syncId: Long, message: String?) {

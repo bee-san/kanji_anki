@@ -8,6 +8,8 @@ import android.util.Log
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import dev.bee.kanjianki.AndroidContainerProvider
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
 import dev.bee.kanjianki.data.LocalStore
@@ -22,13 +24,23 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.zip.GZIPOutputStream
 
-class DatabaseBackupWorker(
+class DatabaseBackupWorker internal constructor(
     context: Context,
     workerParams: WorkerParameters,
+    private val containerProvider: AndroidContainerProvider,
 ) : Worker(context, workerParams) {
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        AndroidContainerProvider { context.requireKaniContainer() },
+    )
+
     override fun doWork(): Result {
+        val container = containerProvider.get()
         return doWork(
-            AndroidBackupEnvironment(applicationContext),
+            AndroidBackupEnvironment(applicationContext) {
+                container.openLocalStore().use { store -> store.snapshotInto(it) }
+            },
             System.currentTimeMillis(),
             Build.VERSION.SDK_INT,
         )
@@ -60,6 +72,11 @@ class DatabaseBackupWorker(
 
     private class AndroidBackupEnvironment(
         private val context: Context,
+        private val snapshot: (File) -> Unit = { destination ->
+            AppLocalStoreFactory.create(context).use { store ->
+                store.snapshotInto(destination)
+            }
+        },
     ) : BackupEnvironment {
         override fun databasePath(name: String): File {
             return context.getDatabasePath(name)
@@ -70,9 +87,7 @@ class DatabaseBackupWorker(
         }
 
         override fun snapshot(dbFile: File, dest: File) {
-            AppLocalStoreFactory.create(context).use { store ->
-                store.snapshotInto(dest)
-            }
+            snapshot(dest)
         }
     }
 

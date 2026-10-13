@@ -69,7 +69,7 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"見","totalCount":12,"last7DaysCount":6,"last14DaysCount":8,"last31DaysCount":9,"lastSeenAtMillis":999}]}""",
         )
 
-        val index = ReadingExposureMediaReader(listOf(media)).read()
+        val index = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
 
         val stat = index.statFor("見")
         assertEquals(12, stat?.totalCount)
@@ -88,7 +88,7 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"旧","totalCount":7,"last7DaysCount":3,"last14DaysCount":4,"last31DaysCount":6,"lastSeenAtMillis":777}]}""",
         )
 
-        val index = ReadingExposureMediaReader(listOf(media)).read()
+        val index = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
 
         val stat = index.statFor("旧")
         assertEquals(7, stat?.totalCount)
@@ -111,7 +111,7 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"戻","totalCount":5,"last7DaysCount":2,"last14DaysCount":3,"last31DaysCount":4,"lastSeenAtMillis":555}]}""",
         )
 
-        val index = ReadingExposureMediaReader(listOf(media)).read()
+        val index = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
 
         assertEquals(5, index.statFor("戻")?.totalCount)
         assertTrue(index.priorityBoost("戻") > 0.0)
@@ -119,7 +119,9 @@ class ReadingExposureMediaReaderTest {
 
     @Test
     fun readerReturnsEmptyIndexWhenManifestIsMissing() {
-        val index = ReadingExposureMediaReader(listOf(temporaryFolder.newFolder("empty"))).read()
+        val index = ReadingExposureMediaReader.forMediaDirs(
+            listOf(temporaryFolder.newFolder("empty")),
+        ).read()
 
         assertEquals(0.0, index.priorityBoost("読"), 0.0)
     }
@@ -137,11 +139,11 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"川","totalCount":3,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":10}]}""",
         )
 
-        val first = ReadingExposureMediaReader(listOf(media)).read()
+        val first = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
         assertEquals(3, first.statFor("川")?.totalCount)
 
         // Same file → cached parse; a fresh reader instance still reflects the same content.
-        val cached = ReadingExposureMediaReader(listOf(media)).read()
+        val cached = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
         assertEquals(3, cached.statFor("川")?.totalCount)
 
         // Rewrite with different content and a distinct mtime so the fingerprint changes.
@@ -152,7 +154,7 @@ class ReadingExposureMediaReaderTest {
         )
         kanjiFile.setLastModified(5_000_000_000L)
 
-        val refreshed = ReadingExposureMediaReader(listOf(media)).read()
+        val refreshed = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
         assertEquals(99, refreshed.statFor("川")?.totalCount)
     }
 
@@ -169,7 +171,7 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"山","totalCount":4,"last7DaysCount":1,"last14DaysCount":1,"last31DaysCount":2,"lastSeenAtMillis":1}]}""",
         )
 
-        val first = ReadingExposureMediaReader(listOf(media)).read()
+        val first = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
         assertEquals(4, first.statFor("山")?.totalCount)
 
         // Change only the custom stats file (manifest untouched). Cache must still refresh.
@@ -180,7 +182,7 @@ class ReadingExposureMediaReaderTest {
         )
         custom.setLastModified(6_000_000_000L)
 
-        val refreshed = ReadingExposureMediaReader(listOf(media)).read()
+        val refreshed = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
         assertEquals(77, refreshed.statFor("山")?.totalCount)
     }
 
@@ -197,7 +199,7 @@ class ReadingExposureMediaReaderTest {
             Charsets.UTF_8,
         )
 
-        val index = ReadingExposureMediaReader(listOf(media)).read()
+        val index = ReadingExposureMediaReader.forMediaDirs(listOf(media)).read()
 
         assertNull(index.statFor("外"))
     }
@@ -214,7 +216,7 @@ class ReadingExposureMediaReaderTest {
             """{"kanji":[{"kanji":"大","totalCount":99}],"padding":"${"x".repeat(2_000)}"}""",
         )
 
-        val index = ReadingExposureMediaReader(
+        val index = ReadingExposureMediaReader.forMediaDirs(
             mediaDirs = listOf(media),
             maxStatsBytes = 256,
         ).read()
@@ -241,7 +243,7 @@ class ReadingExposureMediaReaderTest {
             logFile.delete()
             AppDebugLog.setEnabled(context, true)
 
-            val reader = ReadingExposureMediaReader(listOf(media))
+            val reader = ReadingExposureMediaReader.forMediaDirs(listOf(media))
             reader.read()
             reader.read()
             AppDebugLog.resetForTests()

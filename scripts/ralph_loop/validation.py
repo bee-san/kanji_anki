@@ -34,7 +34,7 @@ ANDROID_CODE_PREFIXES = (
     "domain/",
     "sync-domain/",
     "dictionary-core/",
-    "fsrs-java/",
+    "bee-fsrs/",
     "writing-core/",
     "update-core/",
 )

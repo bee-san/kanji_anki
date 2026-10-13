@@ -2,7 +2,6 @@ package dev.bee.kanjianki.data
 
 import android.database.sqlite.SQLiteDatabaseLockedException
 import android.database.sqlite.SQLiteException
-import dev.bee.kanjianki.core.StoreResult
 
 /**
  * Execute [block] and wrap the result. `SQLiteDatabaseLockedException` is

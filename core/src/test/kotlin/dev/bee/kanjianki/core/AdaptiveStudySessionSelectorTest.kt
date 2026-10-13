@@ -122,7 +122,7 @@ class AdaptiveStudySessionSelectorTest {
             RecordsBase.StudyLadderSettings.defaults(),
         )
         assertEquals("脱", trace.selected!!.kanji)
-        assertTrue(trace.selected!!.reasonCodes.contains("inside_study_ahead"))
+        assertTrue(trace.selected.reasonCodes.contains("inside_study_ahead"))
 
         val taskKeys = selector.randomizedTaskKeys(
             listOf(future),
