@@ -22,8 +22,8 @@ on:
       - 'gradlew*'
       - 'gradle.properties'
       - 'gradle/libs.versions.toml'
-  schedule:
-    - cron: '36 4 * * 1'
+  # The weekly schedule was removed (GitHub Actions cost audit, 2026-10-13); pushes to main
+  # that touch the paths above still run CodeQL.
 
 concurrency:
   group: codeql-${{ github.ref }}

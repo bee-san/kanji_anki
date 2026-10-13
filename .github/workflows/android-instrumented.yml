@@ -5,10 +5,11 @@ name: Android Instrumented
 # dance is inherently flaky and was the top cause of blocked releases. The
 # stricter local real-collection gate (AGENTS.md) covers provider/sync
 # release-risk changes.
+# The nightly schedule (30 runs, ~570 minutes in the 30 days to 2026-10-13: two emulator
+# API levels per run) was removed in the GitHub Actions cost audit. Run by hand from the
+# Actions tab or `gh workflow run android-instrumented.yml`.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '17 5 * * *'
 
 concurrency:
   group: android-instrumented-${{ github.ref }}
