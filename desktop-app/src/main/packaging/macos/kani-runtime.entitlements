@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for the JDK runtime nested inside the Kani bundle.
+
+  jpackage signs the embedded runtime separately from the application, so it needs its
+  own entitlements. This is deliberately narrower than `kani.entitlements`: the runtime's
+  binaries execute JIT-compiled code and load their own libraries, but nothing signs a
+  DYLD environment variable into them — the launcher does that, and the launcher is part
+  of the application.
+
+  Keeping the two files distinct rather than symlinking one to the other is the point.
+  Granting the runtime every entitlement the app has would widen the signed surface for
+  no gain, and it is the kind of thing that is invisible in review once the files are
+  identical.
+
+  See docs/desktop-native-packaging.md.
+-->
+<plist version="1.0">
+  <dict>
+    <!-- HotSpot's JIT and Skiko's shader compilation. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- The runtime loads libjvm and the JDK's own dylibs, which carry Adoptium's
+         signature rather than ours. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+  </dict>
+</plist>

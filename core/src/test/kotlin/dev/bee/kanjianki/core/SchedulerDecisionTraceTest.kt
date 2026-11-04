@@ -21,12 +21,12 @@ class SchedulerDecisionTraceTest {
         assertEquals(now, trace.nowMillis)
         assertNotNull(trace.selected)
         assertEquals("裂", trace.selected!!.kanji)
-        assertEquals("kanji_meaning", trace.selected!!.taskType)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, trace.selected!!.rung)
-        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, trace.selected!!.phase)
-        assertEquals(now, trace.selected!!.dueAtMillis)
-        assertTrue(trace.selected!!.reasonCodes.contains("new_learning_unseen"))
-        assertTrue(trace.selected!!.reasonCodes.contains("selected_best_candidate"))
+        assertEquals("kanji_meaning", trace.selected.taskType)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, trace.selected.rung)
+        assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, trace.selected.phase)
+        assertEquals(now, trace.selected.dueAtMillis)
+        assertTrue(trace.selected.reasonCodes.contains("new_learning_unseen"))
+        assertTrue(trace.selected.reasonCodes.contains("selected_best_candidate"))
         assertTrue(SchedulerTraceFormatter.userExplanation(trace).contains("裂"))
         assertTrue(SchedulerTraceFormatter.developerExplanation(trace).contains("new_learning_unseen"))
     }
@@ -47,7 +47,7 @@ class SchedulerDecisionTraceTest {
         val trace = scheduler.debugTraceNextSession(listOf(reviewSibling, relearning), listOf(row("裂", 20)), now)
 
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, trace.selected!!.phase)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, trace.selected!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, trace.selected.rung)
         val hidden = trace.skipped.first { it.rung == RecordsBase.LadderRung.FONT_MEANING }
         assertTrue(hidden.reasonCodes.contains("same_family_hidden"))
         assertTrue(hidden.reasonCodes.contains("same_family_lower_priority"))
@@ -71,11 +71,11 @@ class SchedulerDecisionTraceTest {
         assertEquals(7, traced.result.item.fontMeaningMemory.matureIntervalDays)
         assertEquals("apply_review", traced.trace.operation)
         assertEquals("good", traced.trace.transition!!.rating)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.beforeRung)
-        assertEquals(RecordsBase.LadderRung.FONT_MEANING, traced.trace.transition!!.afterRung)
-        assertEquals("fsrs_interval_promotes", traced.trace.transition!!.movementReason)
-        assertTrue(traced.trace.transition!!.reasonCodes.contains("review_pass_fsrs_interval"))
-        assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition.beforeRung)
+        assertEquals(RecordsBase.LadderRung.FONT_MEANING, traced.trace.transition.afterRung)
+        assertEquals("fsrs_interval_promotes", traced.trace.transition.movementReason)
+        assertTrue(traced.trace.transition.reasonCodes.contains("review_pass_fsrs_interval"))
+        assertTrue(traced.trace.transition.reasonCodes.contains("fsrs_interval_promotes"))
         assertEquals(1, traced.trace.fsrsCalls.size)
         assertEquals("review", traced.trace.fsrsCalls[0].callType)
         assertEquals("good", traced.trace.fsrsCalls[0].rating)
@@ -102,10 +102,10 @@ class SchedulerDecisionTraceTest {
 
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.result.item.rung)
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.beforeRung)
-        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.trace.transition!!.afterRung)
-        assertEquals("again_streak_demotes", traced.trace.transition!!.movementReason)
-        assertTrue(traced.trace.transition!!.reasonCodes.contains("review_again_lapse"))
-        assertTrue(traced.trace.transition!!.reasonCodes.contains("real_again_streak_threshold"))
+        assertEquals(RecordsBase.LadderRung.MEANING_KANJI, traced.trace.transition.afterRung)
+        assertEquals("again_streak_demotes", traced.trace.transition.movementReason)
+        assertTrue(traced.trace.transition.reasonCodes.contains("review_again_lapse"))
+        assertTrue(traced.trace.transition.reasonCodes.contains("real_again_streak_threshold"))
         assertEquals(1, traced.trace.fsrsCalls.size)
         assertEquals("again", traced.trace.fsrsCalls[0].rating)
     }
@@ -126,7 +126,7 @@ class SchedulerDecisionTraceTest {
 
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.result.item.rung)
         assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
-        assertTrue(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+        assertTrue(traced.trace.transition.reasonCodes.contains("similar_kanji_unavailable"))
     }
 
     @Test
@@ -146,7 +146,7 @@ class SchedulerDecisionTraceTest {
         assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(traced.result.item)!!.activeCore)
         assertTrue(traced.result.item.meaningKanjiMemory.totalReviews > 0)
         assertTrue(traced.trace.transition!!.reasonCodes.contains("fsrs_interval_promotes"))
-        assertFalse(traced.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+        assertFalse(traced.trace.transition.reasonCodes.contains("similar_kanji_unavailable"))
     }
 
     @Test
@@ -172,7 +172,7 @@ class SchedulerDecisionTraceTest {
         )
 
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.beforeRung)
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition!!.afterRung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, traced.trace.transition.afterRung)
     }
 
     @Test
@@ -345,7 +345,7 @@ class SchedulerDecisionTraceTest {
             stability: Double,
             difficulty: Double,
             rating: String?,
-            elapsedDays: Int,
+            elapsedDays: Double,
             targetRetention: Double,
         ): KaniFsrsReviewResult {
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)

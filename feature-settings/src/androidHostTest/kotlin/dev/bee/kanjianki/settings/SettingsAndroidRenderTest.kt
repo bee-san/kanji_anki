@@ -1,0 +1,101 @@
+package dev.bee.kanjianki.settings
+
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** Runs the shared Settings render assertions on the Android host target. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class SettingsAndroidRenderTest {
+    @Test
+    fun eachCategoryOpensItsSection() {
+        assertEachCategoryOpensItsSection()
+    }
+
+    @Test
+    fun aCategoryCarriesItsCapabilityNotice() {
+        assertACategoryCarriesItsCapabilityNotice()
+    }
+
+    @Test
+    fun aTogglePassesItsNewValue() {
+        assertATogglePassesItsNewValue()
+    }
+
+    @Test
+    fun aDisabledToggleStaysVisibleAndDispatchesNothing() {
+        assertADisabledToggleStaysVisibleAndDispatchesNothing()
+    }
+
+    @Test
+    fun aChoiceDispatchesTheOptionItsButtonCarries() {
+        assertAChoiceDispatchesTheOptionItsButtonCarries()
+    }
+
+    @Test
+    fun aStepperStepsWithinItsBounds() {
+        assertAStepperStepsWithinItsBounds()
+    }
+
+    @Test
+    fun aDestructiveButtonDispatchesItsCommand() {
+        assertADestructiveButtonDispatchesItsCommand()
+    }
+
+    @Test
+    fun aPlainButtonDispatchesItsCommand() {
+        assertAPlainButtonDispatchesItsCommand()
+    }
+
+    @Test
+    fun anInfoRowShowsItsLabelAndValueWithNoAction() {
+        assertAnInfoRowShowsItsLabelAndValueWithNoAction()
+    }
+
+    @Test
+    fun aKeybindingRowReadsOutTheKeysItsCommandHolds() {
+        assertAKeybindingRowReadsOutTheKeysItsCommandHolds()
+    }
+
+    @Test
+    fun bindingAndUnbindingDispatchTheKeyTheyWereShownOn() {
+        assertBindingAndUnbindingDispatchTheKeyTheyWereShownOn()
+    }
+
+    @Test
+    fun anUnavailableKeyStatesItsReasonAndDispatchesNothing() {
+        assertAnUnavailableKeyStatesItsReasonAndDispatchesNothing()
+    }
+
+    @Test
+    fun aProsePageShowsEveryBlockAndDispatchesNothing() {
+        assertAProsePageShowsEveryBlockAndDispatchesNothing()
+    }
+
+    @Test
+    fun anUnportedSectionNamesItselfRatherThanBlank() {
+        assertAnUnportedSectionNamesItselfRatherThanBlank()
+    }
+
+    @Test
+    fun theShippedSettingsResourcesResolveOnThisHost() {
+        assertTheShippedSettingsResourcesResolveOnThisHost()
+    }
+
+    @Test
+    fun theSettingsTestTagsAreDistinct() {
+        assertTheSettingsTestTagsAreDistinct()
+    }
+
+    @Test
+    fun everySettingsControlIsBigEnoughToHit() {
+        assertEverySettingsControlIsBigEnoughToHit()
+    }
+
+    @Test
+    fun everyKeybindingChipIsBigEnoughToHit() {
+        assertEveryKeybindingChipIsBigEnoughToHit()
+    }
+}

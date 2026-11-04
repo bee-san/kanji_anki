@@ -27,7 +27,6 @@ import org.junit.runner.RunWith
 import java.io.StringReader
 import java.util.LinkedHashMap
 
-private const val DATABASE_NAME = "kanji_anki_simple.db"
 
 /**
  * End-to-end instrumented tests for the ladder scheduler. These tests exercise
@@ -53,7 +52,7 @@ class LadderSchedulerEndToEndTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         store = LocalStore(context)
         scheduler = BridgeScheduler()
         helperTokenCounter = 0
@@ -65,7 +64,7 @@ class LadderSchedulerEndToEndTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase(DATABASE_NAME)
+            KaniTestDatabase.delete(context)
         }
     }
 

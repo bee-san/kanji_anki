@@ -6,6 +6,13 @@
 > repair with the two-core inline model in
 > [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
+> The current provider-write contract distinguishes normal sync/write-back
+> from Missing Kanji. Normal sync may write only the idempotent archive and
+> repaired note tags. The explicit Missing Kanji flow may add notes only to
+> Kani's dedicated model/deck after its capability gate, with CSV as a complete
+> fallback. Neither flow may write Anki scheduling state. This current contract
+> supersedes any broader historical "tag-only" wording below.
+
 Scope at capture time: Kani study/sync flows versus Anki manual behavior for learning/relearning, bury/suspend, leeches, deck options, FSRS, browser/search, stats, import, and sync.
 
 Kani snapshot used for this review:
@@ -124,7 +131,7 @@ Kani snapshot used for this review:
 
 8. Import/sync should document source-of-truth and conflict boundaries.
 
-   Current Kani: syncs from AnkiDroid’s local provider, scans active/suspended/tagged/weak/browser-query sources, extracts FSRS memory state, and mirrors active/suspended card indexes. Auto-sync exists locally, but this is not AnkiWeb multi-device sync. Kani's provider write surface is deliberately note-tag-only: `kani_archived` for the existing archive flow and opt-in, manual-confirmed `kani_repaired` for verified repairs. It never writes queue, due date, interval, ease, deck, or another scheduling field. Repaired cards are handed back with the exact browser search `tag:kani_repaired is:suspended`; the user reviews and unsuspends them in AnkiDroid. Provider-write failures are isolated and retried without failing the committed sync. On Android 11+, Backup & restore provides WAL-safe external exports and strict-atomic staged restore; Android 8–10 fails closed and preserves current data/archives because stock SQLite lacks the required live-snapshot support.
+   Current Kani: syncs from AnkiDroid’s local provider, scans active/suspended/tagged/weak/browser-query sources, extracts FSRS memory state, and mirrors active/suspended card indexes. Auto-sync exists locally, but this is not AnkiWeb multi-device sync. Normal provider write-back is deliberately note-tag-only: `kani_archived` for the existing archive flow and opt-in, manual-confirmed `kani_repaired` for verified repairs. The separate, explicit Missing Kanji flow may create only additive notes in Kani's dedicated model/deck after the provider capability/spec gate passes, and CSV remains a complete fallback. It never rewrites existing notes/models or writes queue, due date, interval, ease, deck options, suspension, FSRS state, or another scheduling field. Repaired cards are handed back with the exact browser search `tag:kani_repaired is:suspended`; the user reviews and unsuspends them in AnkiDroid. Provider-write failures are isolated and retried without failing the committed sync. On Android 11+, Backup & restore provides WAL-safe external exports and strict-atomic staged restore; Android 8–10 fails closed and preserves current data/archives because stock SQLite lacks the required live-snapshot support.
 
    Live boundary verification (2026-07-10): the real AnkiDroid 2.24.0 gate passed `OK (62 tests)` against the copied 7,000+ note collection. A non-destructive probe called `resolver.update` on a real card URI with that card's existing queue value. The provider rejected it with `IllegalArgumentException` (`updatedRows=-1`), and a reread confirmed queue `2` was unchanged. Direct card unsuspend is therefore not a supported provider operation in Kani.
 

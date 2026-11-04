@@ -89,15 +89,33 @@ class ProviderArchiveCleanupPolicy private constructor() {
             return ids
         }
 
+        /** The provider name the unqualified [removalMessage] names. */
+        const val ANKIDROID_PROVIDER_NAME: String = "AnkiDroid"
+
         @JvmStatic
-        fun removalMessage(tagged: Int, failed: Int): String {
+        fun removalMessage(tagged: Int, failed: Int): String =
+            removalMessage(tagged, failed, ANKIDROID_PROVIDER_NAME)
+
+        /**
+         * Archive-cleanup copy for a provider named [providerName].
+         *
+         * The provider name is a parameter rather than a second copy table
+         * because the desktop AnkiConnect writer performs the same cleanup
+         * against Anki, and two hand-written tables would drift: the user would
+         * eventually be told a partial write "stays in the local archive" on one
+         * host and something subtly different on the other for the same outcome.
+         */
+        @JvmStatic
+        fun removalMessage(tagged: Int, failed: Int, providerName: String): String {
             if (tagged > 0 && failed == 0) {
-                return "Archived suspended notes were tagged in AnkiDroid and hidden from future syncs."
+                return "Archived suspended notes were tagged in $providerName and hidden from future syncs."
             }
             if (tagged > 0) {
-                return "Archived suspended notes were partly tagged in AnkiDroid; any leftovers stay in the local archive."
+                return "Archived suspended notes were partly tagged in $providerName; " +
+                    "any leftovers stay in the local archive."
             }
-            return "Archived suspended cards were kept in the local archive; AnkiDroid did not allow provider tagging."
+            return "Archived suspended cards were kept in the local archive; " +
+                "$providerName did not allow provider tagging."
         }
     }
 }

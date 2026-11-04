@@ -696,12 +696,6 @@ internal abstract class LocalStoreStudy(
         studySettings().saveAutoUpdateEnabled(enabled)
     }
 
-    fun betaUpdatesEnabled(): Boolean = studySettings().betaUpdatesEnabled()
-
-    fun saveBetaUpdatesEnabled(enabled: Boolean) {
-        studySettings().saveBetaUpdatesEnabled(enabled)
-    }
-
     fun debugLogEnabled(): Boolean = studySettings().debugLogEnabled()
 
     fun saveDebugLogEnabled(enabled: Boolean) {
@@ -780,12 +774,6 @@ internal abstract class LocalStoreStudy(
 
     fun resetFsrsPersonalization() {
         studySettings().resetFsrsPersonalization()
-    }
-
-    fun flashcardSwipeGestureEnabled(): Boolean = studySettings().flashcardSwipeGestureEnabled()
-
-    fun saveFlashcardSwipeGestureEnabled(enabled: Boolean) {
-        studySettings().saveFlashcardSwipeGestureEnabled(enabled)
     }
 
     fun learningStepSettings(): RecordsSchedulerModels.LearningStepSettings = studySettings().learningStepSettings()

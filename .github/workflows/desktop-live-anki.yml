@@ -1,0 +1,144 @@
+name: Desktop Live Anki
+
+# Live Anki Desktop provider coverage: nightly and on demand.
+#
+# Deliberately NOT a dependency of any release path, Android or desktop. It boots a
+# real Anki process and talks to a real AnkiConnect over loopback, so it depends on a
+# third-party service starting correctly inside a headless runner — exactly the class
+# of flakiness that made emulator jobs the top cause of blocked releases. Android
+# Release must never be blocked by Anki service flakiness (Goal 205).
+#
+# What it buys, despite that: every other test in `:provider-ankiconnect` runs against
+# `FakeAnkiConnectServer`, and a fake agrees with whatever the client believes. This
+# fixture's first run found that `getActiveProfile` — which Kani required and refused
+# to connect without — is not an AnkiConnect action at all, so the handshake reported
+# every real Anki as unavailable while passing against the mock. Seeding it found a
+# second: `setSpecificValueOfCard` reports per-item failures inside a success
+# envelope. Neither is findable against a mock, and neither would have been caught by
+# any amount of deterministic testing.
+on:
+  workflow_dispatch:
+  schedule:
+    # Offset from Android Instrumented's 05:17 so the two do not contend for runners.
+    - cron: '43 5 * * *'
+
+concurrency:
+  group: desktop-live-anki-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  qualify:
+    name: Qualify against pinned Anki Desktop
+    runs-on: ubuntu-24.04
+    # Generous, because the fixture downloads and unpacks an Anki release before any
+    # test runs. Still bounded: a hung Anki must fail the job, not run for hours.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v4
+
+      # The catalog-pinned packaging JDK, matching Desktop CI. `java-version: '17'`
+      # would let a runner image bump change the JVM under a provider qualification.
+      - name: Set up the pinned packaging Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
+        with:
+          distribution: temurin
+          java-version: '17.0.19+10'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@39fdf500b386709a9a4a769f717dad447ac345b9
+        with:
+          cache-read-only: true
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
+
+      - name: Install the fixture's host requirements
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # Anki is a Qt application: it needs a display and the Qt platform plugin's
+          # X11 libraries even when nothing is ever shown on screen.
+          sudo apt-get install --no-install-recommends --yes \
+            xvfb \
+            libnss3 \
+            libxcomposite1 \
+            libxdamage1 \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libegl1 \
+            libgl1
+
+      - name: Boot the pinned Anki Desktop fixture
+        id: fixture
+        env:
+          # An isolated port. The script refuses 8765 outright — that is an operator's
+          # own live AnkiConnect, and a fixture that bound it could seed a test
+          # collection into somebody's real profile.
+          KANI_ANKI_DESKTOP_PORT: '18765'
+          KANI_ANKI_DESKTOP_WORK_DIR: ${{ runner.temp }}/kani-anki-desktop-fixture
+        run: |
+          set -euo pipefail
+          ci/scripts/run_anki_desktop_fixture.sh &
+          echo "fixture_pid=$!" >> "${GITHUB_OUTPUT}"
+          # The script itself waits for AnkiConnect to answer before returning, but it
+          # is backgrounded here so the seeding step can run against it; poll for
+          # readiness rather than sleeping a guessed interval.
+          for _ in $(seq 1 90); do
+            if curl --silent --fail --max-time 2 \
+              --data '{"action":"version","version":6}' \
+              http://127.0.0.1:18765 >/dev/null 2>&1; then
+              echo "AnkiConnect answered"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "AnkiConnect did not answer within 180s" >&2
+          exit 1
+
+      - name: Seed the sanitized Kiku collection
+        env:
+          KANI_ANKI_DESKTOP_PORT: '18765'
+        run: python3 ci/scripts/seed_anki_desktop_kiku_collection.py
+
+      - name: Run the live qualification suite
+        run: >-
+          ./gradlew :provider-ankiconnect:test
+          --tests 'dev.bee.kanjianki.provider.ankiconnect.LiveAnkiDesktopQualificationTest'
+          -Pkani.liveAnkiDesktop=true
+          -Pkani.liveAnkiDesktopEndpoint=http://127.0.0.1:18765
+
+      - name: Upload failed qualification reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: desktop-live-anki-reports
+          # Reports only, never the fixture profile: the profile is a collection, and
+          # even a sanitized one should not become a downloadable artifact by default.
+          path: |
+            provider-ankiconnect/build/reports/tests/test/**
+            provider-ankiconnect/build/test-results/test/**
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Stop the fixture
+        # `always()`, so a failed suite still tears down the Anki process rather than
+        # leaving it holding the port for the next run on a reused runner.
+        if: always()
+        run: |
+          set +e
+          pkill -f 'anki' >/dev/null 2>&1
+          pkill -f 'Xvfb' >/dev/null 2>&1
+          exit 0

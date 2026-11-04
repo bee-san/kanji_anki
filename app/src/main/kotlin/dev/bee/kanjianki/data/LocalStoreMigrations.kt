@@ -22,6 +22,7 @@ internal object LocalStoreMigrations {
         upgradeThroughThirtyOne(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyTwo(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyThree(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirtyFour(db, oldVersion, targetVersion)
     }
 
     private fun upgradeThroughEight(
@@ -319,6 +320,45 @@ internal object LocalStoreMigrations {
             // configured-model sync mirror and stores no raw note fields.
             hooks.createMissingKanjiTables(db)
         }
+    }
+
+    private fun upgradeThroughThirtyFour(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+    ) {
+        if (!shouldRun(oldVersion, targetVersion, 34)) return
+        db.execSQL(
+            """
+            INSERT OR REPLACE INTO ${LocalStoreBase.TABLE_SETTINGS}
+                (key, ${LocalStoreBase.COLUMN_VALUE}, ${LocalStoreBase.COLUMN_UPDATED_AT})
+            SELECT ?, ?, 0
+            WHERE
+                EXISTS (
+                    SELECT 1
+                    FROM ${LocalStoreBase.TABLE_SYNC_RUNS}
+                    WHERE status = ?
+                    LIMIT 1
+                )
+                AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM ${LocalStoreBase.TABLE_SOURCE_NOTES}
+                        LIMIT 1
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM ${LocalStoreBase.TABLE_SOURCE_CARDS}
+                        LIMIT 1
+                    )
+                )
+            """.trimIndent(),
+            arrayOf(
+                SourceBindingMigrationRecord.KEY_ANDROID_LEGACY_MIGRATION,
+                SourceBindingMigrationRecord.ELIGIBLE,
+                LocalStoreBase.STATUS_SUCCESS,
+            ),
+        )
     }
 
     private fun shouldRun(oldVersion: Int, targetVersion: Int, migrationVersion: Int): Boolean {

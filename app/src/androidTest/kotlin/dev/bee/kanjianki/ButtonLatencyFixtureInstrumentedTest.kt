@@ -7,14 +7,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-private const val BUTTON_LATENCY_DATABASE_NAME = "kanji_anki_simple.db"
 
 @RunWith(AndroidJUnit4::class)
 class ButtonLatencyFixtureInstrumentedTest {
     @Test
     fun seedRepresentativeLocalStoreForButtonLatencyBenchmark() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(BUTTON_LATENCY_DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         LocalStore(context).use { store ->
             ButtonLatencyBenchmarkFixtureSeeder.seedIfNeeded(context, store)
             val dashboardKanji = store.dashboardRows().map { it.kanji }.toSet()

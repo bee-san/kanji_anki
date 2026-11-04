@@ -14,13 +14,36 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install Android SDK packages
+    - name: Install Android SDK packages (Unix)
+      if: runner.os != 'Windows'
       shell: bash
       run: |
         set -euo pipefail
         sdkmanager="${ANDROID_HOME:?ANDROID_HOME is required}/cmdline-tools/latest/bin/sdkmanager"
+        test -x "${sdkmanager}"
         yes | "${sdkmanager}" --licenses >/dev/null || true
         "${sdkmanager}" \
           'platform-tools' \
           "platforms;android-${{ inputs.platform }}" \
           "build-tools;${{ inputs.build-tools }}"
+
+    - name: Install Android SDK packages (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        if (-not $env:ANDROID_HOME) {
+          throw 'ANDROID_HOME is required'
+        }
+        $sdkmanager = Join-Path $env:ANDROID_HOME 'cmdline-tools/latest/bin/sdkmanager.bat'
+        if (-not (Test-Path -PathType Leaf $sdkmanager)) {
+          throw "sdkmanager.bat is unavailable: $sdkmanager"
+        }
+        1..100 | ForEach-Object { 'y' } | & $sdkmanager --licenses | Out-Null
+        & $sdkmanager `
+          'platform-tools' `
+          'platforms;android-${{ inputs.platform }}' `
+          'build-tools;${{ inputs.build-tools }}'
+        if ($LASTEXITCODE -ne 0) {
+          throw "sdkmanager.bat failed with exit code $LASTEXITCODE"
+        }

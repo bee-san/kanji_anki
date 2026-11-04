@@ -1,8 +1,7 @@
 package dev.bee.kanjianki.update
 
-import dev.bee.kanjianki.AppLocalStoreFactory
+import dev.bee.kanjianki.requireKaniContainer
 
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
@@ -10,11 +9,10 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
-import android.provider.Settings
 import android.util.Log
-import androidx.core.net.toUri
 import dev.bee.kanjianki.BuildConfig
-import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.platform.DeviceSettingKeys
+import dev.bee.kanjianki.platform.android.AndroidPackageInstaller
 import dev.bee.kanjianki.updatecore.GitHubReleaseChannelPolicy
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.ReleaseVersion
@@ -53,9 +51,8 @@ class GitHubUpdater @JvmOverloads constructor(
     fun checkDownloadAndInstall(source: UpdateSource): UpdateResult {
         val checkedAt = System.currentTimeMillis()
         return try {
-            val betaEnabled = AppLocalStoreFactory.create(context).use { store ->
-                store.betaUpdatesEnabled()
-            }
+            val betaEnabled = context.requireKaniContainer().deviceSettingsStore
+                .read(DeviceSettingKeys.betaUpdatesEnabled) ?: false
             val api = "$API_BASE${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}" +
                 GitHubReleaseChannelPolicy.apiPath(betaEnabled)
             val json = client.getText(api)
@@ -166,7 +163,9 @@ class GitHubUpdater @JvmOverloads constructor(
 
     fun installCachedPendingUpdate(source: UpdateSource): UpdateResult {
         val checkedAt = System.currentTimeMillis()
-        val status = AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus() }
+        val status = context.requireKaniContainer().openLocalStore().use { store ->
+            store.autoUpdateStatus()
+        }
         return try {
             if (!status.hasPendingUpdate()) {
                 return recordResult(
@@ -275,7 +274,7 @@ class GitHubUpdater @JvmOverloads constructor(
         pendingMessage: String,
         source: UpdateSource = UpdateSource.MANUAL,
     ): UpdateResult {
-        AppLocalStoreFactory.create(context).use { store ->
+        context.requireKaniContainer().openLocalStore().use { store ->
             store.recordAutoUpdateResult(checkedAt, result.message, version, pendingApkName, pendingMessage)
             // Automatic checks are background maintenance. They may still return
             // retryable=true so WorkManager can retry, but must not turn a
@@ -295,7 +294,9 @@ class GitHubUpdater @JvmOverloads constructor(
     }
 
     private fun currentPendingApkName(): String {
-        return AppLocalStoreFactory.create(context).use { store -> store.autoUpdateStatus().pendingApkName }
+        return context.requireKaniContainer().openLocalStore().use { store ->
+            store.autoUpdateStatus().pendingApkName
+        }
     }
 
     private fun cleanupStaleCachedApks(pendingApkName: String): Int {
@@ -590,7 +591,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         fun installStatusPendingIntentFlags(): Int {
-            return PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            return AndroidPackageInstaller.installStatusPendingIntentFlags()
         }
 
         @JvmStatic
@@ -653,9 +654,7 @@ class GitHubUpdater @JvmOverloads constructor(
 
         @JvmStatic
         fun installPermissionIntent(context: Context): Intent {
-            return Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
-                .setData("package:${context.packageName}".toUri())
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            return AndroidPackageInstaller.installPermissionIntent(context)
         }
 
         @JvmStatic
@@ -889,48 +888,70 @@ class GitHubUpdater @JvmOverloads constructor(
             source: UpdateSource,
             targetSdkVersion: Int,
         ) {
-            val params = sessionParams(context.packageName, targetSdkVersion)
-            val sessionId = installer.createSession(params)
-            var session: InstallerSession? = null
-            var committed = false
-            try {
-                session = installer.openSession(sessionId)
-                BufferedInputStream(FileInputStream(apkFile)).use { input ->
-                    session.openWrite("kani-update.apk", 0, apkFile.length()).use { output ->
-                        copy(input, output)
-                        session.fsync(output)
+            val platformInstaller = AndroidPackageInstaller(
+                context,
+                object : AndroidPackageInstaller.Backend {
+                    override fun createSession(params: PackageInstaller.SessionParams): Int =
+                        installer.createSession(params)
+
+                    override fun openSession(sessionId: Int): AndroidPackageInstaller.Session {
+                        val legacySession = installer.openSession(sessionId)
+                        return object : AndroidPackageInstaller.Session {
+                            override fun openWrite(
+                                name: String,
+                                offsetBytes: Long,
+                                lengthBytes: Long,
+                            ): OutputStream =
+                                legacySession.openWrite(name, offsetBytes, lengthBytes)
+
+                            override fun fsync(output: OutputStream) {
+                                legacySession.fsync(output)
+                            }
+
+                            override fun commit(statusReceiver: IntentSender) {
+                                legacySession.commit(statusReceiver)
+                            }
+
+                            override fun close() {
+                                legacySession.close()
+                            }
+                        }
                     }
-                }
-                val callback = PackageInstallStatusReceiver.callbackIntent(context, apkFile.name, version, source)
-                val pending = PendingIntent.getBroadcast(
-                    context,
-                    sessionId,
-                    callback,
-                    installStatusPendingIntentFlags(),
-                )
-                session.commit(pending.intentSender)
-                committed = true
-            } finally {
-                try {
-                    session?.close()
-                } finally {
-                    if (!committed) {
+
+                    override fun abandonSession(sessionId: Int) {
                         installer.abandonSession(sessionId)
                     }
-                }
-            }
+                },
+            )
+            platformInstaller.install(
+                AndroidPackageInstaller.InstallRequest(
+                    apkFile = apkFile,
+                    packageName = context.packageName,
+                    sessionName = "kani-update.apk",
+                    callbackIntent = PackageInstallStatusReceiver.callbackIntent(
+                        context,
+                        apkFile.name,
+                        version,
+                        source,
+                    ),
+                    allowWithoutUserAction = shouldAllowInstallerWithoutExtraUserAction(
+                        targetSdkVersion,
+                        Build.VERSION.SDK_INT,
+                    ),
+                ),
+            )
         }
 
         @JvmStatic
         fun sessionParams(packageName: String, targetSdkVersion: Int): PackageInstaller.SessionParams {
-            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            params.setAppPackageName(packageName)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                shouldAllowInstallerWithoutExtraUserAction(targetSdkVersion, Build.VERSION.SDK_INT)
-            ) {
-                params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-            }
-            return params
+            return AndroidPackageInstaller.sessionParams(
+                packageName = packageName,
+                allowWithoutUserAction = shouldAllowInstallerWithoutExtraUserAction(
+                    targetSdkVersion,
+                    Build.VERSION.SDK_INT,
+                ),
+                runtimeSdk = Build.VERSION.SDK_INT,
+            )
         }
 
         @JvmStatic
@@ -1021,18 +1042,6 @@ class GitHubUpdater @JvmOverloads constructor(
             close: SessionClose,
         ): InstallerSession {
             return AndroidInstallerSession(AndroidPackageInstallerSessionAccess(openWrite, fsync, commit, close))
-        }
-
-        @Throws(IOException::class)
-        private fun copy(input: InputStream, output: OutputStream) {
-            val buffer = ByteArray(BUFFER_SIZE)
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) {
-                    break
-                }
-                output.write(buffer, 0, read)
-            }
         }
 
         @Throws(IOException::class)

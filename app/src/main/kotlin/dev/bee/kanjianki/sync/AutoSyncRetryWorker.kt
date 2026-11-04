@@ -1,29 +1,37 @@
 package dev.bee.kanjianki.sync
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import androidx.work.ListenableWorker
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import dev.bee.kanjianki.anki.AnkiDroidGateway
-import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.AndroidContainerProvider
+import dev.bee.kanjianki.requireKaniContainer
 
 /** Runs only the bounded follow-up attempts created after a transient daily-sync result. */
-class AutoSyncRetryWorker(
+class AutoSyncRetryWorker internal constructor(
     context: Context,
     workerParams: WorkerParameters,
+    private val containerProvider: AndroidContainerProvider,
 ) : Worker(context, workerParams) {
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        AndroidContainerProvider { context.requireKaniContainer() },
+    )
+
     override fun doWork(): Result {
         val appContext = applicationContext
-        AppLocalStoreFactory.create(appContext).use { store ->
-            val sync = AutoSyncRunner(
-                appContext,
-                store,
-                AnkiDroidGateway(appContext, SyncCancellation { isStopped }),
-            ).run()
-            return workerResult(sync, runAttemptCount)
-        }
+        val container = containerProvider.get()
+        val cancellation = SyncCancellation { isStopped }
+        val sync = createAutoSyncRunner(
+            appContext,
+            container.syncUseCases,
+            container.deviceSettingsStore,
+            container.newAnkiDroidGateway(cancellation),
+            sourceBindingGate = container.sourceBindingGate,
+            cancellation = cancellation,
+        ).run()
+        return workerResult(sync, runAttemptCount)
     }
 
     companion object {

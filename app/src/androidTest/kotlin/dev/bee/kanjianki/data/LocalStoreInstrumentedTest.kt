@@ -1,5 +1,6 @@
 package dev.bee.kanjianki.data
 
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.HistoricalKanjiAggregate
 import dev.bee.kanjianki.core.RecordsImportModels
@@ -59,7 +60,7 @@ class LocalStoreInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         store = LocalStore(context);
     }
 
@@ -69,7 +70,7 @@ class LocalStoreInstrumentedTest {
             store.close()
         }
         if (::context.isInitialized) {
-            context.deleteDatabase("kanji_anki_simple.db")
+            KaniTestDatabase.delete(context)
         }
     }
 
@@ -658,7 +659,7 @@ class LocalStoreInstrumentedTest {
     @Test
     fun testVersionEighteenMigrationPreservesLegacyTimelineHistory() {
         store.close();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);
@@ -713,7 +714,7 @@ class LocalStoreInstrumentedTest {
     @Test
     fun testVersionEighteenMigrationPreservesProviderMirrorAndLocalStatsHistory() {
         store.close();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);
@@ -855,7 +856,7 @@ class LocalStoreInstrumentedTest {
     @Test
     fun testVersionSixteenMigrationPreservesLegacySchedulerStateAndClearsSideQueues() {
         store.close();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV15SchedulerSchema(db);
@@ -962,7 +963,7 @@ class LocalStoreInstrumentedTest {
     @Test
     fun testOldStudyRowsInitializeSiblingSuppressionFieldsAsUnsuppressed() {
         store.close();
-        context.deleteDatabase("kanji_anki_simple.db");
+        KaniTestDatabase.delete(context);
         val db = context.openOrCreateDatabase("kanji_anki_simple.db", Context.MODE_PRIVATE, null)
         try {
             createLegacyV1Schema(db);

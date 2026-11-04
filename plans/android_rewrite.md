@@ -3287,7 +3287,9 @@ Do not include these unless separately requested:
 - Web/PWA frontend.
 - Flutter.
 - React Native.
-- Desktop app.
+- Desktop app. Superseded only by
+  `plans/desktop-support-goals-2026-07-26.md`; all other non-goals in this
+  section remain in force.
 - Play Store migration.
 - Cloud sync.
 - Accounts.

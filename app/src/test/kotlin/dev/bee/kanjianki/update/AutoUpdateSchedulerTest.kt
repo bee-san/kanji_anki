@@ -1,8 +1,12 @@
 package dev.bee.kanjianki.update
 
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.PeriodicWorkRequest
+import dev.bee.kanjianki.automation.PendingWorkOperation
+import dev.bee.kanjianki.automation.WorkManagerGateway
 import dev.bee.kanjianki.updatecore.AutoUpdateSchedulePolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -49,7 +53,7 @@ class AutoUpdateSchedulerTest {
         assertTrue(enqueueFailure.enqueued)
     }
 
-    private class Backend : AutoUpdateScheduler.SchedulerBackend {
+    private class Backend : WorkManagerGateway {
         var enqueued = false
         var enqueuedName: String? = null
         var cancelledName: String? = null
@@ -62,7 +66,7 @@ class AutoUpdateSchedulerTest {
             uniqueWorkName: String,
             policy: ExistingPeriodicWorkPolicy,
             request: PeriodicWorkRequest,
-        ) {
+        ): PendingWorkOperation {
             enqueued = true
             enqueuedName = uniqueWorkName
             this.policy = policy
@@ -70,13 +74,21 @@ class AutoUpdateSchedulerTest {
             if (throwOnEnqueue) {
                 throw IllegalStateException("work manager unavailable")
             }
+            return PendingWorkOperation { }
         }
 
-        override fun cancelUniqueWork(uniqueWorkName: String) {
+        override fun cancelUniqueWork(uniqueWorkName: String): PendingWorkOperation {
             cancelledName = uniqueWorkName
             if (throwOnCancel) {
                 throw IllegalStateException("work manager unavailable")
             }
+            return PendingWorkOperation { }
         }
+
+        override fun enqueueUniqueWork(
+            uniqueWorkName: String,
+            policy: ExistingWorkPolicy,
+            request: OneTimeWorkRequest,
+        ): PendingWorkOperation = error("Unexpected one-time work")
     }
 }

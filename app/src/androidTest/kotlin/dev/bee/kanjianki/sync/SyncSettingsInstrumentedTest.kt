@@ -3,6 +3,7 @@ package dev.bee.kanjianki.sync
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.bee.kanjianki.KaniTestDatabase
 import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.SyncSettings
@@ -15,7 +16,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
-private const val DATABASE_NAME = "kanji_anki_simple.db"
 
 @RunWith(AndroidJUnit4::class)
 class SyncSettingsInstrumentedTest {
@@ -24,12 +24,12 @@ class SyncSettingsInstrumentedTest {
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @After
     fun tearDown() {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
     }
 
     @Test
@@ -216,7 +216,7 @@ class SyncSettingsInstrumentedTest {
     }
 
     private fun freshStore(): LocalStore {
-        context.deleteDatabase(DATABASE_NAME)
+        KaniTestDatabase.delete(context)
         return LocalStore(context)
     }
 

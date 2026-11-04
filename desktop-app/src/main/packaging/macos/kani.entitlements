@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened-runtime entitlements for the Kani application bundle (Goal 204).
+
+  Every entry here exists because the JVM inside the bundle needs it under the hardened
+  runtime. Without them a signed, notarized Kani crashes at launch on a user's machine
+  while running perfectly from an unsigned local build, which is the failure mode this
+  file exists to prevent — signing is not exercised until a Developer ID is configured,
+  so a missing entitlement would surface for the first time in a release.
+
+  What is deliberately NOT here: `com.apple.security.app-sandbox` and the sandbox
+  entitlements that depend on it (`network.client`, `files.user-selected.read-write`).
+  Kani is not sandboxed and is not distributed through the App Store, and a sandbox
+  entitlement without `app-sandbox` does nothing at all. Listing them would read as
+  though Kani's loopback AnkiConnect access and its backup file picker had been granted
+  by this file, when in fact they work because the process is unsandboxed.
+
+  See docs/desktop-native-packaging.md.
+-->
+<plist version="1.0">
+  <dict>
+    <!-- HotSpot compiles bytecode to executable memory at runtime. Skiko's Metal and
+         software rasterizers do the same for shaders. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- The JIT writes to pages it then executes, which the hardened runtime forbids by
+         default even with allow-jit. HotSpot's code cache requires both. -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- The bundled runtime loads its own dylibs (libjvm, libskiko, the SQLite JNI
+         driver). Library validation would require each to be signed by the same team ID
+         as the app; the JDK's are not signed by us at all. -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+
+    <!-- The launcher sets JVM environment variables (including DYLD paths) before
+         handing off to libjvm. -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+  </dict>
+</plist>

@@ -15,6 +15,7 @@ import dev.bee.kanjianki.data.LocalStoreSchema
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.toRepositorySnapshot
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -487,14 +488,14 @@ class ProgressAnalyticsLiveDataSourceTest {
         val cachedReads = mutableListOf<Long>()
         val recomputeReads = mutableListOf<Long>()
 
-        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot? {
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long): dev.bee.kanjianki.data.StatsSnapshot? {
             cachedReads += nowMillis
             return null
         }
 
-        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot {
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): dev.bee.kanjianki.data.StatsSnapshot {
             recomputeReads += nowMillis
-            return recomputed
+            return recomputed.toRepositorySnapshot()
         }
 
         override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> {

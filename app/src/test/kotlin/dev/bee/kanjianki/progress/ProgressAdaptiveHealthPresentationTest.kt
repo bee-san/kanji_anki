@@ -7,6 +7,7 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.data.STATS_CACHE_FORMAT_VERSION
 import dev.bee.kanjianki.data.StatsCacheStore
 import dev.bee.kanjianki.data.StudyStatsStore
+import dev.bee.kanjianki.data.toRepositorySnapshot
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -86,8 +87,12 @@ class ProgressAdaptiveHealthPresentationTest {
     }
 
     private class FixedSource(private val snapshot: StatsCacheStore.Snapshot) : ProgressAnalyticsStatsSource {
-        override fun cachedStatsSnapshotOrNull(nowMillis: Long): StatsCacheStore.Snapshot = snapshot
-        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long): StatsCacheStore.Snapshot = snapshot
+        override fun cachedStatsSnapshotOrNull(nowMillis: Long) =
+            snapshot.toRepositorySnapshot()
+
+        override fun recomputeStatsSnapshotSynchronously(nowMillis: Long) =
+            snapshot.toRepositorySnapshot()
+
         override fun reviewDaySummaries(nowMillis: Long, days: Int): List<ReviewDaySummary> = emptyList()
     }
 

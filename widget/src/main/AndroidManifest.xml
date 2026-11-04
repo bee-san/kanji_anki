@@ -1,0 +1,73 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        The widget module's own manifest. The receivers live here rather than in `:app`
+        because they name this module's `*_widget_info` XML, and a resource and the
+        declaration pointing at it should not be split across modules — moving one without
+        the other is a runtime failure the build cannot see.
+
+        Fully-qualified names, not `.widget.X`: a relative name resolves against the merged
+        manifest's package, so the `:app` shorthand would work only by coincidence of both
+        modules sharing a package prefix.
+
+        `KaniWidgetConfigActivity` is deliberately still declared in `:app` — it is a full
+        Compose UI activity on `:app`'s theme, not a widget provider.
+    -->
+    <application>
+        <receiver
+            android:name="dev.bee.kanjianki.widget.KaniWidgetReceiver"
+            android:exported="false"
+            android:label="@string/study_overview_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kani_widget_info" />
+        </receiver>
+        <receiver
+            android:name="dev.bee.kanjianki.widget.QuickStudyWidgetReceiver"
+            android:exported="false"
+            android:label="@string/quick_study_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_study_widget_info" />
+        </receiver>
+        <receiver
+            android:name="dev.bee.kanjianki.widget.ActivityWidgetReceiver"
+            android:exported="false"
+            android:label="@string/activity_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/activity_widget_info" />
+        </receiver>
+        <receiver
+            android:name="dev.bee.kanjianki.widget.FocusKanjiWidgetReceiver"
+            android:exported="false"
+            android:label="@string/focus_kanji_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/focus_kanji_widget_info" />
+        </receiver>
+        <receiver
+            android:name="dev.bee.kanjianki.widget.KaniWidgetRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="dev.bee.kanjianki.widget.action.REFRESH" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

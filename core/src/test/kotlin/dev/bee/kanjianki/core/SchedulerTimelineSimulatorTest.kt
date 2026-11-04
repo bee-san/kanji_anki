@@ -25,7 +25,7 @@ class SchedulerTimelineSimulatorTest {
         assertEquals("next", next.kind)
         assertEquals("裂", next.trace.selected!!.kanji)
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, next.snapshot!!.rung)
-        assertTrue(next.trace.selected!!.reasonCodes.contains("new_learning_unseen"))
+        assertTrue(next.trace.selected.reasonCodes.contains("new_learning_unseen"))
         assertGolden("newKanjiEntersKanjiMeaning", simulator.renderText())
     }
 
@@ -48,15 +48,15 @@ class SchedulerTimelineSimulatorTest {
         assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(simulator.currentItems().single())!!.activeCore)
 
         // Second qualifying pass on a fresh due slot promotes.
-        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
+        simulator.advanceTo(firstAnswer.snapshot.dueAtMillis)
         simulator.nextSession()
         val answer = simulator.answer("good")
 
         assertEquals("answer", answer.kind)
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, answer.snapshot!!.rung)
         assertEquals("rung_unchanged", answer.trace.transition!!.movementReason)
-        assertTrue(answer.trace.transition!!.reasonCodes.contains("review_pass_fsrs_interval"))
-        assertTrue(answer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+        assertTrue(answer.trace.transition.reasonCodes.contains("review_pass_fsrs_interval"))
+        assertTrue(answer.trace.transition.reasonCodes.contains("promotion_blocked_min_passes"))
         assertGolden("reviewPassPromotesAfterLongFsrsInterval", simulator.renderText())
     }
 
@@ -74,20 +74,20 @@ class SchedulerTimelineSimulatorTest {
         simulator.nextSession()
         val firstAnswer = simulator.answer("good")
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, firstAnswer.snapshot!!.rung)
-        assertEquals(0, firstAnswer.snapshot!!.realPassStreak)
+        assertEquals(0, firstAnswer.snapshot.realPassStreak)
         assertEquals("rung_unchanged", firstAnswer.trace.transition!!.movementReason)
-        assertTrue(firstAnswer.trace.transition!!.reasonCodes.contains("promotion_blocked_min_passes"))
+        assertTrue(firstAnswer.trace.transition.reasonCodes.contains("promotion_blocked_min_passes"))
         assertTrue(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
 
-        simulator.advanceTo(firstAnswer.snapshot!!.dueAtMillis)
+        simulator.advanceTo(firstAnswer.snapshot.dueAtMillis)
         simulator.nextSession()
         val secondAnswer = simulator.answer("good")
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, secondAnswer.snapshot!!.rung)
-        assertEquals(1, secondAnswer.snapshot!!.realPassStreak)
+        assertEquals(1, secondAnswer.snapshot.realPassStreak)
 
         // The third real-due recognition pass is the second adaptive-core pass,
         // so it promotes to contextual reading instead of another legacy rung.
-        simulator.advanceTo(secondAnswer.snapshot!!.dueAtMillis)
+        simulator.advanceTo(secondAnswer.snapshot.dueAtMillis)
         simulator.nextSession()
         val thirdAnswer = simulator.answer("good")
         assertEquals(RecordsBase.LadderRung.WORD_READING, thirdAnswer.snapshot!!.rung)
@@ -118,7 +118,7 @@ class SchedulerTimelineSimulatorTest {
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, finalAgain.snapshot!!.rung)
         assertTrue(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
         assertTrue(AdaptiveStudyItemPolicy.routeState(simulator.currentItems().single())!!.isRepairActive())
-        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, finalAgain.snapshot!!.phase)
+        assertEquals(RecordsBase.SchedulerPhase.RELEARNING, finalAgain.snapshot.phase)
         assertGolden("threeDueReviewAgainsDemote", simulator.renderText())
     }
 
@@ -145,7 +145,7 @@ class SchedulerTimelineSimulatorTest {
         assertTrue(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
         assertEquals(1, simulator.currentItems().single().writingLevel)
 
-        simulator.advanceTo(close.snapshot!!.dueAtMillis)
+        simulator.advanceTo(close.snapshot.dueAtMillis)
         simulator.nextSession()
         val corePass = simulator.answer("good")
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, corePass.snapshot!!.rung)
@@ -178,7 +178,7 @@ class SchedulerTimelineSimulatorTest {
         assertTrue(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
         assertEquals(CoreSkill.RECOGNITION, AdaptiveStudyItemPolicy.routeState(simulator.currentItems().single())!!.activeCore)
         assertTrue("Demoted first review capped to <= 1 day",
-            answer.snapshot!!.dueAtMillis - START <= BridgeScheduler.DAY)
+            answer.snapshot.dueAtMillis - START <= BridgeScheduler.DAY)
         assertGolden("demotionWithEmptyRelearningSteps", simulator.renderText())
     }
 
@@ -230,7 +230,7 @@ class SchedulerTimelineSimulatorTest {
         assertEquals(RecordsBase.LadderRung.MEANING_KANJI, answer.snapshot!!.rung)
         assertFalse(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
         assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
-        assertTrue(answer.trace.transition!!.reasonCodes.contains("similar_kanji_unavailable"))
+        assertTrue(answer.trace.transition.reasonCodes.contains("similar_kanji_unavailable"))
         assertGolden("similarKanjiSkippedWithoutContent", simulator.renderText())
     }
 
@@ -255,7 +255,7 @@ class SchedulerTimelineSimulatorTest {
         assertEquals(RecordsBase.LadderRung.FONT_MEANING, answer.snapshot!!.rung)
         assertFalse(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().single()))
         assertEquals("again_streak_demotes", answer.trace.transition!!.movementReason)
-        assertTrue(answer.trace.transition!!.reasonCodes.contains("kanji_reading_unavailable"))
+        assertTrue(answer.trace.transition.reasonCodes.contains("kanji_reading_unavailable"))
         assertGolden("kanjiReadingSkippedWithoutContent", simulator.renderText())
     }
 
@@ -294,7 +294,7 @@ class SchedulerTimelineSimulatorTest {
 
         assertEquals(RecordsBase.SchedulerPhase.RELEARNING, next.trace.selected!!.phase)
         assertFalse(AdaptiveStudyItemPolicy.isAdaptive(simulator.currentItems().first { it.phase == RecordsBase.SchedulerPhase.RELEARNING }))
-        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, next.trace.selected!!.rung)
+        assertEquals(RecordsBase.LadderRung.KANJI_MEANING, next.trace.selected.rung)
         assertTrue(next.trace.skipped.first { it.rung == RecordsBase.LadderRung.FONT_MEANING }.reasonCodes.contains("same_family_hidden"))
         assertGolden("relearningBeatsSameFamilyReviewSibling", simulator.renderText())
     }
@@ -315,7 +315,7 @@ class SchedulerTimelineSimulatorTest {
         val firstLearningStep = newSimulator.answer("good")
         assertEquals(RecordsBase.SchedulerPhase.NEW_LEARNING, firstLearningStep.snapshot!!.phase)
         assertFalse(AdaptiveStudyItemPolicy.isAdaptive(newSimulator.currentItems().single()))
-        newSimulator.advanceTo(firstLearningStep.snapshot!!.dueAtMillis)
+        newSimulator.advanceTo(firstLearningStep.snapshot.dueAtMillis)
         newSimulator.nextSession()
         val graduatedLearning = newSimulator.answer("good")
         assertEquals(RecordsBase.SchedulerPhase.REVIEW, graduatedLearning.snapshot!!.phase)
@@ -444,7 +444,7 @@ class SchedulerTimelineSimulatorTest {
             stability: Double,
             difficulty: Double,
             rating: String?,
-            elapsedDays: Int,
+            elapsedDays: Double,
             targetRetention: Double,
         ): KaniFsrsReviewResult {
             return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)

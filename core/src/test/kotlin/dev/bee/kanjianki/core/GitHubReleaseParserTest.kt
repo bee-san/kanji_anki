@@ -136,8 +136,8 @@ class GitHubReleaseParserTest {
 
         assertEquals("v0.4.0", escaped.tagName)
         assertTrue(escaped.htmlUrl!!.contains("unicode拉"))
-        assertTrue(escaped.htmlUrl!!.contains("bad\\uZZZZ"))
-        assertTrue(escaped.htmlUrl!!.contains("short\\u12"))
+        assertTrue(escaped.htmlUrl.contains("bad\\uZZZZ"))
+        assertTrue(escaped.htmlUrl.contains("short\\u12"))
 
         val unclosed = GitHubReleaseParser.parseLatest("{\"tag_name\":\"v0.4.1")
 
@@ -199,7 +199,7 @@ class GitHubReleaseParserTest {
         assertTrue(skippedAssets.assets.isEmpty())
         assertEquals("", noColonBeforeEnd.tagName)
         assertTrue(trailingBackslashAndShortUnicode.htmlUrl!!.contains("trail\\"))
-        assertTrue(trailingBackslashAndShortUnicode.htmlUrl!!.contains("short\\u"))
+        assertTrue(trailingBackslashAndShortUnicode.htmlUrl.contains("short\\u"))
         assertEquals("trail\\", terminalBackslash.htmlUrl)
         assertTrue(strayObjectClose.assets.isEmpty())
     }

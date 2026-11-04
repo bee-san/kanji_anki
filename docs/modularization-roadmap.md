@@ -1,5 +1,13 @@
 # Modularization Roadmap
 
+Status: current-structure baseline and historical Android extraction analysis.
+The extraction order and target module names below are superseded for pending
+implementation by the
+[desktop support goals](../plans/desktop-support-goals-2026-07-26.md). See the
+[architecture index](architecture/README.md) for the accepted decisions and
+active contracts. The current-graph observations remain useful until their
+corresponding desktop-support goals replace them with completion evidence.
+
 Analysis of the current module structure, proposed extraction targets, dependency
 graph, and effort estimates for breaking up the monolithic `:app` module.
 
@@ -12,7 +20,7 @@ graph, and effort estimates for breaking up the monolithic `:app` module.
 | `:dictionary-core` | Kotlin JVM library | 7 Kotlin | Dictionary lookup interface + asset loader |
 | `:writing-core` | Kotlin JVM library | 29 Kotlin | Handwriting analysis, stroke model, recognition types |
 | `:update-core` | Kotlin JVM library | 18 Kotlin | Update policies, version parsing, artifact validation |
-| `:fsrs-java` | Kotlin JVM library | 9 Kotlin | FSRS-6 implementation; historical module name retained for compatibility |
+| `:bee-fsrs` | Kotlin JVM library | 14 Kotlin | Vendored checkout of `dev.bee:bee-fsrs` 0.2.0: FSRS-7 (in use) and FSRS-6.x (unreached). Do not edit — see `bee-fsrs/PROVENANCE.md` |
 | `:domain` | Kotlin JVM library | 1 Kotlin | Shared domain model interfaces |
 | `:sync-domain` | Kotlin JVM library | 8 Kotlin | Sync-specific domain models |
 | `:build-logic` | Gradle convention plugin | — | Shared Kotlin library build conventions |
@@ -23,7 +31,7 @@ graph, and effort estimates for breaking up the monolithic `:app` module.
 app ──┬── core ──┬── dictionary-core
       │          ├── domain
       │          ├── sync-domain ── domain
-      │          ├── fsrs-java
+      │          ├── bee-fsrs
       │          └── update-core
       ├── dictionary-core
       ├── update-core
@@ -191,7 +199,10 @@ through package-only churn that provides no compile-time boundary.
 
 - The `:core` module is already well-extracted (163 files, pure JVM, no Android
   dependencies). It should remain the policy/model layer.
-- `:fsrs-java` is a standalone Kotlin algorithm library (no Kani dependencies).
+- `:bee-fsrs` is a standalone Kotlin algorithm library (no Kani dependencies). It is now a
+  vendored checkout of [`bee-san/bee-fsrs`](https://github.com/bee-san/bee-fsrs) rather
+  than in-repo source, shared with BeeCode; `src/` and `testdata/` are byte-identical to
+  the upstream release and changes belong upstream. See `bee-fsrs/PROVENANCE.md`.
 - `:dictionary-core` and `:writing-core` are already appropriately scoped.
 - The extraction phases remain a roadmap; the current boundary test is the only
   enforcement change included here.

@@ -6,6 +6,8 @@ import android.content.pm.PackageInstaller
 import androidx.test.core.app.ApplicationProvider
 import dev.bee.kanjianki.BuildConfig
 import dev.bee.kanjianki.data.LocalStore
+import dev.bee.kanjianki.requireKaniContainer
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import dev.bee.kanjianki.updatecore.GitHubReleaseMetadata
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
 import dev.bee.kanjianki.updatecore.SigningCertificateInfo
@@ -55,11 +57,17 @@ class GitHubUpdaterTest {
     @Before
     fun setUp() {
         context.deleteDatabase("kanji_anki_simple.db")
+        context.requireKaniContainer().deviceSettingsStore.edit {
+            remove(DeviceSettingKeys.betaUpdatesEnabled)
+        }
     }
 
     @After
     fun tearDown() {
         context.deleteDatabase("kanji_anki_simple.db")
+        context.requireKaniContainer().deviceSettingsStore.edit {
+            remove(DeviceSettingKeys.betaUpdatesEnabled)
+        }
     }
     @Test
     fun readableMessageFallsBackToExceptionClassWhenMessageIsNull() {
@@ -93,7 +101,9 @@ class GitHubUpdaterTest {
 
     @Test
     fun betaUpdatesRequestPrereleaseFeedAndSkipNewerStableRelease() {
-        LocalStore(context).use { it.saveBetaUpdatesEnabled(true) }
+        context.requireKaniContainer().deviceSettingsStore.edit {
+            put(DeviceSettingKeys.betaUpdatesEnabled, true)
+        }
         val client = RecordingReleaseClient(
             "[{\"tag_name\":\"v99.0.0\",\"prerelease\":false}," +
                 "{\"tag_name\":\"${BuildConfig.VERSION_NAME}\",\"prerelease\":true}]",
@@ -107,7 +117,9 @@ class GitHubUpdaterTest {
 
     @Test
     fun betaUpdatesInstallReleaseWithSuffixedTagAndApkVersion() {
-        LocalStore(context).use { it.saveBetaUpdatesEnabled(true) }
+        context.requireKaniContainer().deviceSettingsStore.edit {
+            put(DeviceSettingKeys.betaUpdatesEnabled, true)
+        }
         val client = InstallingBetaReleaseClient()
 
         val result = GitHubUpdater(context, client).checkDownloadAndInstall(GitHubUpdater.UpdateSource.MANUAL)

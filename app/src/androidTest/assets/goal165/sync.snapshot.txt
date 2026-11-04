@@ -1,0 +1,12 @@
+goal165 sync baseline v1
+personal-data=none
+
+[manual-sync-fixed-clock]
+result success=true skipped=false rows=2 imports=1 ready=2 retryable=false cleanup=true
+latest status=success active-notes=1 active-cards=1 suspended-cards=1 imports=1 finished=T+0 error=false cleanup=true
+history-count=1
+dashboard kanji=箱 rank=1003 weakness=22 reason=suspended_archive active=0 suspended=1 mature=0 sources=2000:2:suspended
+dashboard kanji=認 rank=282 weakness=23 reason=fsrs_weak_memory active=1 suspended=0 mature=1 sources=1000:1:active
+import kanji=箱 rank=1003 known=true cutoff=3000 sources=2000:2:suspended:suspended
+queue kanji=箱 task=kanji_meaning rung=kanji_meaning phase=new_learning state=new due=T+0 routing=1 adaptive=false token=true core=- repair=-
+queue kanji=認 task=word_reading rung=word_reading phase=review state=review due=T+0 routing=2 adaptive=true token=true core=contextual_reading repair=-

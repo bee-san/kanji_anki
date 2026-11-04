@@ -17,6 +17,24 @@ class ProviderNotePolicy private constructor() {
         @JvmStatic
         fun isRepairedTagPresent(tags: List<String>?): Boolean = tags?.contains(REPAIRED_TAG) == true
 
+        /**
+         * Repaired-note tagging copy for a provider named [providerName].
+         *
+         * Shared rather than per-provider for the same reason as
+         * [ProviderArchiveCleanupPolicy.removalMessage]: this text is the only
+         * thing that tells the user a partial tag write will be retried, and the
+         * two hosts must promise the retry in the same words.
+         */
+        @JvmStatic
+        fun repairedTagMessage(tagged: Int, failed: Int, providerName: String): String {
+            val notes = if (tagged == 1) "note" else "notes"
+            return when {
+                tagged > 0 && failed == 0 -> "Tagged $tagged repaired $notes in $providerName."
+                tagged > 0 -> "Tagged $tagged repaired $notes; $failed will retry next sync."
+                else -> "Repaired-note tagging failed and will retry on the next sync."
+            }
+        }
+
         @JvmStatic
         fun selectRequiredFields(
             modelFields: List<String>,

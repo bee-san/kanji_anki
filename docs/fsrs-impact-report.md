@@ -7,7 +7,13 @@ Date: 2026-05-15
 > those memories and inline repair attempts are practice-only. See
 > [`adaptive-two-core-scheduler.md`](adaptive-two-core-scheduler.md).
 
-Scope: Kani's scheduler uses the in-repo `:fsrs-java` 21-parameter FSRS engine.
+Scope: Kani's scheduler uses the `:bee-fsrs` 35-parameter **FSRS-7** engine. That module is
+a vendored checkout of [`bee-san/bee-fsrs`](https://github.com/bee-san/bee-fsrs) 0.2.0
+rather than in-repo source; it also carries FSRS-6, which nothing in Kani reaches for.
+The routing behaviour described below survived both the vendoring and the engine switch;
+the *intervals* changed with the switch, because FSRS-7's forgetting curve is two blended
+power laws rather than one and its elapsed times are fractional days. See
+`bee-fsrs/PROVENANCE.md` and the FSRS-7 notes in `AGENTS.md`.
 
 Behavior at capture time:
 
@@ -20,7 +26,7 @@ Behavior at capture time:
 
 Verification coverage:
 
-- `:fsrs-java:test` exercises the upstream-style generated reference fixture in `fsrs-java/testdata/upstream-reference-cases.json`.
+- `:bee-fsrs:test` exercises the upstream-style generated reference fixture in `bee-fsrs/testdata/upstream-reference-cases.json`.
 - `:core:test` covers the scheduler adapter path, on-time review elapsed days, relearning graduation difficulty, and active-rung memory handoff after ladder movement.
 
 Rollback decision:

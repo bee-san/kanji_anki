@@ -1,10 +1,39 @@
 # Architecture Modernization Goals (2026-07-20)
 
+Status: Goals 145-147 are complete. Pending Goals 148-163 are retained below
+as historical design input but are superseded by
+[`plans/desktop-support-goals-2026-07-26.md`](../../plans/desktop-support-goals-2026-07-26.md).
+Do not execute their Android-only target shape directly.
+
 Each goal in this plan is an independently reviewable, release-ready slice.
 Goal numbers continue from Goal 144 in
 `plans/architecture-performance-and-quality-goals-2026-07-14.md`.
 
-## Overall goal
+## Supersession map for pending goals
+
+Completed Goals 145-147 and their evidence remain authoritative. Pending work
+moves to the following desktop-support goals:
+
+| Original goal | Status and successor |
+| --- | --- |
+| 148, process-owned `KaniContainer` | Reworked by Goal 170 into Android and desktop process composition roots. |
+| 149, extract `:data` | Reworked by Goals 169 and 178-184 into portable data contracts, shared SQL, and platform drivers. |
+| 150, focused stores | Reworked by Goals 179-184 around the shared SQL transaction/repository implementation. |
+| 151, Home/Browse/Games state | Retained by Goals 171, 192, 194, and 197 with portable state and shared presentation. |
+| 152, Stats state | Retained by Goals 171, 192, and 197 with portable state and shared presentation. |
+| 153, Settings state/effects | Retained by Goals 171, 192, and 198 with platform effects behind ports. |
+| 154, Study state ownership | Retained by Goals 172, 192, and 195; `:application` remains the session authority. |
+| 155, `:ui-common` and navigation contracts | Reworked by Goals 192-193 as Compose Multiplatform presentation contracts, shell, and navigation. |
+| 156, Navigation Compose host | Reworked by Goals 193 and 199 into shared navigation with thin Android and desktop hosts. |
+| 157, `:feature-stats` | Retained by Goal 197 as a shared feature module. |
+| 158, `:feature-settings` | Retained by Goal 198 as a shared feature module. |
+| 159, `:feature-home` | Split across Goal 194 (Home/Browse/sync) and Goal 197 (Games and Missing Kanji). |
+| 160, `:feature-study` | Retained by Goals 195-196 with capability-safe handwriting. |
+| 161, `:sync-android` | Superseded by Goals 174-191: shared provider contracts/engine plus AnkiDroid and AnkiConnect adapters. |
+| 162, `:automation` | Split across Goals 177, 185-186, 201, and 202 for platform services, backup, scheduling, and updates. |
+| 163, `:widget` and final gate | Android widget extraction moves to Goal 199; the final cross-platform architecture gate moves to Goal 205. |
+
+## Original overall goal (pending scope superseded)
 
 Turn Kani's Android application layer into a pragmatic modular architecture
 with explicit state, persistence, navigation, and Android-platform ownership.
@@ -50,7 +79,7 @@ Current constraints that drive the plan:
 8. Do not change scheduler rules, provider behavior, database schema, backup
    format, user-facing design, or app package identity as part of this plan.
 
-## Target modules
+## Original target modules (pending scope superseded)
 
 ```text
 :app

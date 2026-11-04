@@ -1,13 +1,12 @@
 package dev.bee.kanjianki.update
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.util.Log
 import androidx.core.content.IntentCompat
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.receivers.ReceiverAsyncWork
 import dev.bee.kanjianki.updatecore.PackageInstallStatusPolicy
@@ -32,8 +31,13 @@ class PackageInstallStatusReceiver : BroadcastReceiver() {
 
         // Does a LocalStore write plus a cache-file deletion; move off the main thread
         // and keep the broadcast alive until it finishes.
-        ReceiverAsyncWork.run(this) {
-            AppLocalStoreFactory.create(context).use { store ->
+        ReceiverAsyncWork.run(
+            this,
+            executorProvider = {
+                requireNotNull(context).requireKaniContainer().maintenanceExecutor
+            },
+        ) {
+            requireNotNull(context).requireKaniContainer().openLocalStore().use { store ->
                 if (mapped.pendingUserAction()) {
                     val message = mapped.message()
                     store.recordAutoUpdateResult(now, message, version, apkName, message)

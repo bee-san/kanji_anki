@@ -95,7 +95,7 @@ project. Keep the CodeQL build step after `github/codeql-action/init` as a
 forced clean compile:
 
 ```sh
-./gradlew clean :fsrs-java:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+./gradlew clean :bee-fsrs:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
 ```
 
 Do not simplify that to a normal compile. Gradle can mark the compile tasks
@@ -265,7 +265,7 @@ keep the card there; in the default order that is `sentence_reading` when
 sentence data exists and otherwise `word_reading`.
 
 FSRS weights are default-neutral but may be personalized when the user opts
-in. `scheduler_fsrs_weights` stores all 21 values as a full-precision
+in. `scheduler_fsrs_weights` stores all 35 values as a full-precision
 comma-separated string; malformed vectors fail open to the built-in defaults.
 The same selected weights drive normal/relearning review intervals, sync
 seeding, forecast simulation, and the fixed-0.90 `promotionIntervalDays`
@@ -275,6 +275,45 @@ from persisted `review`-phase evidence and adopts a vector only with at least
 least a 1% time-ordered validation log-loss improvement;
 the toggle is off by default and turning it off immediately clears the live
 custom vector.
+
+## FSRS-7 Notes
+
+The scheduler runs **FSRS-7** (35 parameters) from the vendored `:bee-fsrs`
+module. `bee-fsrs/PROVENANCE.md` records the pinned upstream commit and the
+byte-identity check; `FsrsVendoringTest` in `:core` asserts the engine is the
+one claimed. FSRS-6 remains vendored — it is upstream's, and the checkout is
+byte-identical — but nothing in Kani reaches for it.
+
+Three consequences cross the engine boundary, and each is load-bearing:
+
+- **Elapsed time is fractional days**, computed by the single
+  `FsrsElapsedTime` helper. This previously existed as three hand-copied
+  integer versions, one annotated "exact mirror of
+  `ReviewContext.elapsedReviewDays()`"; the fitter silently training on a
+  different elapsed time than the scheduler schedules with is close to
+  undetectable, so do not reintroduce a second copy. Do not floor the elapsed
+  time on the way in: sub-day resolution is the point of the revision, and
+  FSRS-6 collapsed every same-day review onto t = 0.
+- **Scheduled intervals are floored at one day, in the adapter.** FSRS-6
+  clamped this inside the engine; FSRS-7 correctly does not. Kani's `review`
+  phase is a day-granularity long-term queue and sub-day repetition is already
+  modelled by learning/relearning steps, which are practice-only. Without the
+  floor a lapsed card schedules seconds out, comes due in the same session,
+  and — because ladder movement keys off the persisted FSRS due time rather
+  than the calendar day — can demote a rung within one session.
+- **Memory state carries over unchanged.** `FsrsMemoryState` is shared by both
+  engines, so persisted `study_items` stability/difficulty and the state seeded
+  from AnkiDroid during admission stay readable. No schema migration was
+  needed. Intervals do move, because the mathematics applied to that state
+  changed.
+
+A stored 21-value FSRS-6 weight vector is **rejected, not migrated**: 21 values
+fitted for a single power law do not describe FSRS-7's blended pair. The reader
+logs once and falls open to FSRS-7 defaults, and the weekly fitter re-earns a
+vector. `FsrsWeightFitter` carries FSRS-7's clipper bounds plus an ordering
+repair for the three constraints whose bound is another parameter; a test
+asserts every vector it emits is accepted by `Fsrs7Parameters.of`, so the
+duplicated bounds table cannot drift from upstream unnoticed.
 
 Exception (fail-fast demotion): the first real review after a promotion is the
 capped validation review. If that first attempt is an `Again`, the rung demotes
@@ -438,15 +477,21 @@ when `hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` /
 
 ## Provider Write-Back, Backup, And Widget Notes
 
-Kani's AnkiDroid write surface is deliberately note-tag-only. Sync may add
-`kani_archived` to fully imported suspended notes and, when the user enables
+Kani's normal sync/write-back surface is deliberately note-tag-only. Sync may
+add `kani_archived` to fully imported suspended notes and, when the user enables
 the default-off `tag_repaired_cards` setting, add `kani_repaired` to fully
 suspended notes whose kanji have passed the repair gate. Both paths use
 idempotent per-note read-modify-write, isolate failures, and retry on a later
 sync; neither may fail an otherwise committed sync. Repaired tagging is also
 manual-confirm-only: the Home confirmation shows the proposal count and the
-automatic sync runner is not authorized to perform this write-back. Kani never writes card
-queue, due date, interval, ease, deck, or any other Anki scheduling state.
+automatic sync runner is not authorized to perform this write-back.
+
+The only accepted non-tag provider write is the explicit Missing Kanji flow.
+It may create additive notes only in Kani's dedicated model/deck after the
+provider capability/spec gate passes, remains idempotent, and keeps CSV as a
+complete fallback. It never rewrites a user's existing model or notes. Kani
+never writes card queue, due date, interval, ease, deck options, suspension,
+FSRS state, or any other Anki scheduling state.
 Successful repaired-note writes stamp `suspended_archive.restored_at`, and the
 Home hand-off copies `tag:kani_repaired is:suspended` so the user can review
 and unsuspend the cards in AnkiDroid.
@@ -578,11 +623,11 @@ desktop collection directly.
    continuing:
 
    ```sh
-   adb shell 'chown -R u0_aNNN:ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid && chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid'
+   adb shell 'owner_uid=$(stat -c %u /data/user/0/com.ichi2.anki) && chown -R "$owner_uid":ext_data_rw /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid && chmod -R u+rwX,g+rwX /storage/emulated/0/Android/data/com.ichi2.anki/files/AnkiDroid'
    ```
 
-   Replace `u0_aNNN` with the owner of
-   `/storage/emulated/0/Android/data/com.ichi2.anki`.
+   Derive the uid from `/data/user/0/com.ichi2.anki`, which remains
+   package-manager-owned even when a root push created the external directory.
 
 6. Point AnkiDroid at that copied collection path.
 
@@ -606,10 +651,32 @@ desktop collection directly.
 
 ## Running The Live Tests
 
-Build and install the debug app plus instrumentation APK.
+Build both instrumentation hosts. The provider tests are a standalone library
+test APK; uninstall it before installing the app because both debug hosts expose
+the same fake-provider authority.
 
 ```sh
-./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+./gradlew :provider-ankidroid:assembleDebugAndroidTest \
+  :app:assembleDebug :app:assembleDebugAndroidTest
+adb install -r provider-ankidroid/build/outputs/apk/androidTest/debug/provider-ankidroid-debug-androidTest.apk
+adb shell pm grant dev.bee.kanjianki.provider.ankidroid.test \
+  com.ichi2.anki.permission.READ_WRITE_DATABASE
+```
+
+Run the direct provider gate first:
+
+```sh
+adb logcat -c
+adb shell am instrument -w \
+  -e kanjiLiveAnkiDroid true \
+  -e class dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
+  dev.bee.kanjianki.provider.ankidroid.test/androidx.test.runner.AndroidJUnitRunner
+adb uninstall dev.bee.kanjianki.provider.ankidroid.test
+```
+
+Then install the app host:
+
+```sh
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell pm grant dev.bee.kanjianki com.ichi2.anki.permission.READ_WRITE_DATABASE
@@ -623,21 +690,29 @@ path; unrelated UI tests use the fake provider in the normal local gate.
 adb logcat -c
 adb shell am instrument -w \
   -e kanjiLiveAnkiDroid true \
-  -e class dev.bee.kanjianki.MainActivityInstrumentedTest#testManualSyncButtonWorksAgainstLiveAnkiDroid,dev.bee.kanjianki.anki.AnkiDroidGatewayProviderInstrumentedTest,dev.bee.kanjianki.anki.RealAnkiDroidLiveProviderInstrumentedTest \
+  -e class dev.bee.kanjianki.host.KaniHostLiveSyncInstrumentedTest#theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid \
   dev.bee.kanjianki.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-Expected result:
+Expected results:
 
 ```text
-OK (62 tests)
+OK (54 tests)
+OK (1 test)
 ```
 
 Important live tests:
 
-- `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`
+- `KaniHostLiveSyncInstrumentedTest.theSyncButtonOnTheThinHostImportsFromLiveAnkiDroid`
   taps `Sync AnkiDroid`, confirms `Sync cards`, and verifies a
-  successful sync, dashboard rows, and study items.
+  successful sync, dashboard rows, and study items. This is the Goal 199 port
+  of `MainActivityInstrumentedTest.testManualSyncButtonWorksAgainstLiveAnkiDroid`:
+  it launches `KaniHostActivity` (the launcher since the thin host took over)
+  and drives it entirely through `UiDevice`, so it does not depend on the
+  `MainActivity*` chain being present. The tapped labels come from
+  `HomeTextCopy` rather than string literals, so a copy change cannot silently
+  stop the gate from finding its own buttons. The old test still exists and
+  still passes while the chain does; it is the one being retired.
 - `RealAnkiDroidLiveProviderInstrumentedTest` reads the copied Kiku collection
   through the real AnkiDroid provider once and asserts at least 7,000 Kiku
   notes/cards plus real scheduler state. Its second test probes a same-value

@@ -2,6 +2,7 @@ package dev.bee.kanjianki.data
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import dev.bee.kanjianki.platform.DeviceSettingKeys
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -19,24 +20,30 @@ class BetaUpdateSettingsStoreTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        clearDeviceSettings()
     }
 
     @After
     fun tearDown() {
-        context.deleteDatabase(LocalStoreSchema.DB_NAME)
+        clearDeviceSettings()
     }
 
     @Test
     fun betaUpdatesDefaultOffAndPersistWhenEnabled() {
-        LocalStore(context).use { store ->
-            assertFalse(store.betaUpdatesEnabled())
-            store.saveBetaUpdatesEnabled(true)
-            assertTrue(store.betaUpdatesEnabled())
+        AndroidDeviceSettingsStore(context).let { store ->
+            assertFalse(store.read(DeviceSettingKeys.betaUpdatesEnabled) ?: false)
+            store.edit { put(DeviceSettingKeys.betaUpdatesEnabled, true) }
+            assertTrue(store.read(DeviceSettingKeys.betaUpdatesEnabled) == true)
         }
 
-        LocalStore(context).use { reopened ->
-            assertTrue(reopened.betaUpdatesEnabled())
-        }
+        val reopened = AndroidDeviceSettingsStore(context)
+        assertTrue(reopened.read(DeviceSettingKeys.betaUpdatesEnabled) == true)
+    }
+
+    private fun clearDeviceSettings() {
+        context.getSharedPreferences(
+            AndroidDeviceSettingsStore.PREFERENCES_NAME,
+            Context.MODE_PRIVATE,
+        ).edit().clear().commit()
     }
 }

@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.backup
 
 import dev.bee.kanjianki.core.DatabaseBackupAvailabilityPolicy
+import dev.bee.kanjianki.backup.core.RestoreMarkerCodec
 import dev.bee.kanjianki.core.DatabaseBackupPolicy
 import java.io.File
 import java.io.FileOutputStream
@@ -119,36 +120,26 @@ internal object BackupRestoreStager {
     }
 
     internal fun markerState(marker: File): MarkerState {
-        if (!marker.exists()) return MarkerState.MISSING
-        if (!marker.isFile || marker.length() !in 1L..MAX_MARKER_BYTES) return MarkerState.INVALID
-        val lines = try {
-            marker.readLines(Charsets.UTF_8)
-        } catch (_: IOException) {
-            return MarkerState.INVALID
-        } catch (_: RuntimeException) {
-            return MarkerState.INVALID
-        }
-        val values = lines.mapNotNull { line ->
-            val separator = line.indexOf('=')
-            if (separator <= 0) null else line.substring(0, separator) to line.substring(separator + 1)
-        }.toMap()
-        val readySourceName = values["source_name"]?.trim()
-        val readyTimestamp = values["staged_at"]?.toLongOrNull()
-        if (values["format"] == READY_MARKER_FORMAT &&
-            values["phase"] == READY_MARKER_PHASE &&
-            !readySourceName.isNullOrEmpty() &&
-            readyTimestamp != null &&
-            readyTimestamp >= 0L
-        ) {
-            return MarkerState.SAFETY_READY
-        }
-        val legacyTimestamp = values["staged_at"]?.toLongOrNull()
-        return if (values.containsKey("source_name") && legacyTimestamp != null &&
-            !values.containsKey("format") && !values.containsKey("phase")
-        ) {
-            MarkerState.LEGACY
+        // The classification rules are the shared, platform-neutral state machine
+        // in :backup-core; only the file existence/size/read are Android-side I/O.
+        val present = marker.exists()
+        val tooLargeOrUnreadable = present && (!marker.isFile || marker.length() !in 1L..MAX_MARKER_BYTES)
+        val rawText = if (present && !tooLargeOrUnreadable) {
+            try {
+                marker.readText(Charsets.UTF_8)
+            } catch (_: IOException) {
+                return MarkerState.INVALID
+            } catch (_: RuntimeException) {
+                return MarkerState.INVALID
+            }
         } else {
-            MarkerState.INVALID
+            null
+        }
+        return when (RestoreMarkerCodec.classify(present, tooLargeOrUnreadable, rawText)) {
+            RestoreMarkerCodec.MarkerState.MISSING -> MarkerState.MISSING
+            RestoreMarkerCodec.MarkerState.LEGACY -> MarkerState.LEGACY
+            RestoreMarkerCodec.MarkerState.SAFETY_READY -> MarkerState.SAFETY_READY
+            RestoreMarkerCodec.MarkerState.INVALID -> MarkerState.INVALID
         }
     }
 

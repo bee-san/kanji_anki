@@ -1,20 +1,33 @@
 package dev.bee.kanjianki.update
 
-import dev.bee.kanjianki.AppLocalStoreFactory
-
 import android.content.Context
 import androidx.work.ListenableWorker.Result
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import dev.bee.kanjianki.AndroidContainerProvider
+import dev.bee.kanjianki.requireKaniContainer
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.updatecore.AutoUpdateRunPolicy
 
-class AutoUpdateWorker(
+class AutoUpdateWorker internal constructor(
     context: Context,
     workerParams: WorkerParameters,
+    private val containerProvider: AndroidContainerProvider,
 ) : Worker(context, workerParams) {
+    constructor(context: Context, workerParams: WorkerParameters) : this(
+        context,
+        workerParams,
+        AndroidContainerProvider { context.requireKaniContainer() },
+    )
+
     override fun doWork(): Result {
-        return runFromStore(applicationContext, automaticUpdateCheckerFactory(::checkAutomaticUpdate))
+        return containerProvider.get().openLocalStore().use { store ->
+            runFromStore(
+                store,
+                applicationContext,
+                automaticUpdateCheckerFactory(::checkAutomaticUpdate),
+            )
+        }
     }
 
     fun interface UpdateChecker {
@@ -53,13 +66,21 @@ class AutoUpdateWorker(
         @JvmStatic
         fun runFromStore(context: Context, checkerFactory: UpdateCheckerFactory): Result {
             val appContext = context.applicationContext
-            AppLocalStoreFactory.create(appContext).use { store ->
-                val status = store.autoUpdateStatus()
-                if (!AutoUpdateRunPolicy.shouldRun(status.enabled, status.hasPendingUpdate())) {
-                    return Result.success()
-                }
-                return runAutoUpdate(true, false, checkerFactory.create(appContext))
+            appContext.requireKaniContainer().openLocalStore().use { store ->
+                return runFromStore(store, appContext, checkerFactory)
             }
+        }
+
+        private fun runFromStore(
+            store: LocalStore,
+            appContext: Context,
+            checkerFactory: UpdateCheckerFactory,
+        ): Result {
+            val status = store.autoUpdateStatus()
+            if (!AutoUpdateRunPolicy.shouldRun(status.enabled, status.hasPendingUpdate())) {
+                return Result.success()
+            }
+            return runAutoUpdate(true, false, checkerFactory.create(appContext))
         }
 
         @JvmStatic
