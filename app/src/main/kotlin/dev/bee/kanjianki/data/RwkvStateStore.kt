@@ -22,6 +22,7 @@ import dev.bee.rwkv.RwkvStateDelta
 import dev.bee.rwkv.RwkvStateKey
 import dev.bee.rwkv.RwkvStatePrecision
 import dev.bee.rwkv.RwkvStateUndo
+import dev.bee.rwkv.RwkvStateView
 import dev.bee.rwkv.RwkvStreamIds
 import dev.bee.rwkv.RwkvUndoCodec
 import java.io.ByteArrayOutputStream
@@ -194,6 +195,55 @@ internal class RwkvStateStore(private val precisionFor: (Int) -> RwkvStatePrecis
     }
 
     // --- full state (rebuilds and simulations) ---------------------------------
+
+    /**
+     * A read-only view that loads each state, record and encoding from [db]
+     * the first time it is read and caches it. Simulations wrap it in an
+     * overlay, so a forecast holds only the cards it actually touches instead
+     * of every decoded state. Writes are refused.
+     */
+    fun lazyView(db: SQLiteDatabase): RwkvStateView = LazyView(db, globals(db))
+
+    private inner class LazyView(private val db: SQLiteDatabase, override val globals: RwkvGlobalFeatures) : RwkvStateView {
+        private val states = HashMap<RwkvStateKey, RwkvModuleState?>()
+        private val cards = HashMap<Long, RwkvCardFeatures?>()
+        private val encodings = HashMap<RwkvIdKey, FloatArray?>()
+        private val histories = HashMap<Long, RwkvCardHistory?>()
+
+        override fun moduleState(stream: Int, id: Long): RwkvModuleState? =
+            states.getOrPut(RwkvStateKey(stream, id)) {
+                blob(db, "SELECT state FROM $TABLE_STATE WHERE stream=? AND id=?", stream.toString(), id.toString())
+                    ?.let(RwkvStateCodec::decode)
+            }
+
+        override fun card(cardId: Long): RwkvCardFeatures? =
+            cards.getOrPut(cardId) {
+                blob(db, "SELECT features FROM $TABLE_CARD_FEATURES WHERE card_id=?", cardId.toString())
+                    ?.let(RwkvCardFeatures::decode)
+            }
+
+        override fun encoding(key: RwkvIdKey): FloatArray? =
+            encodings.getOrPut(key) {
+                blob(db, "SELECT encoding FROM $TABLE_ENCODING WHERE kind=? AND id=?", key.kind.code.toString(), key.id.toString())
+                    ?.let { RwkvEncodingCodec.decode(key.kind, it) }
+            }
+
+        override fun history(cardId: Long): RwkvCardHistory? =
+            histories.getOrPut(cardId) {
+                blob(db, "SELECT history FROM $TABLE_CARD_HISTORY WHERE card_id=?", cardId.toString())
+                    ?.let(RwkvCardHistory::decode)
+            }
+
+        override fun putModuleState(stream: Int, id: Long, state: RwkvModuleState) = readOnly()
+
+        override fun putCard(cardId: Long, features: RwkvCardFeatures) = readOnly()
+
+        override fun putEncoding(key: RwkvIdKey, values: FloatArray) = readOnly()
+
+        override fun putHistory(cardId: Long, history: RwkvCardHistory) = readOnly()
+
+        private fun readOnly(): Nothing = throw UnsupportedOperationException("the lazy RWKV view is read-only; wrap it in an overlay")
+    }
 
     fun loadCollection(db: SQLiteDatabase): RwkvCollectionState {
         val state = RwkvCollectionState(globals(db))

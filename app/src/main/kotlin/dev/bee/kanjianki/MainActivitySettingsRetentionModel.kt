@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 object SettingsRetentionControlDescriptions {
-    const val RETENTION_SLIDER = "FSRS retention slider"
+    const val RETENTION_SLIDER = "Target retention slider"
     const val RANK_RETENTION_CHECKBOX = "Jiten-rank retention ranges checkbox"
     const val RANK_RANGES_INPUT = "Jiten-rank retention ranges input"
 }

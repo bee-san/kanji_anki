@@ -57,6 +57,9 @@ internal abstract class LocalStoreStudy(
     fun loadRwkvCollection(): RwkvCollectionState =
         writableDatabase.transaction { rwkvStateStore.loadCollection(this) }
 
+    /** A read-only, lazily loading view of the persisted model state (for simulations). */
+    fun lazyRwkvView(): dev.bee.rwkv.RwkvStateView = rwkvStateStore.lazyView(writableDatabase)
+
     fun rwkvUnclassifiedRowCount(): Int = rwkvStateStore.unclassifiedRowCount(writableDatabase)
 
     fun rwkvFedCardIds(): Set<Long> = rwkvStateStore.fedCardIds(writableDatabase)

@@ -24,8 +24,8 @@ object HowKaniWorksCopy {
         Section(
             localizedText("Two core checks", "2つのコアチェック"),
             localizedText(
-                "Every kanji in your deck has two core memories that Kani tracks independently: recognition (can you identify the kanji's meaning?) and contextual reading (can you read it in a real word?). Each core has its own FSRS-scheduled review cycle.",
-                "デッキ内のすべての漢字には、Kaniが独立して追跡する2つのコアメモリーがあります：認識（漢字の意味を識別できるか？）と文脈読み（実際の単語で読めるか？）。各コアには独自のFSRSスケジュールされたレビューサイクルがあります。"
+                "Every kanji in your deck has two core memories that Kani tracks independently: recognition (can you identify the kanji's meaning?) and contextual reading (can you read it in a real word?). Each core has its own review cycle, scheduled on your phone by Kani's memory model (RWKV-Curve), which learns from your whole review history.",
+                "デッキ内のすべての漢字には、Kaniが独立して追跡する2つのコアメモリーがあります：認識（漢字の意味を識別できるか？）と文脈読み（実際の単語で読めるか？）。各コアには、復習履歴全体から学ぶKaniの記憶モデル（RWKV-Curve）が端末内で予定する独自のレビューサイクルがあります。"
             )
         ),
         Section(

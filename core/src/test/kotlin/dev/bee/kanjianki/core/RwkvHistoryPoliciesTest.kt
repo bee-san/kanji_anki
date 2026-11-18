@@ -36,6 +36,23 @@ class RwkvHistoryPoliciesTest {
         assertFalse("a new-card placeholder", RwkvSeedBurstPolicy.isEvidenceSeed(memory(stability = 0.4, totalReviews = 0)))
         assertFalse("already reviewed in Kani", RwkvSeedBurstPolicy.isEvidenceSeed(memory(stability = 45.0, totalReviews = 1)))
         assertFalse(RwkvSeedBurstPolicy.isEvidenceSeed(memory(stability = Double.NaN, totalReviews = 0)))
+        // A contextual core seeded on promotion: no reviews yet, but it records
+        // the promotion time and its stability is the model's preview.
+        val promoted = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = StudyLadderRules.STATE_REVIEW,
+                dueAtMillis = REVIEWED_AT + 6 * DAY,
+                stability = 9.0,
+                difficulty = 5.0,
+                totalReviews = 0,
+                lapses = 0,
+                learningStep = 0,
+                lastRating = "",
+                matureIntervalDays = 6,
+                lastReviewedAtMillis = REVIEWED_AT,
+            ),
+        )
+        assertFalse("a promotion seed is not imported evidence", RwkvSeedBurstPolicy.isEvidenceSeed(promoted))
     }
 
     /**

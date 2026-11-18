@@ -26,10 +26,20 @@ object RwkvSeedBurstPolicy {
     private const val GOOD = 3
     private const val REVIEW_KIND = 2
 
-    /** True for a core memory carrying imported Anki evidence that Kani has never reviewed. */
+    /**
+     * True for a core memory carrying imported Anki evidence that Kani has
+     * never reviewed. Admission seeding (`StudyQueueSeeder.applySeed`) writes
+     * the imported stability with no last-review time; a contextual core
+     * seeded on promotion also has no reviews yet but records the promotion
+     * as its last review, and its stability is the model's own preview, so it
+     * is not imported evidence and must not be warmed.
+     */
     @JvmStatic
     fun isEvidenceSeed(memory: RecordsStudyModels.TaskMemory): Boolean =
-        memory.totalReviews <= 0 && memory.stability.isFinite() && memory.stability >= MIN_SEED_STABILITY_DAYS
+        memory.totalReviews <= 0 &&
+            memory.lastReviewedAtMillis <= 0L &&
+            memory.stability.isFinite() &&
+            memory.stability >= MIN_SEED_STABILITY_DAYS
 
     /**
      * The synthetic answers for a seed of [stabilityDays] whose first real Kani

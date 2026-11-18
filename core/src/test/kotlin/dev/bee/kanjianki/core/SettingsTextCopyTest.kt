@@ -400,7 +400,7 @@ class SettingsTextCopyTest {
                         "Jiten ranks 1-20000",
                         "Desired retention: 95%",
                         "Review retention",
-                        "FSRS stays local. Anki due dates stay fixed.",
+                        "Kani's scheduling stays local. Anki due dates stay fixed.",
                         "Jiten-rank retention ranges",
                         "One range per line, e.g. 1-500=95%.",
                         "Use example ranges",

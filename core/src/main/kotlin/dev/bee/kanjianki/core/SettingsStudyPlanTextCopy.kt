@@ -176,7 +176,7 @@ object SettingsStudyPlanTextCopy {
 
     @JvmStatic
     fun fsrsRetentionBody(): String {
-        return localizedText("FSRS stays local. Anki due dates stay fixed.", "FSRSは端末内のみ。Ankiの期限日は固定のまま。")
+        return localizedText("Kani's scheduling stays local. Anki due dates stay fixed.", "Kaniのスケジュールは端末内のみ。Ankiの期限日は固定のまま。")
     }
 
     @JvmStatic

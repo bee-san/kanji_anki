@@ -164,6 +164,36 @@ class RwkvStateStoreTest {
     }
 
     @Test
+    fun simulationsReadLazilyAndNeverWriteThePersistedState() {
+        val item = persist(legacyReviewItem("痛"))
+        answer(item, "good", NOW, "t1")
+        val ids = RwkvStreamKeys.idsFor("痛", CoreSkill.RECOGNITION, item.answerSignature)
+        val answer = dev.bee.rwkv.RwkvAnswer(3, null, NOW + 10 * DAY, RwkvRuntime.dayOffsetOf(NOW + 10 * DAY), 2)
+        val versionBefore = store.rwkvMeta().stateVersion
+
+        val lazy = engine.answerSinglePass(dev.bee.rwkv.RwkvOverlayView(store.lazyRwkvView()), ids, answer, 0.9f, 36_500)
+        val loaded = engine.answerSinglePass(dev.bee.rwkv.RwkvOverlayView(store.loadRwkvCollection()), ids, answer, 0.9f, 36_500)
+        assertEquals(loaded.unroundedIntervalDays, lazy.unroundedIntervalDays, 0f)
+        assertEquals(versionBefore, store.rwkvMeta().stateVersion)
+        assertEquals(1L, store.loadRwkvCollection().histories.getValue(ids.card).answers)
+        try {
+            store.lazyRwkvView().putHistory(ids.card, store.loadRwkvCollection().histories.getValue(ids.card))
+            org.junit.Assert.fail("the lazy view accepted a write")
+        } catch (_: UnsupportedOperationException) {
+        }
+    }
+
+    @Test
+    fun aContextualCoreSeededOnPromotionIsNotWarmed() {
+        val promoted = persist(
+            seededContextualItem("着", stability = 9.0, lastReviewedAtMillis = NOW - 6 * DAY),
+        )
+        assertTrue(answer(promoted, "good", NOW, "promoted", StudyTaskTypes.WORD_READING).commit.applied())
+        assertEquals(0, count(RwkvStateStore.TABLE_BURST))
+        assertEquals(1L, reviewRow("promoted").getAsLong(RwkvStateStore.COLUMN_MM_SEQ))
+    }
+
+    @Test
     fun aRebuildClassifiesPreMigrationHistoryAndReplaysItDeterministically() {
         val learning = legacyJson("new_learning", "kanji_meaning")
         val review = legacyJson("review", "kanji_meaning")
@@ -317,8 +347,25 @@ class RwkvStateStoreTest {
             .phase(RecordsBase.SchedulerPhase.REVIEW)
             .build()
 
-    private fun seededContextualItem(kanji: String, stability: Double): RecordsStudyModels.StudyItem {
-        val memory = RecordsStudyModels.TaskMemory(StudyLadderRules.STATE_REVIEW, NOW - 1L, stability, 4.0, 0, 0, 0, "", 0)
+    private fun seededContextualItem(
+        kanji: String,
+        stability: Double,
+        lastReviewedAtMillis: Long = 0L,
+    ): RecordsStudyModels.StudyItem {
+        val memory = RecordsStudyModels.TaskMemory.fromFields(
+            RecordsStudyModels.TaskMemory.Fields(
+                state = StudyLadderRules.STATE_REVIEW,
+                dueAtMillis = NOW - 1L,
+                stability = stability,
+                difficulty = 4.0,
+                totalReviews = 0,
+                lapses = 0,
+                learningStep = 0,
+                lastRating = "",
+                matureIntervalDays = 0,
+                lastReviewedAtMillis = lastReviewedAtMillis,
+            ),
+        )
         return RecordsStudyModels.StudyItem(kanji, StudyLadderRules.STATE_REVIEW, NOW - 1L, stability, 4.0, 0, 0, 0, 0, 0, 0, 0L, false, null, 0)
             .copyBuilder()
             .answerSignature("$kanji|脱出|だっしゅつ|escape")

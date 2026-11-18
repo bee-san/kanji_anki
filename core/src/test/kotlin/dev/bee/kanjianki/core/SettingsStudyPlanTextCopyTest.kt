@@ -60,7 +60,7 @@ class SettingsStudyPlanTextCopyTest {
         assertEquals("Desired retention: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
         assertEquals("Review retention", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
         assertEquals(
-            "FSRS stays local. Anki due dates stay fixed.",
+            "Kani's scheduling stays local. Anki due dates stay fixed.",
             SettingsStudyPlanTextCopy.fsrsRetentionBody(),
         )
         assertEquals("Jiten-rank retention ranges", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
@@ -205,7 +205,7 @@ class SettingsStudyPlanTextCopyTest {
             assertEquals("Jiten順位 1-20000", SettingsStudyPlanTextCopy.frequencyRangeStatusText(1, 20000))
             assertEquals("目標保持率: 95%", SettingsStudyPlanTextCopy.retentionStatusText(95))
             assertEquals("レビュー保持率", SettingsStudyPlanTextCopy.fsrsRetentionTitle())
-            assertEquals("FSRSは端末内のみ。Ankiの期限日は固定のまま。", SettingsStudyPlanTextCopy.fsrsRetentionBody())
+            assertEquals("Kaniのスケジュールは端末内のみ。Ankiの期限日は固定のまま。", SettingsStudyPlanTextCopy.fsrsRetentionBody())
             assertEquals("Jiten順位ごとの保持率範囲", SettingsStudyPlanTextCopy.useJitenRankRetentionRangesLabel())
             assertEquals("1行に1範囲（例: 1-500=95%）。", SettingsStudyPlanTextCopy.jitenRankRetentionRangesBody())
             assertEquals("例の範囲を使う", SettingsStudyPlanTextCopy.useExampleRangesLabel())

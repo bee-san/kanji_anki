@@ -176,7 +176,8 @@ internal object RwkvRuntime {
         if (!isReady() || appContext == null) {
             return null
         }
-        val overlay = RwkvOverlayView(store.loadRwkvCollection())
+        // Lazily loaded: a forecast reads only the cards it simulates.
+        val overlay = RwkvOverlayView(store.lazyRwkvView())
         return RwkvMemoryModel(engine(), overlay, ::dayOffsetOf, singlePass = true)
     }
 }
