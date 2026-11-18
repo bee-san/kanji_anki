@@ -1,5 +1,6 @@
 package dev.bee.kanjianki
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -46,6 +47,9 @@ class DrawingPadView(context: Context) : View(context) {
     private var revealGuide = false
     private var replayOverlayVisible = false
     private var replayStartedAtMillis = 0L
+    private var guideAnimationVisible = false
+    private var guideAnimationStartedAtMillis = 0L
+    private var inputEnabled = true
     private var inkEditListener: Runnable? = null
     private var strokeBlockedListener: StrokeBlockedListener? = null
     private var target = ""
@@ -134,6 +138,7 @@ class DrawingPadView(context: Context) : View(context) {
         activePointerId = -1
         blockingCurrentStroke = false
         stopReplay()
+        stopGuideAnimation()
         updateAccessibilityState()
         invalidate()
     }
@@ -159,6 +164,8 @@ class DrawingPadView(context: Context) : View(context) {
 
     fun setGuide(guide: StrokeGuide?, state: HintState?, revealGuide: Boolean) {
         this.guide = guide
+        guideAnimationVisible = false
+        guideAnimationStartedAtMillis = 0L
         guideState = state ?: HintState.fromWritingLevel(3)
         guideLevel = guideState.level().writingLevel()
         this.revealGuide = revealGuide
@@ -167,6 +174,46 @@ class DrawingPadView(context: Context) : View(context) {
             replayStartedAtMillis = 0L
         }
         invalidate()
+    }
+
+    /**
+     * Draws the model strokes one after another, in order, over whatever ink is
+     * on the pad. This is the reference "watch the strokes" animation; it is
+     * separate from [startReplay], which replays the learner's own ink.
+     *
+     * @return false when there is no guide to animate.
+     */
+    fun startGuideAnimation(): Boolean {
+        val guide = guide
+        if (guide == null || guide.isEmpty()) {
+            return false
+        }
+        stopReplay()
+        guideAnimationVisible = true
+        // Stamped on the first drawn frame so an animation requested before
+        // layout still plays from its first stroke.
+        guideAnimationStartedAtMillis = 0L
+        postInvalidateOnAnimation()
+        return true
+    }
+
+    fun stopGuideAnimation() {
+        if (!guideAnimationVisible) {
+            return
+        }
+        guideAnimationVisible = false
+        guideAnimationStartedAtMillis = 0L
+        invalidate()
+    }
+
+    fun isGuideAnimationVisible(): Boolean = guideAnimationVisible
+
+    /** Ignores touches while false, e.g. while the learner only watches. */
+    fun setInputEnabled(enabled: Boolean) {
+        inputEnabled = enabled
+        if (!enabled) {
+            cancelTouch()
+        }
     }
 
     fun startReplay() {
@@ -233,6 +280,32 @@ class DrawingPadView(context: Context) : View(context) {
         canvas.drawLine(0f, height * 0.72f, width, height * 0.72f, grid)
         drawGuide(canvas, width, height)
         drawInk(canvas)
+        drawGuideAnimation(canvas, width, height)
+    }
+
+    private fun drawGuideAnimation(canvas: Canvas, width: Float, height: Float) {
+        val guide = guide
+        if (!guideAnimationVisible || guide == null || guide.isEmpty()) {
+            return
+        }
+        val now = SystemClock.uptimeMillis()
+        if (guideAnimationStartedAtMillis == 0L) {
+            guideAnimationStartedAtMillis = now
+        }
+        val duration = guide.strokeCount() * GUIDE_ANIMATION_STROKE_MILLIS
+        // With system animations off, show the finished model at once.
+        val progress = if (ValueAnimator.areAnimatorsEnabled()) {
+            max(0f, min(1f, (now - guideAnimationStartedAtMillis) / duration.toFloat()))
+        } else {
+            1f
+        }
+        val strokes = guide.strokes.filter { !it.isEmpty() }.map { stroke ->
+            stroke.points.map { CapturedStroke.Point(it.x * width, it.y * height, 0L) }
+        }
+        drawAnimatedStrokes(canvas, strokes, progress)
+        if (progress < 1f) {
+            postInvalidateOnAnimation()
+        }
     }
 
     private fun drawInk(canvas: Canvas) {
@@ -251,6 +324,9 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!inputEnabled) {
+            return false
+        }
         return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event)
             MotionEvent.ACTION_MOVE -> {
@@ -274,6 +350,7 @@ class DrawingPadView(context: Context) : View(context) {
 
     private fun handleTouchDown(event: MotionEvent): Boolean {
         stopReplay()
+        stopGuideAnimation()
         activePointerId = event.getPointerId(0)
         val decision = guideDecision(event.getX(0), event.getY(0))
         if (!decision.allowed) {
@@ -411,6 +488,9 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     private fun guideDecision(x: Float, y: Float): StrokeGuideGuard.Decision {
+        if (!HintPolicy.guardEnabled(guideState)) {
+            return StrokeGuideGuard.Decision.allow()
+        }
         return StrokeGuideGuard.evaluatePoint(guide, committedStrokes.size, width.toFloat(), height.toFloat(), x, y)
     }
 
@@ -493,15 +573,19 @@ class DrawingPadView(context: Context) : View(context) {
     }
 
     private fun drawReplayStrokes(canvas: Canvas, progress: Float) {
-        val position = max(0f, min(1f, progress)) * replayStrokes.size
-        val fullStrokeCount = min(replayStrokes.size, floor(position).toInt())
-        for (i in replayStrokes.indices) {
+        drawAnimatedStrokes(canvas, replayStrokes, progress)
+    }
+
+    private fun drawAnimatedStrokes(canvas: Canvas, strokes: List<List<CapturedStroke.Point>>, progress: Float) {
+        val position = max(0f, min(1f, progress)) * strokes.size
+        val fullStrokeCount = min(strokes.size, floor(position).toInt())
+        for (i in strokes.indices) {
             val strokeProgress = when {
                 i < fullStrokeCount -> 1f
                 i == fullStrokeCount -> position - fullStrokeCount
                 else -> break
             }
-            drawReplayStroke(canvas, replayStrokes[i], strokeProgress)
+            drawReplayStroke(canvas, strokes[i], strokeProgress)
         }
     }
 
@@ -564,5 +648,6 @@ class DrawingPadView(context: Context) : View(context) {
         private val DRAWING_TAN_NIGHT = Color.rgb(214, 170, 120)
         private val DRAWING_CORAL = Color.rgb(255, 76, 118)
         private const val REPLAY_DURATION_MILLIS = 950L
+        private const val GUIDE_ANIMATION_STROKE_MILLIS = 450L
     }
 }

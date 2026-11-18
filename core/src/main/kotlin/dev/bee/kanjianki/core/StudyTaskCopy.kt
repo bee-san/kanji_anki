@@ -45,6 +45,7 @@ object StudyTaskCopy {
     @JvmStatic
     fun studyModeLabel(session: RecordsSchedulerModels.StudySession?): String = when {
         isNewLearningRepeat(session) -> localizedText("Learn", "学習")
+        isWritingRepairRepeat(session) -> localizedText("Once more", "もう一度")
         isRelearning(session) -> localizedText("Relearning", "再学習")
         session != null && session.writingRequired -> localizedText("Practice", "練習")
         isTypingReadingTask(session) -> localizedText("Type", "入力")
@@ -60,6 +61,22 @@ object StudyTaskCopy {
     private fun isNewLearningRepeat(session: RecordsSchedulerModels.StudySession?): Boolean {
         val item = session?.item ?: return false
         return item.phase == RecordsBase.SchedulerPhase.NEW_LEARNING && item.totalReviews > 0
+    }
+
+    /**
+     * A writing repair the learner has already attempted and that came back
+     * to its first appearance (a failed write, or a pass that has not yet met
+     * the clean-write gate). The session re-offers it through the normal
+     * learn-ahead path; this only names the reappearance.
+     */
+    private fun isWritingRepairRepeat(session: RecordsSchedulerModels.StudySession?): Boolean {
+        if (session == null || !session.writingRequired || StudyTaskTypes.WRITE_KANJI != session.taskType) {
+            return false
+        }
+        val route = AdaptiveStudyItemPolicy.routeState(session.item) ?: return false
+        return route.activeRepairTask() == StudyTaskTypes.WRITE_KANJI &&
+            route.repairTaskIndex == 0 &&
+            route.repairAttemptCount > 0
     }
 
     private fun isRelearning(session: RecordsSchedulerModels.StudySession?): Boolean =

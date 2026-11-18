@@ -42,6 +42,7 @@ internal object MainActivityStudyInteractionReset {
         resetTouchTracking: Boolean,
     ) {
         activity.activeAnalysis = null
+        activity.writingPrimerStage = null
         activity.checkingWriting = false
         activity.flashcardAnswerRevealed = false
         if (resetTouchTracking) {

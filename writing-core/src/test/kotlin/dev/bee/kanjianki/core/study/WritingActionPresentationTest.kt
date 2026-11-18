@@ -27,6 +27,7 @@ class WritingActionPresentationTest {
         assertFalse(presentation.skipVisible)
         assertFalse(presentation.skipEnabled)
         assertFalse(presentation.manualOverrideVisible)
+        assertFalse(presentation.rejectPassVisible)
         assertFalse(presentation.practiceWithGuideVisible)
         assertFalse(presentation.replayVisible)
         assertTrue(presentation.hintVisible)
@@ -53,6 +54,7 @@ class WritingActionPresentationTest {
         assertEquals("Pass", presentation.nextLabel)
         assertEquals(StudyRating.GOOD.code(), presentation.nextRating)
         assertFalse(presentation.manualOverrideVisible)
+        assertTrue(presentation.rejectPassVisible)
         assertFalse(presentation.practiceWithGuideVisible)
         assertFalse(presentation.hintVisible)
         assertEquals("Hint", presentation.hintText)
@@ -74,6 +76,7 @@ class WritingActionPresentationTest {
         assertEquals("Save hard", presentation.nextLabel)
         assertEquals(StudyRating.HARD.code(), presentation.nextRating)
         assertTrue(presentation.manualOverrideVisible)
+        assertTrue(presentation.rejectPassVisible)
         assertFalse(presentation.practiceWithGuideVisible)
     }
 
@@ -100,6 +103,7 @@ class WritingActionPresentationTest {
         assertEquals("Fail", presentation.nextLabel)
         assertEquals(StudyRating.AGAIN.code(), presentation.nextRating)
         assertTrue(presentation.manualOverrideVisible)
+        assertFalse(presentation.rejectPassVisible)
         assertTrue(presentation.practiceWithGuideVisible)
         assertTrue(presentation.replayVisible)
         assertTrue(presentation.hintVisible)

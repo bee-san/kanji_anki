@@ -13,6 +13,7 @@ internal data class WritingSessionCardModel(
     val drawingPad: View,
     val padMaxSizePx: Int,
     val resultStatus: WritingResultStatusHandle,
+    val compare: WritingCompareState = WritingCompareState(),
 )
 
 class WritingAnswerPanelState(initialVisible: Boolean = false) {

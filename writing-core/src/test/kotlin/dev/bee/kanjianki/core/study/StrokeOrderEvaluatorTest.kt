@@ -407,6 +407,39 @@ class StrokeOrderEvaluatorTest {
         assertFalse(duplicate.complete())
     }
 
+    @Test
+    fun strokeBodyThatStraysFromTheGuideScoresBelowAnOffsetStrokeWithTheSameEndpoints() {
+        // Guide: an L-shaped corner stroke plus a bar that pins the bounding box.
+        val corner = InkStroke(
+            listOf(InkPoint(0.1f, 0.1f, 0L), InkPoint(0.9f, 0.1f, 1L), InkPoint(0.9f, 0.9f, 2L)),
+        )
+        val bar = stroke(0.1f, 0.9f, 0.9f, 0.9f)
+        val guide = StrokeGuide("拉", listOf(corner, bar))
+        val drawnBar = stroke(10f, 90f, 90f, 90f)
+        val traced = InkStroke(
+            listOf(InkPoint(10f, 10f, 0L), InkPoint(90f, 10f, 1L), InkPoint(90f, 90f, 2L)),
+        )
+        // Same start and end, but cutting straight across instead of turning the corner.
+        val diagonal = stroke(10f, 10f, 90f, 90f)
+        // The opposite corner needs an anchor so both samples share one bounding box.
+        val anchor = stroke(10f, 10f, 12f, 10f)
+
+        val faithful = StrokeOrderEvaluator.evaluate(guide, sample(traced, drawnBar))
+        val shortcut = StrokeOrderEvaluator.evaluate(
+            StrokeGuide("拉", listOf(corner, bar, stroke(0.1f, 0.1f, 0.12f, 0.1f))),
+            sample(diagonal, drawnBar, anchor),
+        )
+        val faithfulWithAnchor = StrokeOrderEvaluator.evaluate(
+            StrokeGuide("拉", listOf(corner, bar, stroke(0.1f, 0.1f, 0.12f, 0.1f))),
+            sample(traced, drawnBar, anchor),
+        )
+
+        assertTrue(faithful.clean)
+        assertTrue(faithfulWithAnchor.clean)
+        assertTrue(shortcut.score < faithfulWithAnchor.score)
+        assertFalse(shortcut.clean)
+    }
+
     private fun guide(): StrokeGuide {
         return StrokeGuide(
             "拉",

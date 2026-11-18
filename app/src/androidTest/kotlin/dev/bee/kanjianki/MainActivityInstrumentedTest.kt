@@ -1281,7 +1281,7 @@ fun testWritingHintPreservesInkWhileIncreasingSupport() {
             clickText(scenario, STUDY_NOW);
             scenario.onActivity { activity ->
                 assertHasText(activity, "Practice");
-                assertHasText(activity, "Draw this kanji");
+                assertHasText(activity, "Write the missing kanji");
                 assertHasText(activity, "Write kanji");
                 assertHasText(activity, "More help");
             }

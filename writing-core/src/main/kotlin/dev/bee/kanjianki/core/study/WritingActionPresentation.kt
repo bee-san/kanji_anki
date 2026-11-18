@@ -15,6 +15,7 @@ class WritingActionPresentation private constructor(input: Input?) {
     @JvmField val skipVisible: Boolean
     @JvmField val skipEnabled: Boolean
     @JvmField val manualOverrideVisible: Boolean
+    @JvmField val rejectPassVisible: Boolean
     @JvmField val practiceWithGuideVisible: Boolean
     @JvmField val replayVisible: Boolean
     @JvmField val hintVisible: Boolean
@@ -39,6 +40,9 @@ class WritingActionPresentation private constructor(input: Input?) {
         skipVisible = safeInput.repairTask && !hasResult
         skipEnabled = skipVisible && !safeInput.checkingWriting
         manualOverrideVisible = hasResult && WritingFeedbackCopy.canManualOverride(analysis)
+        // The checker's verdict is a suggestion the learner can correct either
+        // way: a graded fail has the manual override, a graded pass has this.
+        rejectPassVisible = hasResult && passed
         practiceWithGuideVisible = hasResult && !passed && WritingFeedbackCopy.canPracticeAfterAnalysis(analysis)
         replayVisible = hasResult &&
             safeInput.hasReplaySnapshot &&

@@ -30,7 +30,7 @@ class HintPolicyTest {
     }
 
     @Test
-    fun minimalStageShowsOnlyCurrentStrokeCue() {
+    fun minimalStageIsFreeRecallWithNoStrokeCue() {
         val guide = StrokeGuide(
             "拉",
             listOf(stroke(), stroke(), stroke()),
@@ -39,9 +39,22 @@ class HintPolicyTest {
         val hints = HintPolicy.hintsFor(guide, 2, 1, false)
 
         assertFalse(hints[0].visible)
-        assertTrue(hints[1].visible)
+        assertFalse(hints[1].visible)
         assertTrue(hints[1].current)
         assertFalse(hints[2].visible)
+    }
+
+    @Test
+    fun onlyTracingLevelsKeepTheCorridorGuard() {
+        assertTrue(HintPolicy.guardEnabled(null))
+        assertTrue(HintPolicy.guardEnabled(HintState(HintLevel.TRACE, 0, 0)))
+        assertTrue(HintPolicy.guardEnabled(HintState(HintLevel.OUTLINE, 0, 0)))
+        assertFalse(HintPolicy.guardEnabled(HintState(HintLevel.MINIMAL, 0, 0)))
+        assertFalse(HintPolicy.guardEnabled(HintState(HintLevel.BLIND, 2, 0)))
+        assertFalse(HintLevel.TRACE.isFreeRecall())
+        assertFalse(HintLevel.OUTLINE.isFreeRecall())
+        assertTrue(HintLevel.MINIMAL.isFreeRecall())
+        assertTrue(HintLevel.BLIND.isFreeRecall())
     }
 
     @Test
@@ -104,8 +117,9 @@ class HintPolicyTest {
 
         assertTrue(trace[2].current)
         assertTrue(trace[0].numberVisible)
-        assertTrue(minimal[1].visible)
-        assertEquals(0.58f, minimal[1].alpha, 0.001f)
+        assertTrue(minimal[0].visible)
+        assertEquals(0.86f, minimal[0].alpha, 0.001f)
+        assertFalse(minimal[1].visible)
         assertFalse(minimal[2].visible)
     }
 

@@ -44,6 +44,7 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     private val flashcardUi by lazy { MainActivityStudyFlashcard(this) }
     private val writingUi by lazy { MainActivityStudyWritingUi(this) }
     private val writingFlow by lazy { MainActivityStudyWritingFlow(this) }
+    private val writingPrimer by lazy { MainActivityStudyWritingPrimer(this) }
     private val writingCheck by lazy { MainActivityStudyWritingCheck(this) }
     private val writingReview by lazy { MainActivityStudyReviewFlow(this) }
     private val answerSubmissionCoordinator by lazy {
@@ -1114,7 +1115,15 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun updateResultActions() {
+        if (writingPrimer.active()) {
+            writingPrimer.render()
+            return
+        }
         writingUi.updateResultActions()
+    }
+
+    fun beginWritingPrimer(session: RecordsSchedulerModels.StudySession) {
+        writingPrimer.begin(session)
     }
 
     fun writingActionPresentation(): WritingActionPresentation {
@@ -1122,6 +1131,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun updateUndoStrokeButton() {
+        if (writingPrimer.active()) {
+            writingPrimer.render()
+            return
+        }
         writingUi.updateUndoStrokeButton()
     }
 
@@ -1138,6 +1151,10 @@ internal abstract class MainActivityStudy : MainActivityStats() {
     }
 
     fun handleDrawingEdited() {
+        if (writingPrimer.active()) {
+            writingPrimer.onInkEdited()
+            return
+        }
         writingFlow.handleDrawingEdited()
     }
 

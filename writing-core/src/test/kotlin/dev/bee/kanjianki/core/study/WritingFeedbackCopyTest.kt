@@ -26,7 +26,7 @@ class WritingFeedbackCopyTest {
         )
         assertEquals("Help level: Trace\nTrace the strokes, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(0), guide))
         assertEquals("Help level: Outline\nCopy the faint outline; the current stroke is emphasized.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(1), guide))
-        assertEquals("Help level: Minimal\nWrite with only the current stroke hinted, then check.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide))
+        assertEquals("Help level: Minimal\nWrite from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(2), guide))
         assertEquals("Help level: Blind\nWrite from memory, then check. Use Hint if you are stuck.", WritingFeedbackCopy.guideLabel(HintState.fromWritingLevel(3), guide))
         assertEquals("Help level: Trace\nTrace the strokes, then check.", WritingFeedbackCopy.guideLabel(null, guide))
     }

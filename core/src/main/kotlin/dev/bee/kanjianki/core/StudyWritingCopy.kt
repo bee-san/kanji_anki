@@ -8,11 +8,24 @@ object StudyWritingCopy {
     @JvmStatic
     fun title(): String = localizedText("Draw this kanji", "この漢字を書いてください")
 
+    /** Title when the cue contains a blank for the learner to fill in. */
     @JvmStatic
-    fun referenceInstruction(): String = localizedText(
-        "Use the reference, trace, then check.",
-        "参考を見てなぞってから確認してください。",
-    )
+    fun clozeTitle(): String = localizedText("Write the missing kanji", "〇に入る漢字を書いてください")
+
+    /** "〇出 (だっしゅつ) — escape": the blanked word under a sentence cue. */
+    @JvmStatic
+    fun wordCueLine(word: String, reading: String, meaning: String): String {
+        val head = if (reading.isBlank()) word else localizedText("$word ($reading)", "$word（$reading）")
+        return joinCue(head, meaning)
+    }
+
+    /** "だっしゅつ — escape": the clue under a blanked-word cue. */
+    @JvmStatic
+    fun readingMeaningLine(reading: String, meaning: String): String = joinCue(reading, meaning)
+
+    private fun joinCue(head: String, meaning: String): String {
+        return listOf(head.trim(), meaning.trim()).filter { it.isNotEmpty() }.joinToString(" — ")
+    }
 
     @JvmStatic
     fun recallPromptLine(clue: String): String = localizedText(
@@ -27,10 +40,96 @@ object StudyWritingCopy {
     )
 
     @JvmStatic
-    fun promptInstruction(): String = localizedText(
-        "Write from the prompt. The answer stays hidden until you check.",
-        "問題を見て書いてください。答えは確認するまで隠れています。",
+    fun compareYoursLabel(): String = localizedText("Yours", "あなたの字")
+
+    @JvmStatic
+    fun compareModelLabel(): String = localizedText("Model", "お手本")
+
+    @JvmStatic
+    fun compareOkLabel(): String = localizedText("Good", "良い")
+
+    @JvmStatic
+    fun compareRoughLabel(): String = localizedText("Shape or position off", "形か位置がずれている")
+
+    @JvmStatic
+    fun compareWrongDirectionLabel(): String = localizedText("Wrong direction", "書く向きが逆")
+
+    @JvmStatic
+    fun compareWrongOrderLabel(): String = localizedText("Wrong order", "書き順が違う")
+
+    @JvmStatic
+    fun compareMissingLabel(): String = localizedText("Missing", "足りない画")
+
+    @JvmStatic
+    fun compareExtraLabel(): String = localizedText("Extra", "余分な画")
+
+    @JvmStatic
+    fun compareOrderOrDirectionLabel(): String = localizedText("Wrong order or direction", "書き順か向きが違う")
+
+    @JvmStatic
+    fun compareMissingOrExtraLabel(): String = localizedText("Missing or extra stroke", "画が足りない・多い")
+
+    @JvmStatic
+    fun compareStrokeDescription(strokeNumber: Int, verdict: String): String = localizedText(
+        "stroke $strokeNumber: $verdict",
+        "${strokeNumber}画目: $verdict",
     )
+
+    /** Screen-reader summary of one comparison square. */
+    @JvmStatic
+    fun compareSquareDescription(title: String, strokeCount: Int, problems: List<String>): String {
+        val count = if (isJapaneseLocale()) {
+            "${strokeCount}画"
+        } else if (strokeCount == 1) {
+            "1 stroke"
+        } else {
+            "$strokeCount strokes"
+        }
+        val head = localizedText("$title, $count", "$title、$count")
+        if (problems.isEmpty()) {
+            return "$head."
+        }
+        return head + localizedText(". ", "。") + problems.joinToString(localizedText("; ", "、")) + localizedText(".", "。")
+    }
+
+    @JvmStatic
+    fun primerWatchStatus(): String = localizedText(
+        "Primer: watch the strokes, then write it from memory.",
+        "予習: 筆順を見てから、記憶で書いてみましょう。",
+    )
+
+    @JvmStatic
+    fun primerWriteStatus(): String = localizedText(
+        "Primer: write it from memory, then compare.",
+        "予習: 記憶で書いてから、お手本と比べましょう。",
+    )
+
+    @JvmStatic
+    fun primerNeedsInkStatus(): String = localizedText(
+        "Primer: write it first, then compare.",
+        "予習: 先に書いてから比べましょう。",
+    )
+
+    @JvmStatic
+    fun primerCompareStatus(): String = localizedText(
+        "Primer: compare your strokes with the model. This is practice and is not graded.",
+        "予習: 自分の字をお手本と比べましょう。これは練習で、採点されません。",
+    )
+
+    @JvmStatic
+    fun primerWriteLabel(): String = localizedText("Write from memory", "記憶で書く")
+
+    @JvmStatic
+    fun primerCompareLabel(): String = localizedText("Compare", "比べる")
+
+    @JvmStatic
+    fun primerTryAgainLabel(): String = localizedText("Try again", "もう一度")
+
+    @JvmStatic
+    fun primerStartLabel(): String = localizedText("Start", "始める")
+
+    @JvmStatic
+    fun primerSkipLabel(): String = localizedText("Skip primer", "予習をスキップ")
 
     @JvmStatic
     fun eraseLabel(): String = localizedText("Erase", "消去")
@@ -71,6 +170,10 @@ object StudyWritingCopy {
 
     @JvmStatic
     fun manualOverrideLabel(): String = localizedText("Mark right anyway", "それでも合格にする")
+
+    /** Overrides a graded pass: the learner judged their own writing wrong. */
+    @JvmStatic
+    fun rejectPassLabel(): String = localizedText("I got it wrong", "間違えた")
 
     @JvmStatic
     fun continueAnywayLabel(): String = localizedText("Continue anyway", "このまま続行")

@@ -389,7 +389,15 @@ Anki-side `matureSupportCount`, not the ladder ceiling).
 
 Study UI renders one current rung at a time. Rung rendering:
 
-- `write_kanji` → handwriting pad and writing evaluation.
+- `write_kanji` → handwriting pad and writing evaluation. The prompt is a
+  recall cue (mined sentence or word with the target kanji blanked, else
+  meaning + reading). Trace/Outline are guarded tracing; Minimal/Blind are
+  free recall with no guide and no ink blocking. After Check the learner's
+  strokes are shown beside the model, numbered and colour-coded. A kanji's
+  first writing appearance (opening at Trace) starts with an ungraded,
+  skippable primer (watch the strokes, write from memory, compare). A failed write repair comes back in
+  the same session via the normal learn-ahead repeat path, labelled
+  "Once more".
 - `type_meaning` → typed answer box.
 - `similar_kanji` → multiple-choice selector from visually similar kanji.
 - `reading_kanji` → multiple-choice selector of same-reading kanji (reading +
@@ -413,7 +421,10 @@ user-selectable ratings for that rung. One documented exception: when the
 writing evaluation judges an ink attempt as `CLOSE` (passed, but not clean),
 the single primary action is labeled `Save hard` and submits `hard`, which
 still counts as a pass for ladder-streak purposes. The user never chooses
-between multiple ratings on `write_kanji`.
+between multiple ratings on `write_kanji`. The checker's verdict can be
+corrected either way: "Mark right anyway" (manual override, recorded as
+`hard`) on a graded fail, and "I got it wrong" on a graded pass, which
+submits `again` and is recorded as a failed, non-clean write.
 
 The study subsystem must never create a parallel "main study item plus side
 task queue" model. `learning_repeats` and `similar_kanji_choice_state` are

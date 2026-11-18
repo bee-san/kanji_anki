@@ -13,6 +13,7 @@ import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.StudyTaskCopy
 import dev.bee.kanjianki.core.StudyTextCopy
 import dev.bee.kanjianki.core.StudyWritingCopy
+import dev.bee.kanjianki.core.StudyWritingPromptPolicy
 import dev.bee.kanjianki.core.study.WritingFeedbackCopy
 
 internal class MainActivityStudyWritingSession(private val home: MainActivityStudy) {
@@ -85,6 +86,9 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
         val resultStatus = WritingResultStatusHandle()
         home.writingResultStatus = resultStatus
         resultStatus.hide()
+        val compare = WritingCompareState()
+        home.writingCompareState = compare
+        home.beginWritingPrimer(session)
 
         return WritingSessionRouteModel(
             WritingSessionCardModel(
@@ -94,7 +98,8 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
                 status,
                 drawingPad,
                 home.studyPadHeight(),
-                resultStatus
+                resultStatus,
+                compare,
             ),
             session.token,
             home.studyContinueAction(feedback) { home.continueAfterStudyAnswer() },
@@ -102,51 +107,60 @@ internal class MainActivityStudyWritingSession(private val home: MainActivityStu
     }
 
     private fun writingPromptHeaderModel(session: RecordsSchedulerModels.StudySession): WritingPromptHeaderModel {
+        val prompt = recallPrompt(session)
         return WritingPromptHeaderModel(
             StudyTaskCopy.studyModeLabel(session),
-            StudyWritingCopy.title(),
-            writingPromptLines(session)
+            if (prompt != null && prompt.hasBlank()) StudyWritingCopy.clozeTitle() else StudyWritingCopy.title(),
+            writingPromptLines(session, prompt)
         )
     }
 
-    private fun writingPromptLines(session: RecordsSchedulerModels.StudySession): List<WritingPromptLineModel> {
-        val lines = mutableListOf<WritingPromptLineModel>()
-        val row = session.row
-        if (row == null) {
-            lines.add(WritingPromptLineModel(safeText(session.prompt), KaniUiTokens.StudyActionTextSizeSp, MainActivityUiSupport.STUDY_MUTED, false))
-            return lines
+    /** Null only for the legacy row-less writing repair, which shows its stored prompt. */
+    private fun recallPrompt(session: RecordsSchedulerModels.StudySession): StudyWritingPromptPolicy.Prompt? {
+        if (session.row == null) {
+            return null
         }
-        if (!StudyTaskCopy.isRecallTask(session)) {
-            lines.add(
+        return StudyWritingPromptPolicy.build(
+            session,
+            StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session),
+        )
+    }
+
+    private fun writingPromptLines(
+        session: RecordsSchedulerModels.StudySession,
+        prompt: StudyWritingPromptPolicy.Prompt?,
+    ): List<WritingPromptLineModel> {
+        if (prompt == null) {
+            return listOf(
                 WritingPromptLineModel(
-                    StudyWritingCopy.referenceInstruction(),
-                    KaniUiTokens.StudyBodyTextSizeSp,
+                    safeText(session.prompt),
+                    KaniUiTokens.StudyActionTextSizeSp,
                     MainActivityUiSupport.STUDY_MUTED,
-                    false
+                    false,
                 )
             )
-            return lines
         }
-        lines.add(
-            WritingPromptLineModel(
-                StudyWritingCopy.recallPromptLine(StudyTextCopy.sessionClue(home.currentDictionaryLookup(), session)),
-                KaniUiTokens.StudyActionTextSizeSp,
-                MainActivityUiSupport.STUDY_PLUM,
-                true
+        val texts = when (prompt.kind) {
+            StudyWritingPromptPolicy.Kind.SENTENCE -> listOf(
+                prompt.sentence,
+                StudyWritingCopy.wordCueLine(prompt.word, prompt.reading, prompt.meaning),
             )
-        )
-        if (row.reading.isNotEmpty()) {
-            lines.add(WritingPromptLineModel(StudyWritingCopy.readingLine(row.reading), KaniUiTokens.StudyBodyTextSizeSp, MainActivityUiSupport.STUDY_MUTED, false))
+            StudyWritingPromptPolicy.Kind.WORD -> listOf(
+                prompt.word,
+                StudyWritingCopy.readingMeaningLine(prompt.reading, prompt.meaning),
+            )
+            StudyWritingPromptPolicy.Kind.MEANING -> listOf(
+                StudyWritingCopy.recallPromptLine(prompt.meaning),
+                if (prompt.reading.isEmpty()) "" else StudyWritingCopy.readingLine(prompt.reading),
+            )
         }
-        lines.add(
-            WritingPromptLineModel(
-                StudyWritingCopy.promptInstruction(),
-                KaniUiTokens.StudyBodyTextSizeSp,
-                MainActivityUiSupport.STUDY_MUTED,
-                false
-            )
-        )
-        return lines
+        return texts.filter { it.isNotEmpty() }.mapIndexed { index, text ->
+            if (index == 0) {
+                WritingPromptLineModel(text, KaniUiTokens.StudyActionTextSizeSp, MainActivityUiSupport.STUDY_PLUM, true)
+            } else {
+                WritingPromptLineModel(text, KaniUiTokens.StudyBodyTextSizeSp, MainActivityUiSupport.STUDY_MUTED, false)
+            }
+        }
     }
 
     private fun safeText(value: String?): String {

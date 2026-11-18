@@ -115,6 +115,8 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
                 Runnable { activity.replayWritingAnalysis() },
                 Runnable { activity.submitReview(MainActivityBase.RATING_GOOD, true) },
                 Runnable { activity.startGuidedWritingRetry() },
+                rejectPassVisible = presentation.rejectPassVisible,
+                onRejectPass = Runnable { activity.submitReview(MainActivityBase.RATING_AGAIN, false) },
             )
         )
     }
@@ -140,6 +142,10 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
     }
 
     fun setStudyStatus(value: String, color: Int) {
+        if (activity.writingPrimerStage != null) {
+            // The primer owns the status line; checker status returns when it ends.
+            return
+        }
         activity.studyStatus?.setStatus(value, color)
         if (activity.activeAnalysis == null) {
             hideResultStatus()
@@ -152,5 +158,6 @@ internal class MainActivityStudyWritingUi(private val activity: MainActivityStud
 
     fun hideResultStatus() {
         activity.writingResultStatus?.hide()
+        activity.writingCompareState?.hide()
     }
 }

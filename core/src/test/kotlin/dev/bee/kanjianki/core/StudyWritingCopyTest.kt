@@ -9,13 +9,14 @@ class StudyWritingCopyTest {
     fun studyWritingCopySwitchesBetweenEnglishAndJapaneseCopy() {
         withLocale(Locale.US) {
             assertEquals("Draw this kanji", StudyWritingCopy.title())
-            assertEquals("Use the reference, trace, then check.", StudyWritingCopy.referenceInstruction())
             assertEquals("Prompt: split, rend", StudyWritingCopy.recallPromptLine("split, rend"))
             assertEquals("Reading: レツ", StudyWritingCopy.readingLine("レツ"))
-            assertEquals(
-                "Write from the prompt. The answer stays hidden until you check.",
-                StudyWritingCopy.promptInstruction(),
-            )
+            assertEquals("Write the missing kanji", StudyWritingCopy.clozeTitle())
+            assertEquals("〇出 (だっしゅつ) — escape", StudyWritingCopy.wordCueLine("〇出", "だっしゅつ", "escape"))
+            assertEquals("〇出 — escape", StudyWritingCopy.wordCueLine("〇出", "", "escape"))
+            assertEquals("〇出 (だっしゅつ)", StudyWritingCopy.wordCueLine("〇出", "だっしゅつ", " "))
+            assertEquals("だっしゅつ — escape", StudyWritingCopy.readingMeaningLine("だっしゅつ", "escape"))
+            assertEquals("escape", StudyWritingCopy.readingMeaningLine("", "escape"))
             assertEquals("Erase", StudyWritingCopy.eraseLabel())
             assertEquals("Undo", StudyWritingCopy.undoLabel())
             assertEquals(
@@ -51,13 +52,10 @@ class StudyWritingCopyTest {
 
         withLocale(Locale.JAPAN) {
             assertEquals("この漢字を書いてください", StudyWritingCopy.title())
-            assertEquals("参考を見てなぞってから確認してください。", StudyWritingCopy.referenceInstruction())
             assertEquals("書き取りプロンプト: split, rend", StudyWritingCopy.recallPromptLine("split, rend"))
             assertEquals("読み: レツ", StudyWritingCopy.readingLine("レツ"))
-            assertEquals(
-                "問題を見て書いてください。答えは確認するまで隠れています。",
-                StudyWritingCopy.promptInstruction(),
-            )
+            assertEquals("〇に入る漢字を書いてください", StudyWritingCopy.clozeTitle())
+            assertEquals("〇出（だっしゅつ） — escape", StudyWritingCopy.wordCueLine("〇出", "だっしゅつ", "escape"))
             assertEquals("消去", StudyWritingCopy.eraseLabel())
             assertEquals("元に戻す", StudyWritingCopy.undoLabel())
             assertEquals(

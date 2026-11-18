@@ -39,6 +39,14 @@ class HintPolicy private constructor() {
     )
 
     companion object {
+        /**
+         * Whether ink must stay near the expected guide stroke while drawing.
+         * Tracing levels are corridor-guarded; free recall is not, so stroke
+         * order, extra strokes and shape are the learner's own.
+         */
+        @JvmStatic
+        fun guardEnabled(state: HintState?): Boolean = !(state ?: HintState.initial()).level().isFreeRecall()
+
         @JvmStatic
         fun hintsFor(guide: StrokeGuide?, writingLevel: Int, completedStrokes: Int, reveal: Boolean): List<StrokeHint> {
             return hintsFor(guide, HintState.fromWritingLevel(writingLevel), completedStrokes, reveal)
@@ -81,25 +89,14 @@ class HintPolicy private constructor() {
             return when (state.level()) {
                 HintLevel.TRACE -> StrokeHintVisibility(true, if (index == current) 0.95f else 0.62f, true)
                 HintLevel.OUTLINE -> StrokeHintVisibility(true, if (index == current) 0.9f else 0.20f, false)
-                HintLevel.MINIMAL -> minimalVisibility(state, index, current, strokeCount)
-                HintLevel.BLIND -> blindVisibility(state, index, current, strokeCount)
+                HintLevel.MINIMAL,
+                HintLevel.BLIND,
+                -> freeRecallVisibility(state, index, current, strokeCount)
             }
         }
 
-        private fun minimalVisibility(
-            state: HintState,
-            index: Int,
-            current: Int,
-            strokeCount: Int,
-        ): StrokeHintVisibility {
-            if (index == current) {
-                return StrokeHintVisibility(true, 0.86f, false)
-            }
-            val revealed = index > current && index <= minOf(strokeCount - 1, current + state.revealedStrokeCount())
-            return if (revealed) StrokeHintVisibility(true, 0.58f, false) else StrokeHintVisibility(false, 0f, false)
-        }
-
-        private fun blindVisibility(
+        /** Free-recall levels draw nothing until Hint reveals upcoming strokes. */
+        private fun freeRecallVisibility(
             state: HintState,
             index: Int,
             current: Int,

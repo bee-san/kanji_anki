@@ -9,6 +9,13 @@ enum class HintLevel(private val writingLevel: Int) {
 
     fun writingLevel(): Int = writingLevel
 
+    /**
+     * Free recall: the learner writes from memory with no guide drawn and no
+     * off-guide blocking. Strokes appear only when Hint reveals them, and the
+     * attempt is judged stroke by stroke after Check instead of while drawing.
+     */
+    fun isFreeRecall(): Boolean = this == MINIMAL || this == BLIND
+
     fun next(): HintLevel {
         val next = minOf(entries.size - 1, ordinal + 1)
         return entries[next]

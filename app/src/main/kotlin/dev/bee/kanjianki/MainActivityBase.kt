@@ -166,6 +166,8 @@ internal abstract class MainActivityBase : MainActivityUiSupport() {
 
     @JvmField
     var writingResultStatus: WritingResultStatusHandle? = null
+    internal var writingCompareState: WritingCompareState? = null
+    internal var writingPrimerStage: dev.bee.kanjianki.core.study.WritingPrimerStage? = null
 
     @JvmField
     var writingPrimaryActionsView: WritingPrimaryActionsView? = null

@@ -87,6 +87,56 @@ class StudyTaskCopyTest {
     }
 
     @Test
+    fun repeatedWritingRepairIsLabelledOnceMore() {
+        val repeat = adaptiveWriteSession(repairTaskIndex = 0, repairAttemptCount = 1)
+        assertEquals("Once more", StudyTaskCopy.studyModeLabel(repeat))
+        withJapaneseLocale { assertEquals("もう一度", StudyTaskCopy.studyModeLabel(repeat)) }
+
+        // First appearance of the repair: still plain relearning.
+        assertEquals(
+            "Relearning",
+            StudyTaskCopy.studyModeLabel(adaptiveWriteSession(repairTaskIndex = 0, repairAttemptCount = 0)),
+        )
+        // Advanced past the first appearance: not a repeat.
+        assertEquals(
+            "Relearning",
+            StudyTaskCopy.studyModeLabel(
+                adaptiveWriteSession(
+                    repairTaskIndex = 1,
+                    repairAttemptCount = 1,
+                    tasks = listOf(StudyTaskTypes.SIMILAR_KANJI, StudyTaskTypes.WRITE_KANJI),
+                )
+            ),
+        )
+        // A legacy (non-adaptive) relearning write has no route state.
+        assertEquals(
+            "Relearning",
+            StudyTaskCopy.studyModeLabel(
+                sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.RELEARNING)
+            ),
+        )
+    }
+
+    private fun adaptiveWriteSession(
+        repairTaskIndex: Int,
+        repairAttemptCount: Int,
+        tasks: List<String> = listOf(StudyTaskTypes.WRITE_KANJI),
+    ): RecordsSchedulerModels.StudySession {
+        val base = sessionWithPhase(StudyTaskTypes.WRITE_KANJI, true, RecordsBase.SchedulerPhase.RELEARNING)
+        val route = AdaptiveRouteState(
+            activeRepairTasks = tasks,
+            repairTaskIndex = repairTaskIndex,
+            repairStepMinutes = listOf(10),
+            repairAttemptCount = repairAttemptCount,
+        )
+        val item = base.item!!.copyBuilder()
+            .routingVersion(AdaptiveStudyItemPolicy.ROUTING_VERSION)
+            .adaptiveRouteStateJson(AdaptiveRouteStateCodec.encode(route))
+            .build()
+        return RecordsSchedulerModels.StudySession(item, base.row, base.token, base.taskType, true, base.prompt)
+    }
+
+    @Test
     fun studyCopyTranslatesToJapaneseLocale() {
         withJapaneseLocale {
             assertEquals("学習", StudyTaskCopy.labelForTask(null))

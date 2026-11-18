@@ -11,8 +11,13 @@ object StudyReviewRequestPolicy {
     ): MappedReview {
         val item = session.item ?: throw NullPointerException("session.item")
         val mappedRating = applyRequestedRating(rating, session.writingRequired, writingOutcome, override)
-        val passed = !session.writingRequired || (writingOutcome != null && writingOutcome.writingPassed)
-        val cleanWriting = writingOutcome != null && writingOutcome.cleanWriting
+        // A learner who rejects a graded pass ("I got it wrong") submits Again
+        // without an override: that is a failed write, not a passed one, so
+        // it must lower writing help exactly like a checker-graded failure.
+        val rejectedPass = session.writingRequired && !override && StudyRatings.AGAIN == mappedRating
+        val passed = !session.writingRequired ||
+            (writingOutcome != null && writingOutcome.writingPassed && !rejectedPass)
+        val cleanWriting = writingOutcome != null && writingOutcome.cleanWriting && !rejectedPass
         val request = RecordsSchedulerModels.ReviewRequest.fromFields(
             RecordsSchedulerModels.ReviewRequest.Fields(
                 kanji = item.kanji,

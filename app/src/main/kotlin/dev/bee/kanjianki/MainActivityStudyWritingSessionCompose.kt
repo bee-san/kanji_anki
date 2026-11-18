@@ -30,6 +30,9 @@ internal fun WritingSessionCard(
             horizontalAlignment = Alignment.Start
         ) {
             WritingPromptHeader(model.promptHeader)
+            // Directly under the prompt so the stroke-by-stroke check is the
+            // first thing seen after Check, above the reference and the pad.
+            WritingComparePanel(model.compare, Modifier.padding(top = 12.dp))
             if (model.answerPanelState.visible) {
                 StudyAnswerPanel(
                     model.answerPanel,

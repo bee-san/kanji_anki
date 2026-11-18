@@ -37,7 +37,11 @@ class WritingFallbackActionsView private constructor(
 
 @Composable
 internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
-    if (!model.replayVisible && !model.manualOverrideVisible && !model.practiceWithGuideVisible) {
+    if (!model.replayVisible &&
+        !model.manualOverrideVisible &&
+        !model.rejectPassVisible &&
+        !model.practiceWithGuideVisible
+    ) {
         return
     }
     Row(
@@ -62,6 +66,15 @@ internal fun WritingFallbackActions(model: WritingFallbackActionsModel) {
                 modifier = Modifier.weight(1f),
                 minHeight = 56.dp,
                 tone = StudyActionTone.PASS,
+            )
+        }
+        if (model.rejectPassVisible) {
+            WritingSecondaryButton(
+                label = StudyWritingCopy.rejectPassLabel(),
+                onClick = { model.onRejectPass.run() },
+                modifier = Modifier.weight(1f),
+                minHeight = 56.dp,
+                tone = StudyActionTone.FAIL,
             )
         }
         if (model.practiceWithGuideVisible) {

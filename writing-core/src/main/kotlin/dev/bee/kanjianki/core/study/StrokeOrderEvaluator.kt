@@ -93,6 +93,11 @@ class StrokeOrderEvaluator private constructor() {
     }
 
     companion object {
+        private const val PATH_SAMPLES = 9
+        private const val PATH_TOLERANCE = 0.04f
+        private const val PATH_FULL_PENALTY_DISTANCE = 0.2f
+        private const val PATH_MAX_PENALTY = 0.5f
+
         @JvmStatic
         fun evaluate(guide: StrokeGuide?, sample: WritingSample?): StrokeOrderResult {
             if (guide == null || guide.isEmpty()) {
@@ -233,12 +238,61 @@ class StrokeOrderEvaluator private constructor() {
             }
             val startDistance = distance(guideStart, sampleStart)
             val endDistance = distance(guideEnd, sampleEnd)
-            val direct = max(0f, 1f - ((startDistance + endDistance) / 1.2f))
+            val guidePath = resample(guideStroke.points)
+            val samplePath = resample(sampleStroke.points.map { normalized(it, sampleBounds, guideBounds)!! })
+            val direct = max(0f, 1f - ((startDistance + endDistance) / 1.2f)) *
+                pathFactor(guidePath, samplePath, (startDistance + endDistance) / 2f)
             val reverseStartDistance = distance(guideStart, sampleEnd)
             val reverseEndDistance = distance(guideEnd, sampleStart)
-            val reversed = max(0f, 1f - ((reverseStartDistance + reverseEndDistance) / 1.2f))
+            val reversed = max(0f, 1f - ((reverseStartDistance + reverseEndDistance) / 1.2f)) *
+                pathFactor(guidePath, samplePath.reversed(), (reverseStartDistance + reverseEndDistance) / 2f)
             val score = if (reversed > direct) direct * 0.55f else direct
             return StrokeComparison(direct, reversed, score)
+        }
+
+        /**
+         * Endpoints alone cannot tell a hook from a straight line. This scales
+         * a stroke's score down when the body of the stroke strays further
+         * from the guide than its endpoints already account for, so a stroke
+         * that is merely offset is not penalised twice.
+         */
+        private fun pathFactor(guidePath: List<InkPoint>, samplePath: List<InkPoint>, endpointDistance: Float): Float {
+            var total = 0f
+            for (i in guidePath.indices) {
+                total += distance(guidePath[i], samplePath[i])
+            }
+            val excess = (total / guidePath.size) - endpointDistance - PATH_TOLERANCE
+            if (excess <= 0f) {
+                return 1f
+            }
+            return 1f - (min(1f, excess / PATH_FULL_PENALTY_DISTANCE) * PATH_MAX_PENALTY)
+        }
+
+        /** [PATH_SAMPLES] points evenly spaced along the polyline's length. */
+        private fun resample(points: List<InkPoint>): List<InkPoint> {
+            var length = 0f
+            for (i in 1 until points.size) {
+                length += distance(points[i - 1], points[i])
+            }
+            if (points.size < 2 || length <= 0f) {
+                return List(PATH_SAMPLES) { points[0] }
+            }
+            val out = ArrayList<InkPoint>(PATH_SAMPLES)
+            var segment = 1
+            var walked = 0f
+            for (n in 0 until PATH_SAMPLES) {
+                val target = length * n / (PATH_SAMPLES - 1)
+                while (segment < points.size - 1 && walked + distance(points[segment - 1], points[segment]) < target) {
+                    walked += distance(points[segment - 1], points[segment])
+                    segment++
+                }
+                val a = points[segment - 1]
+                val b = points[segment]
+                val segmentLength = distance(a, b)
+                val t = if (segmentLength <= 0f) 0f else min(1f, max(0f, (target - walked) / segmentLength))
+                out.add(InkPoint(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, 0L))
+            }
+            return out
         }
 
         private fun normalized(point: InkPoint?, source: Bounds, target: Bounds): InkPoint? {

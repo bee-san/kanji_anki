@@ -256,6 +256,38 @@ reading-aware log near the end of section 14.
 - **Memory slot**: `writing_remediation_memory`.
 - **UI**: `MainActivityStudyWritingSession.kt` builds a `DrawingPadView`
   with stroke guides, hint progression, and a reference answer panel.
+- **Prompt**: a recall cue built by `StudyWritingPromptPolicy`
+  (`core/.../StudyWritingPromptPolicy.kt`): the mined sentence with every
+  occurrence of the target kanji blanked (`〇`) plus the blanked word, its
+  reading and meaning; else the blanked word with reading and meaning; else
+  the kanji meaning and reading. The cue never shows the answer.
+- **Help levels**: Trace and Outline are guided tracing with the off-guide
+  corridor guard (`StrokeGuideGuard`). Minimal and Blind are **free
+  recall** (`HintLevel.isFreeRecall`): no guide is drawn and no ink is
+  blocked, so stroke order, extra strokes and shape are the learner's own;
+  Hint reveals upcoming strokes one at a time and still counts as a hint.
+- **Stroke-by-stroke check**: after Check, `WritingCompareModel`
+  (`writing-core/.../WritingCompareModel.kt`) puts the learner's ink beside
+  the model, both numbered and colour-coded per stroke from the
+  `StrokeOrderEvaluator` diagnosis: good, shape or position off, wrong order
+  or direction, missing (dashed) or extra. Order and direction share a
+  colour, as do missing and extra; the exact verdict is in each square's
+  content description and the result's per-stroke text. It is pure geometry, so it is still
+  shown when the recognizer is unavailable. `StrokeOrderEvaluator` scores
+  the body of each stroke as well as its endpoints.
+- **Primer**: a kanji's first writing appearance (a legacy item with no
+  reviews, or an adaptive write repair not yet attempted) that opens at
+  Trace with stroke data starts with an ungraded primer (`WritingPrimerStage`,
+  `MainActivityStudyWritingPrimer`): watch the model strokes animate, write
+  from memory on a blank pad, compare. It is skippable, never submits a
+  review, and never counts as a hint. The model-stroke animation
+  (`DrawingPadView.startGuideAnimation`) exists only on the study pad; the
+  Browse stroke-order diagram stays a static panel grid (D-P1).
+- **Once more**: a failed adaptive `write_kanji` repair restarts at its first
+  appearance as a `RELEARNING` item and returns in the same session through
+  the existing learn-ahead repeat path (§8.3); no extra queue exists. Its mode
+  pill reads "Once more" (`StudyTaskCopy.studyModeLabel`: an active
+  `write_kanji` repair at index 0 with `repairAttemptCount > 0`).
 - **Evaluation**: ML Kit digital-ink recognition
   (`app/.../study/MlKitJapaneseWritingRecognizer.kt`) feeds
   `WritingAnalysisEngine.analyze` (`writing-core/.../WritingAnalysisEngine.kt:78-154`),
@@ -265,9 +297,13 @@ reading-aware log near the end of section 14.
 - **Rating surface**: Pass/Fail only. The submit button's rating comes from
   `WritingFeedbackCopy.submitRating` (`writing-core/.../WritingFeedbackCopy.kt:305-313`):
   fail → `again`, `CLOSE` → `hard` ("Save hard"), else `good`. Hard/Easy
-  are never user-selectable. A "Mark right anyway" manual override exists;
-  the engine remaps any manual override on this rung to `hard`
-  (`ReviewTransitionEngine.resolveRating`, `:513-516`).
+  are never user-selectable. The checker's verdict can be corrected either
+  way. A "Mark right anyway" manual override exists; the engine remaps any
+  manual override on this rung to `hard`
+  (`ReviewTransitionEngine.resolveRating`, `:513-516`). A graded pass
+  offers "I got it wrong", which submits `again` without an override;
+  `StudyReviewRequestPolicy` records that as a failed, non-clean write so
+  it lowers `writingLevel` like a checker-graded failure.
 - **Engine special-casing**: a required-but-failed writing forces `again`
   (`:517-519`); `StudyReviewRequestPolicy.applyRequestedRating`
   (`core/.../StudyReviewRequestPolicy.kt:37-51`) additionally caps a passing

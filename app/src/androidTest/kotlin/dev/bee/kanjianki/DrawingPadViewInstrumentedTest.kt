@@ -166,14 +166,35 @@ class DrawingPadViewInstrumentedTest {
     }
 
     @Test
-    fun drawingPadBlocksFarStartEvenWhenGuideIsHidden() {
+    fun drawingPadNeverBlocksInkDuringFreeRecall() {
+        for (level in listOf(HintLevel.MINIMAL, HintLevel.BLIND)) {
+            val pad = laidOutPad()
+            val blocked = AtomicInteger()
+            pad.setStrokeBlockedListener { blocked.incrementAndGet() }
+            pad.setGuide(twoStrokeGuide(), HintState(level, 0, 0), false)
+
+            // Far from stroke 1, and more strokes than the guide has.
+            for (stroke in 0 until 3) {
+                val offset = stroke * 10f
+                sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 950f - offset, 950f)
+                sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 960f - offset, 960f)
+                sendTouch(pad, 100L, 140L, MotionEvent.ACTION_UP, 970f - offset, 970f)
+            }
+
+            assertEquals(3, pad.writingSample().strokeCount())
+            assertEquals(0, blocked.get())
+        }
+    }
+
+    @Test
+    fun drawingPadStillBlocksFarStartAtOutlineLevel() {
         val pad = laidOutPad()
         val blocked = AtomicInteger()
         pad.setStrokeBlockedListener { decision ->
             blocked.incrementAndGet()
             assertEquals("Stay close to stroke 1.", decision.message)
         }
-        pad.setGuide(twoStrokeGuide(), HintState(HintLevel.BLIND, 0, 0), false)
+        pad.setGuide(twoStrokeGuide(), HintState(HintLevel.OUTLINE, 0, 0), false)
 
         sendTouch(pad, 100L, 100L, MotionEvent.ACTION_DOWN, 950f, 950f)
         sendTouch(pad, 100L, 120L, MotionEvent.ACTION_MOVE, 960f, 960f)

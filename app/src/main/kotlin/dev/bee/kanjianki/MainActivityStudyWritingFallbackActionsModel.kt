@@ -8,6 +8,8 @@ data class WritingFallbackActionsModel(
     val onManualOverride: Runnable,
     val onPracticeWithGuide: Runnable,
     val manualOverrideLabel: String = dev.bee.kanjianki.core.StudyWritingCopy.manualOverrideLabel(),
+    val rejectPassVisible: Boolean = false,
+    val onRejectPass: Runnable = Runnable {},
 ) {
     companion object {
         fun initial(): WritingFallbackActionsModel {

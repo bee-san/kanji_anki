@@ -79,6 +79,24 @@ class StudyReviewRequestPolicyTest {
     }
 
     @Test
+    fun rejectingAGradedPassIsAFailedWriteButAManualOverrideIsNot() {
+        val session = session("直", true, BridgeScheduler.TASK_WRITE_KANJI)
+        val cleanPass = StudyReviewRequestPolicy.writingOutcome(true, true, StudyRatings.GOOD)
+
+        val rejected = StudyReviewRequestPolicy.from(session, cleanPass, 0, StudyRatings.AGAIN, false)
+
+        assertEquals(StudyRatings.AGAIN, rejected.ratingCode())
+        assertFalse(rejected.request().writingPassed)
+        assertFalse(rejected.request().writingClean)
+        assertFalse(rejected.request().manualOverride)
+
+        val overridden = StudyReviewRequestPolicy.from(session, cleanPass, 0, StudyRatings.AGAIN, true)
+
+        assertTrue(overridden.request().writingPassed)
+        assertTrue(overridden.request().writingClean)
+    }
+
+    @Test
     fun defaultsUnknownRatingsToAgain() {
         val writingSession = session("迷", true, BridgeScheduler.TASK_WRITE_KANJI)
 

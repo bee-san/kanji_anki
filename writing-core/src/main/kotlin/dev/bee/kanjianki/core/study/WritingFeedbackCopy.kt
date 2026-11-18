@@ -40,11 +40,9 @@ class WritingFeedbackCopy private constructor() {
                         "Copy the faint outline; the current stroke is emphasized.",
                         "薄い輪郭を写しましょう。現在の一画が強調されています。"
                     )
-                    HintLevel.MINIMAL -> localizedText(
-                        "Write with only the current stroke hinted, then check.",
-                        "現在の一画だけをヒントに書いてから確認しましょう。"
-                    )
-                    HintLevel.BLIND -> localizedText(
+                    HintLevel.MINIMAL,
+                    HintLevel.BLIND,
+                    -> localizedText(
                         "Write from memory, then check. Use Hint if you are stuck.",
                         "記憶で書いてから確認しましょう。迷ったらヒントを使ってください。"
                     )
