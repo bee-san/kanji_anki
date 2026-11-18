@@ -187,14 +187,31 @@ conservatively but still months out.
 - **Forecasts:** the completion forecast simulates with one pass per answer
   (no four-answer grade-order search) over a copy-on-write overlay.
 
-## Performance (JVM, desktop)
+## Performance
 
-- **Live answer:** about 4–5 ms (four forward passes plus the search).
-- **Rebuild:** about 0.7–1 ms per review. A phone is expected to be several
-  times slower; measure on the emulator before release.
-- **Forecast:** a 200-item, two-year completion forecast takes about 0.3 s.
-- **Storage:** about 3 KB per card state (int8), 1.5 KB per note, and about
+`RwkvDeviceBenchmarkInstrumentedTest` (API 35 x86_64 emulator, 2026-11-18)
+uses a synthetic history of 50,000 reviews over 4,976 cards:
+
+| Measure | Result |
+| --- | --- |
+| Weights load and verify | 69 ms |
+| Full rebuild (replay) | 66 s (1.3 ms per review) |
+| Live answer | p50 4.8 ms, p95 5.9 ms |
+| Publishing the rebuilt state | 2.5 s |
+| State database | 26 MB |
+
+The full rebuild only runs after the v34 upgrade or a forced rebuild, in the
+background with a progress status.
+
+On the JVM:
+
+- A live answer takes about 4–5 ms.
+- A 200-item, two-year completion forecast takes about 0.3 s.
+- Storage is about 3 KB per card state (int8), 1.5 KB per note, and about
   60 KB for the shared deck, preset and user streams.
+
+The minified (R8) build loads, verifies and checks the model state in 55 ms.
+The release APK grows by about 1.26 MB, mostly the compressed weights.
 
 ## Known behavior
 
