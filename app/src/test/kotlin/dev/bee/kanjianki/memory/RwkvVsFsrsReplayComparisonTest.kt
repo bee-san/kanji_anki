@@ -35,8 +35,8 @@ import kotlin.math.pow
 class RwkvVsFsrsReplayComparisonTest {
     @Test
     fun compareOnExportedHistory() {
-        val path = System.getProperty("kani.rwkvCompareDb")
-        assumeTrue("set -PrwkvCompareDb to run the comparison", !path.isNullOrBlank() && File(path!!).isFile)
+        val path: String = System.getProperty("kani.rwkvCompareDb").orEmpty()
+        assumeTrue("set -PrwkvCompareDb to run the comparison", path.isNotBlank() && File(path).isFile)
         val engine = RwkvRuntime.engine(ApplicationProvider.getApplicationContext())
         val state = RwkvCollectionState()
         val backfill = RwkvHistoryBackfill()

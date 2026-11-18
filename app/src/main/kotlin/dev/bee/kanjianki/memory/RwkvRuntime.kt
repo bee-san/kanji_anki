@@ -2,6 +2,7 @@ package dev.bee.kanjianki.memory
 
 import android.content.Context
 import dev.bee.kanjianki.AppDebugLog
+import dev.bee.kanjianki.AppLocalStoreFactory
 import dev.bee.kanjianki.core.LocalDayPolicy
 import dev.bee.kanjianki.core.RwkvDays
 import dev.bee.kanjianki.core.RwkvMemoryModel
@@ -84,30 +85,37 @@ internal object RwkvRuntime {
     fun dayOffsetOf(millis: Long): Long = RwkvDays.fromDayStart(LocalDayPolicy.localDayStart(millis))
 
     /**
-     * True when reviews can schedule now. Call from a background thread: when
-     * the state has not been checked yet this checks it synchronously (a
-     * metadata query, plus loading the weights once), so the first answer
-     * after start-up is not dropped just because the background check has not
-     * run. A state that needs rebuilding starts the rebuild and returns false.
+     * True when reviews can schedule now. Call from a background thread with
+     * the caller's open store.
+     *
+     * When the cached status is not [Status.Ready], this checks the persisted
+     * metadata synchronously (a metadata query, plus loading the weights once).
+     * The metadata is authoritative: migration, a manual rebuild and an undo
+     * the journal could not reverse all set `needs_rebuild`, and only a
+     * published rebuild clears it, while the review's state-version
+     * compare-and-swap guards against a concurrent publish. So an answer is
+     * never dropped just because the background check has not finished, or
+     * failed earlier. A state that needs rebuilding starts the rebuild and
+     * returns false.
      */
     fun readyNow(context: Context, store: LocalStore): Boolean {
         if (isReady()) {
             return true
         }
         attach(context)
-        if (!running.get() && status.value !is Status.Failed) {
-            val ready = runCatching {
-                engine()
-                store.rwkvStateIsReady()
-            }.getOrDefault(false)
-            if (ready && !running.get()) {
-                mutableStatus.compareAndSet(status.value, Status.Ready)
-                if (isReady()) {
-                    return true
-                }
+        val ready = runCatching {
+            engine()
+            store.rwkvStateIsReady()
+        }.onFailure { AppDebugLog.logError("RWKV readiness check failed", it) }
+            .getOrDefault(false)
+        if (ready) {
+            val current = status.value
+            if (current !is Status.Rebuilding) {
+                mutableStatus.compareAndSet(current, Status.Ready)
             }
+            return true
         }
-        ensureReady(context, store)
+        ensureReady(context)
         return false
     }
 
@@ -117,25 +125,36 @@ internal object RwkvRuntime {
     }
 
     /**
+     * Opens the database for background checks and rebuilds. The runtime owns
+     * (and closes) that store, so an activity closing its own store on destroy,
+     * for example on rotation, cannot cut a rebuild short.
+     */
+    @Volatile
+    internal var storeFactory: (Context) -> LocalStore = { AppLocalStoreFactory.create(it) }
+
+    /**
      * Checks the persisted state and, if it is not current, rebuilds it in the
      * background. Cheap and idempotent once ready.
      */
-    fun ensureReady(context: Context, store: LocalStore) {
+    fun ensureReady(context: Context) {
         attach(context)
         if (isReady() || !running.compareAndSet(false, true)) {
             return
         }
+        val application = context.applicationContext
         executor.execute {
             try {
                 mutableStatus.value = Status.Checking
                 val started = android.os.SystemClock.elapsedRealtime()
                 val engine = engine()
                 var rebuiltEvents = -1
-                if (!store.rwkvStateIsReady()) {
-                    mutableStatus.value = Status.Rebuilding(0, 0)
-                    RwkvStateRebuilder(store, engine).rebuild { done, total ->
-                        mutableStatus.value = Status.Rebuilding(done, total)
-                        rebuiltEvents = total
+                storeFactory(application).use { store ->
+                    if (!store.rwkvStateIsReady()) {
+                        mutableStatus.value = Status.Rebuilding(0, 0)
+                        RwkvStateRebuilder(store, engine).rebuild { done, total ->
+                            mutableStatus.value = Status.Rebuilding(done, total)
+                            rebuiltEvents = total
+                        }
                     }
                 }
                 mutableStatus.value = Status.Ready
@@ -164,22 +183,23 @@ internal object RwkvRuntime {
     private const val LOG_TAG = "KaniRwkv"
 
     /** Re-checks after something may have invalidated the state (undo, stale commit). */
-    fun recheck(context: Context, store: LocalStore) {
+    fun recheck(context: Context) {
         if (status.value == Status.Ready) {
             mutableStatus.value = Status.Unchecked
         }
-        ensureReady(context, store)
+        ensureReady(context)
     }
 
     /** Throws the state away and rebuilds it from the review history. */
-    fun requestRebuild(context: Context, store: LocalStore) {
+    fun requestRebuild(context: Context) {
         attach(context)
+        val application = context.applicationContext
         executor.execute {
-            runCatching { store.markRwkvStateForRebuild() }
+            runCatching { storeFactory(application).use { it.markRwkvStateForRebuild() } }
                 .onFailure { AppDebugLog.logError("RWKV rebuild request failed", it) }
+            mutableStatus.value = Status.Unchecked
+            ensureReady(application)
         }
-        executor.execute { mutableStatus.value = Status.Unchecked }
-        executor.execute { ensureReady(context, store) }
     }
 
     /**

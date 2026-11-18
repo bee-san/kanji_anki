@@ -69,6 +69,46 @@ class RwkvStateStoreTest {
     }
 
     @Test
+    fun aFailedBackgroundCheckNeverDropsAnAnswerAgainstAReadyState() {
+        val realFactory = RwkvRuntime.storeFactory
+        try {
+            RwkvRuntime.storeFactory = { throw IllegalStateException("database closed") }
+            RwkvRuntime.ensureReady(context)
+            awaitStatus { it is RwkvRuntime.Status.Failed }
+        } finally {
+            RwkvRuntime.storeFactory = realFactory
+        }
+        assertTrue("the persisted metadata decides, not a stale failure", RwkvRuntime.readyNow(context, store))
+        assertEquals(RwkvRuntime.Status.Ready, RwkvRuntime.status.value)
+    }
+
+    @Test
+    fun aRebuildOwnsItsStoreSoClosingTheCallersStoreCannotCutItShort() {
+        val item = persist(legacyReviewItem("痛"))
+        assertTrue(answer(item, "good", NOW, "t1").commit.applied())
+        store.markRwkvStateForRebuild()
+        RwkvRuntime.resetForTests()
+
+        assertFalse(RwkvRuntime.readyNow(context, store))
+        store.close() // the activity is destroyed while the rebuild runs
+        awaitStatus { it == RwkvRuntime.Status.Ready || it is RwkvRuntime.Status.Failed }
+        assertEquals(RwkvRuntime.Status.Ready, RwkvRuntime.status.value)
+
+        store = LocalStore(context)
+        assertTrue(store.rwkvStateIsReady())
+        val ids = RwkvStreamKeys.idsFor("痛", CoreSkill.RECOGNITION, item.answerSignature)
+        assertEquals(1L, store.loadRwkvCollection().histories.getValue(ids.card).answers)
+    }
+
+    private fun awaitStatus(done: (RwkvRuntime.Status) -> Boolean) {
+        val deadline = System.currentTimeMillis() + 30_000L
+        while (!done(RwkvRuntime.status.value)) {
+            check(System.currentTimeMillis() < deadline) { "status stuck at ${RwkvRuntime.status.value}" }
+            Thread.sleep(10L)
+        }
+    }
+
+    @Test
     fun aReviewPersistsItsModelInputsAndStateInItsTransaction() {
         val item = persist(legacyReviewItem("痛"))
         val applied = answer(item, "good", NOW, "t1")

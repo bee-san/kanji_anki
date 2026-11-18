@@ -76,7 +76,7 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 withUiTrace("kani.startup.retire-fsrs-fit") { RetiredWork.cancel(activity) }
                 // Check (and if needed rebuild) the memory model's state now so
                 // the first Study answer does not wait for it.
-                withUiTrace("kani.startup.memory-model") { RwkvRuntime.ensureReady(activity, activity.store) }
+                withUiTrace("kani.startup.memory-model") { RwkvRuntime.ensureReady(activity) }
             }
         }
     }

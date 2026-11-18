@@ -611,7 +611,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             activity.studySessionTracker.rollbackPreparedTask(preparedTask)
             // A stale commit may mean the memory-model state moved (or was
             // marked for rebuild) underneath this answer: re-check it.
-            RwkvRuntime.recheck(activity, activity.store)
+            RwkvRuntime.recheck(activity)
             logReviewEvent(
                 "review event=stale-suppressed source=${diagnostics.source} " +
                     "token_id=${diagnostics.tokenId} phase=commit",
@@ -676,7 +676,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             refreshWidgetAfterPersistedReviewMutation()
             // Undo normally reverses the memory model from its journal; when it
             // could not, the state was marked for rebuild. Re-check either way.
-            RwkvRuntime.recheck(activity, activity.store)
+            RwkvRuntime.recheck(activity)
             // Undo deletes the persisted review token and restores the pre-review
             // item, including that token. Make the restored card genuinely
             // answerable again instead of letting the activity-lifetime gate treat

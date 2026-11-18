@@ -23,7 +23,7 @@ internal data class SettingsMemoryModelPanelModel(
 
 internal class MainActivitySettingsMemoryModel(private val activity: MainActivitySettings) {
     fun panelModel(): SettingsMemoryModelPanelModel {
-        RwkvRuntime.ensureReady(activity, activity.store)
+        RwkvRuntime.ensureReady(activity)
         return SettingsMemoryModelPanelModel(
             title = MemoryModelTextCopy.title(),
             body = MemoryModelTextCopy.body(),
@@ -36,7 +36,7 @@ internal class MainActivitySettingsMemoryModel(private val activity: MainActivit
     }
 
     private fun rebuild() {
-        RwkvRuntime.requestRebuild(activity, activity.store)
+        RwkvRuntime.requestRebuild(activity)
         Toast.makeText(activity, MemoryModelTextCopy.rebuildStartedToast(), Toast.LENGTH_SHORT).show()
     }
 }
