@@ -249,7 +249,7 @@ internal class MainActivityStudyDoneActions(private val home: MainActivityStudy)
                 loadExisting = { kanji -> home.store.studyItemsForKanji(kanji) },
                 countAvailable = { loadData ->
                     val now = System.currentTimeMillis()
-                    BridgeScheduler.withWeights(home.store.schedulerFsrsWeights()).countExtraNewCardsAvailable(
+                    BridgeScheduler().countExtraNewCardsAvailable(
                         loadData.rows,
                         loadData.existing,
                         home.settings(),

@@ -253,6 +253,7 @@ class WorkflowAnalysisIntegrityTest(unittest.TestCase):
         for expected in (
             "./gradlew clean",
             ":fsrs-java:compileKotlin",
+            ":rwkv:compileKotlin",
             ":core:compileKotlin",
             ":domain:compileKotlin",
             ":sync-domain:compileKotlin",
@@ -343,6 +344,7 @@ class AndroidReleaseWorkflowTest(unittest.TestCase):
         tests_step = tests_step.split("Build signed release APK", maxsplit=1)[0]
         for task in (
             ":fsrs-java:test",
+            ":rwkv:test",
             ":core:test",
             ":domain:test",
             ":sync-domain:test",
@@ -534,6 +536,7 @@ class CiPathFilterCoverageTest(unittest.TestCase):
         "app",
         "core",
         "fsrs-java",
+        "rwkv",
         "domain",
         "sync-domain",
         "writing-core",

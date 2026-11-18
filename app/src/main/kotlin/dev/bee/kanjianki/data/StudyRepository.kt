@@ -62,7 +62,6 @@ data class StudyQueueSnapshot(
     val latestSuccessfulSyncAtMillis: Long?,
     val studyLadder: RecordsBase.StudyLadderSettings,
     val schedulerParameters: RecordsSchedulerModels.SchedulerParameters,
-    val schedulerFsrsWeights: List<Double>?,
     val learningSteps: RecordsSchedulerModels.LearningStepSettings,
     val adaptiveWorkload: AdaptiveWorkloadSnapshot,
     val studyAheadMinutes: Int,

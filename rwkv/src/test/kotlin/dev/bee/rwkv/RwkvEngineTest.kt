@@ -188,8 +188,23 @@ class RwkvEngineTest {
         apply(applied, snapshot.delta())
         assertStatesEqual(direct, applied)
 
-        apply(applied, snapshot.undoDelta())
+        // Undo goes through the journal's binary form.
+        val journaled = RwkvUndoCodec.decode(RwkvUndoCodec.encode(snapshot.undoDelta(), engine::precisionFor))
+        apply(applied, journaled)
         assertStatesEqual(state, applied)
+
+        // A first answer creates keys; undo removes them again.
+        val fresh = RwkvCollectionState()
+        val freshSnapshot = snapshotOf(fresh, idsFor(4))
+        engine.answer(freshSnapshot, idsFor(4), answer, 0.9f, 36_500)
+        val freshUndo = RwkvUndoCodec.decode(RwkvUndoCodec.encode(freshSnapshot.undoDelta(), engine::precisionFor))
+        assertTrue(freshUndo.states.values.all { it == null })
+        apply(fresh, freshSnapshot.delta())
+        apply(fresh, freshUndo)
+        assertStatesEqual(RwkvCollectionState(), fresh)
+        for (corrupt in listOf(ByteArray(3), byteArrayOf(0x4b, 0x52, 0x55, 0x31, 0, 0, 0, 1))) {
+            assertThrows { RwkvUndoCodec.decode(corrupt) }
+        }
     }
 
     @Test
@@ -200,6 +215,29 @@ class RwkvEngineTest {
             fail("read outside the footprint")
         } catch (_: IllegalStateException) {
         }
+    }
+
+    @Test
+    fun aClockMovingBackStaysFinite() {
+        val state = trainedState()
+        val ids = idsFor(3)
+        // Dated well before the collection's latest review (timezone change,
+        // wrong device clock): the day-gap feature must not go NaN.
+        val outcome = engine.answer(state, ids, RwkvAnswer(3, 2_000, BASE_MILLIS - 30 * DAY, BASE_DAY - 30, 2), 0.9f, 36_500)
+        assertTrue(outcome.s90Days.isFinite() && outcome.s90Days < 36_500f)
+        val next = engine.answer(state, idsFor(5), RwkvAnswer(3, 2_000, BASE_MILLIS + 41 * DAY, BASE_DAY + 41, 2), 0.9f, 36_500)
+        assertTrue(next.s90Days < 36_500f)
+    }
+
+    @Test
+    fun nonFiniteStepsAreDetected() {
+        val step = RwkvFixtures.model.step(FloatArray(RwkvArchitecture.CARD_FEATURES), arrayOfNulls(RwkvArchitecture.STREAMS))
+        assertTrue(step.isFinite())
+        val poisoned = RwkvStep(RwkvCurve(floatArrayOf(Float.NaN, 0f, 0f), FloatArray(3), FloatArray(3)), step.buttonProbabilities, step.next)
+        assertFalse(poisoned.isFinite())
+        val badState = step.next.copyOf()
+        badState[0] = RwkvModuleState(listOf(RwkvLayerState(FloatArray(64) { Float.NaN }, FloatArray(1024), null)))
+        assertFalse(RwkvStep(step.curve, step.buttonProbabilities, badState).isFinite())
     }
 
     @Test

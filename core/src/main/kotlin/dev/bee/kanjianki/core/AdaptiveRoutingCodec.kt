@@ -160,7 +160,7 @@ object AdaptiveRouteStateCodec {
  * It deliberately accepts unknown object fields so newer writers remain
  * readable by older app versions, while rejecting malformed/trailing input.
  */
-private object CompactJson {
+internal object CompactJson {
     private const val MAX_INPUT_CHARS = 262_144
     private const val MAX_DEPTH = 8
 

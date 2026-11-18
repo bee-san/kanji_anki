@@ -6,7 +6,6 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
 import dev.bee.kanjianki.core.StoreResult
-import dev.bee.kanjianki.data.CommitFsrsFitCommand
 import dev.bee.kanjianki.data.FinishLegacyRepairCommand
 import dev.bee.kanjianki.data.HomeKanjiDetailSnapshot
 import dev.bee.kanjianki.data.HomeRepository
@@ -194,20 +193,13 @@ class FakeStatsRepository : StatsRepository {
 class FakeSettingsRepository : SettingsRepository {
     var loadHandler: suspend () -> StoreResult<SettingsSnapshot> = unconfigured0("load")
     var saveHandler: suspend (SettingsSaveCommand) -> StoreResult<Unit> = { StoreResult.ok(Unit) }
-    var fitHandler: suspend (CommitFsrsFitCommand) -> StoreResult<Boolean> = { StoreResult.ok(false) }
     val saveCommands = mutableListOf<SettingsSaveCommand>()
-    val fitCommands = mutableListOf<CommitFsrsFitCommand>()
 
     override suspend fun load(): StoreResult<SettingsSnapshot> = loadHandler()
 
     override suspend fun save(command: SettingsSaveCommand): StoreResult<Unit> {
         saveCommands += command
         return saveHandler(command)
-    }
-
-    override suspend fun commitFsrsFit(command: CommitFsrsFitCommand): StoreResult<Boolean> {
-        fitCommands += command
-        return fitHandler(command)
     }
 }
 

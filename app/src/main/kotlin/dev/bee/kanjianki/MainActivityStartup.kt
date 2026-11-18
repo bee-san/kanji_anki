@@ -11,7 +11,8 @@ import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.sync.AutoSyncScheduler
 import dev.bee.kanjianki.update.AutoUpdateScheduler
-import dev.bee.kanjianki.fsrs.FsrsFitScheduler
+import dev.bee.kanjianki.memory.RetiredWork
+import dev.bee.kanjianki.memory.RwkvRuntime
 
 internal fun focusKanjiDetailFromIntent(intent: Intent?): String? = TextUtil.normalizeSingleKanji(
     runCatching { intent?.getStringExtra(MainActivityBase.EXTRA_OPEN_KANJI_DETAIL) }.getOrNull(),
@@ -70,7 +71,12 @@ internal class MainActivityStartup(private val activity: MainActivityBase) {
                 withUiTrace("kani.startup.auto-sync-scheduler") { AutoSyncScheduler.schedule(activity) }
                 withUiTrace("kani.startup.auto-update-scheduler") { AutoUpdateScheduler.schedule(activity) }
                 withUiTrace("kani.startup.backup-scheduler") { DatabaseBackupScheduler.schedule(activity) }
-                withUiTrace("kani.startup.fsrs-fit-scheduler") { FsrsFitScheduler.schedule(activity) }
+                // The FSRS weight fitter is retired with FSRS: cancel any periodic
+                // or one-off fit an earlier version enqueued.
+                withUiTrace("kani.startup.retire-fsrs-fit") { RetiredWork.cancel(activity) }
+                // Check (and if needed rebuild) the memory model's state now so
+                // the first Study answer does not wait for it.
+                withUiTrace("kani.startup.memory-model") { RwkvRuntime.ensureReady(activity, activity.store) }
             }
         }
     }

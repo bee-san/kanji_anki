@@ -80,7 +80,10 @@ internal class StatsPrecomputeStore(
             return store.choiceWrongPickCounts(nowMillis)
         }
 
-        override fun ladderForecast(db: SQLiteDatabase, nowMillis: Long): LadderCompletionForecastPolicy.Forecast {
+        override fun ladderForecast(db: SQLiteDatabase, nowMillis: Long): LadderCompletionForecastPolicy.Forecast? {
+            // The forecast simulates with the memory model over a scratch copy
+            // of its state; while that state is not ready there is no forecast.
+            val memoryModel = MemoryModelSimulations.simulationModel(store) ?: return null
             return LadderCompletionForecastPolicy.forecast(
                 rows = store.dashboardRows(),
                 startingItems = store.studyItems(),
@@ -89,7 +92,7 @@ internal class StatsPrecomputeStore(
                 learningSettings = store.learningStepSettings(),
                 ladder = store.studyLadderSettings(),
                 nowMillis = nowMillis,
-                weights = store.schedulerFsrsWeights(),
+                memoryModel = memoryModel,
             )
         }
     }

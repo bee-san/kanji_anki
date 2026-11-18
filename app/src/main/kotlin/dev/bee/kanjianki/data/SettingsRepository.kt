@@ -13,8 +13,6 @@ interface SettingsRepository {
     suspend fun load(): StoreResult<SettingsSnapshot>
 
     suspend fun save(command: SettingsSaveCommand): StoreResult<Unit>
-
-    suspend fun commitFsrsFit(command: CommitFsrsFitCommand): StoreResult<Boolean>
 }
 
 data class SettingsSnapshot(
@@ -24,7 +22,6 @@ data class SettingsSnapshot(
     val studyAheadMinutes: Int,
     val studyLadder: RecordsBase.StudyLadderSettings,
     val schedulerParameters: RecordsSchedulerModels.SchedulerParameters,
-    val schedulerFsrsWeights: List<Double>?,
     val learningSteps: RecordsSchedulerModels.LearningStepSettings,
     val themeChoice: KaniThemeChoice,
     val reminder: ReminderSettingsSnapshot,
@@ -32,9 +29,7 @@ data class SettingsSnapshot(
     val autoSync: AutoSyncSettingsSnapshot,
     val autoUpdate: AutoUpdateStatusSnapshot,
     val debugLogEnabled: Boolean,
-    val fsrsPersonalizationEnabled: Boolean,
     val flashcardSwipeGestureEnabled: Boolean,
-    val fsrsFitSummaryJson: String,
     val updateCheckFailedAtMillis: Long,
     val installPermissionPromptShown: Boolean,
     val installPermissionPromptLastVersion: String,
@@ -170,24 +165,9 @@ sealed interface SettingsSaveCommand {
         val value: RecordsSchedulerModels.SchedulerParameters,
     ) : SettingsSaveCommand
 
-    data class SchedulerFsrsWeights(val weights: List<Double>?) : SettingsSaveCommand
-
-    data class FsrsPersonalizationEnabled(val enabled: Boolean) : SettingsSaveCommand
-
     data class FlashcardSwipeGestureEnabled(val enabled: Boolean) : SettingsSaveCommand
-
-    data class FsrsFitSummary(val summaryJson: String) : SettingsSaveCommand
-
-    data object ResetFsrsPersonalization : SettingsSaveCommand
 
     data class LearningSteps(
         val value: RecordsSchedulerModels.LearningStepSettings,
     ) : SettingsSaveCommand
 }
-
-data class CommitFsrsFitCommand(
-    val weightsToAdopt: List<Double>?,
-    val summaryJson: String,
-    val disabledSummaryJson: String?,
-    val preserveExistingWeights: Boolean,
-)

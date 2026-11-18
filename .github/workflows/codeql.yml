@@ -9,6 +9,7 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'rwkv/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
@@ -71,6 +72,8 @@ jobs:
           ./gradlew clean \
             :fsrs-java:compileKotlin \
             :fsrs-java:compileJava \
+            :rwkv:compileKotlin \
+            :rwkv:compileJava \
             :core:compileKotlin \
             :core:compileJava \
             :domain:compileKotlin \

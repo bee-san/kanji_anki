@@ -74,6 +74,8 @@ class ReviewCommitCommand(
     @JvmField val taskTiming: ReviewTaskTiming? = null,
     @JvmField val choiceLog: ReviewChoiceLog? = null,
     @JvmField val similarChoice: SimilarChoiceCommit? = null,
+    /** The memory model's writes for this review (null only for callers that never consulted it). */
+    @JvmField val memory: RwkvReviewCommit? = null,
 ) {
     @JvmField
     val expectedRevision: Long = beforeReview.schedulerRevision

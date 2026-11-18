@@ -20,7 +20,6 @@ internal class SqliteSettingsRepository(
                 studyAheadMinutes = store.studyAheadMinutes(),
                 studyLadder = store.studyLadderSettings(),
                 schedulerParameters = store.schedulerParameters(),
-                schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
                 learningSteps = store.learningStepSettings(),
                 themeChoice = store.appThemeChoice(),
                 reminder = store.reminderSettings().toRepositorySnapshot(),
@@ -28,9 +27,7 @@ internal class SqliteSettingsRepository(
                 autoSync = store.autoSyncSettings().toRepositorySnapshot(),
                 autoUpdate = store.autoUpdateStatus().toRepositorySnapshot(),
                 debugLogEnabled = store.debugLogEnabled(),
-                fsrsPersonalizationEnabled = store.fsrsPersonalizationEnabled(),
                 flashcardSwipeGestureEnabled = store.flashcardSwipeGestureEnabled(),
-                fsrsFitSummaryJson = store.fsrsFitSummaryJson(),
                 updateCheckFailedAtMillis = store.updateCheckFailedAt(),
                 installPermissionPromptShown = store.installPermissionPromptShown(),
                 installPermissionPromptLastVersion = store.installPermissionPromptLastVersion(),
@@ -87,25 +84,10 @@ internal class SqliteSettingsRepository(
                 store.recordInstallPermissionPrompted(command.version)
             is SettingsSaveCommand.DebugLogEnabled -> store.saveDebugLogEnabled(command.enabled)
             is SettingsSaveCommand.SchedulerParameters -> store.saveSchedulerParameters(command.value)
-            is SettingsSaveCommand.SchedulerFsrsWeights ->
-                store.saveSchedulerFsrsWeights(command.weights?.toDoubleArray())
-            is SettingsSaveCommand.FsrsPersonalizationEnabled ->
-                store.saveFsrsPersonalizationEnabled(command.enabled)
             is SettingsSaveCommand.FlashcardSwipeGestureEnabled ->
                 store.saveFlashcardSwipeGestureEnabled(command.enabled)
-            is SettingsSaveCommand.FsrsFitSummary -> store.saveFsrsFitSummaryJson(command.summaryJson)
-            SettingsSaveCommand.ResetFsrsPersonalization -> store.resetFsrsPersonalization()
             is SettingsSaveCommand.LearningSteps -> store.saveLearningStepSettings(command.value)
         }
-    }
-
-    override suspend fun commitFsrsFit(command: CommitFsrsFitCommand) = safeStoreCall {
-        store.commitFsrsFitOutcome(
-            command.weightsToAdopt?.toDoubleArray(),
-            command.summaryJson,
-            command.disabledSummaryJson,
-            command.preserveExistingWeights,
-        )
     }
 
     private fun saveSync(settings: RecordsSyncModels.Settings, tagRepairedCards: Boolean) {

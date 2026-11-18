@@ -130,7 +130,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         val settings = withStudyLoadProbe("settings") { study.settings() }
         val studyAheadMillis = withStudyLoadProbe("studyAheadMillis") { study.studyAheadMillis() }
         val scheduler = withStudyLoadProbe("scheduler") {
-            BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+            BridgeScheduler()
         }
         val studyItemCount = withStudyLoadProbe("studyNowCount") {
             StudyNowCountPolicy.countSeeded(
@@ -437,7 +437,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     }
 
     private fun pendingRepairItem(saved: StudyPendingAnswerSnapshot): RecordsStudyModels.StudyItem? {
-        return BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+        return BridgeScheduler()
             .newTargetedStudyItem(
                 saved.kanji,
                 System.currentTimeMillis(),
@@ -543,7 +543,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             study.adaptivePlan(rows, seeded, now)
         }
         val settings = study.settings()
-        val scheduler = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+        val scheduler = BridgeScheduler()
         val generalStudyItemCount = StudyNowCountPolicy.countSeeded(
             StudyNowCountPolicy.SeededCountRequest(
                 seededItems = seeded,
@@ -642,7 +642,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 study.store::saveSimilarWritingRepair,
             )
             val activeRepair = active.repair
-            val item = BridgeScheduler.withWeights(study.store.schedulerFsrsWeights())
+            val item = BridgeScheduler()
                 .newTargetedStudyItem(activeRepair.repairKanji, now, ladder)
             val session = RecordsSchedulerModels.StudySession(
                 item.withToken(active.token),

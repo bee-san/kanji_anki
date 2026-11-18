@@ -26,7 +26,11 @@ import dev.bee.kanjianki.data.StudyStatsStore
 import dev.bee.kanjianki.data.ReviewChoiceLog
 import dev.bee.kanjianki.data.ReviewCommitDisposition
 import dev.bee.kanjianki.data.ReviewCommitResult
+import dev.bee.kanjianki.data.RwkvReviewCommit
 import dev.bee.kanjianki.data.SimilarChoiceCommit
+import dev.bee.kanjianki.memory.MemoryModelCopy
+import dev.bee.kanjianki.memory.RwkvReviewBinding
+import dev.bee.kanjianki.memory.RwkvRuntime
 import dev.bee.kanjianki.widget.KaniWidgetUpdater
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -534,10 +538,28 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         if (activity.store.hasConsumedToken(request.token)) {
             return reconcilePersistedDuplicate(diagnostics, "persistence")
         }
+        // Scheduling needs the memory model's state to cover the whole review
+        // history. While it is being (re)built the answer is handed back for a
+        // retry rather than scheduled from an incomplete state.
+        if (!RwkvRuntime.readyNow(activity, activity.store)) {
+            showToast(MemoryModelCopy.preparingMessage(RwkvRuntime.status.value))
+            logReviewEvent(
+                "review event=dropped source=${diagnostics.source} token_id=${diagnostics.tokenId} reason=memory-model-not-ready",
+            )
+            return ReviewWriteDisposition.RETRYABLE_DROP
+        }
         val consumed = HashSet<String>()
         val now = System.currentTimeMillis()
         val parameters = activity.store.schedulerParameters()
-        val scheduler = BridgeScheduler.withWeights(activity.store.schedulerFsrsWeights())
+        val memory = RwkvReviewBinding.forItem(
+            engine = RwkvRuntime.engine(activity),
+            store = activity.store,
+            item = item,
+            nowMillis = now,
+            durationMillis = activity.studySessionTracker.peekActiveElapsedMillis(activity.sessionTaskKey(session)),
+            dayOffsetOf = RwkvRuntime::dayOffsetOf,
+        )
+        val scheduler = BridgeScheduler.withMemoryModel(memory.model)
         val sessionRank = session.row?.jitenRank
         val effectiveParameters = parameters.withTargetRetention(
             parameters.targetRetentionForRank(sessionRank)
@@ -576,6 +598,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 preparedTask?.timing,
                 choiceLog,
                 similarChoice,
+                memory.commit(),
             )
         } catch (error: Throwable) {
             activity.studySessionTracker.rollbackPreparedTask(preparedTask)
@@ -586,6 +609,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 return reconcilePersistedDuplicate(diagnostics, "commit")
             }
             activity.studySessionTracker.rollbackPreparedTask(preparedTask)
+            // A stale commit may mean the memory-model state moved (or was
+            // marked for rebuild) underneath this answer: re-check it.
+            RwkvRuntime.recheck(activity, activity.store)
             logReviewEvent(
                 "review event=stale-suppressed source=${diagnostics.source} " +
                     "token_id=${diagnostics.tokenId} phase=commit",
@@ -648,6 +674,9 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
                 return@runReviewWrite
             }
             refreshWidgetAfterPersistedReviewMutation()
+            // Undo normally reverses the memory model from its journal; when it
+            // could not, the state was marked for rebuild. Re-check either way.
+            RwkvRuntime.recheck(activity, activity.store)
             // Undo deletes the persisted review token and restores the pre-review
             // item, including that token. Make the restored card genuinely
             // answerable again instead of letting the activity-lifetime gate treat
@@ -674,6 +703,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
         taskTiming: dev.bee.kanjianki.data.ReviewTaskTiming?,
         choiceLog: ReviewChoiceLog?,
         similarChoice: SimilarChoiceCommit?,
+        memory: RwkvReviewCommit,
     ): ReviewCommitResult {
         val item = session.item ?: return ReviewCommitResult.stale()
         val commit = StudyReviewActions.saveAppliedReview(
@@ -697,6 +727,7 @@ internal class MainActivityStudyReviewFlow(private val activity: MainActivityStu
             taskTiming,
             choiceLog,
             similarChoice,
+            memory,
         )
         if (commit.disposition == ReviewCommitDisposition.APPLIED && commit.item != null) {
             activity.studyUndoState.capture(

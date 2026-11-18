@@ -262,27 +262,13 @@ class RepositoryAdaptersTest {
             SettingsSaveCommand.InstallPermissionPrompted("v9.9.9"),
             SettingsSaveCommand.DebugLogEnabled(true),
             SettingsSaveCommand.SchedulerParameters(initial.schedulerParameters),
-            SettingsSaveCommand.SchedulerFsrsWeights(null),
-            SettingsSaveCommand.FsrsPersonalizationEnabled(true),
             SettingsSaveCommand.FlashcardSwipeGestureEnabled(false),
-            SettingsSaveCommand.FsrsFitSummary("{\"status\":\"tested\"}"),
-            SettingsSaveCommand.ResetFsrsPersonalization,
             SettingsSaveCommand.LearningSteps(initial.learningSteps),
         )
 
         commands.forEach { command ->
             assertTrue("failed to save $command", repository.save(command).isOk())
         }
-        assertTrue(
-            repository.commitFsrsFit(
-                CommitFsrsFitCommand(
-                    weightsToAdopt = null,
-                    summaryJson = "{\"status\":\"not_adopted\"}",
-                    disabledSummaryJson = null,
-                    preserveExistingWeights = true,
-                ),
-            ).isOk(),
-        )
 
         val actual = repository.load().valueOrNull()
         assertTrue(actual?.debugLogEnabled == true)

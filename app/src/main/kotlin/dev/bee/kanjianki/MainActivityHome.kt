@@ -225,7 +225,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
                         timing = StudyNowCountCoordinator.Timing(now, startOfDay(now), studyAheadMillis()),
                         mode = StudyNowCountCoordinator.Mode(homePlan, false),
                         pipeline = StudyNowCountCoordinator.Pipeline(
-                            scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+                            scheduler = BridgeScheduler(),
                             annotator = store::annotateSimilarKanjiAvailability,
                             replanner = { seeded ->
                                 homeStudyPlanProvider.adaptivePlan(

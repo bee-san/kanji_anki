@@ -8,6 +8,7 @@ import dev.bee.kanjianki.data.ReviewCommitCommand
 import dev.bee.kanjianki.data.ReviewCommitDisposition
 import dev.bee.kanjianki.data.ReviewCommitResult
 import dev.bee.kanjianki.data.ReviewTaskTiming
+import dev.bee.kanjianki.data.RwkvReviewCommit
 import dev.bee.kanjianki.data.SimilarChoiceCommit
 
 internal object StudyReviewActions {
@@ -31,6 +32,7 @@ internal object StudyReviewActions {
         null,
         null,
         null,
+        null,
     )
 
     @JvmStatic
@@ -45,10 +47,12 @@ internal object StudyReviewActions {
         taskTiming: ReviewTaskTiming?,
         choiceLog: ReviewChoiceLog?,
         similarChoice: SimilarChoiceCommit?,
+        memory: RwkvReviewCommit?,
     ): ReviewCommitResult {
-        // One transaction for the item + review-log row: process death between
-        // them would advance scheduling with no review_log row (lost review;
-        // token wrongly retryable while the item already advanced).
+        // One transaction for the item + review-log row + memory-model state:
+        // process death between them would advance scheduling with no
+        // review_log row (lost review; token wrongly retryable while the item
+        // already advanced) or desynchronize the model from the history.
         val commit = writer.commitReview(
             ReviewCommitCommand(
                 afterReview = result.item,
@@ -59,6 +63,7 @@ internal object StudyReviewActions {
                 taskTiming = taskTiming,
                 choiceLog = choiceLog,
                 similarChoice = similarChoice,
+                memory = memory,
             )
         )
         if (commit.disposition != ReviewCommitDisposition.APPLIED || commit.item == null) {

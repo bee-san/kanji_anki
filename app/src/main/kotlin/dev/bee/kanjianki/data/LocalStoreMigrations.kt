@@ -22,6 +22,7 @@ internal object LocalStoreMigrations {
         upgradeThroughThirtyOne(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyTwo(db, oldVersion, targetVersion, hooks)
         upgradeThroughThirtyThree(db, oldVersion, targetVersion, hooks)
+        upgradeThroughThirtyFour(db, oldVersion, targetVersion, hooks)
     }
 
     private fun upgradeThroughEight(
@@ -318,6 +319,24 @@ internal object LocalStoreMigrations {
             // Collection-wide Missing Kanji state is independent of the
             // configured-model sync mirror and stores no raw note fields.
             hooks.createMissingKanjiTables(db)
+        }
+    }
+
+    private fun upgradeThroughThirtyFour(
+        db: SQLiteDatabase,
+        oldVersion: Int,
+        targetVersion: Int,
+        hooks: LocalStoreMigrationHooks,
+    ) {
+        if (shouldRun(oldVersion, targetVersion, 34)) {
+            // RWKV memory model. Additive: every FSRS-era column stays, and the
+            // model's state starts empty and marked for a background rebuild
+            // from review_log (mm_seq stays NULL until each row is classified).
+            for (column in RwkvStateStore.REVIEW_LOG_COLUMNS) {
+                hooks.addNullableColumn(db, LocalStoreBase.TABLE_REVIEW_LOG, column, "INTEGER")
+            }
+            RwkvStateStore.createTables(db)
+            RwkvStateStore.initializeAfterMigration(db)
         }
     }
 

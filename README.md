@@ -27,7 +27,7 @@ Kani cures your Kanji blindness by analysing your Anki, locating your hard kanji
 4. Once Kani is sure you know the Kanji, it will unsuspend the card from Anki
 
 Features:
-* FSRS 7
+* RWKV-Curve memory model: a small neural model of memory that reads your whole review history, running entirely on your phone
 * Specially designed to make you spend the least amount of time in app as possible
 * Customised study ladders for each kanji, based on why you fail that kanji
 * Can use your GSM + Subminer data to optimise the algorithm
@@ -39,3 +39,11 @@ If you study vocab with no individual Kanji study but find some Kanji are hard, 
 <img width="472" height="847" alt="image" src="https://github.com/user-attachments/assets/8b62e8a4-b93c-4bff-9348-71dd8c24321c" />
 <img width="416" height="845" alt="image" src="https://github.com/user-attachments/assets/ae7fcf8b-e4a6-4c15-93f4-44b5a2897780" />
 <img width="481" height="847" alt="image" src="https://github.com/user-attachments/assets/4cf4eef9-dd34-497b-9363-eb1f3224e9f9" />
+
+## License
+
+Kani is free software under the GNU Affero General Public License, version 3
+or later (see [LICENSE](LICENSE)). Its memory model is a port of the RWKV
+scheduler from kuma3-anki, an AGPL-3.0-or-later fork of Anki; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for that and every other
+third-party component, including the terms of the bundled model weights.

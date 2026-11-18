@@ -287,7 +287,20 @@ class RwkvEngine @JvmOverloads constructor(
             return
         }
         val real = view.globals
-        val scratch = WarmView(view, real.copy())
+        val scratchGlobals = real.copy().apply {
+            // The burst is its own timeline, usually dated before the
+            // collection's latest review: start its day counters at its first
+            // answer so its day gaps read like a real card's.
+            val firstRaw = answers.first().dayOffset
+            if (firstDayOffset == null) {
+                firstDayOffset = firstRaw
+            }
+            previousDayOffset = firstRaw - firstDayOffset!!
+            today = -1
+            todayReviews = 0
+            todayNewCards = 0
+        }
+        val scratch = WarmView(view, scratchGlobals)
         for (answer in answers) {
             replay(scratch, ids, answer)
         }
@@ -341,6 +354,11 @@ class RwkvEngine @JvmOverloads constructor(
         history: RwkvCardHistory?,
         step: RwkvStep,
     ) {
+        // A non-finite output means a non-finite state; persisting it would
+        // poison every later answer that shares a stream (the user stream is
+        // shared by all). Fail the answer instead: callers treat it as
+        // retryable and nothing is written.
+        check(step.isFinite()) { "RWKV produced a non-finite output for card ${ids.card}" }
         RwkvFeatureBuilder.storeReview(view, input)
         for (stream in 0 until RwkvArchitecture.STREAMS) {
             val precision = when (stream) {

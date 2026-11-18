@@ -9,6 +9,7 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'rwkv/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
@@ -37,6 +38,7 @@ on:
       - 'app/**'
       - 'core/**'
       - 'fsrs-java/**'
+      - 'rwkv/**'
       - 'domain/**'
       - 'sync-domain/**'
       - 'writing-core/**'
@@ -83,10 +85,11 @@ jobs:
               build-logic/build/test-results/**
           - id: jvm
             label: JVM tests and coverage
-            tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :domain:test :domain:jacocoTestReport :domain:jacocoTestCoverageVerification :sync-domain:test :sync-domain:jacocoTestReport :sync-domain:jacocoTestCoverageVerification :writing-core:test :writing-core:jacocoTestReport :writing-core:jacocoTestCoverageVerification :dictionary-core:test :dictionary-core:jacocoTestReport :dictionary-core:jacocoTestCoverageVerification :update-core:test :update-core:jacocoTestReport :update-core:jacocoTestCoverageVerification'
+            tasks: ':fsrs-java:test :fsrs-java:jacocoTestReport :fsrs-java:jacocoTestCoverageVerification :rwkv:test :rwkv:jacocoTestReport :rwkv:jacocoTestCoverageVerification :core:test :core:jacocoTestReport :core:jacocoTestCoverageVerification :domain:test :domain:jacocoTestReport :domain:jacocoTestCoverageVerification :sync-domain:test :sync-domain:jacocoTestReport :sync-domain:jacocoTestCoverageVerification :writing-core:test :writing-core:jacocoTestReport :writing-core:jacocoTestCoverageVerification :dictionary-core:test :dictionary-core:jacocoTestReport :dictionary-core:jacocoTestCoverageVerification :update-core:test :update-core:jacocoTestReport :update-core:jacocoTestCoverageVerification'
             reports: |
               core/build/reports/**
               fsrs-java/build/reports/**
+              rwkv/build/reports/**
               domain/build/reports/**
               sync-domain/build/reports/**
               writing-core/build/reports/**
@@ -94,6 +97,7 @@ jobs:
               update-core/build/reports/**
               core/build/test-results/**
               fsrs-java/build/test-results/**
+              rwkv/build/test-results/**
               domain/build/test-results/**
               sync-domain/build/test-results/**
               writing-core/build/test-results/**

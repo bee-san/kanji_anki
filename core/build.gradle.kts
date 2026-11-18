@@ -7,7 +7,7 @@ dependencies {
     api(project(":domain"))
     api(project(":sync-domain"))
     api(project(":rwkv"))
-    implementation(project(":fsrs-java"))
+    testImplementation(project(":fsrs-java"))
     implementation(project(":update-core"))
 }
 

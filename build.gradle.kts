@@ -22,6 +22,7 @@ val sonarAppMainBinaries = providers.gradleProperty("sonarAppMainBinaries")
     .getOrElse(rootPath("app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"))
 val sonarMainBinaries = listOf(
     rootPath("fsrs-java/build/classes/kotlin/main"),
+    rootPath("rwkv/build/classes/kotlin/main"),
     rootPath("core/build/classes/kotlin/main"),
     rootPath("domain/build/classes/kotlin/main"),
     rootPath("sync-domain/build/classes/kotlin/main"),
@@ -33,6 +34,7 @@ val sonarMainBinaries = listOf(
 )
 val sonarTestBinaries = listOf(
     rootPath("fsrs-java/build/classes/kotlin/test"),
+    rootPath("rwkv/build/classes/kotlin/test"),
     rootPath("core/build/classes/kotlin/test"),
     rootPath("core/build/classes/java/test"),
     rootPath("domain/build/classes/kotlin/test"),
@@ -46,6 +48,7 @@ val sonarTestBinaries = listOf(
 )
 val sonarCoveragePaths = buildList<String> {
     add(rootPath("fsrs-java/build/reports/jacoco/test/jacocoTestReport.xml"))
+    add(rootPath("rwkv/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("core/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("domain/build/reports/jacoco/test/jacocoTestReport.xml"))
     add(rootPath("sync-domain/build/reports/jacoco/test/jacocoTestReport.xml"))
@@ -167,6 +170,9 @@ val fastCiTasks = listOf(
     ":fsrs-java:test",
     ":fsrs-java:jacocoTestReport",
     ":fsrs-java:jacocoTestCoverageVerification",
+    ":rwkv:test",
+    ":rwkv:jacocoTestReport",
+    ":rwkv:jacocoTestCoverageVerification",
     ":core:test",
     ":core:jacocoTestReport",
     ":core:jacocoTestCoverageVerification",
@@ -208,6 +214,7 @@ tasks.register("ciQuality") {
     dependsOn(
         "ciFast",
         ":fsrs-java:jar",
+        ":rwkv:jar",
         ":core:jar",
         ":domain:jar",
         ":sync-domain:jar",

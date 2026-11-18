@@ -87,7 +87,6 @@ data class SyncQueuePlanningSnapshot(
     val repairEvidenceInputs: List<KanjiRepairEvidencePolicy.Input>,
     val studyLadder: RecordsBase.StudyLadderSettings,
     val schedulerParameters: RecordsSchedulerModels.SchedulerParameters,
-    val schedulerFsrsWeights: List<Double>?,
     val learningSteps: RecordsSchedulerModels.LearningStepSettings,
     val adaptiveWorkload: AdaptiveWorkloadSnapshot,
     val recentReviewStats: RecordsSchedulerModels.ReviewStats,

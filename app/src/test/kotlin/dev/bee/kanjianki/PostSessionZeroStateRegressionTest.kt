@@ -12,6 +12,9 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RwkvMemoryModel
+import dev.bee.kanjianki.memory.RwkvRuntime
+import dev.bee.rwkv.RwkvCollectionState
 import dev.bee.kanjianki.core.StudyLadderRules
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreSchema
@@ -70,7 +73,10 @@ class PostSessionZeroStateRegressionTest {
         seedStore()
 
         val tracker = StudySessionTracker()
-        val scheduler = BridgeScheduler()
+        // Reviews schedule with the production memory model over a scratch state.
+        val scheduler = BridgeScheduler.withMemoryModel(
+            RwkvMemoryModel(RwkvRuntime.engine(context), RwkvCollectionState(), RwkvRuntime::dayOffsetOf),
+        )
         val consumed = HashSet<String>()
         val plan = adaptivePlan(startNow)
         tracker.initializeTarget(plan)

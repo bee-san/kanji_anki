@@ -20,7 +20,8 @@ repair tools.
 - Recognition uses standard-glyph and font-glyph presentations. Contextual
   reading uses plain-word and mined-sentence presentations. Variants alternate
   deterministically from the persisted core review count and share memory.
-- A real-due core failure calls FSRS `Again` exactly once. Every following
+- A real-due core failure feeds the memory model (RWKV-Curve, see
+  `rwkv-memory-model.md`) one `Again`, exactly once. Every following
   repair appearance is practice-only: it cannot add another lapse, change
   stability/difficulty, or move a long-term threshold.
 - Core intervals are fuzzed deterministically (`IntervalFuzzPolicy`, Anki's
@@ -43,7 +44,7 @@ DB v31 adds:
 
 All legacy rung, task-memory, wire, and settings columns are retained for
 backup/downgrade compatibility. Malformed or future JSON fails open. A malformed
-active repair recovers to its core review memory without an FSRS call.
+active repair recovers to its core review memory without a memory-model call.
 
 Every review is one token-first transaction:
 
@@ -151,7 +152,9 @@ After repair, the same core is revalidated at
 took; it consumes the due slot but does not count toward the promotion streak.
 Recognition promotes to contextual reading only when the fixed-0.90 strength
 and minimum real-due pass gates both hold. On promotion the contextual memory
-is seeded from FSRS's initial state for a first Good (carrying the kanji's
+is seeded from the memory model's preview of a first Good on the contextual
+card (the kanji's recognition history reaches it through the shared note
+stream; carrying the kanji's
 learned difficulty), not cloned from recognition's stability, and its first
 check is capped at one third of the promotion threshold. Recognition keeps its
 own uncapped schedule.

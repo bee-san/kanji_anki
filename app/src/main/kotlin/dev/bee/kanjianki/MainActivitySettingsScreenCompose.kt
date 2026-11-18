@@ -171,7 +171,7 @@ private fun SettingsPanel(panel: SettingsPanelModel) {
         is SettingsDeckLimitsPanelModel -> SettingsDeckLimitsPanel(panel)
         is SettingsWorkloadPanelModel -> SettingsWorkloadPanel(panel)
         is SettingsRetentionPanelModel -> SettingsRetentionPanel(panel)
-        is SettingsPersonalizedSchedulingPanelModel -> SettingsPersonalizedSchedulingPanel(panel)
+        is SettingsMemoryModelPanelModel -> SettingsMemoryModelPanel(panel)
         is SettingsFlashcardGesturePanelModel -> SettingsFlashcardGesturePanel(panel)
         is SettingsLearningStepsPanelModel -> SettingsLearningStepsPanel(panel)
         is SettingsStudyAheadPanelModel -> SettingsStudyAheadPanel(panel)
@@ -223,7 +223,7 @@ internal fun settingsPanelTestTag(panel: SettingsPanelModel): String {
         is SettingsDeckLimitsPanelModel -> "settings-panel-deck-limits"
         is SettingsWorkloadPanelModel -> "settings-panel-workload"
         is SettingsRetentionPanelModel -> "settings-panel-retention"
-        is SettingsPersonalizedSchedulingPanelModel -> "settings-panel-personalized-scheduling"
+        is SettingsMemoryModelPanelModel -> "settings-panel-memory-model"
         is SettingsFlashcardGesturePanelModel -> "settings-panel-flashcard-gesture"
         is SettingsLearningStepsPanelModel -> "settings-panel-learning-steps"
         is SettingsStudyAheadPanelModel -> "settings-panel-study-ahead"

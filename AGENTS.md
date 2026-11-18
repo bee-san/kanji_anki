@@ -95,7 +95,7 @@ project. Keep the CodeQL build step after `github/codeql-action/init` as a
 forced clean compile:
 
 ```sh
-./gradlew clean :fsrs-java:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
+./gradlew clean :fsrs-java:compileJava :rwkv:compileJava :core:compileJava :app:compileDebugJavaWithJavac --no-daemon --no-build-cache
 ```
 
 Do not simplify that to a normal compile. Gradle can mark the compile tasks
@@ -139,8 +139,9 @@ Database v31 activates the integrity-first two-core adaptive scheduler. Read
 adaptive items have exactly two long-term core memories: recognition anchored
 at `kanji_meaning`, and contextual reading anchored at `word_reading`. Font and
 sentence tasks are deterministic variants sharing those memories; every other
-task is targeted inline repair. `type_reading` is repair-only and has no FSRS
-memory. A real-due core Fail calls FSRS Again once, repair is practice-only, and
+task is targeted inline repair. `type_reading` is repair-only and has no
+long-term memory. A real-due core Fail feeds the memory model one Again, repair
+is practice-only (never fed to the model), and
 the same core is revalidated within one day. Never create a second scheduler
 queue, re-enable writes to `similar_kanji_repair_queue`, or let a repair attempt
 add lapses/stability changes. Legacy rungs/columns/wires/settings stay stored for
@@ -237,12 +238,13 @@ Anki semantics:
 - `Easy` graduates the card immediately.
 
 Learning and relearning repeats are practice-only. They do not advance
-promotion, demotion, or any long-term scheduler threshold. Only persisted
-FSRS-due review attempts in the `review` phase count toward ladder movement.
-The boundary is the task's persisted FSRS due time, not the calendar day or
-any learning-repeat queue.
+promotion, demotion, or any long-term scheduler threshold (the memory model
+still observes them; see RWKV Memory Model Notes). Only persisted
+model-scheduled due review attempts in the `review` phase count toward ladder
+movement. The boundary is the task's persisted due time, not the calendar day
+or any learning-repeat queue.
 
-Ladder movement uses real FSRS due-review evidence, not learning-repeat
+Ladder movement uses real due-review evidence, not learning-repeat
 practice. A due-review `Hard`, `Good`, or `Easy` promotes the rung only when
 **both** hold: the card's memory strength — measured as the interval it
 would schedule at a fixed 0.90 target retention, not the user's actual
@@ -264,17 +266,13 @@ card on that rung. At the item's highest valid enabled rung, further passes
 keep the card there; in the default order that is `sentence_reading` when
 sentence data exists and otherwise `word_reading`.
 
-FSRS weights are default-neutral but may be personalized when the user opts
-in. `scheduler_fsrs_weights` stores all 21 values as a full-precision
-comma-separated string; malformed vectors fail open to the built-in defaults.
-The same selected weights drive normal/relearning review intervals, sync
-seeding, forecast simulation, and the fixed-0.90 `promotionIntervalDays`
-memory-strength signal above (D-S7). The weekly on-device fitter trains only
-from persisted `review`-phase evidence and adopts a vector only with at least
-400 samples in the 80% training partition (about 500 total samples) and at
-least a 1% time-ordered validation log-loss improvement;
-the toggle is off by default and turning it off immediately clears the live
-custom vector.
+The memory model is RWKV-Curve (SM92), not FSRS, and it is not personalized:
+there are no fitted weights and no fitter. The fixed-0.90 memory-strength
+signal above is the model's S90 (days until predicted recall falls to 90%),
+which is FSRS's own definition of stability, so the 21-day threshold keeps its
+meaning. The legacy `scheduler_fsrs_weights`, `scheduler_fsrs_fit_summary`
+and `scheduler_fsrs_personalization_enabled` settings stay stored, unread, for
+downgrade compatibility.
 
 Exception (fail-fast demotion): the first real review after a promotion is the
 capped validation review. If that first attempt is an `Again`, the rung demotes
@@ -287,13 +285,13 @@ where new cards begin.
 
 On a due review `Again`, the card enters `relearning` at step 0 if
 relearning steps exist. If relearning steps are empty, the card skips
-relearning and is rescheduled straight from the FSRS post-lapse memory
-state, matching Anki's FSRS behavior. One exception preserves the
+relearning and is rescheduled straight from the memory model's post-lapse
+curve, matching Anki's behavior without relearning steps. One exception preserves the
 "practiced soon" promise of demotion (Goal 70): when a due `Again` both
 demotes the rung AND the relearning list is empty, the newly demoted rung's
 first review is capped at one day (`capDemotedRungFirstReview`), mirroring
 the promotion first-review cap. A non-demoting `Again` with empty relearning
-steps keeps the pure FSRS post-lapse interval unchanged.
+steps keeps the model's post-lapse interval unchanged.
 
 When a promotion fires, the newly promoted rung's first review is capped at
 one third of `ladder_promotion_interval_days` (7 days at the default 21) so
@@ -308,9 +306,11 @@ study kanji they do not need to.
 - **Evidence-based seeding.** A kanji supported by at least one mature active
   Anki card and never suspended (`AdmissionEvidencePolicy.isAlreadyReadInContext`)
   is seeded straight into the `review` phase at the highest enabled rung, due
-  now, with stability/difficulty derived from Anki's own memory state. It is
-  validated once and then rides a real FSRS interval instead of climbing the
-  whole ladder. Everything else keeps the conservative `new_learning` start at
+  now, with stability/difficulty derived from Anki's own memory state. Before
+  its first Kani answer the memory model is warmed with a synthetic all-Good
+  history ending one stability before that answer (`RwkvSeedBurstPolicy`), so
+  it is validated once and then rides a real long interval instead of
+  climbing the whole ladder. Everything else keeps the conservative `new_learning` start at
   `kanji_meaning` (the nearest enabled rung if that is disabled). New cards
   still start at `kanji_meaning`.
 - **Admission gate.** A row whose `matureSupportCount` already meets
@@ -336,28 +336,14 @@ sort last; `active_queue_cap` is user-editable (Deck limits panel, bounded
 8-200); ladder thresholds are bounded above (promotion days `<= 365`, fail
 streak `<= 30`).
 
-Graduation derives the initial FSRS memory state differently for new-learning
-vs relearning, and both paths are intentional:
-
-- **New-learning graduation** uses `engine.initialState(graduationRating)`
-  alone (`LatestFsrsAdapter.initialReview` with `isNewLearning = true`),
-  independent of any intermediate `Again`/`Hard` answers taken during the
-  learning steps. Learning-step answers are practice-only and do not feed
-  short-term stability, so the card graduates as if answered fresh at the
-  graduating rating.
-- **Relearning graduation** (`isNewLearning = false`) keeps the post-lapse
-  stability produced by the lapse's `review(AGAIN, …)` and applies
-  `engine.nextDifficulty(graduationRating)` once more on top of it. This means
-  a lapse followed by relearning graduation moves difficulty by the lapse's
-  update *and* the graduating rating's update. This is a deliberate deviation
-  from strict "no memory change on relearning-step answers" parity: the extra
-  difficulty step reflects that the card was just relapsed. `ReviewTransitionEngine`
-  intentionally graduates relearning cards this way; `RelearningGraduationDifficultyTest`
-  pins the double-update value.
-
-Do not change either path (e.g. route learning answers through short-term
-stability, or drop the relearning second `nextDifficulty`) without a deliberate
-parity decision and golden-timeline regeneration.
+Graduation (new-learning or relearning) takes its interval from the memory
+model's answer to the graduating rating. Every learning and relearning step
+answer before it is also fed to the model (RWKV learns from every answer, as it
+was trained on full Anki histories) but its next appearance still uses the
+configured step delay. The FSRS-era graduation rules (initial state from the
+graduating rating alone; a second `nextDifficulty` on relearning graduation)
+are retired with FSRS; `FsrsTestMemoryModel` keeps them only as a closed-form
+test double for policy tests.
 
 `hard`/`good`/`easy` all count as a ladder-streak pass and `again` as a fail.
 A `write_kanji` remediation judged `CLOSE` submits `hard`, which still passes.
@@ -446,6 +432,41 @@ The `similar_kanji`, `kanji_reading`, `reading_kanji`, and `sentence_reading`
 rungs have no legacy source; they are reached through configured ladder movement
 when `hasSimilarKanji` / `hasKanjiReading` / `hasReadingKanji` /
 `hasSentenceReading` is true.
+
+## RWKV Memory Model Notes
+
+Read `docs/rwkv-memory-model.md` before changing memory scheduling. The model
+is a pure-Kotlin port of the small RWKV-Curve engine (SM92) from
+`Pedrubik2000/kuma3-anki-core` (AGPL-3.0-or-later) in the `:rwkv` module;
+`RwkvAlgorithmInfo` pins the upstream commit and the weights' sha256, and the
+weights ship as `app/src/main/assets/rwkv/sm92/weights.f32.bin`. The published
+SM92 vectors are the parity oracle (`RwkvPublishedVectorsTest`, bound 1e-5).
+
+- **History rule.** The model is fed exactly once per core answer: every
+  legacy-routing answer (learning and relearning steps included) and every
+  adaptive core or revalidation answer. Adaptive repair appearances,
+  similar-kanji practice and undone reviews are never fed. Card = (kanji, core,
+  signature meaning), note = kanji, deck = core, one preset (`RwkvStreamKeys`).
+- **State is a derived cache** of the ordered history: `review_log` rows with
+  `mm_seq > 0` (their exact model inputs live in the `mm_*` columns) merged with
+  `rwkv_burst` seed bursts by sequence. `RwkvStateStore` writes the state delta,
+  undo journal and `rwkv_meta` in the review transaction behind a
+  `state_version` compare-and-swap (a mismatch is STALE). Undo restores from the
+  journal only when that review was the last state change; otherwise it marks
+  the state for rebuild. Never write model state outside that transaction.
+- **Rebuilds** (`RwkvStateRebuilder`) classify pre-v34 rows once, replay the
+  whole history and publish with the same compare-and-swap. Study answers are
+  handed back for retry (`RwkvRuntime.readyNow`) until the state is ready.
+- **Bindings.** `BridgeScheduler()` has no memory model and throws on review;
+  reviews use `BridgeScheduler.withMemoryModel(RwkvReviewBinding.model)`, and the
+  forecast uses single-pass RWKV over a copy-on-write overlay.
+- **Numeric guards.** Negative day gaps are clamped (a clock moving back must
+  not NaN the shared user stream) and a non-finite step is never committed.
+- **Goldens.** After a deliberate scheduler or memory-model change, regenerate
+  with `./gradlew :core:test -PupdateSchedulerGoldens` and review the diff.
+- **Licensing.** The `:rwkv` port is AGPL-derived; see `LICENSE` and
+  `THIRD_PARTY_NOTICES.md` (including the open question on the weights' training
+  data terms) before changing what ships.
 
 ## Provider Write-Back, Backup, And Widget Notes
 

@@ -23,6 +23,9 @@ class KaniApplication : Application(), Configuration.Provider {
             "Restore cleanup must finish before Kani can start"
         }
         KaniWidgetEventHooks.DEFAULT.restoreCompleted(this, restoreResult)
+        // No I/O: the memory model loads its weights and checks its state on a
+        // background thread when first needed.
+        dev.bee.kanjianki.memory.RwkvRuntime.attach(this)
         // Debug-only: mirror study-load timing probes to a shareable file under
         // Android/data/dev.bee.kanjianki/files/kani-study-debug.log. No-op in release.
         StudyLoadDebugLog.init(this)

@@ -86,6 +86,20 @@ class RwkvStep internal constructor(
 ) {
     /** `1 - P(again)`, the instant head's recall. */
     val retrievability: Float get() = 1f - buttonProbabilities[0]
+
+    /** True when every head output and next state is finite. */
+    fun isFinite(): Boolean =
+        buttonProbabilities.all { it.isFinite() } &&
+            curve.weights.all { it.isFinite() } &&
+            curve.scales.all { it.isFinite() } &&
+            curve.decays.all { it.isFinite() } &&
+            next.all { state ->
+                state.layers.all { layer ->
+                    layer.xShift.all { it.isFinite() } &&
+                        layer.matrix.all { it.isFinite() } &&
+                        (layer.channelShift?.all { it.isFinite() } ?: true)
+                }
+            }
 }
 
 /** The SM92 network: a feature MLP, five interleaved RWKV-7 streams and three heads. */

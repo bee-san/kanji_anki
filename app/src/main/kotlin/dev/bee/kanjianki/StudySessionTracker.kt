@@ -453,6 +453,21 @@ internal class StudySessionTracker(
     }
 
     /**
+     * The active task's elapsed time so far, without pausing it or changing
+     * any state: the answer duration the memory model reads before the
+     * review is applied. Null when [key] is not the active task.
+     */
+    fun peekActiveElapsedMillis(key: String?): Long? = synchronized(lock) {
+        val task = activeTask
+        if (task == null || key == null || key != task.taskKey) {
+            return@synchronized null
+        }
+        val probe = task.copy()
+        probe.pause(elapsedRealtime())
+        probe.activeElapsedMillis
+    }
+
+    /**
      * Freezes the active timer without mutating progress. Review persistence
      * can include [PreparedTaskCompletion.timing] in its transaction, then call
      * [commitPreparedTask] only after an APPLIED commit (or [rollbackPreparedTask]

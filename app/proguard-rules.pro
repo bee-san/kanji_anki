@@ -26,7 +26,6 @@
 # --- WorkManager Workers ---
 # Workers are instantiated by WorkManager via reflection (default WorkerFactory).
 -keep class dev.bee.kanjianki.update.AutoUpdateWorker { *; }
--keep class dev.bee.kanjianki.fsrs.FsrsFitWorker { *; }
 -keep class dev.bee.kanjianki.sync.AutoSyncRetryWorker { *; }
 -keep class dev.bee.kanjianki.backup.DatabaseBackupWorker { *; }
 

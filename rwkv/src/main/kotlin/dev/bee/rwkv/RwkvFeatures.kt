@@ -385,7 +385,10 @@ object RwkvFeatureBuilder {
         features[at++] = if (input.noteId == null) 1f else 0f
         features[at++] = if (input.deckId == null) 1f else 0f
         features[at++] = if (input.presetId == null) 1f else 0f
-        features[at++] = RwkvMath.lnLnE((dayOffset - previousDayOffset).toFloat())
+        // ln(ln(e + Δ)) is NaN for Δ < 1 - e. Upstream histories are time-sorted
+        // so Δ >= 0 always holds there; a device clock or timezone moving back
+        // must not poison the shared user stream, so a negative gap reads as 0.
+        features[at++] = RwkvMath.lnLnE(maxOf(0L, dayOffset - previousDayOffset).toFloat())
         features[at++] = (Math.floorMod(dayOffset, 7L).toFloat() - 3f) / 3f
         features[at++] = scale(ln(3f + diffNewCards.toFloat()), DIFF_NEW_CARDS_MEAN, DIFF_NEW_CARDS_STD)
         features[at++] = scale(ln(3f + diffReviews.toFloat()), DIFF_REVIEWS_MEAN, DIFF_REVIEWS_STD)

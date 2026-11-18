@@ -7,6 +7,10 @@ import dev.bee.kanjianki.core.RecordsBase
 import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RwkvMemoryModel
+import dev.bee.kanjianki.memory.RwkvRuntime
+import dev.bee.rwkv.RwkvCollectionState
+import dev.bee.rwkv.RwkvOverlayView
 import kotlin.system.measureTimeMillis
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -63,11 +67,19 @@ class StatsPrecomputePerformanceSmokeTest {
                     RecordsSchedulerModels.LearningStepSettings.defaults(),
                     RecordsBase.StudyLadderSettings.defaults(),
                     nowMillis = 1_700_000_000_000L,
+                    // Production's forecast model: single-pass RWKV over a scratch state.
+                    memoryModel = RwkvMemoryModel(
+                        RwkvRuntime.engine(context),
+                        RwkvOverlayView(RwkvCollectionState()),
+                        RwkvRuntime::dayOffsetOf,
+                        singlePass = true,
+                    ),
                 )
             }
             fastestElapsed = minOf(fastestElapsed, elapsed)
         }
         assertEquals(200, forecast.totalItems)
+        println("RWKV 200-item ladder forecast: fastest ${fastestElapsed}ms")
         assertTrue("fastest 200-item ladder forecast took ${fastestElapsed}ms", fastestElapsed < 5_000L)
     }
 }

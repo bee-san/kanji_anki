@@ -24,6 +24,9 @@ import dev.bee.kanjianki.core.StudyItemComparators
 import dev.bee.kanjianki.core.SyncSettingsStore
 import dev.bee.kanjianki.core.TextUtil
 import dev.bee.kanjianki.core.StudyTaskTimingPolicy
+import dev.bee.kanjianki.core.RwkvHistoryBackfill
+import dev.bee.rwkv.RwkvCollectionState
+import dev.bee.rwkv.RwkvStreamIds
 
 internal abstract class LocalStoreStudy(
     context: Context?,
@@ -36,6 +39,39 @@ internal abstract class LocalStoreStudy(
     private fun studyLog(): LocalStoreStudyLog = LocalStoreStudyLog(this)
 
     private fun studyStatus(): LocalStoreStudyStatus = LocalStoreStudyStatus(this as LocalStore)
+
+    /** Persistence of the RWKV memory model's state; see [RwkvStateStore]. */
+    internal val rwkvStateStore: RwkvStateStore = RwkvStateStore()
+
+    fun rwkvStateIsReady(): Boolean = rwkvStateStore.isReady(writableDatabase)
+
+    fun rwkvMeta(): RwkvStateStore.Meta = rwkvStateStore.meta(writableDatabase)
+
+    fun markRwkvStateForRebuild() {
+        writableDatabase.transaction { rwkvStateStore.markNeedsRebuild(this) }
+    }
+
+    fun loadRwkvSnapshot(ids: List<RwkvStreamIds>): RwkvStateStore.Snapshot =
+        writableDatabase.transaction { rwkvStateStore.loadSnapshot(this, ids) }
+
+    fun loadRwkvCollection(): RwkvCollectionState =
+        writableDatabase.transaction { rwkvStateStore.loadCollection(this) }
+
+    fun rwkvUnclassifiedRowCount(): Int = rwkvStateStore.unclassifiedRowCount(writableDatabase)
+
+    fun rwkvFedCardIds(): Set<Long> = rwkvStateStore.fedCardIds(writableDatabase)
+
+    fun classifyRwkvHistoryBatch(backfill: RwkvHistoryBackfill, limit: Int): Int =
+        writableDatabase.transaction { rwkvStateStore.classifyBatch(this, backfill, limit) }
+
+    fun rwkvHistoryEventCount(): Int = rwkvStateStore.historyEventCount(writableDatabase)
+
+    fun forEachRwkvHistoryEvent(consumer: (RwkvStateStore.HistoryEvent) -> Unit) {
+        rwkvStateStore.forEachHistoryEvent(writableDatabase, consumer)
+    }
+
+    fun publishRwkvCollection(state: RwkvCollectionState, expectedStateVersion: Long): Boolean =
+        writableDatabase.transaction { rwkvStateStore.replaceCollection(this, state, expectedStateVersion) }
 
     fun replaceStudyItems(items: List<RecordsStudyModels.StudyItem>) {
         replaceStudyItems(items, null, 0L, null)
@@ -272,12 +308,18 @@ internal abstract class LocalStoreStudy(
                     command.reviewedAtMillis,
                     command.beforeReview,
                     persistedItem,
+                    command.memory,
                 )
                 if (inserted == -1L) {
                     if (reviewTokenExists(this, command.request.token)) {
                         return@transaction ReviewCommitResult.duplicate()
                     }
                     throw SQLiteConstraintException("review_log rejected a non-duplicate review")
+                }
+                // The memory model's state moves in the same transaction as the
+                // review row; a concurrent state change makes the review STALE.
+                command.memory?.let {
+                    rwkvStateStore.applyReviewCommit(this, it, command.request.token, command.reviewedAtMillis)
                 }
 
                 val updated = update(
@@ -348,10 +390,15 @@ internal abstract class LocalStoreStudy(
             .build()
         val undone = try {
             writableDatabase.transaction {
+                val fedSeq = rawQuery(
+                    "SELECT ${RwkvStateStore.COLUMN_MM_SEQ} FROM $TABLE_REVIEW_LOG WHERE $COLUMN_TOKEN = ?",
+                    arrayOf(snapshot.token),
+                ).use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else 0L }
                 val deleted = delete(TABLE_REVIEW_LOG, "$COLUMN_TOKEN = ?", arrayOf(snapshot.token))
                 if (deleted <= 0) {
                     return@transaction false
                 }
+                rwkvStateStore.undoReview(this, snapshot.token, fedSeq)
                 val updated = update(
                     TABLE_STUDY_ITEMS,
                     studyItemValues(restored),
@@ -397,8 +444,15 @@ internal abstract class LocalStoreStudy(
         reviewedAt: Long,
         beforeReview: RecordsStudyModels.StudyItem?,
         afterReview: RecordsStudyModels.StudyItem?,
+        memory: RwkvReviewCommit? = null,
     ): Long {
-        val values = ContentValues()
+        // What the memory model was fed (mm_seq > 0), or 0 when it was not fed;
+        // the rebuild replays exactly these inputs.
+        val fed = memory?.fed
+        val values = if (fed != null) rwkvStateStore.fedValues(fed, memory.fedSeq!!) else ContentValues()
+        if (fed == null) {
+            values.put(RwkvStateStore.COLUMN_MM_SEQ, 0)
+        }
         values.put(COLUMN_KANJI, request.kanji)
         values.put(COLUMN_TOKEN, request.token)
         values.put(COLUMN_RATING, appliedRating)
@@ -746,40 +800,6 @@ internal abstract class LocalStoreStudy(
 
     fun saveSchedulerParameters(parameters: RecordsSchedulerModels.SchedulerParameters) {
         studySettings().saveSchedulerParameters(parameters)
-    }
-
-    fun schedulerFsrsWeights(): DoubleArray? = studySettings().schedulerFsrsWeights()
-
-    fun saveSchedulerFsrsWeights(weights: DoubleArray?) {
-        studySettings().saveSchedulerFsrsWeights(weights)
-    }
-
-    fun commitFsrsFitOutcome(
-        weightsToAdopt: DoubleArray?,
-        summaryJson: String,
-        disabledSummaryJson: String?,
-        preserveExistingWeights: Boolean,
-    ): Boolean = studySettings().commitFsrsFitOutcome(
-        weightsToAdopt,
-        summaryJson,
-        disabledSummaryJson,
-        preserveExistingWeights,
-    )
-
-    fun fsrsPersonalizationEnabled(): Boolean = studySettings().fsrsPersonalizationEnabled()
-
-    fun saveFsrsPersonalizationEnabled(enabled: Boolean) {
-        studySettings().saveFsrsPersonalizationEnabled(enabled)
-    }
-
-    fun fsrsFitSummaryJson(): String = studySettings().fsrsFitSummaryJson()
-
-    fun saveFsrsFitSummaryJson(summaryJson: String?) {
-        studySettings().saveFsrsFitSummaryJson(summaryJson)
-    }
-
-    fun resetFsrsPersonalization() {
-        studySettings().resetFsrsPersonalization()
     }
 
     fun flashcardSwipeGestureEnabled(): Boolean = studySettings().flashcardSwipeGestureEnabled()

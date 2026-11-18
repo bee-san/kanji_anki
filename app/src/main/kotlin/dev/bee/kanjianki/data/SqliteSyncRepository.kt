@@ -57,7 +57,6 @@ internal class SqliteSyncRepository(
                     repairEvidenceInputs = store.kanjiRepairEvidenceInputs().toList(),
                     studyLadder = store.studyLadderSettings(),
                     schedulerParameters = store.schedulerParameters(),
-                    schedulerFsrsWeights = store.schedulerFsrsWeights()?.toList(),
                     learningSteps = store.learningStepSettings(),
                     adaptiveWorkload = AdaptiveWorkloadSnapshot(
                         store.adaptiveLoadWorkPercent(),

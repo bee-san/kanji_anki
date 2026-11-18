@@ -172,7 +172,7 @@ internal class MainActivityHomeFocusQueue(private val home: MainActivityHome) {
         plan: RecordsSchedulerModels.AdaptiveLoadPlan?,
         currentItems: List<RecordsStudyModels.StudyItem>? = null,
     ): List<RecordsStudyModels.StudyItem> {
-        val scheduler = BridgeScheduler.withWeights(home.store.schedulerFsrsWeights())
+        val scheduler = BridgeScheduler()
         return HomeStudyQueueActions.studyQueue(
             HomeStudyQueueActions.StudyQueueRequest(
                 rows,

@@ -185,7 +185,7 @@ internal class ManualSyncEngine {
                 )
 
                 progress.onSyncProgress(SyncProgress.atStage(SyncProgress.Stage.BUILDING_PRACTICE_QUEUE))
-                val scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights())
+                val scheduler = BridgeScheduler()
                 val queueRows = ManualKanjiAdmissionPolicy.mergeRows(
                     providerRows = rows,
                     candidates = store.missingKanjiStore().manualSources().map { source -> source.candidate },
@@ -406,7 +406,7 @@ internal class ManualSyncEngine {
                 ),
                 mode = StudyNowCountCoordinator.Mode(postSyncPlan, false),
                 pipeline = StudyNowCountCoordinator.Pipeline(
-                    scheduler = BridgeScheduler.withWeights(store.schedulerFsrsWeights()),
+                    scheduler = BridgeScheduler(),
                     annotator = store::annotateSimilarKanjiAvailability,
                     replanner = { seeded -> adaptivePlan(activeRows, seeded, countedAt) },
                 ),

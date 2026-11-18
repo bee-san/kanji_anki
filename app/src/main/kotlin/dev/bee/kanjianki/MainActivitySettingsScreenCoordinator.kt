@@ -36,7 +36,7 @@ internal class MainActivitySettingsScreenCoordinator(private val activity: MainA
                 MainActivitySettingsDeckLimitsPanel(activity).deckLimitsSettingsPanelModel(current),
                 MainActivitySettingsWorkloadPanel(activity).workloadSettingsPanelModel(),
                 MainActivitySettingsRetentionPanel(activity).retentionSettingsPanelModel(),
-                MainActivitySettingsPersonalizedScheduling(activity).panelModel(),
+                MainActivitySettingsMemoryModel(activity).panelModel(),
                 activity.learningStepsSettingsPanelModel(),
                 MainActivitySettingsStudyAheadPanel(activity).studyAheadSettingsPanelModel(),
                 MainActivitySettingsStudyLadder(activity).studyLadderSettingsPanelModel(),
