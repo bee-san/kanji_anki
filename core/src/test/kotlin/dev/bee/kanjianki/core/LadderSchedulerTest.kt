@@ -30,7 +30,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardAgainLoopsInLearningForever() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = newCard("裂")
         val consumed = HashSet<String>();
 
@@ -56,7 +56,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardGoodAdvancesThroughLearningSteps() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = newCard("裂")
         // Default new steps: [1, 10]
         assertEquals(0, item.learningStep);
@@ -74,7 +74,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardGoodPastLastStepGraduatesToReview() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         // Default new steps: [1, 10]. Two Goods should graduate.
         val afterFirst = scheduler.applyReview(
@@ -98,7 +98,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardEasyGraduatesImmediately() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
 
         val result = scheduler.applyReview(
                 newCard("裂").withToken("e"),
@@ -113,7 +113,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardHardOnFirstStepUsesDelayBetweenAgainAndGood() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
 
         val result = scheduler.applyReview(
                 newCard("裂").withToken("h"),
@@ -133,7 +133,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newCardHardOnLaterStepRepeatsStep() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
 
         val advanced = scheduler.applyReview(
@@ -238,7 +238,7 @@ class LadderSchedulerTest {
 
     @Test
     fun threeRealDueAgainsDemoteOneRung() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
 
@@ -271,7 +271,7 @@ class LadderSchedulerTest {
 
     @Test
     fun learningRepeatsDoNotAdvanceRealPassStreak() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = newCard("裂")
 
         val result = scheduler.applyReview(
@@ -287,7 +287,7 @@ class LadderSchedulerTest {
 
     @Test
     fun relearningRepeatsDoNotAdvanceRealAgainStreak() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
 
         // Force a relearning state by failing a due review first.
@@ -315,7 +315,7 @@ class LadderSchedulerTest {
 
     @Test
     fun reviewAgainEntersRelearningWhenStepsExist() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
 
         val result = scheduler.applyReview(
@@ -332,7 +332,7 @@ class LadderSchedulerTest {
 
     @Test
     fun customRelearningStepsControlLapseDelayAndPracticeGraduation() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
         val customSteps = RecordsSchedulerModels.LearningStepSettings(
@@ -394,7 +394,7 @@ class LadderSchedulerTest {
 
     @Test
     fun reviewAgainWithEmptyRelearningStepsUsesPostLapseInterval() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
         val noRelearningSteps =
                 RecordsSchedulerModels.LearningStepSettings(null, emptyList<Int?>())
@@ -421,7 +421,7 @@ class LadderSchedulerTest {
 
     @Test
     fun ladderCeilingAtWordReadingStaysOnWordReading() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.WORD_READING, 0L)
 
@@ -442,7 +442,7 @@ class LadderSchedulerTest {
 
     @Test
     fun ladderFloorAtWriteKanjiStaysOnWriteKanji() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
                 .copyBuilder().writingRemediationPending(true).build()
@@ -569,7 +569,7 @@ class LadderSchedulerTest {
         // Goal 79: a kanji_meaning demotion with neither similar_kanji nor
         // reading_kanji available crosses BOTH conditional rungs in one move,
         // landing on meaning_kanji, and records both unavailable reason codes.
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
             .copyBuilder()
             .hasSimilarKanji(false)
@@ -616,7 +616,7 @@ class LadderSchedulerTest {
 
     @Test
     fun realAgainResetsPassStreakAndViceVersa() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val passInput = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
             .copyBuilder()
             .realAgainStreak(1)
@@ -647,7 +647,7 @@ class LadderSchedulerTest {
 
     @Test
     fun passInLearningDoesNotBumpPassStreak() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
 
         // Force a relearning (practice) attempt to show the streak is not bumped.
         val relearningItem = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L);
@@ -714,7 +714,7 @@ class LadderSchedulerTest {
 
     @Test
     fun reviewOnNotYetDueCardDoesNotCountForStreak() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // Card due in the far future: nowMillis < dueAtMillis
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 999_999_999L);
         val consumed = HashSet<String>();
@@ -734,7 +734,7 @@ class LadderSchedulerTest {
 
     @Test
     fun sameDueSlotReviewDoesNotCountTwiceForStreak() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // Item due at 500, first review at 1000 counts, second at 1001 with same dueSlot shouldn't
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
         val consumed = HashSet<String>();
@@ -766,7 +766,7 @@ class LadderSchedulerTest {
 
     @Test
     fun hardCountsAsPassForStreakAdvancement() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
         val consumed = HashSet<String>();
 
@@ -786,7 +786,7 @@ class LadderSchedulerTest {
 
     @Test
     fun easyCountsAsPassForStreakAdvancement() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L);
         val consumed = HashSet<String>();
 
@@ -839,7 +839,7 @@ class LadderSchedulerTest {
 
     @Test
     fun writingFailureOnNonWriteKanjiRungResolvesAsAgain() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // Item on FONT_MEANING rung with a writing failure (writingRequired=true, writingPassed=false)
         var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
         val consumed = HashSet<String>();
@@ -856,7 +856,7 @@ class LadderSchedulerTest {
 
     @Test
     fun writingPassOnNonWriteKanjiRungKeepsOriginalRating() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
         val consumed = HashSet<String>();
 
@@ -872,7 +872,7 @@ class LadderSchedulerTest {
 
     @Test
     fun manualOverrideOnNonWriteKanjiDoesNotForceAgain() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = reviewCard("裂", RecordsBase.LadderRung.FONT_MEANING, 500L);
         val consumed = HashSet<String>();
 
@@ -888,7 +888,7 @@ class LadderSchedulerTest {
 
     @Test
     fun newLearningWithHardOnFirstStepUsesShortDelay() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         var item = newCard("裂")
         val consumed = HashSet<String>();
 
@@ -906,7 +906,7 @@ class LadderSchedulerTest {
 
     @Test
     fun hardInRelearningRepeatsCurrentStep() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // Create a card in relearning phase at its first relearning step
         // (learningStep positional argument = 0).
         var item = RecordsStudyModels.StudyItem(
@@ -926,7 +926,7 @@ class LadderSchedulerTest {
 
     @Test
     fun hardWithStaleStepIndexPastConfiguredStepsGraduates() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // The relearning steps shrank while this card sat mid-relearning, so
         // its step index (5) points past the last configured step. Anki
         // graduates such a card on Hard instead of trapping it in learning.
@@ -947,7 +947,7 @@ class LadderSchedulerTest {
 
     @Test
     fun goodInRelearningAdvancesThroughSteps() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         // Create a card in relearning at step 0
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 500L)
                 .withRungAndPhase(RecordsBase.LadderRung.KANJI_MEANING, RecordsBase.SchedulerPhase.RELEARNING);
@@ -970,7 +970,7 @@ class LadderSchedulerTest {
     fun chronicFloorFailuresKeepAccumulatingTheFailStreak() {
         // At the WRITE_KANJI floor demoteRung cannot move the rung, so the fail streak
         // must keep counting rather than resetting to zero every failStreak fails.
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
         var item = reviewCard("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L)
@@ -1005,7 +1005,7 @@ class LadderSchedulerTest {
 
     @Test
     fun hardOnFirstStepWithDescendingStepsUsesMidpointNotAgainDelay() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         // Descending learning steps [10, 5]: Again returns to step 0 (10 min); Good
         // advances to step 1 (5 min); Hard must sit at the 7.5-min midpoint, strictly
         // between them, not collapse onto the 10-min Again delay.
@@ -1030,7 +1030,7 @@ class LadderSchedulerTest {
 
     @Test
     fun hardOnSingleLearningStepUsesOneAndAHalfTimesStep() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val singleStep = RecordsSchedulerModels.LearningStepSettings(listOf(10), listOf(10))
         val item = newCard("裂")
         val now = 1000L
@@ -1056,7 +1056,7 @@ class LadderSchedulerTest {
         // Goal 79 order reading_kanji sits directly below similar_kanji (both
         // conditional), so an unavailable similar_kanji maps UP to kanji_meaning;
         // one demotion then lands on meaning_kanji.
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val consumed = HashSet<String>()
         val settings = settingsWithLadderThresholds(21, 3)
         var item = reviewCard("裂", RecordsBase.LadderRung.SIMILAR_KANJI, 0L)
@@ -1093,7 +1093,7 @@ class LadderSchedulerTest {
     fun reviewWithClockMovedBackwardsClampsElapsedToZeroInsteadOfNegative() {
         // If the device clock moved backwards, nowMillis can precede the reconstructed
         // last-review time; elapsed days must clamp to >= 0 and still apply cleanly.
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 10_000_000_000L)
             .copyBuilder().matureIntervalDays(30).build()
 
@@ -1111,23 +1111,11 @@ class LadderSchedulerTest {
 
     @Test
     fun legacyReviewSaturatesPersistedCountersAndDueTimestamp() {
-        val adapter = object : KaniFsrsAdapter {
-            override fun initialReview(
-                rating: String?,
-                currentStability: Double,
-                currentDifficulty: Double,
-                targetRetention: Double,
-                isNewLearning: Boolean,
-            ) = KaniFsrsReviewResult(currentStability, currentDifficulty, Long.MAX_VALUE)
-
-            override fun review(
-                stability: Double,
-                difficulty: Double,
-                rating: String?,
-                elapsedDays: Int,
-                targetRetention: Double,
-            ) = KaniFsrsReviewResult(stability, difficulty, Long.MAX_VALUE, BridgeScheduler.DAY)
-        }
+        val adapter = FixedIntervalMemoryModel(
+            reviewIntervalMillis = Long.MAX_VALUE,
+            promotionIntervalMillis = BridgeScheduler.DAY,
+            graduationIntervalMillis = Long.MAX_VALUE,
+        )
         val now = Long.MAX_VALUE - 1_000L
         val memory = RecordsStudyModels.TaskMemory(
             "review", now - 1L, 1.2, 5.0, Int.MAX_VALUE, Int.MIN_VALUE, 0, "good", 1,
@@ -1141,7 +1129,7 @@ class LadderSchedulerTest {
             .activeToken("max")
             .build()
 
-        val reviewed = BridgeScheduler(adapter).applyReview(
+        val reviewed = BridgeScheduler.withMemoryModel(adapter).applyReview(
             item,
             passRequest("裂", "max"),
             HashSet(),
@@ -1353,7 +1341,7 @@ class LadderSchedulerTest {
     fun demotionSkipsSimilarKanjiWhenUnavailableViaApplyReview() {
         // New default order (Goal 65): kanji_meaning demotes across the
         // content-less similar_kanji rung down to meaning_kanji.
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder().rung(RecordsBase.LadderRung.KANJI_MEANING).realAgainStreak(2).build()
@@ -1404,7 +1392,7 @@ class LadderSchedulerTest {
     @Test
     fun customThresholdRequiresMoreFailsToDemote() {
         // Use a threshold of 5: need 5 consecutive Again to demote.
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         val customSettings = settingsWithLadderThresholds(21, 5)
@@ -1670,7 +1658,7 @@ class LadderSchedulerTest {
 
     @Test
     fun firstDemotionReachesSimilarKanjiWhenContentExists() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withHasSimilarKanji(true)
@@ -1690,7 +1678,7 @@ class LadderSchedulerTest {
 
     @Test
     fun firstDemotionSkipsSimilarKanjiToMeaningKanjiWithoutContent() {
-        val scheduler = BridgeScheduler();
+        val scheduler = TestMemoryModels.fsrsScheduler();
         val consumed = HashSet<String>();
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withHasSimilarKanji(false)
@@ -1732,7 +1720,7 @@ class LadderSchedulerTest {
                     .matureIntervalDays(60)
                     .realPassStreak(1)
                     .build()
-            val result = BridgeScheduler().applyReview(
+            val result = TestMemoryModels.fsrsScheduler().applyReview(
                     item.withToken("r"), passRequest("裂", "r"), HashSet<String>(), now,
                     RecordsSchedulerModels.SchedulerParameters(retention))
             rungs.add(result.item.rung)
@@ -1770,7 +1758,7 @@ class LadderSchedulerTest {
                 .matureIntervalDays(12)
                 .realPassStreak(1)
                 .build()
-        val lowRetention = BridgeScheduler().applyReview(
+        val lowRetention = TestMemoryModels.fsrsScheduler().applyReview(
                 weak.withToken("low"), passRequest("裂", "low"), HashSet<String>(), now,
                 RecordsSchedulerModels.SchedulerParameters(0.70))
 
@@ -1783,7 +1771,7 @@ class LadderSchedulerTest {
     }
 
     private fun schedulerWithReviewIntervalMillis(intervalMillis: Long): BridgeScheduler {
-        return BridgeScheduler(FixedIntervalFsrsAdapter(intervalMillis));
+        return BridgeScheduler.withMemoryModel(FixedIntervalMemoryModel(intervalMillis));
     }
 
     private fun settingsWithMinPasses(minPasses: Int): RecordsSyncModels.Settings {
@@ -1828,27 +1816,5 @@ class LadderSchedulerTest {
                 failStreak,
                 minPasses
         );
-    }
-
-    private class FixedIntervalFsrsAdapter(private val reviewIntervalMillis: Long) : KaniFsrsAdapter {
-        override fun initialReview(
-                rating: String?,
-                currentStability: Double,
-                currentDifficulty: Double,
-                targetRetention: Double,
-                isNewLearning: Boolean
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
-        }
-
-        override fun review(
-                stability: Double,
-                difficulty: Double,
-                rating: String?,
-                elapsedDays: Int,
-                targetRetention: Double
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
-        }
     }
 }

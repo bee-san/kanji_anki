@@ -13,7 +13,7 @@ class FsrsPrecisionSoakTest {
 
     @Test
     fun repeatedReviewsNeverProduceNonFiniteStabilityOrDifficulty() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val consumed = HashSet<String>()
         var item = reviewCard()
         var now = 1_000L
@@ -53,7 +53,7 @@ class FsrsPrecisionSoakTest {
 
     @Test
     fun persistedStabilityKeepsFullPrecisionInsteadOfTwoDecimalRounding() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val result = scheduler.applyReview(
             reviewCard().withToken("p"),
             RecordsSchedulerModels.ReviewRequest("裂", "p", "good", false, false, false, 0),

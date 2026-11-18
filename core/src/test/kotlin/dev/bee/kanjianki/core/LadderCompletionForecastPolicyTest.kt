@@ -65,6 +65,7 @@ class LadderCompletionForecastPolicyTest {
             learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
             ladder = ladder,
             nowMillis = START,
+            memoryModel = forecastModel(),
             horizonDays = 1,
         )
         assertEquals(1, result.alreadyAtCeiling)
@@ -88,6 +89,7 @@ class LadderCompletionForecastPolicyTest {
             learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
             ladder = ladder,
             nowMillis = START,
+            memoryModel = forecastModel(),
             horizonDays = 0,
         )
 
@@ -109,12 +111,14 @@ class LadderCompletionForecastPolicyTest {
             listOf(RecordsBase.LadderRung.KANJI_MEANING),
         )
         val result = forecast(listOf(row("裂")), ladder = ladder, horizonDays = 60)
-        // The seeded contextual core is checked within days of promotion (not
-        // after a cloned 7-day cap), so completion lands in the promotion month.
-        assertEquals(1_698_796_800_000L, result.projectedCompletionMonthMillis)
+        // RWKV (SM92) on a fresh collection: graduation at 1 day, then 14 days,
+        // and the following pass clears the 21-day promotion gate. The seeded
+        // contextual core is checked within days of promotion (not after a
+        // cloned 7-day cap), so completion lands in the second month.
+        assertEquals(1_701_388_800_000L, result.projectedCompletionMonthMillis)
         assertEquals(
             listOf(
-                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 1, 0),
+                LadderCompletionForecastPolicy.MonthPoint(1_698_796_800_000L, 0, 1),
                 LadderCompletionForecastPolicy.MonthPoint(1_701_388_800_000L, 1, 0),
                 LadderCompletionForecastPolicy.MonthPoint(1_704_067_200_000L, 1, 0),
             ),
@@ -132,7 +136,7 @@ class LadderCompletionForecastPolicyTest {
         val result = LadderCompletionForecastPolicy.forecast(
             listOf(row("裂")), listOf(freshPromotion), settings(1, 1),
             RecordsSchedulerModels.SchedulerParameters.defaults(),
-            RecordsSchedulerModels.LearningStepSettings.defaults(), ladder, START, 730,
+            RecordsSchedulerModels.LearningStepSettings.defaults(), ladder, START, forecastModel(), 730,
         )
         assertEquals(1, result.alreadyAtCeiling)
         assertFalse(result.beyondHorizon)
@@ -162,6 +166,7 @@ class LadderCompletionForecastPolicyTest {
             learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
             ladder = RecordsBase.StudyLadderSettings.defaults(),
             nowMillis = START,
+            memoryModel = forecastModel(),
             horizonDays = 0,
         )
 
@@ -186,6 +191,7 @@ class LadderCompletionForecastPolicyTest {
             learningSettings = RecordsSchedulerModels.LearningStepSettings.defaults(),
             ladder = RecordsBase.StudyLadderSettings.defaults(),
             nowMillis = START,
+            memoryModel = forecastModel(),
             horizonDays = 30,
         )
 
@@ -216,8 +222,17 @@ class LadderCompletionForecastPolicyTest {
         rows, emptyList(), settings,
         RecordsSchedulerModels.SchedulerParameters.defaults(),
         RecordsSchedulerModels.LearningStepSettings.defaults(),
-        ladder, START, horizonDays,
+        ladder, START, forecastModel(), horizonDays,
     )
+
+    /** Production's forecast model: single-pass RWKV over a scratch collection. */
+    private fun forecastModel(): KaniMemoryModel =
+        RwkvMemoryModel(
+            TestMemoryModels.rwkvEngine,
+            dev.bee.rwkv.RwkvCollectionState(),
+            { millis -> Math.floorDiv(millis, MemoryReviewResult.DAY_MILLIS) },
+            singlePass = true,
+        )
 
     private fun row(kanji: String) = RecordsImportModels.DashboardRow(
         kanji, 900, "meaning", "reading", "search", 30, "weak", "Needs practice", 1, 1, 0,

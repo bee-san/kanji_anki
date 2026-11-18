@@ -143,10 +143,14 @@ class AdaptiveReviewTransitionEngineTest {
         assertEquals(RecordsBase.LadderRung.WORD_READING, promoted.rung)
         assertEquals(0, promoted.realPassStreak)
         assertEquals(0, AdaptiveStudyItemPolicy.routeState(promoted)!!.contextualReadingReviewCount)
-        // The contextual core starts from FSRS's initial state for a first Good
-        // (the fake adapter reports a one-day initial interval), not from a clone
-        // of recognition's 30-day memory.
+        // The contextual core starts from the model's preview of a first Good on
+        // the contextual memory (the fake reports a one-day interval), not from a
+        // clone of recognition's 30-day memory.
         assertEquals(1, adapter.initialReviewCalls)
+        val preview = adapter.requests.last()
+        assertEquals(CoreSkill.CONTEXTUAL_READING, preview.core)
+        assertEquals(StudyRatings.GOOD, preview.rating)
+        assertEquals(item.kanji, preview.kanji)
         assertEquals(0, promoted.wordReadingMemory.totalReviews)
         assertEquals(0, promoted.wordReadingMemory.consecutivePasses)
         assertEquals(1, promoted.wordReadingMemory.matureIntervalDays)
@@ -737,35 +741,25 @@ class AdaptiveReviewTransitionEngineTest {
         private val intervalDays: Int,
         private val promotionDays: Int,
         private val initialIntervalDays: Int = 1,
-    ) : KaniFsrsAdapter {
+    ) : KaniMemoryModel {
         var reviewCalls = 0
         var initialReviewCalls = 0
         var elapsedDays = -1
+        val requests = ArrayList<MemoryReviewRequest>()
 
-        override fun initialReview(
-            rating: String?,
-            currentStability: Double,
-            currentDifficulty: Double,
-            targetRetention: Double,
-            isNewLearning: Boolean,
-        ): KaniFsrsReviewResult {
+        override fun previewFirstGood(request: MemoryReviewRequest): MemoryReviewResult {
             initialReviewCalls++
-            val stability = if (isNewLearning) INITIAL_STABILITY else currentStability
-            return KaniFsrsReviewResult(stability, currentDifficulty, initialIntervalDays * StudyLadderRules.DAY)
+            requests += request
+            return MemoryReviewResult(INITIAL_STABILITY, request.previousDifficulty, initialIntervalDays * StudyLadderRules.DAY)
         }
 
-        override fun review(
-            stability: Double,
-            difficulty: Double,
-            rating: String?,
-            elapsedDays: Int,
-            targetRetention: Double,
-        ): KaniFsrsReviewResult {
+        override fun review(request: MemoryReviewRequest): MemoryReviewResult {
             reviewCalls++
-            this.elapsedDays = elapsedDays
-            return KaniFsrsReviewResult(
-                stability + 1.0,
-                difficulty,
+            requests += request
+            this.elapsedDays = request.elapsedDays
+            return MemoryReviewResult(
+                request.previousStability + 1.0,
+                request.previousDifficulty,
                 intervalDays * StudyLadderRules.DAY,
                 promotionDays * StudyLadderRules.DAY,
             )

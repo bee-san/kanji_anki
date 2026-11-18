@@ -6,37 +6,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReviewTokenConsumptionTest {
-    /** Delegates to a real adapter but throws on the first [failuresBeforeSuccess] calls. */
-    private class FlakyFsrsAdapter(
+    /** Delegates to a real model but throws on the first [failuresBeforeSuccess] calls. */
+    private class FlakyMemoryModel(
         private var failuresBeforeSuccess: Int,
-        private val delegate: KaniFsrsAdapter = LatestFsrsAdapter(),
-    ) : KaniFsrsAdapter {
-        override fun initialReview(
-            rating: String?,
-            currentStability: Double,
-            currentDifficulty: Double,
-            targetRetention: Double,
-            isNewLearning: Boolean,
-        ): KaniFsrsReviewResult {
+        private val delegate: KaniMemoryModel = TestMemoryModels.fsrs(),
+    ) : KaniMemoryModel {
+        override fun previewFirstGood(request: MemoryReviewRequest): MemoryReviewResult {
             failIfNeeded()
-            return delegate.initialReview(rating, currentStability, currentDifficulty, targetRetention, isNewLearning)
+            return delegate.previewFirstGood(request)
         }
 
-        override fun review(
-            stability: Double,
-            difficulty: Double,
-            rating: String?,
-            elapsedDays: Int,
-            targetRetention: Double,
-        ): KaniFsrsReviewResult {
+        override fun review(request: MemoryReviewRequest): MemoryReviewResult {
             failIfNeeded()
-            return delegate.review(stability, difficulty, rating, elapsedDays, targetRetention)
+            return delegate.review(request)
         }
 
         private fun failIfNeeded() {
             if (failuresBeforeSuccess > 0) {
                 failuresBeforeSuccess--
-                throw IllegalStateException("simulated mid-apply FSRS failure")
+                throw IllegalStateException("simulated mid-apply memory-model failure")
             }
         }
     }
@@ -51,7 +39,7 @@ class ReviewTokenConsumptionTest {
 
     @Test
     fun failedReviewLeavesTokenUnconsumedSoRetrySucceeds() {
-        val engine = ReviewTransitionEngine(FlakyFsrsAdapter(failuresBeforeSuccess = 1))
+        val engine = ReviewTransitionEngine(FlakyMemoryModel(failuresBeforeSuccess = 1))
         val consumed = HashSet<String>()
         val request = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", false, false, false, 0)
 
@@ -78,7 +66,7 @@ class ReviewTokenConsumptionTest {
 
     @Test
     fun successfulReviewConsumesTokenAndBlocksReplay() {
-        val engine = ReviewTransitionEngine(FlakyFsrsAdapter(failuresBeforeSuccess = 0))
+        val engine = ReviewTransitionEngine(FlakyMemoryModel(failuresBeforeSuccess = 0))
         val consumed = HashSet<String>()
         val request = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", false, false, false, 0)
 

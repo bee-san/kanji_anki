@@ -774,8 +774,9 @@ class StudyQueueSeeder {
          * Meaning component of an answer signature
          * (`kanji|expression|reading|meaning`). Used to distinguish a genuine
          * content change from a mere example reshuffle caused by a suspend flip.
+         * The RWKV card identity keys off it for the same reason.
          */
-        private fun signatureMeaning(signature: String): String {
+        internal fun signatureMeaning(signature: String): String {
             val parts = signature.split("|", limit = 4)
             return if (parts.size == 4) parts[3] else ""
         }

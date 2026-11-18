@@ -1,7 +1,5 @@
 package dev.bee.kanjianki.core
 
-import dev.bee.fsrs.FsrsEngine
-import dev.bee.fsrs.FsrsParameters
 import java.util.ArrayList
 import java.util.Collections
 import java.util.HashSet
@@ -19,13 +17,18 @@ class BridgeScheduler {
     private val targetedSessionPolicy: TargetedStudySessionPolicy
     private val transitionEngine: ReviewTransitionEngine
 
-    constructor() : this(LatestFsrsAdapter())
+    /**
+     * A scheduler for queue seeding, session selection and counts. It has no
+     * memory model: applying a review through it throws. Use
+     * [withMemoryModel] for reviews and simulations.
+     */
+    constructor() : this(UnboundMemoryModel)
 
-    internal constructor(fsrsAdapter: KaniFsrsAdapter) {
+    private constructor(memoryModel: KaniMemoryModel) {
         queueSeeder = StudyQueueSeeder()
         sessionSelector = StudySessionSelector()
         targetedSessionPolicy = TargetedStudySessionPolicy()
-        transitionEngine = ReviewTransitionEngine(fsrsAdapter)
+        transitionEngine = ReviewTransitionEngine(memoryModel)
     }
 
     fun seedQueue(
@@ -563,20 +566,9 @@ class BridgeScheduler {
     }
 
     companion object {
-        /**
-         * Builds the production scheduler with an optional personalized FSRS-6
-         * parameter vector. A missing vector deliberately takes the exact legacy
-         * construction path so installations that have not opted in remain
-         * byte-for-byte scheduler-neutral.
-         */
+        /** A scheduler whose reviews are scheduled by [memoryModel]. */
         @JvmStatic
-        fun withWeights(weights: DoubleArray?): BridgeScheduler {
-            if (weights == null) {
-                return BridgeScheduler()
-            }
-            val parameters = FsrsParameters.of(weights)
-            return BridgeScheduler(LatestFsrsAdapter(FsrsEngine.create(parameters)))
-        }
+        fun withMemoryModel(memoryModel: KaniMemoryModel): BridgeScheduler = BridgeScheduler(memoryModel)
 
         @JvmField
         val DAY: Long = StudyLadderRules.DAY

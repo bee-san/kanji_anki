@@ -13,7 +13,7 @@ class SchedulerTimelineSimulatorTest {
     @Test
     fun newKanjiEntersKanjiMeaningMatchesGoldenTimeline() {
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 30)),
             startingItems = emptyList(),
             startMillis = START,
@@ -99,7 +99,7 @@ class SchedulerTimelineSimulatorTest {
     @Test
     fun threeDueReviewAgainsDemoteMatchesGoldenTimeline() {
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 20)),
             startingItems = listOf(reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, START)),
             startMillis = START,
@@ -192,7 +192,7 @@ class SchedulerTimelineSimulatorTest {
             .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
             .build()
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 20)),
             startingItems = listOf(almostDemoting),
             startMillis = START,
@@ -218,7 +218,7 @@ class SchedulerTimelineSimulatorTest {
             .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
             .build()
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 20)),
             startingItems = listOf(almostDemoting),
             startMillis = START,
@@ -243,7 +243,7 @@ class SchedulerTimelineSimulatorTest {
             .realAgainStreak(RecordsBase.DEFAULT_LADDER_DEMOTION_FAIL_STREAK - 1)
             .build()
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 20)),
             startingItems = listOf(almostDemoting),
             startMillis = START,
@@ -284,7 +284,7 @@ class SchedulerTimelineSimulatorTest {
             .activeToken("review-sibling")
             .build()
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 20)),
             startingItems = listOf(reviewSibling, relearning),
             startMillis = START,
@@ -308,7 +308,7 @@ class SchedulerTimelineSimulatorTest {
             .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
             .build()
         val newSimulator = SchedulerTimelineSimulator(
-            BridgeScheduler(), listOf(row("新", 20)), listOf(newLearning), START,
+            TestMemoryModels.rwkvScheduler(), listOf(row("新", 20)), listOf(newLearning), START,
         )
 
         newSimulator.nextSession()
@@ -327,7 +327,7 @@ class SchedulerTimelineSimulatorTest {
             .phase(RecordsBase.SchedulerPhase.RELEARNING)
             .build()
         val relearningSimulator = SchedulerTimelineSimulator(
-            BridgeScheduler(), listOf(row("再", 20)), listOf(relearning), START,
+            TestMemoryModels.rwkvScheduler(), listOf(row("再", 20)), listOf(relearning), START,
         )
 
         relearningSimulator.nextSession()
@@ -344,7 +344,7 @@ class SchedulerTimelineSimulatorTest {
     @Test
     fun emptyQueueRendersNoSelectedTimeline() {
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = emptyList(),
             startingItems = emptyList(),
             startMillis = START,
@@ -369,7 +369,7 @@ class SchedulerTimelineSimulatorTest {
     @Test
     fun advanceEventsExposeCurrentItemsAndTimelineOffsets() {
         val simulator = SchedulerTimelineSimulator(
-            scheduler = BridgeScheduler(),
+            scheduler = TestMemoryModels.rwkvScheduler(),
             rows = listOf(row("裂", 30)),
             startingItems = emptyList(),
             startMillis = START,
@@ -390,6 +390,7 @@ class SchedulerTimelineSimulatorTest {
     }
 
     private fun assertGolden(name: String, actual: String) {
+        SchedulerGoldens.updateIfRequested("scheduler-goldens/$name.timeline.txt", actual)
         val resource = javaClass.getResource("/dev/bee/kanjianki/core/scheduler-goldens/$name.timeline.txt")
         assertNotNull("Missing scheduler golden resource $name", resource)
         val expected = resource!!.readText().trimEnd()
@@ -426,29 +427,7 @@ class SchedulerTimelineSimulatorTest {
     }
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
-        return BridgeScheduler(FixedIntervalFsrsAdapter(intervalDays * BridgeScheduler.DAY))
-    }
-
-    private class FixedIntervalFsrsAdapter(private val reviewIntervalMillis: Long) : KaniFsrsAdapter {
-        override fun initialReview(
-            rating: String?,
-            currentStability: Double,
-            currentDifficulty: Double,
-            targetRetention: Double,
-            isNewLearning: Boolean,
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
-        }
-
-        override fun review(
-            stability: Double,
-            difficulty: Double,
-            rating: String?,
-            elapsedDays: Int,
-            targetRetention: Double,
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
-        }
+        return BridgeScheduler.withMemoryModel(FixedIntervalMemoryModel(intervalDays * BridgeScheduler.DAY))
     }
 
     private companion object {

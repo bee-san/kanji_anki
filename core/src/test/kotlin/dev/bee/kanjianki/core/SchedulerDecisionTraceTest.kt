@@ -12,7 +12,7 @@ import java.util.Locale
 class SchedulerDecisionTraceTest {
     @Test
     fun traceNextSessionForNewKanjiExplainsSelectedKanjiMeaning() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val now = 1_000L
         val item = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING)
         val trace = scheduler.debugTraceNextSession(listOf(item), listOf(row("裂", 30)), now)
@@ -33,7 +33,7 @@ class SchedulerDecisionTraceTest {
 
     @Test
     fun traceNextSessionExplainsRelearningBeatsSameFamilyReviewSibling() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val now = 1_000L
         val relearning = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, now)
             .copyBuilder()
@@ -85,7 +85,7 @@ class SchedulerDecisionTraceTest {
 
     @Test
     fun traceApplyReviewCapturesThreeDueAgainsDemotion() {
-        val scheduler = BridgeScheduler()
+        val scheduler = TestMemoryModels.fsrsScheduler()
         val consumed = HashSet<String>()
         var item = reviewCard("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         var now = 1_000L
@@ -235,7 +235,7 @@ class SchedulerDecisionTraceTest {
         val developer = SchedulerTraceFormatter.developerExplanation(trace)
         assertTrue(developer.contains("skipped=裂:same_family_hidden"))
         assertTrue(developer.contains("transition=kanji_meaning->font_meaning:fsrs_interval_promotes"))
-        assertTrue(developer.contains("fsrs=review:good:22"))
+        assertTrue(developer.contains("mem=review:good:22"))
         assertTrue(SchedulerTraceFormatter.userExplanation(trace).contains("kanji_meaning -> font_meaning"))
     }
 
@@ -317,7 +317,7 @@ class SchedulerDecisionTraceTest {
     }
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
-        return BridgeScheduler(FixedIntervalFsrsAdapter(intervalDays * BridgeScheduler.DAY))
+        return BridgeScheduler.withMemoryModel(FixedIntervalMemoryModel(intervalDays * BridgeScheduler.DAY))
     }
 
     private fun withLocale(locale: Locale, block: () -> Unit) {
@@ -327,28 +327,6 @@ class SchedulerDecisionTraceTest {
             block()
         } finally {
             Locale.setDefault(previous)
-        }
-    }
-
-    private class FixedIntervalFsrsAdapter(private val reviewIntervalMillis: Long) : KaniFsrsAdapter {
-        override fun initialReview(
-            rating: String?,
-            currentStability: Double,
-            currentDifficulty: Double,
-            targetRetention: Double,
-            isNewLearning: Boolean,
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
-        }
-
-        override fun review(
-            stability: Double,
-            difficulty: Double,
-            rating: String?,
-            elapsedDays: Int,
-            targetRetention: Double,
-        ): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
         }
     }
 }

@@ -39,7 +39,7 @@ public class BridgeSchedulerTest {
                 1
         )
         var rows: List<RecordsImportModels.DashboardRow> = listOf(row("裂", 20), row("謎", 19), row("示", 18))
-        var items: List<RecordsStudyModels.StudyItem> = BridgeScheduler().seedQueue(rows, emptyList(), settings, 1000L, 0L)
+        var items: List<RecordsStudyModels.StudyItem> = TestMemoryModels.fsrsScheduler().seedQueue(rows, emptyList(), settings, 1000L, 0L)
         assertEquals(1, items.size)
         assertEquals("裂", items.get(0).kanji)
         assertEquals(RecordsBase.LadderRung.KANJI_MEANING, items.get(0).rung)
@@ -48,7 +48,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun writingFailureOnWriteKanjiRungMapsToAgain() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var item: RecordsStudyModels.StudyItem = RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
                 .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW)
         var request: RecordsSchedulerModels.ReviewRequest = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", true, false, false, 0)
@@ -58,7 +58,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun manualOverrideAllowsWritingRatingOnWriteKanjiRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var item: RecordsStudyModels.StudyItem = RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
                 .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW)
         var request: RecordsSchedulerModels.ReviewRequest = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "good", true, false, true, 0)
@@ -72,7 +72,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun writingHelpOnlyChangesAfterWritingReviews() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var item: RecordsStudyModels.StudyItem = RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 2, "token-1", 0)
         var request: RecordsSchedulerModels.ReviewRequest = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "easy", false, false, false, 0)
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(item, request, HashSet(), 1000L)
@@ -82,7 +82,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun cleanWritingAdvancesHintAssistedAndMessyWritingHold() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var template: RecordsStudyModels.StudyItem = RecordsStudyModels.StudyItem("裂", "review", 0, 2.0, 4.0, 4, 0, 2, 1, "clean", 0)
                 .withRungAndPhase(RecordsBase.LadderRung.WRITE_KANJI, RecordsBase.SchedulerPhase.REVIEW)
         var clean: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
@@ -110,7 +110,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun duplicateTokenDoesNotAdvanceTwice() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var item: RecordsStudyModels.StudyItem = item("裂").withToken("token-1")
         var consumed: HashSet<String> = HashSet()
         var request: RecordsSchedulerModels.ReviewRequest = RecordsSchedulerModels.ReviewRequest("裂", "token-1", "easy", false, false, false, 0)
@@ -123,7 +123,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionRotatesTaskShapeForEachRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var typing: RecordsSchedulerModels.StudySession = scheduler.nextSession(
                 listOf(itemAtRung("拉", RecordsBase.LadderRung.TYPE_MEANING)),
                 listOf(row("拉", 10)),
@@ -172,7 +172,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun writeKanjiRungRoutesToWritingTask() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var pending: RecordsStudyModels.StudyItem = itemAtRung("裂", RecordsBase.LadderRung.WRITE_KANJI)
                 .copyBuilder()
                 .writingRemediationPending(true)
@@ -190,7 +190,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun targetedSessionUsesExistingItemAndLearnerMeaningPrompt() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var existing: RecordsStudyModels.StudyItem = itemAtRung("裂", RecordsBase.LadderRung.WORD_READING)
                 .copyBuilder()
                 .state("review")
@@ -215,7 +215,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun targetedSessionCreatesNewItemWithFallbackPromptAndEffectiveRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false)
         var session: RecordsSchedulerModels.StudySession = scheduler.targetedSession(
@@ -243,7 +243,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionPrioritizesDueReviewsBeforeNewCards() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var newProblem: RecordsStudyModels.StudyItem = itemAtRung("裂", RecordsBase.LadderRung.KANJI_MEANING)
         var dueReview: RecordsStudyModels.StudyItem = itemAtRung("謎", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
@@ -268,7 +268,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionTreatsRelearningAndWriteRungAsUrgentBeforeReviews() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var review: RecordsStudyModels.StudyItem = itemAtRung("謎", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
                 .state("review")
@@ -320,7 +320,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun randomizedSessionTaskKeysUseDeterministicSeedWithinPriorityGroups() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var items: List<RecordsStudyModels.StudyItem> = listOf(
                 reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L),
                 reviewItem("裂", RecordsBase.LadderRung.WRITE_KANJI, 0L),
@@ -342,7 +342,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun randomizedSessionTaskKeysKeepLearningRepeatsAndReviewsBeforeNewCards() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var learningRepeat: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING)
                 .copyBuilder()
                 .state("learning")
@@ -375,7 +375,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun plannedSessionSkipsWrongAnswerRelearningRepeatUntilNextSession() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var failedReview: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("review-token")
         var nextReview: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.WORD_READING, 0L)
         var rows: List<RecordsImportModels.DashboardRow> = listOf(row("裂", 80), row("謎", 10))
@@ -418,7 +418,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun applyReviewAcceptsCustomLearningStepsTogetherWithCustomLadder() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var failedReview: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L).withToken("review-token")
         var learningSteps: RecordsSchedulerModels.LearningStepSettings = RecordsSchedulerModels.LearningStepSettings(
                 listOf(2, 9),
@@ -445,7 +445,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun dueRelearningRepeatWithEmptyReviewStepsReturnsToReviewWithoutCrashing() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var relearning: RecordsStudyModels.StudyItem = reviewItem("習", RecordsBase.LadderRung.KANJI_MEANING, 1_000L)
                 .copyBuilder()
                 .state("learning")
@@ -480,7 +480,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun dueRelearningRepeatWithEmptyReviewStepsCanGraduateOnPass() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var relearning: RecordsStudyModels.StudyItem = reviewItem("習", RecordsBase.LadderRung.KANJI_MEANING, 1_000L)
                 .copyBuilder()
                 .state("learning")
@@ -513,7 +513,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionUsesWeaknessAndKanjiTieBreakersForSamePriorityDueItems() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var lowerWeakness: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         var higherWeakness: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         var firstKanji: RecordsStudyModels.StudyItem = reviewItem("亜", RecordsBase.LadderRung.KANJI_MEANING, 0L)
@@ -536,7 +536,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueRetiresItemsMissingFromDashboardRows() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var settings: RecordsSyncModels.Settings = RecordsSyncModels.Settings(
                 "Kiku",
                 "Mining",
@@ -566,7 +566,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueRetiresReviewedItemsWithEnoughMatureSupport() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var reviewed: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 0L)
                 .copyBuilder()
                 .totalReviews(3)
@@ -585,7 +585,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueRetiresUnreviewedItemsWithEnoughMatureSupport() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var unreviewed: RecordsStudyModels.StudyItem = item("裂")
         var covered: RecordsImportModels.DashboardRow = RecordsImportModels.DashboardRow("裂", 900, "meaning", "reading", "search", 5, "reason", "reason text", 2, 1, 2, ArrayList<RecordsImportModels.Example>())
         var items: List<RecordsStudyModels.StudyItem> = scheduler.seedQueue(
@@ -600,7 +600,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueReopensRetiredItemsWhenWeakEvidenceReturns() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var retired: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("retired")
                 .stability(1.5)
@@ -627,7 +627,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun retiredItemsReopenWithoutConsumingAdmissionRoom() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var active: RecordsStudyModels.StudyItem = item("謎").copyBuilder()
                 .createdAtMillis(0L)
                 .build()
@@ -653,7 +653,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedExtraNewCardsAddsRequestedCardsBeyondDailyNewCap() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var active: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .createdAtMillis(1000L)
                 .build()
@@ -677,7 +677,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedExtraNewCardsClampsToRemainingCandidatesAndReopensRetiredItems() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var active: RecordsStudyModels.StudyItem = item("謎")
         var retired: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("retired")
@@ -702,7 +702,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedExtraNewCardsReportsNoAdmissionWhenRequestIsZero() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var result: BridgeScheduler.ExtraNewCardsResult = scheduler.seedExtraNewCards(
                 listOf(row("裂", 50), row("謎", 40)),
                 emptyList(),
@@ -719,7 +719,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun countExtraNewCardsAvailableMatchesSeededAvailability() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var active: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .createdAtMillis(1000L)
                 .build()
@@ -735,7 +735,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedExtraNewCardsHonorsConfiguredNewCardSortMode() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var rows: List<RecordsImportModels.DashboardRow> = listOf(
                 rankedRow("低", 300, 40, example("低", 3.0, 0.60)),
                 rankedRow("難", 100, 20, example("難", 8.0, 0.90)),
@@ -777,7 +777,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionUsesNewCardSortOnlyForUnseenNewCards() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var difficultySort: RecordsSyncModels.Settings = settingsWithSortMode(RecordsBase.NEW_CARD_SORT_FSRS_DIFFICULTY)
         var rows: List<RecordsImportModels.DashboardRow> = listOf(
                 rankedRow("低", 300, 90, example("低", 3.0, 0.60)),
@@ -798,7 +798,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun coreSessionSelectionHidesSameFamilyWithoutPermanentSuppression() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var word: RecordsStudyModels.StudyItem = matureReview("裂", RecordsBase.LadderRung.WORD_READING)
                 .withAnswerSignature("裂|裂ける|さける|split")
         var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
@@ -820,7 +820,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun immaturePromotedSiblingHidesLowerFamilyWithoutPermanentSuppression() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var immatureWord: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 0L)
                 .copyBuilder()
                 .matureIntervalDays(7)
@@ -842,7 +842,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun adaptivePlanLimitsNewAdmissionsToFocusSet() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var plan: RecordsSchedulerModels.AdaptiveLoadPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
                 20,
                 1,
@@ -866,7 +866,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun adaptiveFocusCanonicalizesDuplicateRowsToOneKanjiItem() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var plan: RecordsSchedulerModels.AdaptiveLoadPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
                 20,
                 2,
@@ -903,7 +903,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun allKanjiAdaptivePlanBypassesDeckNewCardLimit() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var plan: RecordsSchedulerModels.AdaptiveLoadPlan = RecordsSchedulerModels.AdaptiveLoadPlan(
                 100,
                 3,
@@ -944,7 +944,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionSkipsItemsWithoutCurrentDashboardRows() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var stale: RecordsStudyModels.StudyItem = item("古")
         var current: RecordsStudyModels.StudyItem = item("裂").copyBuilder().dueAtMillis(500L).build()
         var session: RecordsSchedulerModels.StudySession = scheduler.nextSession(
@@ -958,7 +958,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reseedPreservesExistingProgressForSameKanji() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var learned: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("learning")
                 .dueAtMillis(1234L)
@@ -991,7 +991,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun latestFsrsUsesLastReviewElapsedDaysForOnTimeReviews() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var dueAt: Long = 30L * BridgeScheduler.DAY
         var taskMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
                 "review",
@@ -1029,8 +1029,8 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reviewTransitionPassesOverdueElapsedDaysToFsrs() {
-        var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(3L * BridgeScheduler.DAY)
-        var scheduler: BridgeScheduler = BridgeScheduler(adapter)
+        var adapter: FixedIntervalMemoryModel = FixedIntervalMemoryModel(3L * BridgeScheduler.DAY)
+        var scheduler: BridgeScheduler = BridgeScheduler.withMemoryModel(adapter)
         var now: Long = 40L * BridgeScheduler.DAY
         var dueAt: Long = now - 2L * BridgeScheduler.DAY
         var taskMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
@@ -1066,8 +1066,8 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reviewTransitionFloorsFractionalElapsedDaysForFsrs() {
-        var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(4L * BridgeScheduler.DAY)
-        var scheduler: BridgeScheduler = BridgeScheduler(adapter)
+        var adapter: FixedIntervalMemoryModel = FixedIntervalMemoryModel(4L * BridgeScheduler.DAY)
+        var scheduler: BridgeScheduler = BridgeScheduler.withMemoryModel(adapter)
         var halfDay: Long = BridgeScheduler.DAY / 2L
         var now: Long = 40L * BridgeScheduler.DAY + halfDay
         var dueAt: Long = now - 2L * BridgeScheduler.DAY - halfDay
@@ -1100,8 +1100,8 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reviewTransitionPrefersExactLastReviewTimeOverRoundedIntervalInference() {
-        var adapter: RecordingFsrsAdapter = RecordingFsrsAdapter(4L * BridgeScheduler.DAY)
-        var scheduler: BridgeScheduler = BridgeScheduler(adapter)
+        var adapter: FixedIntervalMemoryModel = FixedIntervalMemoryModel(4L * BridgeScheduler.DAY)
+        var scheduler: BridgeScheduler = BridgeScheduler.withMemoryModel(adapter)
         var now: Long = 40L * BridgeScheduler.DAY
         var exactLastReview: Long = now - 7L * BridgeScheduler.DAY - BridgeScheduler.DAY / 2L
         var taskMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
@@ -1137,7 +1137,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun relearningGraduationPreservesPostLapseStability() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var dueAt: Long = 30L * BridgeScheduler.DAY
         var taskMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory(
                 "review",
@@ -1179,7 +1179,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun activeRungInitialMemoryFallsBackToItemFsrsState() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var dueAt: Long = 30L * BridgeScheduler.DAY
         var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, dueAt)
                 .copyBuilder()
@@ -1301,7 +1301,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun customParametersAffectReviewInterval() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var matureMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory("review", 0L, 10.0, 5.0, 5, 0, 0, "good", 10)
         var item: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
@@ -1322,7 +1322,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun allowedKanjiFilterExcludesSuspendedKanjiFromActiveReview() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var suspended: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         var active: RecordsStudyModels.StudyItem = reviewItem("提", RecordsBase.LadderRung.KANJI_MEANING, 0L)
         var allowed: Set<String> = HashSet(listOf("提"))
@@ -1346,7 +1346,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nullAdaptivePlanUsesDefaultSeedingPath() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var items: List<RecordsStudyModels.StudyItem> = scheduler.seedQueue(
                 listOf(row("裂", 30)),
                 emptyList<RecordsStudyModels.StudyItem>(),
@@ -1361,7 +1361,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueAlignsLegacyEmptySignatureToSuspendedExample() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var legacy: RecordsStudyModels.StudyItem = RecordsStudyModels.StudyItem("裂", "review", 1234L, 2.0, 4.0, 2, 0, 2, 1, null, 55L)
                 .withAnswerSignature("")
         var row: RecordsImportModels.DashboardRow = rowWithExamples(
@@ -1385,7 +1385,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueKeepsMatchingAnswerSignatureProgress() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var current: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("裂|裂ける|さける|split")
         var row: RecordsImportModels.DashboardRow = rowWithExamples(
@@ -1406,7 +1406,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueUsesFirstExampleFallbackAndNormalizesSignatureParts() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var legacy: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("")
         var row: RecordsImportModels.DashboardRow = rowWithExamples(
@@ -1426,7 +1426,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun seedQueueKeepsFirstActiveExampleWhenNoSuspendedExampleExists() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var legacy: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1234L)
                 .withAnswerSignature("")
         var row: RecordsImportModels.DashboardRow = rowWithExamples(
@@ -1447,7 +1447,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reseedResetsNonRetiredItemWhenAnswerSignatureChanges() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var oldMeaningMemory: RecordsStudyModels.TaskMemory = RecordsStudyModels.TaskMemory("review", 5000L, 2.0, 4.5, 7, 1, 2, "good", 12)
         var learned: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.FONT_MEANING, 5000L)
                 .copyBuilder()
@@ -1484,7 +1484,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun reseedRetiredItemPreservesProgressWhenExampleChangesWithoutMeaningChange() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var retired: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L)
                 .copyBuilder()
                 .state("retired")
@@ -1509,7 +1509,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun activeQueueGroupsByFamilyAndPrefersHigherRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var kanji: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("裂|expr|read|meaning")
         var word: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.WORD_READING, 5000L).withAnswerSignature("裂|expr|read|meaning")
         var legacyEmptySignature: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 0L).withAnswerSignature("")
@@ -1526,7 +1526,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun activeQueueRejectsChangedNonEmptyAnswerSignature() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var staleFamily: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .withAnswerSignature("裂|old|read|meaning")
         var currentRow: RecordsImportModels.DashboardRow = rowWithExamples(
@@ -1545,7 +1545,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionReusesActiveTokenAndGeneratesForEmptyToken() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var reused: RecordsSchedulerModels.StudySession = scheduler.nextSession(
                 listOf(reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L).withToken("kept")),
                 listOf(row("裂", 30)),
@@ -1562,7 +1562,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionReturnsNullWhenNothingDueOrAllowed() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var future: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 2000L)
         assertNull(scheduler.nextSession(listOf(future), listOf(row("裂", 30)), 1000L))
         assertNull(scheduler.nextSession(
@@ -1575,7 +1575,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun tokenMismatchAndNullReviewInputsStaySafe() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var active: RecordsStudyModels.StudyItem = item("裂").withToken("expected")
         var duplicate: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
                 active,
@@ -1607,7 +1607,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun invalidRatingDefaultsToAgainAndResetsLearningStep() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var item: RecordsStudyModels.StudyItem = item("裂").copyBuilder().learningStep(1).build()
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
                 item.withToken("bad-rating"),
@@ -1622,7 +1622,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun relearningGoodCanAdvanceWithoutGraduating() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var relearning: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 0L)
                 .copyBuilder()
                 .state("learning")
@@ -1649,7 +1649,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun learningHardRepeatsLaterStep() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var learning: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("learning")
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
@@ -1672,7 +1672,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun learningHardOnSingleStepWaitsOneAndAHalfSteps() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var learning: RecordsStudyModels.StudyItem = item("裂").copyBuilder()
                 .state("learning")
                 .phase(RecordsBase.SchedulerPhase.NEW_LEARNING)
@@ -1698,7 +1698,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun futureReviewAgainDoesNotCountAsRealDueFailure() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var future: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 5000L)
                 .withToken("future")
         var result: RecordsSchedulerModels.ReviewResult = scheduler.applyReview(
@@ -1713,7 +1713,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun practicedLearningCardsSortBeforeDueReviews() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var practicedLearning: RecordsStudyModels.StudyItem = item("学").copyBuilder()
                 .state("learning")
                 .dueAtMillis(0L)
@@ -1734,7 +1734,7 @@ public class BridgeSchedulerTest {
     public fun dueLearningRepeatIsNotHiddenByFutureHigherRungInSameFamily() {
         // Regression guard for the learning-repeat session pitfall: a future higher-rung task
         // for the same kanji must not hide the repeat that is due now.
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var practicedLearning: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
                 .state("learning")
@@ -1758,7 +1758,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun dueRelearningRepeatIsNotHiddenByFutureHigherRungInSameFamily() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
                 .state("learning")
@@ -1784,7 +1784,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun ankiBuryOrderKeepsDueLearningRepeatAheadOfDueReviewSibling() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var learning: RecordsStudyModels.StudyItem = itemAtRung("学", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
                 .state("learning")
@@ -1809,7 +1809,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun ankiBuryOrderKeepsDueRelearningRepeatAheadOfDueReviewSibling() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
                 .state("learning")
@@ -1836,7 +1836,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun focusQueueItemsKeepDueRelearningRepeatAheadOfHigherReviewSibling() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var relearning: RecordsStudyModels.StudyItem = itemAtRung("復", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
                 .state("learning")
@@ -1877,7 +1877,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadLearningRepeatIsSelectedBeforeDueReviewSiblingInSameFamily() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var studyAhead: Long = 24 * 60 * 60_000L
         var interdayLearning: RecordsStudyModels.StudyItem = itemAtRung("間", RecordsBase.LadderRung.KANJI_MEANING).copyBuilder()
@@ -1906,7 +1906,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun ankiBuryOrderPrefersIntradayThenInterdayLearningThenReviewThenNewSiblings() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var studyAhead: Long = 24 * 60 * 60_000L
         var rows: List<RecordsImportModels.DashboardRow> = listOf(row("順", 1))
@@ -1966,7 +1966,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun activeQueueFiltersRetiredAndMissingRows() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var retired: RecordsStudyModels.StudyItem = item("古").copyBuilder().state("retired").build()
         var missing: RecordsStudyModels.StudyItem = item("消")
         var fontRung: RecordsStudyModels.StudyItem = itemAtRung("裂", RecordsBase.LadderRung.FONT_MEANING)
@@ -1982,7 +1982,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun activeFamilyItemPrefersDueStatusThenEarlierDueTimeWithinRank() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var due: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1000L).withToken("due")
         var future: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 5000L).withToken("future")
         var earlierFuture: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 3000L).withToken("early")
@@ -2043,7 +2043,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun nextSessionMapsDisabledCurrentRungToNearestEnabledRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var ladder: RecordsBase.StudyLadderSettings = RecordsBase.StudyLadderSettings.defaults()
                 .withRungEnabled(RecordsBase.LadderRung.KANJI_MEANING, false)
         // New default order (Goal 65): with kanji_meaning disabled and
@@ -2067,7 +2067,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun mappedMeaningKanjiReviewInheritsExistingSchedulerMemory() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         // New default order (Goal 65): kanji_meaning (index 4) sits above
         // similar_kanji; with kanji_meaning and font_meaning both disabled and
         // no similar-kanji content, the nearest enabled rung is meaning_kanji
@@ -2143,7 +2143,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun dueCountAndTokenSetCoverCollectionHelpers() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var tokens: Set<String> = scheduler.tokenSet(listOf("a", "b", "a"))
         assertEquals(2, tokens.size)
         assertEquals(1, scheduler.dueCount(
@@ -2159,7 +2159,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadZeroMinutesMatchesBaselineActiveQueue() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var dueNow: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, 1000L)
         var inFiveMin: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, 1000L + 5L * 60_000L)
         var rows: List<RecordsImportModels.DashboardRow> = listOf(row("裂", 30), row("謎", 20))
@@ -2171,7 +2171,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadFifteenMinutesPullsItemDueWithinHorizon() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var dueIn10Min: Long = now + 10L * 60_000L
         var ahead: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn10Min)
@@ -2187,7 +2187,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadFifteenMinutesExcludesItemBeyondHorizon() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var dueIn30Min: Long = now + 30L * 60_000L
         var beyond: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, dueIn30Min)
@@ -2200,7 +2200,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadDueCountIncludesHorizonEligibleItems() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var dueNow: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, now)
         var dueIn5: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, now + 5L * 60_000L)
@@ -2214,7 +2214,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadClampsNegativeToZeroAndAboveDayToDay() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         assertEquals(
                 SettingsInputRules.MAX_STUDY_AHEAD_MINUTES.toLong() * 60_000L,
@@ -2242,7 +2242,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadPrefersTrulyDueOverHorizonEligibleAtSameRung() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var dueNow: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, now).withToken("now")
         var dueIn5: RecordsStudyModels.StudyItem = reviewItem("謎", RecordsBase.LadderRung.KANJI_MEANING, now + 5L * 60_000L).withToken("ahead")
@@ -2256,7 +2256,7 @@ public class BridgeSchedulerTest {
 
     @Test
     public fun studyAheadDoesNotShiftLearningStepDelaysOnAgain() {
-        var scheduler: BridgeScheduler = BridgeScheduler()
+        var scheduler: BridgeScheduler = TestMemoryModels.fsrsScheduler()
         var now: Long = 1_000_000L
         var dueIn5Min: Long = now + 5L * 60_000L
         val reviewDueItem: RecordsStudyModels.StudyItem = reviewItem("裂", RecordsBase.LadderRung.KANJI_MEANING, dueIn5Min)
@@ -2352,39 +2352,7 @@ public class BridgeSchedulerTest {
     }
 
     private fun schedulerWithReviewIntervalDays(intervalDays: Long): BridgeScheduler {
-        return BridgeScheduler(FixedIntervalFsrsAdapter(intervalDays * BridgeScheduler.DAY))
-    }
-
-    private class FixedIntervalFsrsAdapter : KaniFsrsAdapter {
-        private val reviewIntervalMillis: Long
-        constructor(reviewIntervalMillis: Long) {
-            this.reviewIntervalMillis = reviewIntervalMillis
-        }
-
-        override fun initialReview(rating: String?, currentStability: Double, currentDifficulty: Double, targetRetention: Double, isNewLearning: Boolean): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
-        }
-
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
-        }
-    }
-
-    private class RecordingFsrsAdapter : KaniFsrsAdapter {
-        private val reviewIntervalMillis: Long
-        var elapsedDays: Int = -1
-        constructor(reviewIntervalMillis: Long) {
-            this.reviewIntervalMillis = reviewIntervalMillis
-        }
-
-        override fun initialReview(rating: String?, currentStability: Double, currentDifficulty: Double, targetRetention: Double, isNewLearning: Boolean): KaniFsrsReviewResult {
-            return KaniFsrsReviewResult(currentStability, currentDifficulty, BridgeScheduler.DAY)
-        }
-
-        override fun review(stability: Double, difficulty: Double, rating: String?, elapsedDays: Int, targetRetention: Double): KaniFsrsReviewResult {
-            this.elapsedDays = elapsedDays
-            return KaniFsrsReviewResult(stability, difficulty, reviewIntervalMillis)
-        }
+        return BridgeScheduler.withMemoryModel(FixedIntervalMemoryModel(intervalDays * BridgeScheduler.DAY))
     }
 
     private fun settingsWithQueue(activeQueueCap: Int, newPerDay: Int): RecordsSyncModels.Settings {

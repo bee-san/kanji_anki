@@ -109,7 +109,7 @@ object SchedulerTraceFormatter {
             parts.add("transition=${it.beforeRung.wireName()}->${it.afterRung.wireName()}:${it.movementReason}:${it.reasonCodes.joinToString("|")}")
         }
         if (trace.fsrsCalls.isNotEmpty()) {
-            parts.add("fsrs=" + trace.fsrsCalls.joinToString(",") { it.callType + ":" + it.rating + ":" + it.outputIntervalDays })
+            parts.add("mem=" + trace.fsrsCalls.joinToString(",") { it.callType + ":" + it.rating + ":" + it.outputIntervalDays })
         }
         return parts.joinToString("; ")
     }

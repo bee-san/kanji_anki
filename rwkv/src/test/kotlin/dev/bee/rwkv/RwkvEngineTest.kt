@@ -203,6 +203,32 @@ class RwkvEngineTest {
     }
 
     @Test
+    fun previewsAndOverlaysNeverWriteThrough() {
+        val state = trainedState()
+        val before = copyOf(state)
+        val ids = idsFor(3)
+        val answer = RwkvAnswer(3, 4_000, BASE_MILLIS + 41 * DAY, BASE_DAY + 41, 2)
+        val preview = engine.preview(state, ids, answer, 0.9f, 36_500)
+        assertStatesEqual(before, state)
+        val committed = engine.answer(copyOf(state), ids, answer, 0.9f, 36_500)
+        assertEquals(committed.unroundedIntervalDays, preview.unroundedIntervalDays, 0f)
+
+        val overlay = RwkvOverlayView(state)
+        val single = engine.answerSinglePass(overlay, ids, answer, 0.9f, 36_500)
+        assertTrue(single.intervalDays >= 1)
+        assertNotNull(single.recallBefore)
+        assertEquals(RwkvArchitecture.STREAMS, overlay.writtenStateCount())
+        assertStatesEqual(before, state)
+        // The overlay reads its own writes and falls through for the rest.
+        assertEquals(state.histories.getValue(ids.card).answers + 1, overlay.history(ids.card)!!.answers)
+        assertEquals(state.cards[1L], overlay.card(1L))
+        assertArrayEquals(state.encodings.getValue(RwkvIdKey(RwkvIdKind.PRESET, PRESET)), overlay.encoding(RwkvIdKey(RwkvIdKind.PRESET, PRESET)), 0f)
+        engine.answerSinglePass(overlay, idsFor(91), answer, 0.9f, 36_500)
+        assertNotNull(overlay.card(91L))
+        assertNull(state.cards[91L])
+    }
+
+    @Test
     fun warmingACardKeepsTheSharedStreamsAndCountersUnchanged() {
         val state = trainedState()
         val before = copyOf(state)

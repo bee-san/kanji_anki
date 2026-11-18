@@ -4,10 +4,10 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Routing-v2 transition engine. Only the two core memories call FSRS; repair
- * appearances mutate inline route state and due time only.
+ * Routing-v2 transition engine. Only the two core memories call the memory
+ * model; repair appearances mutate inline route state and due time only.
  */
-internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter) {
+internal class AdaptiveReviewTransitionEngine(private val memoryModel: KaniMemoryModel) {
     data class Transition(
         val item: RecordsStudyModels.StudyItem,
         val appliedRating: String,
@@ -53,12 +53,19 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
         val beforeMemory = usableCoreMemory(item, core)
         val rating = StudyRatings.normalize(request.rating)
         val realDue = countsAsRealDue(item, nowMillis)
-        val result = fsrs.review(
-            beforeMemory.stability,
-            beforeMemory.difficulty,
-            rating,
-            elapsedReviewDays(beforeMemory, nowMillis),
-            parameters.targetRetention,
+        val result = memoryModel.review(
+            MemoryReviewRequest(
+                kanji = item.kanji,
+                core = core,
+                answerSignature = item.answerSignature,
+                rating = rating,
+                kind = MemoryAnswerKind.REVIEW,
+                reviewedAtMillis = nowMillis,
+                targetRetention = parameters.targetRetention,
+                previousStability = beforeMemory.stability,
+                previousDifficulty = beforeMemory.difficulty,
+                elapsedDays = elapsedReviewDays(beforeMemory, nowMillis),
+            ),
         )
         val nextTotalReviews = saturatingAddNonNegative(beforeMemory.totalReviews, 1)
         val nextItemTotalReviews = saturatingAddNonNegative(item.totalReviews, 1)
@@ -190,17 +197,26 @@ internal class AdaptiveReviewTransitionEngine(private val fsrs: KaniFsrsAdapter)
             nextCore = CoreSkill.CONTEXTUAL_READING
             nextPassStreak = 0
             // Contextual reading is a different skill from recognition. Seed its
-            // memory from FSRS's own initial state for a first Good instead of
-            // cloning recognition's stability, so the new core has to earn its
-            // intervals; carry the kanji's learned difficulty across. The first
-            // check is still capped so promotion is validated soon.
+            // first interval from what a first Good on the not-yet-reviewed
+            // contextual memory would schedule, instead of cloning recognition's
+            // strength, so the new core has to earn its intervals (the memory
+            // model still sees the kanji's history through the shared note).
+            // Carry the kanji's learned difficulty across. The first check is
+            // still capped so promotion is validated soon.
             val capDays = max(1, settings.ladderPromotionIntervalDays / PROMOTION_REVALIDATION_DIVISOR)
-            val seed = fsrs.initialReview(
-                StudyRatings.GOOD,
-                memory.stability,
-                memory.difficulty,
-                parameters.targetRetention,
-                true,
+            val seed = memoryModel.previewFirstGood(
+                MemoryReviewRequest(
+                    kanji = item.kanji,
+                    core = CoreSkill.CONTEXTUAL_READING,
+                    answerSignature = item.answerSignature,
+                    rating = StudyRatings.GOOD,
+                    kind = MemoryAnswerKind.NEW_GRADUATION,
+                    reviewedAtMillis = nowMillis,
+                    targetRetention = parameters.targetRetention,
+                    previousStability = memory.stability,
+                    previousDifficulty = memory.difficulty,
+                    elapsedDays = 0,
+                ),
             )
             val seedDays = min(seed.intervalDays().coerceAtLeast(1), capDays)
             scheduledMemory = RecordsStudyModels.TaskMemory.fromFields(

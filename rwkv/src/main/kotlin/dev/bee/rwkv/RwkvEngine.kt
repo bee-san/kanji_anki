@@ -186,6 +186,24 @@ class RwkvEngine @JvmOverloads constructor(
         answer: RwkvAnswer,
         targetRetention: Float,
         maxIntervalDays: Int,
+    ): RwkvAnswerOutcome = schedule(view, ids, answer, targetRetention, maxIntervalDays, commit = true)
+
+    /** What [answer] would schedule, leaving [view] untouched. */
+    fun preview(
+        view: RwkvStateView,
+        ids: RwkvStreamIds,
+        answer: RwkvAnswer,
+        targetRetention: Float,
+        maxIntervalDays: Int,
+    ): RwkvAnswerOutcome = schedule(view, ids, answer, targetRetention, maxIntervalDays, commit = false)
+
+    private fun schedule(
+        view: RwkvStateView,
+        ids: RwkvStreamIds,
+        answer: RwkvAnswer,
+        targetRetention: Float,
+        maxIntervalDays: Int,
+        commit: Boolean,
     ): RwkvAnswerOutcome {
         val history = view.history(ids.card)
         val input = inputFor(ids, answer, history)
@@ -204,13 +222,46 @@ class RwkvEngine @JvmOverloads constructor(
         val unrounded = intervals[answer.rating - 1] ?: maxIntervalDays.toFloat()
         val s90 = s90s[answer.rating - 1] ?: maxIntervalDays.toFloat()
         val recallBefore = history?.recallAt(answer.reviewedAtMillis)
-        commit(view, ids, input.asAnswer(answer.rating), answer, history, chosen)
+        if (commit) {
+            commit(view, ids, input.asAnswer(answer.rating), answer, history, chosen)
+        }
         return RwkvAnswerOutcome(
             intervalDays = RwkvIntervals.roundedDays(unrounded, maxIntervalDays),
             unroundedIntervalDays = unrounded,
             s90Days = s90,
             promotionIntervalDays = RwkvIntervals.roundedDays(s90, maxIntervalDays),
             buttonProbabilities = chosen.buttonProbabilities,
+            recallBefore = recallBefore,
+        )
+    }
+
+    /**
+     * One forward pass: the answered row's own curve, without the other three
+     * answers or grade-order pooling. For long simulations (forecasts), where
+     * 4× the passes buys nothing; live scheduling uses [answer].
+     */
+    fun answerSinglePass(
+        view: RwkvStateView,
+        ids: RwkvStreamIds,
+        answer: RwkvAnswer,
+        targetRetention: Float,
+        maxIntervalDays: Int,
+    ): RwkvAnswerOutcome {
+        val history = view.history(ids.card)
+        val input = inputFor(ids, answer, history).asAnswer(answer.rating)
+        val step = model.step(RwkvFeatureBuilder.featuresFor(view, input), statesFor(view, ids))
+        val unrounded = RwkvIntervals.unroundedInterval(step.curve, targetRetention, maxIntervalDays)
+            ?: maxIntervalDays.toFloat()
+        val s90 = RwkvIntervals.unroundedInterval(step.curve, RwkvIntervals.S90_TARGET_RETENTION, maxIntervalDays)
+            ?: maxIntervalDays.toFloat()
+        val recallBefore = history?.recallAt(answer.reviewedAtMillis)
+        commit(view, ids, input, answer, history, step)
+        return RwkvAnswerOutcome(
+            intervalDays = RwkvIntervals.roundedDays(unrounded, maxIntervalDays),
+            unroundedIntervalDays = unrounded,
+            s90Days = s90,
+            promotionIntervalDays = RwkvIntervals.roundedDays(s90, maxIntervalDays),
+            buttonProbabilities = step.buttonProbabilities,
             recallBefore = recallBefore,
         )
     }

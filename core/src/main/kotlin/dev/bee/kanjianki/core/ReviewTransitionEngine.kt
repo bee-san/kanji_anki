@@ -3,7 +3,7 @@ package dev.bee.kanjianki.core
 import kotlin.math.max
 import kotlin.math.min
 
-internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) {
+internal class ReviewTransitionEngine(private val memoryModel: KaniMemoryModel) {
     fun applyReview(application: BridgeScheduler.ReviewApplication): RecordsSchedulerModels.ReviewResult =
         applyReviewOutcome(application).result
 
@@ -26,7 +26,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             application.nowMillis
         )
         if (AdaptiveStudyItemPolicy.isAdaptive(application.item)) {
-            val transition = AdaptiveReviewTransitionEngine(fsrsAdapter).apply(
+            val transition = AdaptiveReviewTransitionEngine(memoryModel).apply(
                 application.item,
                 application.request,
                 application.nowMillis,
@@ -309,6 +309,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
         }
         when (context.rating) {
             StudyRatings.AGAIN -> {
+                observeLearningStep(context, state, isNewLearning)
                 state.stepIndex = 0
                 state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(steps[0]))
                 state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING
@@ -344,6 +345,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             graduateToReview(context, state, isNewLearning)
             return
         }
+        observeLearningStep(context, state, isNewLearning)
         if (idx == 0 && steps.size >= 2) {
             // Anki semantics: Hard on the first step waits the midpoint of the first two
             // steps, sitting strictly between Again (returns to step 0) and Good
@@ -378,21 +380,48 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
             graduateToReview(context, state, isNewLearning)
             return
         }
+        observeLearningStep(context, state, isNewLearning)
         state.stepIndex = nextIdx
         state.due = saturatingAdd(context.nowMillis, StudyLadderRules.stepDelayMillis(steps[nextIdx]))
         state.phase = if (isNewLearning) RecordsBase.SchedulerPhase.NEW_LEARNING else RecordsBase.SchedulerPhase.RELEARNING
         state.schedulerState = StudyLadderRules.STATE_LEARNING
     }
 
+    /**
+     * A learning or relearning step that stays in learning. The memory model
+     * observes the answer (RWKV learns from every answer) but the step delay,
+     * not the model, schedules the next appearance.
+     */
+    private fun observeLearningStep(context: ReviewContext, state: ReviewState, isNewLearning: Boolean) {
+        val kind = if (isNewLearning) MemoryAnswerKind.NEW_LEARNING_STEP else MemoryAnswerKind.RELEARNING_STEP
+        val result = memoryModel.review(memoryRequest(context, state, context.rating, kind))
+        state.stability = result.stability
+        state.difficulty = result.difficulty
+    }
+
+    private fun memoryRequest(
+        context: ReviewContext,
+        state: ReviewState,
+        rating: String,
+        kind: MemoryAnswerKind,
+    ): MemoryReviewRequest =
+        MemoryReviewRequest(
+            kanji = context.item.kanji,
+            core = AdaptiveCorePolicy.coreForRung(context.rung) ?: CoreSkill.RECOGNITION,
+            answerSignature = context.item.answerSignature,
+            rating = rating,
+            kind = kind,
+            reviewedAtMillis = context.nowMillis,
+            targetRetention = context.parameters.targetRetention,
+            previousStability = state.stability,
+            previousDifficulty = state.difficulty,
+            elapsedDays = context.elapsedReviewDays,
+        )
+
     private fun graduateToReview(context: ReviewContext, state: ReviewState, isNewLearning: Boolean) {
         state.stepIndex = 0
-        val result = fsrsAdapter.initialReview(
-            context.rating,
-            state.stability,
-            state.difficulty,
-            context.parameters.targetRetention,
-            isNewLearning
-        )
+        val kind = if (isNewLearning) MemoryAnswerKind.NEW_GRADUATION else MemoryAnswerKind.RELEARNING_GRADUATION
+        val result = memoryModel.review(memoryRequest(context, state, context.rating, kind))
         state.stability = result.stability
         state.difficulty = result.difficulty
         state.scheduledIntervalDays = result.intervalDays()
@@ -414,13 +443,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     private fun applyReviewAgain(context: ReviewContext, state: ReviewState) {
         state.lapses = saturatingAddNonNegative(state.lapses, 1)
         state.taskLapses = saturatingAddNonNegative(state.taskLapses, 1)
-        val result = fsrsAdapter.review(
-            state.stability,
-            state.difficulty,
-            StudyRatings.AGAIN,
-            context.elapsedReviewDays,
-            context.parameters.targetRetention
-        )
+        val result = memoryModel.review(memoryRequest(context, state, StudyRatings.AGAIN, MemoryAnswerKind.REVIEW))
         state.stability = result.stability
         state.difficulty = result.difficulty
 
@@ -490,13 +513,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
     }
 
     private fun applyReviewPass(context: ReviewContext, state: ReviewState) {
-        val result = fsrsAdapter.review(
-            state.stability,
-            state.difficulty,
-            context.rating,
-            context.elapsedReviewDays,
-            context.parameters.targetRetention
-        )
+        val result = memoryModel.review(memoryRequest(context, state, context.rating, MemoryAnswerKind.REVIEW))
         state.stability = result.stability
         state.difficulty = result.difficulty
         state.scheduledIntervalDays = result.intervalDays()
@@ -590,7 +607,7 @@ internal class ReviewTransitionEngine(private val fsrsAdapter: KaniFsrsAdapter) 
      * (Goal 64 / closed decision D4). At the 0.90 default this is identical
      * to the scheduled interval.
      */
-    private fun promotesByMemoryStrength(result: KaniFsrsReviewResult, promotionDays: Int): Boolean {
+    private fun promotesByMemoryStrength(result: MemoryReviewResult, promotionDays: Int): Boolean {
         return result.promotionIntervalMillis > max(1, promotionDays).toLong() * StudyLadderRules.DAY
     }
 

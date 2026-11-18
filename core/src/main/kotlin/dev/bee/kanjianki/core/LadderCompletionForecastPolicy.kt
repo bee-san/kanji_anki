@@ -38,11 +38,15 @@ object LadderCompletionForecastPolicy {
         learningSettings: RecordsSchedulerModels.LearningStepSettings,
         ladder: RecordsBase.StudyLadderSettings,
         nowMillis: Long,
+        /**
+         * The model that schedules simulated answers. It must not write to the
+         * real memory state: production passes RWKV over a scratch overlay.
+         */
+        memoryModel: KaniMemoryModel,
         horizonDays: Int = 730,
-        weights: DoubleArray? = null,
     ): Forecast {
         val simulator = SchedulerTimelineSimulator(
-            BridgeScheduler.withWeights(weights), rows, startingItems, nowMillis, settings, parameters,
+            BridgeScheduler.withMemoryModel(memoryModel), rows, startingItems, nowMillis, settings, parameters,
             learningSettings, ladder, retainEvents = false,
         )
         val horizon = LocalDayPolicy.moveLocalDays(nowMillis, horizonDays.coerceAtLeast(0), FORECAST_ZONE)

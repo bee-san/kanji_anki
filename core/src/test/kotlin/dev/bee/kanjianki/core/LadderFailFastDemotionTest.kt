@@ -12,7 +12,7 @@ import java.util.HashSet
  * where they begin.
  */
 class LadderFailFastDemotionTest {
-    private val scheduler = BridgeScheduler()
+    private val scheduler = TestMemoryModels.fsrsScheduler()
 
     @Test
     fun failedPromotionValidationDemotesImmediately() {

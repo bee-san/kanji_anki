@@ -261,7 +261,7 @@ class SchedulerTimelineSimulator(
                 "rung=${before.rung.name}->${transitionRung.name}$canonicalAnchor " +
                 "phase=${before.phase.name}->${after.phase.name} " +
                 "due=${absoluteOffsetText(after.dueAtMillis)} reasons=${reasonText(reasons)} " +
-                "fsrs=${fsrsText(event.trace.fsrsCalls)}"
+                "mem=${fsrsText(event.trace.fsrsCalls)}"
         )
     }
 
