@@ -1214,6 +1214,63 @@ class MainActivityStudyRouteInitializationTest {
     }
 
     @Test
+    fun perpetualTrackerRevisionRaceHaltsInsteadOfRetryingForever() {
+        val activity = createActivity()
+        val backgroundTasks = ArrayDeque<Runnable>()
+        val mainTasks = ArrayDeque<Runnable>()
+        replaceLazyDelegate(
+            activity,
+            "asyncHomeRouteLoader",
+            AsyncHomeRouteLoader(
+                background = Executor { backgroundTasks.addLast(it) },
+                postToMain = { task ->
+                    // Every computed candidate loses its tracker CAS to an invisible
+                    // timer revision, so the canonical route stays current and the
+                    // legacy coordinator retried this non-terminal load forever.
+                    activity.studySessionTracker.pauseActiveTask()
+                    mainTasks.addLast(task)
+                },
+                loadingTaskScheduler = LoadingTaskScheduler { _, _ -> LoadingTaskHandle { } },
+            ),
+        )
+        val session = flashcardSession()
+        activity.activeSession = session
+        activity.studySessionTracker.setTargetCount(1)
+        activity.studySessionTracker.startActiveTask(
+            "active-task",
+            session.item?.kanji,
+            session.taskType,
+            0L,
+            resumeImmediately = false,
+        )
+        val routeEvents = CopyOnWriteArrayList<StudyRouteLifecycleEvent>()
+        StudyRouteLifecycleDiagnostics.setObserverForTests(routeEvents::add)
+        var computations = 0
+        try {
+            activity.renderStudy()
+            var steps = 0
+            while (backgroundTasks.isNotEmpty() || mainTasks.isNotEmpty()) {
+                assertTrue("study route livelocked", ++steps < 100)
+                if (backgroundTasks.isNotEmpty()) {
+                    computations++
+                    backgroundTasks.removeFirst().run()
+                } else {
+                    mainTasks.removeFirst().run()
+                }
+            }
+        } finally {
+            StudyRouteLifecycleDiagnostics.resetForTests()
+        }
+
+        assertEquals(1 + StudyRouteResolver.MAX_TRACKER_RETRIES_PER_INPUT, computations)
+        val retries = routeEvents.count {
+            it.stage == StudyRouteLifecycleStage.PUBLICATION_DECIDED &&
+                it.outcome == StudyRouteLifecycleOutcome.RETRY
+        }
+        assertEquals(1 + StudyRouteResolver.MAX_TRACKER_RETRIES_PER_INPUT, retries)
+    }
+
+    @Test
     fun targetedTrackerRevisionRejectionRetriesRequestedKanji() {
         val activity = createActivity()
         val row = dashboardRow("他")
