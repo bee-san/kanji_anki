@@ -774,7 +774,7 @@ internal abstract class MainActivityHome : MainActivityBase() {
      * loads used to rethrow on the main thread, which crashed the app during cold
      * boot whenever the model build failed; keep the shell alive instead.
      */
-    private fun renderRouteLoadError(error: Throwable, retry: () -> Unit) {
+    internal fun renderRouteLoadError(error: Throwable, retry: () -> Unit) {
         android.util.Log.e("Kani", "Background route load failed", error)
         AppDebugLog.logError("route load failed route=$currentRoute", error)
         composeRoute(selected = currentRoute) {

@@ -931,17 +931,12 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         expected: StoredPendingStudyRecovery,
         terminalEvidence: StudyRouteSnapshot,
     ): Boolean {
-        val activeToken = activeSession?.token
-        if (!terminalEvidence.canComplete) {
-            return false
-        }
-        if (terminalEvidence.sessionToken == null) {
-            if (activeToken != null) return false
-        } else if (
-            terminalEvidence.progress.targetCount <= 0 ||
-            activeToken.isNullOrEmpty() ||
-            terminalEvidence.sessionToken != activeToken ||
-            expected.snapshot.feedback.sessionToken != activeToken
+        if (
+            !StudyRouteResolver.canClearMarkerForTerminal(
+                StudyContinuedMarkerFacts.of(expected),
+                terminalEvidence,
+                activeSession?.token,
+            )
         ) {
             return false
         }
@@ -950,27 +945,34 @@ internal abstract class MainActivityStudy : MainActivityStats() {
 
     /**
      * Consumes an exact continued-answer handoff when the accepted loader proved that
-     * there is no next session. Unlike hard-cap completion, session absence must unmount
-     * the old session and reconcile its stale timer/target before
-     * [StudyRouteSnapshot.canComplete] can become true. Requiring that later evidence
-     * here creates a circular dependency: recovery cannot clear before completion, while
-     * terminal reconciliation cannot run before the exact recovery record clears.
+     * there is no next session. See [StudyRouteResolver.canClearMarkerForSessionAbsence]
+     * for why this cannot wait for [StudyRouteSnapshot.canComplete].
      */
     internal fun clearAdvancingStudyRecoveryForSessionAbsence(
         expected: StoredPendingStudyRecovery,
         acceptedRoute: StudyRouteSnapshot,
     ): Boolean {
-        val activeToken = activeSession?.token ?: return false
         if (
-            acceptedRoute.isComplete ||
-            (acceptedRoute.phase != StudySessionPhase.ADVANCING &&
-                acceptedRoute.phase != StudySessionPhase.LOADING) ||
-            acceptedRoute.sessionToken != activeToken ||
-            expected.snapshot.feedback.phase != StudyAnswerFeedbackPhase.CONTINUED ||
-            expected.snapshot.feedback.sessionToken != activeToken
+            !StudyRouteResolver.canClearMarkerForSessionAbsence(
+                StudyContinuedMarkerFacts.of(expected),
+                acceptedRoute,
+                activeSession?.token,
+            )
         ) {
             return false
         }
+        return commitSessionAbsenceMarkerClear(expected, acceptedRoute)
+    }
+
+    /**
+     * Effect half of [clearAdvancingStudyRecoveryForSessionAbsence]: the caller has already
+     * resolved that the marker may be consumed. This only re-validates the live CAS inputs
+     * (route identity and the durable record) before unmounting and reconciling.
+     */
+    internal fun commitSessionAbsenceMarkerClear(
+        expected: StoredPendingStudyRecovery,
+        acceptedRoute: StudyRouteSnapshot,
+    ): Boolean {
         if (!studySessionViewModel.isCurrentRoute(acceptedRoute)) {
             return false
         }
@@ -979,6 +981,21 @@ internal abstract class MainActivityStudy : MainActivityStats() {
         }
         studySessionTracker.reconcileTerminalSessionAbsence()
         return true
+    }
+
+    /** Identity of the durable recovery payload, used only as a loop-guard input. */
+    internal fun studyRecoveryFingerprint(): String? = studyRecoveryStore.read()?.raw
+
+    /**
+     * Terminal screen for a Study route whose internal re-render chain was halted by
+     * [StudyRouteResolver.admitRerender]. Offers an explicit Retry (a fresh external
+     * entry) and Home instead of spinning on the loading screen.
+     */
+    internal open fun renderStudyRouteLoopHalted(retry: () -> Unit) {
+        renderRouteLoadError(
+            IllegalStateException("Study route re-render loop halted"),
+            retry,
+        )
     }
 
     internal fun acceptTerminalSessionAbsence(expectedRoute: StudyRouteSnapshot): StudyRouteSnapshot? {

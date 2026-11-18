@@ -13,9 +13,16 @@ import dev.bee.kanjianki.core.StudyNowCountPolicy
 import dev.bee.kanjianki.core.StudyTextCopy
 
 internal class MainActivityStudyQueueCoordinator(private val study: MainActivityStudy) {
+    /** Loop-guard state for re-renders this coordinator schedules for itself. Main thread only. */
+    private var loopState = StudyRouteLoopState()
+
+    /** Depth of re-renders currently being dispatched by [rerender]; zero means external entry. */
+    private var internalRerenderDepth = 0
+
     fun renderStudy(recoveryOnly: Boolean) {
+        noteEntry()
         if (!recoveryOnly && !study.armContinuedStudyRecoveryForExplicitRoute()) {
-            study.renderStudyRecoveryOnly()
+            recover()
             return
         }
         val candidate = newStudyLoadCandidate(recoveryOnly)
@@ -216,7 +223,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 candidate,
                 branch = StudyRouteComputationBranch.SOURCE_SYNC_CHANGED,
                 publishTracker = false,
-            ) { study.renderStudy() }
+            ) { rerender(StudyRouteRerenderKind.SOURCE_SYNC_RETRY, study::renderStudy) }
         }
         return acceptedCandidateRender(
             candidate,
@@ -233,7 +240,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             ) {
                 prepared()
             } else {
-                study.renderStudyRecoveryOnly()
+                recover()
             }
         }
     }
@@ -289,7 +296,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             return ContinuedRecoveryInspection(marker = stored)
         }
         if (!study.clearStudyRecoveryIfUnchanged(stored)) {
-            return ContinuedRecoveryInspection(render = { study.renderStudyRecoveryOnly() })
+            return ContinuedRecoveryInspection(render = ::recover)
         }
         return if (recoveryOnly) {
             ContinuedRecoveryInspection(render = { study.renderHome() })
@@ -305,7 +312,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         computeActiveSessionRender(allowDormantRecovery)?.let { return it }
         if (!recoveryOnly) return null
         return if (study.shouldResumeStudyOnOrdinaryLaunch()) {
-            { study.renderStudyRecoveryOnly() }
+            ::recover
         } else {
             { study.renderHome() }
         }
@@ -397,7 +404,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             if (study.acceptPendingFallbackStudySession(stored, fallbackSession)) {
                 prepared()
             } else {
-                study.renderStudyRecoveryOnly()
+                recover()
             }
         }
     }
@@ -431,7 +438,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 study.activeSimilarWritingRepair = null
                 prepared()
             } else {
-                study.renderStudyRecoveryOnly()
+                recover()
             }
         }
     }
@@ -463,7 +470,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 study.activeSimilarWritingRepair = null
                 prepared()
             } else {
-                study.renderStudyRecoveryOnly()
+                recover()
             }
         }
     }
@@ -483,6 +490,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
     }
 
     fun renderStudyForKanji(kanji: String?) {
+        noteEntry()
         val supersededRecoveryToken = study.studyRecoverySessionToken()
         val candidate = newStudyLoadCandidate(StudyRouteLoadKind.TARGETED) {
             study.renderStudyForKanji(kanji)
@@ -597,7 +605,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                 branch = StudyRouteComputationBranch.SOURCE_SYNC_CHANGED,
                 publishTracker = false,
             ) {
-                study.renderStudyForKanji(kanji)
+                rerender(StudyRouteRerenderKind.SOURCE_SYNC_RETRY) { study.renderStudyForKanji(kanji) }
             }
         }
         return acceptedCandidateRender(
@@ -782,28 +790,23 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
             } else {
                 null
             }
-            // A terminal loader does not need to publish staged tracker internals when the
-            // still-current canonical route already proves completion. Retrying that CAS
-            // race can livelock because each retry can lose to another tracker revision.
             val trackerStateEquivalent = compatibleCurrentRoute != null &&
                 study.studySessionTracker.hasSameStateAs(candidate.tracker)
-            val terminalRaceAccepted = acceptCurrentTerminalOnTrackerRace &&
-                compatibleCurrentRoute?.canComplete == true &&
-                trackerStateEquivalent
+            val decision = StudyRouteResolver.resolvePublication(
+                StudyRoutePublicationInput(
+                    published = acceptedRoute != null,
+                    routeStillCurrent = compatibleCurrentRoute != null,
+                    terminalBranch = acceptCurrentTerminalOnTrackerRace,
+                    currentCanComplete = compatibleCurrentRoute?.canComplete == true,
+                    trackerStateEquivalent = trackerStateEquivalent,
+                ),
+            )
             if (StudyRouteLifecycleDiagnostics.isRecording()) {
                 val publicationRoute = acceptedRoute ?: compatibleCurrentRoute
                 val diagnosticTrackerEquivalent = if (compatibleCurrentRoute != null) {
                     trackerStateEquivalent
                 } else {
                     study.studySessionTracker.hasSameStateAs(candidate.tracker)
-                }
-                val terminalEligible = acceptCurrentTerminalOnTrackerRace &&
-                    publicationRoute?.canComplete == true
-                val outcome = when {
-                    acceptedRoute != null -> StudyRouteLifecycleOutcome.ACCEPTED
-                    terminalRaceAccepted -> StudyRouteLifecycleOutcome.ACCEPTED_TERMINAL
-                    compatibleCurrentRoute != null -> StudyRouteLifecycleOutcome.RETRY
-                    else -> StudyRouteLifecycleOutcome.DROPPED_STALE
                 }
                 StudyRouteLifecycleDiagnostics.record(
                     StudyRouteLifecycleEvent.publicationDecided(
@@ -814,18 +817,26 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
                         currentRoute = publicationRoute
                             ?: study.studySessionViewModel.acceptedRouteSnapshot(),
                         trackerStateEquivalent = diagnosticTrackerEquivalent,
-                        terminalEligible = terminalEligible,
-                        outcome = outcome,
+                        terminalEligible = acceptCurrentTerminalOnTrackerRace &&
+                            publicationRoute?.canComplete == true,
+                        outcome = decision.outcome,
                     ),
                 )
             }
-            if (acceptedRoute != null || terminalRaceAccepted) {
-                if (publishTracker && candidate.recoveredTargetReconciliationPending) {
-                    study.recoveredStudyRunNeedsTargetReconciliation = false
+            when (decision) {
+                StudyRoutePublicationDecision.ACCEPT,
+                StudyRoutePublicationDecision.ACCEPT_TERMINAL_RACE,
+                -> {
+                    if (publishTracker && candidate.recoveredTargetReconciliationPending) {
+                        study.recoveredStudyRunNeedsTargetReconciliation = false
+                    }
+                    render()
                 }
-                render()
-            } else if (compatibleCurrentRoute != null) {
-                candidate.retry()
+
+                StudyRoutePublicationDecision.RETRY ->
+                    rerender(StudyRouteRerenderKind.TRACKER_RETRY, candidate.retry)
+
+                StudyRoutePublicationDecision.DROP_STALE -> Unit
             }
         }
     }
@@ -882,7 +893,7 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         if (accepted) {
             render()
         } else {
-            study.renderStudyRecoveryOnly()
+            recover()
         }
     }
 
@@ -897,35 +908,77 @@ internal class MainActivityStudyQueueCoordinator(private val study: MainActivity
         acceptCurrentTerminalOnTrackerRace = true,
     ) {
         val terminalEvidence = study.studySessionViewModel.acceptedRouteSnapshot()
-        if (advancingRecovery == null) {
-            render(terminalEvidence)
-        } else if (study.clearAdvancingRecoveryForTerminalBranch(
-                advancingRecovery,
-                terminalEvidence,
-                branch,
-            )
-        ) {
-            render(study.studySessionViewModel.acceptedRouteSnapshot())
-        } else {
-            study.renderStudyRecoveryOnly()
+        val decision = StudyRouteResolver.resolveTerminal(
+            StudyTerminalInput(
+                branch = branch,
+                marker = advancingRecovery?.let(StudyContinuedMarkerFacts::of),
+                evidence = terminalEvidence,
+                mountedSessionToken = study.activeSession?.token,
+            ),
+        )
+        when (decision) {
+            StudyTerminalDecision.RENDER_TERMINAL -> render(terminalEvidence)
+
+            StudyTerminalDecision.CLEAR_MARKER_KEEP_SESSION,
+            StudyTerminalDecision.CLEAR_MARKER_FOR_SESSION_ABSENCE,
+            -> if (commitTerminalMarkerClear(decision, advancingRecovery, terminalEvidence)) {
+                render(study.studySessionViewModel.acceptedRouteSnapshot())
+            } else {
+                recover()
+            }
+
+            StudyTerminalDecision.RECOVER -> recover()
         }
     }
 
-    private fun MainActivityStudy.clearAdvancingRecoveryForTerminalBranch(
-        advancingRecovery: StoredPendingStudyRecovery,
-        terminalEvidence: StudyRouteSnapshot,
-        branch: StudyRouteComputationBranch,
-    ): Boolean = when (branch) {
-        StudyRouteComputationBranch.EMPTY_QUEUE,
-        StudyRouteComputationBranch.NO_SESSION,
-        StudyRouteComputationBranch.TARGET_UNAVAILABLE,
-        -> if (terminalEvidence.canComplete) {
-            clearAdvancingStudyRecoveryForTerminal(advancingRecovery, terminalEvidence)
-        } else {
-            clearAdvancingStudyRecoveryForSessionAbsence(advancingRecovery, terminalEvidence)
-        }
+    /** Effect half of a resolved terminal marker clear; false when the durable CAS lost. */
+    private fun commitTerminalMarkerClear(
+        decision: StudyTerminalDecision,
+        marker: StoredPendingStudyRecovery?,
+        evidence: StudyRouteSnapshot,
+    ): Boolean = when {
+        marker == null -> false
+        decision == StudyTerminalDecision.CLEAR_MARKER_KEEP_SESSION ->
+            study.clearAdvancingStudyRecovery(marker, study.activeSession)
+        else -> study.commitSessionAbsenceMarkerClear(marker, evidence)
+    }
 
-        else -> clearAdvancingStudyRecoveryForTerminal(advancingRecovery, terminalEvidence)
+    /** Re-enters the route in recovery-only mode, subject to the loop guard. */
+    private fun recover() {
+        rerender(StudyRouteRerenderKind.RECOVERY, study::renderStudyRecoveryOnly)
+    }
+
+    /**
+     * The only path by which this coordinator re-enters the Study route for itself. The
+     * pure [StudyRouteResolver.admitRerender] decides whether the re-render may run; a
+     * refused re-render halts the chain on an explicit Retry/Home screen instead of
+     * scheduling a render that would observe the same input again.
+     */
+    private fun rerender(kind: StudyRouteRerenderKind, action: () -> Unit) {
+        val key = StudyRouteLoopKey.of(
+            study.studySessionViewModel.acceptedRouteSnapshot(),
+            study.studyRecoveryFingerprint(),
+        )
+        val resolution = StudyRouteResolver.admitRerender(loopState, kind, key)
+        loopState = resolution.state
+        if (!resolution.admission.allowed) {
+            AppDebugLog.log(studyRouteLoopGuardLog(kind, resolution.admission, loopState, key))
+            study.renderStudyRouteLoopHalted(action)
+            return
+        }
+        internalRerenderDepth++
+        try {
+            action()
+        } finally {
+            internalRerenderDepth--
+        }
+    }
+
+    /** Any route entry not dispatched by [rerender] is external and starts a fresh chain. */
+    private fun noteEntry() {
+        if (internalRerenderDepth == 0) {
+            loopState = StudyRouteLoopState()
+        }
     }
 }
 
