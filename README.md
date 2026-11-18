@@ -46,8 +46,6 @@ If you study vocab without separate kanji study, but a handful of kanji keep tri
 
 ## License
 
-Kani is free software under the GNU Affero General Public License, version 3
-or later (see [LICENSE](LICENSE)). Its memory model is a port of the RWKV
-scheduler from kuma3-anki, an AGPL-3.0-or-later fork of Anki; see
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for that and every other
-third-party component, including the terms of the bundled model weights.
+Kani is licensed under the [European Union Public Licence v1.2](LICENSE) (EUPL-1.2).
+
+The RWKV memory model in [`rwkv/`](rwkv/) is ported from Anki and remains under the [GNU AGPL v3 or later](rwkv/LICENSE). The EUPL lists the AGPL v3 as a compatible licence, so the app as a whole is distributed under AGPL-3.0-or-later. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for third-party code, models, and data.

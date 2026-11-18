@@ -19,9 +19,9 @@ object MemoryModelTextCopy {
 
     @JvmStatic fun provenanceLine(): String = localized(
         "Ported from the RWKV scheduler in kuma3-anki (Anki fork, AGPL-3.0-or-later), based on the srs-benchmark RWKV model. " +
-            "Kani is AGPL-3.0-or-later; source: $SOURCE_URL",
+            "Kani's own code is EUPL-1.2; this module and the combined app are AGPL-3.0-or-later. Source: $SOURCE_URL",
         "kuma3-anki（Ankiのフォーク、AGPL-3.0-or-later）のRWKVスケジューラを移植したもので、srs-benchmarkのRWKVモデルに基づいています。" +
-            "KaniはAGPL-3.0-or-laterで公開されています。ソース: $SOURCE_URL",
+            "Kani本体のコードはEUPL-1.2、このモジュールとアプリ全体はAGPL-3.0-or-laterで公開されています。ソース: $SOURCE_URL",
     )
 
     const val SOURCE_URL: String = "https://github.com/bee-san/kanji_anki"

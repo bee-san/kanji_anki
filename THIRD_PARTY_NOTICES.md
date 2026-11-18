@@ -1,7 +1,13 @@
 # Third-party notices
 
-Kani is licensed under the GNU Affero General Public License, version 3 or
-later (`LICENSE`). This file records third-party code, models and data that
+Kani's own code is licensed under the European Union Public Licence, version
+1.2 (EUPL-1.2, `LICENSE`). The `rwkv/` module is a port of AGPL-licensed Anki
+code and stays under the GNU Affero General Public License, version 3 or later
+(`rwkv/LICENSE`); its source files carry `SPDX-License-Identifier:
+AGPL-3.0-or-later` headers. The EUPL-1.2 Appendix lists AGPL-3.0 as a
+compatible licence (Article 5), so the combined Kani application (the APK
+and any other build that includes `rwkv/`) is distributed under
+AGPL-3.0-or-later. This file records third-party code, models and data that
 Kani contains or is derived from. Other data attributions live in
 `docs/dictionary_sources.md`, `docs/similar_kanji_attribution.txt` and
 `docs/fonts.md`.

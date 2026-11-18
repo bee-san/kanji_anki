@@ -21,6 +21,7 @@ class MemoryModelTextCopyTest {
         assertTrue(MemoryModelTextCopy.body().contains("RWKV-Curve"))
         assertEquals("Model: SM92 (331,511 parameters)", MemoryModelTextCopy.modelLine("SM92", 331_511))
         assertTrue(MemoryModelTextCopy.provenanceLine().contains("AGPL-3.0-or-later"))
+        assertTrue(MemoryModelTextCopy.provenanceLine().contains("EUPL-1.2"))
         assertEquals("Ready", MemoryModelTextCopy.statusReady())
         assertEquals("Checking…", MemoryModelTextCopy.statusChecking())
         assertEquals("Preparing…", MemoryModelTextCopy.statusRebuilding(0, 0))
