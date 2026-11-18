@@ -548,6 +548,14 @@ queue value back to its own card URI; AnkiDroid rejected it with
 `IllegalArgumentException` (`updatedRows=-1`) and the reread queue remained `2`.
 This confirms that Kani's supported write surface remains note tags only.
 
+The RWKV memory-model migration (database v34) was gated on 2026-11-18 against
+AnkiDroid 2.24.0 with the copied user collection (15,116 notes, 3,746 unique
+kanji): the targeted command completed `OK (67 tests)` (the suite has grown to
+62 fake-provider contract tests, one foreground sync-button test and four real
+provider tests). The first run on a freshly wiped emulator showed nine
+fake-provider failures cascading from a still-running live sync ("Sync already
+running"); the class passes alone and the full gate passed on re-run.
+
 ## Live AnkiDroid Emulator Setup
 
 Use a throwaway emulator copy of the user's collection. Do not modify the
@@ -662,7 +670,7 @@ adb shell am instrument -w \
 Expected result:
 
 ```text
-OK (62 tests)
+OK (67 tests)
 ```
 
 Important live tests:

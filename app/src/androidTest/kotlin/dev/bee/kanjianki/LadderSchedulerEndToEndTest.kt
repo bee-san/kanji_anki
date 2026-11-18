@@ -12,6 +12,9 @@ import dev.bee.kanjianki.core.RecordsImportModels
 import dev.bee.kanjianki.core.RecordsSchedulerModels
 import dev.bee.kanjianki.core.RecordsStudyModels
 import dev.bee.kanjianki.core.RecordsSyncModels
+import dev.bee.kanjianki.core.RwkvMemoryModel
+import dev.bee.kanjianki.memory.RwkvRuntime
+import dev.bee.rwkv.RwkvCollectionState
 import dev.bee.kanjianki.core.SimilarKanjiIndex
 import dev.bee.kanjianki.data.LocalStore
 import dev.bee.kanjianki.data.LocalStoreBase
@@ -55,7 +58,10 @@ class LadderSchedulerEndToEndTest {
         context = InstrumentationRegistry.getInstrumentation().targetContext
         context.deleteDatabase(DATABASE_NAME)
         store = LocalStore(context)
-        scheduler = BridgeScheduler()
+        // Reviews schedule with the production memory model over a scratch state.
+        scheduler = BridgeScheduler.withMemoryModel(
+            RwkvMemoryModel(RwkvRuntime.engine(context), RwkvCollectionState(), RwkvRuntime::dayOffsetOf),
+        )
         helperTokenCounter = 0
     }
 

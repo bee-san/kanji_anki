@@ -128,16 +128,24 @@ internal object RwkvRuntime {
         executor.execute {
             try {
                 mutableStatus.value = Status.Checking
+                val started = android.os.SystemClock.elapsedRealtime()
                 val engine = engine()
+                var rebuiltEvents = -1
                 if (!store.rwkvStateIsReady()) {
                     mutableStatus.value = Status.Rebuilding(0, 0)
                     RwkvStateRebuilder(store, engine).rebuild { done, total ->
                         mutableStatus.value = Status.Rebuilding(done, total)
+                        rebuiltEvents = total
                     }
                 }
                 mutableStatus.value = Status.Ready
+                logcat(android.util.Log.INFO) {
+                    val elapsed = android.os.SystemClock.elapsedRealtime() - started
+                    if (rebuiltEvents >= 0) "memory model ready: rebuilt $rebuiltEvents history events in ${elapsed}ms" else "memory model ready (${elapsed}ms)"
+                }
             } catch (error: Throwable) {
                 AppDebugLog.logError("RWKV memory model preparation failed", error)
+                logcat(android.util.Log.WARN) { "memory model preparation failed: ${error.javaClass.simpleName}" }
                 mutableStatus.value = Status.Failed(error.message ?: error.javaClass.simpleName)
                 if (error is Error) {
                     throw error
@@ -147,6 +155,13 @@ internal object RwkvRuntime {
             }
         }
     }
+
+    /** One sanitized logcat line (no user data); absent where android.util.Log is unavailable. */
+    private inline fun logcat(priority: Int, message: () -> String) {
+        runCatching { android.util.Log.println(priority, LOG_TAG, message()) }
+    }
+
+    private const val LOG_TAG = "KaniRwkv"
 
     /** Re-checks after something may have invalidated the state (undo, stale commit). */
     fun recheck(context: Context, store: LocalStore) {
