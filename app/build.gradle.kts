@@ -174,6 +174,12 @@ tasks.withType<Test>().configureEach {
     // and periodically restart it so the mapped memory is reclaimed mid-run.
     maxHeapSize = "2g"
     forkEvery = 100L
+    // Informational RWKV vs FSRS-6 comparison on an exported Kani database:
+    // ./gradlew :app:testDebugUnitTest --tests '*RwkvVsFsrsReplayComparisonTest' -PrwkvCompareDb=/path/to/kanji_anki_simple.db
+    providers.gradleProperty("rwkvCompareDb").orNull?.let { path ->
+        systemProperty("kani.rwkvCompareDb", path)
+        outputs.upToDateWhen { false }
+    }
     extensions.configure<JacocoTaskExtension>("jacoco") {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")

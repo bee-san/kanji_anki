@@ -222,6 +222,46 @@ class RwkvStateStoreTest {
         assertStatesEqual(expected, store.loadRwkvCollection())
     }
 
+    @Test
+    fun migrationFromThirtyThreeKeepsHistoryAndMarksTheStateForRebuild() {
+        val db = android.database.sqlite.SQLiteDatabase.create(null)
+        try {
+            // The v33 review_log: today's DDL without the v34 model-input columns.
+            val v33ReviewLog = LocalStoreBase.REVIEW_LOG_TABLE_SQL.replace(
+                Regex(", mm_seq INTEGER.*\\)$"),
+                ")",
+            )
+            assertFalse(v33ReviewLog.contains("mm_"))
+            db.execSQL(v33ReviewLog)
+            for (id in 1..3) {
+                db.execSQL(
+                    "INSERT INTO review_log (id, kanji, token, rating, writing_required, writing_passed, " +
+                        "manual_override, reviewed_at) VALUES ($id, '痛', 'old-$id', 'good', 0, 0, 0, ${NOW + id})",
+                )
+            }
+
+            store.onUpgrade(db, 33, 34)
+            store.onUpgrade(db, 33, 34)
+
+            for (column in RwkvStateStore.REVIEW_LOG_COLUMNS) {
+                db.rawQuery("SELECT $column FROM review_log WHERE id=1", null).use { cursor ->
+                    assertTrue(cursor.moveToFirst())
+                    assertTrue("$column starts unclassified", cursor.isNull(0))
+                }
+            }
+            val meta = RwkvStateStore().meta(db)
+            assertTrue(meta.needsRebuild)
+            assertEquals(RwkvAlgorithmInfo.stateIdentity(), meta.identity)
+            assertEquals("live sequence numbers start above 2·max(id)", 8L, meta.nextSeq)
+            assertEquals(3, RwkvStateStore().unclassifiedRowCount(db))
+            for (table in listOf(RwkvStateStore.TABLE_STATE, RwkvStateStore.TABLE_BURST, RwkvStateStore.TABLE_JOURNAL)) {
+                db.rawQuery("SELECT COUNT(*) FROM $table", null).use { assertTrue(it.moveToFirst()) }
+            }
+        } finally {
+            db.close()
+        }
+    }
+
     // --- fixtures -----------------------------------------------------------------
 
     private class Applied(val commit: ReviewCommitResult, val persisted: RecordsStudyModels.StudyItem)
