@@ -495,32 +495,6 @@ class AndroidInstrumentedWorkflowTest(unittest.TestCase):
                 self.assertIn(path, diagnostics)
 
 
-class FakeAnkiDroidProviderPackagingTest(unittest.TestCase):
-    def test_fake_provider_source_lives_in_debug_app_not_android_test_apk(self) -> None:
-        self.assertTrue(FAKE_PROVIDER_DEBUG_SOURCE.exists())
-        self.assertFalse(FAKE_PROVIDER_ANDROID_TEST_SOURCE.exists())
-        android_test_fake_providers = sorted(
-            path.relative_to(ROOT).as_posix()
-            for path in (ROOT / "app/src/androidTest").rglob("FakeAnkiDroidProvider.*")
-        )
-        self.assertEqual([], android_test_fake_providers)
-
-    def test_debug_manifest_declares_non_exported_fake_provider(self) -> None:
-        manifest = ET.parse(DEBUG_MANIFEST)
-        namespace = "{http://schemas.android.com/apk/res/android}"
-        providers = manifest.findall(".//provider")
-        fake_providers = [
-            provider
-            for provider in providers
-            if provider.attrib.get(f"{namespace}name")
-            == "dev.bee.kanjianki.anki.FakeAnkiDroidProvider"
-        ]
-        self.assertEqual(1, len(fake_providers))
-        provider = fake_providers[0]
-        self.assertEqual("dev.bee.kanjianki.test.ankidroid", provider.attrib.get(f"{namespace}authorities"))
-        self.assertEqual("false", provider.attrib.get(f"{namespace}exported"))
-
-
 class CiPathFilterCoverageTest(unittest.TestCase):
     """Goal 48: source roots must not silently drop out of CI.
 

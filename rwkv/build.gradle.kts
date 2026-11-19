@@ -16,8 +16,8 @@ tasks.withType<Test>().configureEach {
     // The parity test replays the published SM92 vectors and the bundled
     // weights; both live outside the module's resources so the APK asset and
     // the test read the exact same bytes.
-    systemProperty("kani.rwkv.weights", rootProject.file("app/src/main/assets/rwkv/sm92/weights.f32.bin").absolutePath)
+    systemProperty("kani.rwkv.weights", rootProject.file("rwkv/weights/sm92/weights.f32.bin").absolutePath)
     systemProperty("kani.rwkv.vectors", project.file("testdata/sm92-vectors.json.gz").absolutePath)
-    inputs.file(rootProject.file("app/src/main/assets/rwkv/sm92/weights.f32.bin"))
+    inputs.file(rootProject.file("rwkv/weights/sm92/weights.f32.bin"))
     inputs.file(project.file("testdata/sm92-vectors.json.gz"))
 }

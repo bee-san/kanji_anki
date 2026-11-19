@@ -61,7 +61,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "rwkv", "fsrs-java", "update-core"},
     ),
-    "app": frozenset({"core", "dictionary-core", "update-core", "writing-core"}),
+    "app": frozenset({"core", "dictionary-core"}),
 }
 TARGET_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
@@ -166,8 +166,6 @@ EDGE_RATIONALES = {
         "app",
         "dictionary-core",
     ): "Migration-only app code still constructs dictionary adapters.",
-    ("app", "update-core"): "Migration-only app code still executes update policy.",
-    ("app", "writing-core"): "Migration-only app code still hosts writing adapters.",
 }
 PROJECT_CALL = re.compile(r"\bproject\s*\(")
 PROJECT_DEPENDENCY = re.compile(
@@ -389,77 +387,6 @@ class ModuleBoundaryTest(unittest.TestCase):
             violations,
             "persistence must not import app, feature, platform, or UI implementations",
         )
-
-    def test_repository_contracts_are_suspend_store_result_boundaries(self) -> None:
-        for repository, relative_path in REPOSITORY_CONTRACTS.items():
-            with self.subTest(repository=repository):
-                source = (ROOT / relative_path).read_text(encoding="utf-8")
-                body = declaration_body(source, repository)
-                functions = re.findall(
-                    r"(?ms)^\s*(suspend\s+)?fun\b.*?(?=^\s*(?:suspend\s+)?fun\b|\Z)",
-                    body,
-                )
-                self.assertTrue(functions, f"{repository} must declare operations")
-                self.assertTrue(
-                    all(modifier is not None for modifier in functions),
-                    f"{repository} operations must be suspend functions",
-                )
-                self.assertEqual(
-                    len(functions),
-                    body.count("StoreResult<"),
-                    f"{repository} operations must return StoreResult",
-                )
-        public_surface_files = (*REPOSITORY_CONTRACTS.values(), *REPOSITORY_MODEL_FILES)
-        for relative_path in public_surface_files:
-            source = (ROOT / relative_path).read_text(encoding="utf-8")
-            with self.subTest(public_surface=relative_path):
-                for token in REPOSITORY_FORBIDDEN_TOKENS:
-                    self.assertNotIn(
-                        token,
-                        source,
-                        f"{relative_path} exposes persistence/platform implementation token {token}",
-                    )
-
-        study = declaration_body(
-            (ROOT / REPOSITORY_CONTRACTS["StudyRepository"]).read_text(encoding="utf-8"),
-            "StudyRepository",
-        )
-        sync = declaration_body(
-            (ROOT / REPOSITORY_CONTRACTS["SyncRepository"]).read_text(encoding="utf-8"),
-            "SyncRepository",
-        )
-        self.assertEqual(1, study.count("commitReview("))
-        self.assertEqual(1, sync.count("publish("))
-        self.assertTrue(
-            (ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt").exists(),
-        )
-
-    def test_repository_adapters_keep_atomic_operations_single_call(self) -> None:
-        study_adapter = (
-            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteStudyRepository.kt"
-        ).read_text(encoding="utf-8")
-        sync_adapter = (
-            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSyncRepository.kt"
-        ).read_text(encoding="utf-8")
-        settings_store = (
-            ROOT / "app/src/main/kotlin/dev/bee/kanjianki/data/SqliteSettingsStore.kt"
-        ).read_text(encoding="utf-8")
-        fakes = (
-            ROOT / "app/src/test/kotlin/dev/bee/kanjianki/data/fakes/FakeRepositories.kt"
-        ).read_text(encoding="utf-8")
-
-        self.assertEqual(1, study_adapter.count("store.commitReview(command)"))
-        self.assertNotIn("store.saveReview(", study_adapter)
-        self.assertGreaterEqual(
-            study_adapter.count("store.readSnapshot {"),
-            1,
-            "composite study snapshots must use one database transaction",
-        )
-        self.assertEqual(1, sync_adapter.count("store.publishSyncAtomically"))
-        self.assertEqual(1, sync_adapter.count("command.queuePlanner.plan("))
-        self.assertIn("internal class SqliteSettingsStore(", settings_store)
-        for repository in REPOSITORY_CONTRACTS:
-            self.assertIn(f"class Fake{repository}", fakes)
 
     def test_production_sources_use_typed_record_factories(self) -> None:
         violations = []

@@ -1,3 +1,7 @@
 <resources>
-    <color name="ic_launcher_background">#FDF9F2</color>
+    <color name="kani_seal">#B23A0E</color>
+    <color name="widget_bg">#FBF9F4</color>
+    <color name="widget_line">#DDD5C6</color>
+    <color name="widget_ink">#1B1E2B</color>
+    <color name="widget_dim">#575C6B</color>
 </resources>

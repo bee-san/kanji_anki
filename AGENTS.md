@@ -1,3 +1,27 @@
+# Kani 1.0
+
+Kani 1.0 is a rewrite of the app around one job: cure kanji blindness. The
+design lives in the "Kani App Design" artifact; the app is in
+`app/src/main/kotlin/dev/bee/kanjianki/kani/`:
+
+- `core/`: pure, unit-tested logic: `AnkiText` (field cleanup), `FieldPicker`
+  (auto-picks fields), `ScanAnalyzer` (problem kanji and culprit attribution),
+  `Training` (3-day solid rule, session planner, sprint builder), `Strokes`
+  (KanjiVG stroke diff for "the part that decides" and handwriting checks),
+  `Romaji` (live romaji → hiragana).
+- `anki/AnkiSource`: read-only AnkiDroid access through Anki search strings,
+  plus the opt-in `kani_solid` tag.
+- `data/`: `KaniStore` (SQLite `kani1.db`), `KaniPrefs`, `Reference`
+  (bundled dictionary, look-alike pairs, strokes), `Scanner`.
+- `KaniViewModel` + `KaniActivity`: one screen state, no tab bar.
+- `ui/`: Compose screens matching the design; light and AMOLED tokens in
+  `KaniTheme`.
+
+The app depends only on `:core` and `:dictionary-core`. The adaptive
+scheduler, RWKV, FSRS, sync, writing and update modules below are no longer
+used by the app; their notes are kept for the modules themselves. Kani 1.0
+deliberately starts fresh: it deletes the pre-1.0 `kanji_anki_simple.db`.
+
 # Agent Testing Runbook
 
 This repo is an Android app that syncs against AnkiDroid's flashcard content
@@ -191,7 +215,7 @@ Read `docs/rwkv-memory-model.md` before changing memory scheduling. The model
 is a pure-Kotlin port of the small RWKV-Curve engine (SM92) from
 `Pedrubik2000/kuma3-anki-core` (AGPL-3.0-or-later) in the `:rwkv` module;
 `RwkvAlgorithmInfo` pins the upstream commit and the weights' sha256, and the
-weights ship as `app/src/main/assets/rwkv/sm92/weights.f32.bin`. The published
+weights ship as `rwkv/weights/sm92/weights.f32.bin`. The published
 SM92 vectors are the parity oracle (`RwkvPublishedVectorsTest`, bound 1e-5).
 
 - **History rule.** The model is fed exactly once per core answer: every

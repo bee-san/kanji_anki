@@ -45,21 +45,7 @@ FULL_RELEASE_FILES = frozenset(
     },
 )
 
-FULL_ANDROID_TEST_FILES = frozenset(
-    {
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/BackupAndRestoreInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/BrowseStudyQueueInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/LadderSchedulerEndToEndTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityPrimaryRouteSmokeInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/MainActivityStudyRouteSmokeInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/StudySevenItemRouteInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/backup/DatabaseBackupWorkerInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/data/LocalStoreInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/sync/ManualSyncEngineInstrumentedTest.kt",
-        "app/src/androidTest/kotlin/dev/bee/kanjianki/update/UpdateFlowInstrumentedTest.kt",
-    }
-)
+FULL_ANDROID_TEST_FILES: frozenset[str] = frozenset()
 
 SMOKE_PREFIXES = (
     "app/",

@@ -40,7 +40,7 @@ the code and trained checkpoint, is open.
 is MIT-licensed, and it states that the files derived from srs-benchmark are
 not relicensed.
 
-## RWKV SM92 weights (`app/src/main/assets/rwkv/sm92/weights.f32.bin`)
+## RWKV SM92 weights (`rwkv/weights/sm92/weights.f32.bin`)
 
 - **Model:** `sm92-e26-dec1ep32k`, 331,511 parameters, float32 (1,351,553
   bytes).

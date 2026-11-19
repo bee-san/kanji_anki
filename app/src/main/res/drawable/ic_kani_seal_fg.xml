@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kani 1.0 app icon: カ in paper colour. The seal square (20..100) fills the 72dp visible area. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:pathData="M37,50 H78 Q80.5,50 80,53 C77.5,70 73,80 63,89"
+        android:strokeColor="#F6F3EC"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M59,31 C58.5,57 52,76 37,90"
+        android:strokeColor="#F6F3EC"
+        android:strokeWidth="9.5"
+        android:strokeLineCap="round" />
+</vector>

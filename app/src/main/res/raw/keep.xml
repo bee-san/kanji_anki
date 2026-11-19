@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- KanjiVG is CC BY-SA 3.0: its attribution ships with the app even though no code reads it. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@raw/kanjivg_attribution" />

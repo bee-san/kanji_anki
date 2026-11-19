@@ -38,16 +38,6 @@ class DeviceSmokeClassifierTest(unittest.TestCase):
             with self.subTest(path=path):
                 self.assert_level("full", path)
 
-    def test_risk_focused_instrumentation_changes_are_full(self) -> None:
-        self.assert_level(
-            "full",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/anki/AnkiDroidGatewayProviderInstrumentedTest.kt",
-        )
-        self.assert_level(
-            "full",
-            "app/src/androidTest/kotlin/dev/bee/kanjianki/LadderSchedulerEndToEndTest.kt",
-        )
-
     def test_unannotated_instrumentation_change_does_not_claim_full_coverage(self) -> None:
         self.assert_level(
             "smoke",
@@ -170,13 +160,6 @@ class DeviceSmokeWorkflowContractTest(unittest.TestCase):
         self.assertIn('signingConfigs.getByName("debug")', smoke_build)
         self.assertIn('abiFilters += "x86_64"', smoke_build)
         self.assertNotIn("isDebuggable = true", smoke_build)
-
-    def test_mlkit_component_registrar_constructors_survive_r8_full_mode(self) -> None:
-        registrar_rule = self.proguard_rules.split(
-            "-keep class * implements com.google.firebase.components.ComponentRegistrar",
-            maxsplit=1,
-        )[1].split("}", maxsplit=1)[0]
-        self.assertIn("void <init>();", registrar_rule)
 
 
 if __name__ == "__main__":

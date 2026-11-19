@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<paths>
-    <!-- Only snapshots of allow-listed diagnostic logs are copied into this cache directory. -->
-    <cache-path
-        name="debug-logs"
-        path="debug-log-share/" />
-</paths>
