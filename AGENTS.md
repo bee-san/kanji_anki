@@ -8,7 +8,10 @@ design lives in the "Kani App Design" artifact; the app is in
   (auto-picks fields), `ScanAnalyzer` (problem kanji and culprit attribution),
   `Training` (3-day solid rule, session planner, sprint builder), `Strokes`
   (KanjiVG stroke diff for "the part that decides" and handwriting checks),
-  `Romaji` (live romaji → hiragana).
+  `Romaji` (live romaji → hiragana), `Memory` (how answers map onto the RWKV
+  memory model: ratings, stream ids, the in-process `MemoryModel`, `Recall`).
+- `memory/KaniMemory`: runs RWKV SM92 over the answer log in the background
+  and caches each card's forgetting curve in `kani1.db`.
 - `anki/AnkiSource`: read-only AnkiDroid access through Anki search strings,
   plus the opt-in `kani_solid` tag.
 - `data/`: `KaniStore` (SQLite `kani1.db`), `KaniPrefs`, `Reference`
@@ -17,10 +20,37 @@ design lives in the "Kani App Design" artifact; the app is in
 - `ui/`: Compose screens matching the design; light and AMOLED tokens in
   `KaniTheme`.
 
-The app depends only on `:core` and `:dictionary-core`. The adaptive
-scheduler, RWKV, FSRS, sync, writing and update modules below are no longer
-used by the app; their notes are kept for the modules themselves. Kani 1.0
-deliberately starts fresh: it deletes the pre-1.0 `kanji_anki_simple.db`.
+The app depends only on `:core` (which exposes `:rwkv`) and
+`:dictionary-core`. The adaptive scheduler, FSRS, sync, writing and update
+modules below are no longer used by the app; their notes are kept for the
+modules themselves. Kani 1.0 deliberately starts fresh: it deletes the pre-1.0
+`kanji_anki_simple.db`.
+
+Kani 1.0 uses RWKV as its memory model, in a smaller form than the v34 design
+in the "RWKV Memory Model Notes" below:
+
+- **Cards.** Each kanji is a note with two cards (meaning check, reading
+  check); the check is the deck; one preset. Every check answer is fed once,
+  in `answer.id` order: right and fast (≤ `Progress.FAST_MS`) is Good, right
+  but slow is Hard, a miss or "I don't know" is Again. Sprints, mix-up cards,
+  the reading retry and writing are practice and are never fed.
+- **State.** The `answer` table is the source of truth. The model state lives
+  only in memory: the first update in a process replays the whole log, later
+  ones feed new answers. The `memory` table caches each card's curve
+  (`RwkvCardHistory`), and `memory_meta` records `MemoryRules.IDENTITY` and
+  the last answer fed. A changed identity triggers a full replay. Readers (the
+  planner, Today, the reminder) only read the cache and fall back to the plain
+  rules without it.
+- **Scheduling.** The 3-day solid rule still decides when training ends. The
+  model orders training kanji (lowest predicted recall first, after chains
+  and mix-ups) and brings a solid kanji back for a check once either check's
+  predicted recall falls below `MemoryRules.TARGET_RECALL` (90%), asking the
+  weaker check; a quarter of the session is kept for these, and a miss sends
+  the kanji back to training.
+- **Weights.** `rwkv/weights` is an app asset source dir; the APK carries
+  `assets/sm92/weights.f32.bin`, verified against `RwkvAlgorithmInfo` on load.
+  `KaniMemoryTest` (Robolectric) and `KaniMemoryModelTest` run the real
+  weights.
 
 # Agent Testing Runbook
 

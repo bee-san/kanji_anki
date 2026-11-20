@@ -7,6 +7,11 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import androidx.core.database.sqlite.transaction
 import dev.bee.kanjianki.kani.core.AnkiText
+import dev.bee.kanjianki.kani.core.Check
+import dev.bee.kanjianki.kani.core.LoggedAnswer
+import dev.bee.kanjianki.kani.core.MemoryRules
+import dev.bee.kanjianki.kani.core.Recall
+import dev.bee.rwkv.RwkvCardHistory
 import dev.bee.kanjianki.kani.core.KanjiState
 import dev.bee.kanjianki.kani.core.Mixup
 import dev.bee.kanjianki.kani.core.ScanAnalyzer
@@ -17,7 +22,14 @@ class KaniStore(context: Context) : SQLiteOpenHelper(context.applicationContext,
 
     data class Word(val noteId: Long, val expression: String, val reading: String, val meaning: String)
 
-    data class Answer(val day: Int, val kanji: String, val correct: Boolean, val latencyMs: Long)
+    data class Answer(
+        val day: Int,
+        val kanji: String,
+        val check: Check,
+        val correct: Boolean,
+        val latencyMs: Long,
+        val atMillis: Long,
+    )
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -41,13 +53,27 @@ class KaniStore(context: Context) : SQLiteOpenHelper(context.applicationContext,
                 PRIMARY KEY (target, picked)
             )""",
         )
-        db.execSQL("CREATE TABLE answer (id INTEGER PRIMARY KEY AUTOINCREMENT, day INTEGER NOT NULL, kanji TEXT NOT NULL, correct INTEGER NOT NULL, latency_ms INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE answer (id INTEGER PRIMARY KEY AUTOINCREMENT, day INTEGER NOT NULL, kanji TEXT NOT NULL, correct INTEGER NOT NULL, latency_ms INTEGER NOT NULL, check_type TEXT, at_ms INTEGER, rating INTEGER)")
+        createMemoryTables(db)
         db.execSQL("CREATE TABLE early (kanji TEXT PRIMARY KEY, look_alike TEXT NOT NULL, shown INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE known (kanji TEXT PRIMARY KEY)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Kani 1.0 starts fresh; future versions migrate here.
+        if (oldVersion < 2) {
+            // v2: the answer log carries what the memory model is fed. Older rows have no check
+            // (they are read as meaning checks) and no time (read as noon of their day).
+            db.execSQL("ALTER TABLE answer ADD COLUMN check_type TEXT")
+            db.execSQL("ALTER TABLE answer ADD COLUMN at_ms INTEGER")
+            db.execSQL("ALTER TABLE answer ADD COLUMN rating INTEGER")
+            createMemoryTables(db)
+        }
+    }
+
+    /** The memory model's cached forgetting curves: derived from the answer log, safe to drop. */
+    private fun createMemoryTables(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE memory (kanji TEXT NOT NULL, check_type TEXT NOT NULL, history BLOB NOT NULL, PRIMARY KEY (kanji, check_type))")
+        db.execSQL("CREATE TABLE memory_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     }
 
     // region kanji
@@ -115,10 +141,12 @@ class KaniStore(context: Context) : SQLiteOpenHelper(context.applicationContext,
                 }
             }
 
-    fun word(noteId: Long): Word? =
-        readableDatabase.query("word", null, "note_id=?", arrayOf(noteId.toString()), null, null, null).use { c ->
-            if (c.moveToFirst()) c.toWord() else null
-        }
+    /** Words for many note ids, in a few queries rather than one per note. */
+    fun words(noteIds: Collection<Long>): List<Word> = noteIds.distinct().chunked(MAX_ARGS).flatMap { chunk ->
+        val marks = chunk.joinToString(",") { "?" }
+        readableDatabase.query("word", null, "note_id IN ($marks)", chunk.map { it.toString() }.toTypedArray(), null, null, null)
+            .use { c -> buildList { while (c.moveToNext()) add(c.toWord()) } }
+    }
 
     fun isKnown(kanji: String): Boolean =
         readableDatabase.rawQuery("SELECT 1 FROM known WHERE kanji=?", arrayOf(kanji)).use { it.moveToFirst() }
@@ -146,7 +174,83 @@ class KaniStore(context: Context) : SQLiteOpenHelper(context.applicationContext,
     fun logAnswer(answer: Answer) {
         writableDatabase.insert("answer", null, ContentValues().apply {
             put("day", answer.day); put("kanji", answer.kanji); put("correct", if (answer.correct) 1 else 0); put("latency_ms", answer.latencyMs)
+            put("check_type", answer.check.name); put("at_ms", answer.atMillis)
+            put("rating", MemoryRules.rating(answer.correct, answer.latencyMs))
         })
+    }
+
+    fun answerCount(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM answer", null).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+
+    fun lastAnswerId(): Long = readableDatabase.rawQuery("SELECT MAX(id) FROM answer", null).use { if (it.moveToFirst()) it.getLong(0) else 0L }
+
+    /** The answer log after [afterId], oldest first, as the memory model is fed it. */
+    fun answersAfter(afterId: Long): List<LoggedAnswer> =
+        readableDatabase.rawQuery(
+            "SELECT id, day, kanji, correct, latency_ms, check_type, at_ms, rating FROM answer WHERE id > ? ORDER BY id",
+            arrayOf(afterId.toString()),
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) {
+                    val day = c.getInt(1)
+                    val latency = c.getLong(4)
+                    add(
+                        LoggedAnswer(
+                            id = c.getLong(0),
+                            kanji = c.getString(2),
+                            check = c.getString(5)?.let { runCatching { Check.valueOf(it) }.getOrNull() } ?: Check.MEANING,
+                            rating = if (c.isNull(7)) MemoryRules.rating(c.getInt(3) != 0, latency) else c.getInt(7),
+                            latencyMs = latency,
+                            atMillis = if (c.isNull(6)) day * DAY_MILLIS + DAY_MILLIS / 2 else c.getLong(6),
+                            day = day,
+                        ),
+                    )
+                }
+            }
+        }
+
+    // endregion
+
+    // region memory model
+
+    /** Which model built the cached curves, and the last answer they include. */
+    data class MemoryMeta(val identity: String?, val fedThrough: Long)
+
+    fun memoryMeta(): MemoryMeta {
+        val values = readableDatabase.rawQuery("SELECT key, value FROM memory_meta", null).use { c ->
+            buildMap { while (c.moveToNext()) put(c.getString(0), c.getString(1)) }
+        }
+        return MemoryMeta(values["identity"], values["fed_through"]?.toLongOrNull() ?: 0L)
+    }
+
+    /**
+     * Stores the curves of the cards an update touched, with the new meta, in one transaction.
+     * [replaceAll] drops every cached curve first (a full replay).
+     */
+    fun saveMemory(curves: Map<Pair<String, Check>, RwkvCardHistory>, meta: MemoryMeta, replaceAll: Boolean) {
+        writableDatabase.transaction {
+            if (replaceAll) delete("memory", null, null)
+            for ((key, history) in curves) {
+                insertWithOnConflict("memory", null, ContentValues().apply {
+                    put("kanji", key.first); put("check_type", key.second.name); put("history", history.encode())
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            insertWithOnConflict("memory_meta", null, ContentValues().apply { put("key", "identity"); put("value", meta.identity.orEmpty()) }, SQLiteDatabase.CONFLICT_REPLACE)
+            insertWithOnConflict("memory_meta", null, ContentValues().apply { put("key", "fed_through"); put("value", meta.fedThrough.toString()) }, SQLiteDatabase.CONFLICT_REPLACE)
+        }
+    }
+
+    /** Predicted recall at [nowMillis] for every kanji and check the model has seen. */
+    fun recall(nowMillis: Long): Recall {
+        val map = HashMap<Pair<String, Check>, Float>()
+        readableDatabase.rawQuery("SELECT kanji, check_type, history FROM memory", null).use { c ->
+            while (c.moveToNext()) {
+                val check = runCatching { Check.valueOf(c.getString(1)) }.getOrNull() ?: continue
+                val history = runCatching { RwkvCardHistory.decode(c.getBlob(2)) }.getOrNull() ?: continue
+                val p = history.recallAt(nowMillis)
+                if (p.isFinite()) map[c.getString(0) to check] = p
+            }
+        }
+        return Recall { kanji, check -> map[kanji to check] }
     }
 
     // endregion
@@ -203,6 +307,10 @@ class KaniStore(context: Context) : SQLiteOpenHelper(context.applicationContext,
         /** The pre-1.0 database. Kani 1.0 starts fresh, so the old one is removed on first run. */
         const val LEGACY_NAME = "kanji_anki_simple.db"
         private const val MAX_MEANING = 120
-        private const val VERSION = 1
+        private const val DAY_MILLIS = 86_400_000L
+
+        /** Stays under SQLite's 999 bound-argument limit on older Android releases. */
+        private const val MAX_ARGS = 500
+        private const val VERSION = 2
     }
 }

@@ -106,11 +106,15 @@ class AnkiSource(context: Context) {
         if (count > 0) deck to count else null
     }.sortedByDescending { it.second }
 
-    /** Adds the opt-in [SOLID_TAG] to each note. Returns how many notes were tagged. */
-    fun tagSolid(noteIds: Set<Long>): Int {
-        val target = target() ?: return 0
-        if (state() != State.READY) return 0
-        var tagged = 0
+    /**
+     * Adds the opt-in [SOLID_TAG] to each note. Returns the notes that now carry the tag
+     * (including ones that already had it); a note missing from the result failed and should
+     * be retried later.
+     */
+    fun tagSolid(noteIds: Set<Long>): Set<Long> {
+        val target = target() ?: return emptySet()
+        if (state() != State.READY) return emptySet()
+        val tagged = LinkedHashSet<Long>()
         for (noteId in noteIds) {
             val noteUri = uri(target, "notes", noteId.toString())
             try {
@@ -119,13 +123,13 @@ class AnkiSource(context: Context) {
                 } ?: continue
                 val list = tags.trim().split(WHITESPACE).filter { it.isNotEmpty() }
                 if (list.any { it.equals(SOLID_TAG, ignoreCase = true) }) {
-                    tagged++
+                    tagged += noteId
                     continue
                 }
                 val values = ContentValues().apply { put("tags", (list + SOLID_TAG).joinToString(" ")) }
-                if (resolver.update(noteUri, values, null, null) > 0) tagged++
+                if (resolver.update(noteUri, values, null, null) > 0) tagged += noteId
             } catch (_: RuntimeException) {
-                // One bad note must not stop the rest; it is retried next session.
+                // One bad note must not stop the rest; it is left out and retried next session.
             }
         }
         return tagged

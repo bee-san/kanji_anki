@@ -70,6 +70,16 @@ class KaniCoreTest {
         assertEquals("まつ", Romaji.toKana("まつ"))
     }
 
+    @Test
+    fun submittingSettlesATrailingN() {
+        assertEquals("ほん", Romaji.finish("hon"))
+        assertEquals("しんぶん", Romaji.finish("shinbun"))
+        assertEquals("ほん", Romaji.finish("ほn"))
+        assertEquals("ほん", Romaji.finish("honn"))
+        assertEquals("せいてん", Romaji.finish("seiten "))
+        assertEquals("まつ", Romaji.finish("matsu"))
+    }
+
     // endregion
 
     // region ScanAnalyzer
@@ -147,6 +157,58 @@ class KaniCoreTest {
         assertEquals(listOf("待", "末"), plan.map { it.kanji })
         assertEquals(Check.READING, plan[0].check)
         assertEquals(Check.MEANING, plan[1].check)
+    }
+
+    @Test
+    fun slippingSolidKanjiComeBackWeakestFirst() {
+        val steady = KanjiState.fresh("晴", null, emptySet()).copy(status = Status.SOLID, lastSeenDay = 5)
+        val slipping = KanjiState.fresh("末", null, emptySet()).copy(status = Status.SOLID, lastSeenDay = 5)
+        val worst = KanjiState.fresh("未", null, emptySet()).copy(status = Status.SOLID, lastSeenDay = 5)
+        val seenToday = KanjiState.fresh("待", null, emptySet()).copy(status = Status.SOLID, lastSeenDay = 10)
+        val recall = Recall { k, check ->
+            when (k to check) {
+                "晴" to Check.MEANING -> 0.97f
+                "末" to Check.MEANING -> 0.85f
+                "未" to Check.MEANING -> 0.95f
+                "未" to Check.READING -> 0.6f
+                "待" to Check.MEANING -> 0.1f
+                else -> null
+            }
+        }
+        val plan = SessionPlanner.plan(listOf(steady, slipping, worst, seenToday), emptyMap(), 10, 3, recall) { true }
+        assertEquals(listOf("未", "末"), plan.map { it.kanji })
+        // The model's weaker check is the one asked.
+        assertEquals(Check.READING, plan[0].check)
+        assertEquals(Check.MEANING, plan[1].check)
+        // Without the model, solid kanji never come back.
+        assertTrue(SessionPlanner.plan(listOf(steady, slipping, worst), emptyMap(), 10, 3) { true }.isEmpty())
+    }
+
+    @Test
+    fun aQuarterOfTheSessionIsKeptForSlippingSolidKanji() {
+        val training = (1..20).map { KanjiState.fresh("一二三四五六七八九十百千万円口目耳手足力"[it - 1].toString(), null, emptySet()) }
+        val solid = listOf("未", "末", "待").map { KanjiState.fresh(it, null, emptySet()).copy(status = Status.SOLID, lastSeenDay = 1) }
+        val recall = Recall { k, _ -> if (k in setOf("未", "末", "待")) 0.5f else null }
+        val plan = SessionPlanner.plan(training + solid, emptyMap(), 10, 10, recall) { false }
+        assertEquals(12, plan.size)
+        assertEquals(3, plan.count { it.kanji in setOf("未", "末", "待") })
+        assertEquals(12, SessionPlanner.count(training + solid, emptyMap(), 10, 10, recall))
+    }
+
+    @Test
+    fun trainingKanjiTheModelThinksAreForgottenComeFirst() {
+        val a = KanjiState.fresh("末", null, emptySet()).copy(lastSeenDay = 1)
+        val b = KanjiState.fresh("未", null, emptySet()).copy(lastSeenDay = 2)
+        val recall = Recall { k, _ -> if (k == "未") 0.3f else 0.8f }
+        assertEquals(listOf("未", "末"), SessionPlanner.due(listOf(a, b), emptyMap(), 10, recall).map { it.kanji })
+        assertEquals(listOf("末", "未"), SessionPlanner.due(listOf(a, b), emptyMap(), 10).map { it.kanji })
+    }
+
+    @Test
+    fun answersMapToRatings() {
+        assertEquals(1, MemoryRules.rating(false, 500))
+        assertEquals(3, MemoryRules.rating(true, Progress.FAST_MS))
+        assertEquals(2, MemoryRules.rating(true, Progress.FAST_MS + 1))
     }
 
     // endregion

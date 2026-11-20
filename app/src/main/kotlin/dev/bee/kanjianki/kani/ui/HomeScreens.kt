@@ -226,6 +226,8 @@ data class SettingsState(
     val tag: Boolean,
     val speak: Boolean,
     val version: String,
+    /** The memory model's state, e.g. "RWKV SM92 · 214 answers". */
+    val memory: String = "",
 )
 
 @Composable
@@ -273,10 +275,13 @@ fun SettingsScreen(
             SettingsLink("How Kani picked your kanji", onWords)
             Gap(24)
             Text("Kani ${state.version}", style = TextStyle(fontSize = 13.sp, color = c.dim))
+            if (state.memory.isNotEmpty()) {
+                Text("Memory model: ${state.memory}", style = TextStyle(fontSize = 13.sp, color = c.dim))
+            }
             Gap(4)
             Text(
                 "Stroke data: KanjiVG by Ulrich Apel (CC BY-SA 3.0). Meanings and readings: KANJIDIC2 (EDRDG). " +
-                    "Look-alike pairs: Kiku.",
+                    "Look-alike pairs: Kiku. Memory model: RWKV-Curve SM92 from kuma3-anki-core (AGPL-3.0).",
                 style = TextStyle(fontSize = 12.sp, lineHeight = 17.sp, color = c.dim),
             )
         }

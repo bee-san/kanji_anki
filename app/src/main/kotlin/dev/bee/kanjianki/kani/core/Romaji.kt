@@ -107,4 +107,13 @@ object Romaji {
         }
         return out.toString()
     }
+
+    /**
+     * The submitted answer: [toKana], with a trailing `n` settled as ん, since no next key is
+     * coming to decide it (`hon` → ほん).
+     */
+    fun finish(input: String): String {
+        val kana = toKana(input.trimEnd())
+        return if (kana.endsWith('n')) kana.dropLast(1) + "ん" else kana
+    }
 }

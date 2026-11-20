@@ -150,6 +150,12 @@ android {
         }
     }
 
+    // The RWKV memory model's SM92 weights ship as the asset `sm92/weights.f32.bin`
+    // (KaniMemory.WEIGHTS_ASSET). The :rwkv parity tests read the same file.
+    sourceSets.getByName("main") {
+        assets.directories.add(rootProject.file("rwkv/weights").path)
+    }
+
     sourceSets.getByName("minifiedSmoke") {
         kotlin.directories.add("src/release/kotlin")
     }
@@ -173,6 +179,9 @@ tasks.withType<Test>().configureEach {
     // (java.lang.OutOfMemoryError at FileMap). Give the worker an explicit heap
     // and periodically restart it so the mapped memory is reclaimed mid-run.
     maxHeapSize = "2g"
+    // KaniMemoryModelTest feeds answers through the real SM92 weights.
+    systemProperty("kani.rwkv.weights", rootProject.file("rwkv/weights/sm92/weights.f32.bin").absolutePath)
+    inputs.file(rootProject.file("rwkv/weights/sm92/weights.f32.bin"))
     forkEvery = 100L
     // Informational RWKV vs FSRS-6 comparison on an exported Kani database:
     // ./gradlew :app:testDebugUnitTest --tests '*RwkvVsFsrsReplayComparisonTest' -PrwkvCompareDb=/path/to/kanji_anki_simple.db

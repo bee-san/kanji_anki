@@ -13,6 +13,7 @@ import dev.bee.kanjianki.kani.core.Check
 import dev.bee.kanjianki.kani.core.Escalation
 import dev.bee.kanjianki.kani.core.KanjiState
 import dev.bee.kanjianki.kani.core.Progress
+import dev.bee.kanjianki.kani.core.Romaji
 import dev.bee.kanjianki.kani.core.ScanAnalyzer
 import dev.bee.kanjianki.kani.core.SessionItem
 import dev.bee.kanjianki.kani.core.SessionPlanner
@@ -24,6 +25,7 @@ import dev.bee.kanjianki.kani.data.KaniPrefs
 import dev.bee.kanjianki.kani.data.KaniStore
 import dev.bee.kanjianki.kani.data.Reference
 import dev.bee.kanjianki.kani.data.Scanner
+import dev.bee.kanjianki.kani.memory.KaniMemory
 import dev.bee.kanjianki.kani.reminder.DailyReminder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -87,6 +89,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     val ref = Reference(app)
     val anki = AnkiSource(app)
     private val scanner = Scanner(anki, ref)
+    val memory = KaniMemory(app, store)
 
     var screen: Screen by mutableStateOf(Screen.Loading)
         private set
@@ -107,14 +110,29 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         val solidBefore = HashSet<String>()
     }
 
+    /** Set when a widget tap arrives before startup has finished loading. */
+    private var sprintRequested = false
+
     init {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 app.deleteDatabase(KaniStore.LEGACY_NAME)
                 ref.warm()
             }
-            if (prefs.setupDone) goToday() else screen = Screen.Welcome
+            // Brings the cached curves up to date (e.g. after an upgrade or a model change).
+            launch { memory.catchUp(); refreshToday() }
+            when {
+                !prefs.setupDone -> screen = Screen.Welcome
+                sprintRequested -> sprintBlindSpots()
+                else -> goToday()
+            }
         }
+    }
+
+    /** A widget tap: sprint the top look-alikes, now or as soon as startup is done. */
+    fun requestSprint() {
+        if (!prefs.setupDone) return
+        if (screen == Screen.Loading) sprintRequested = true else sprintBlindSpots()
     }
 
     fun day(): Int = LocalDate.now().toEpochDay().toInt()
@@ -221,7 +239,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                 val states = store.allKanji()
                 val mixupCounts = mixupCountByTarget()
                 TodayData(
-                    due = SessionPlanner.due(states, mixupCounts, day()).size.coerceAtMost(SessionPlanner.sizeFor(prefs.minutes)),
+                    due = SessionPlanner.count(states, mixupCounts, day(), prefs.minutes, store.recall(System.currentTimeMillis())),
                     pairs = pairs(states).take(3),
                     solid = states.count { it.status == Status.SOLID },
                     training = states.count { it.status == Status.TRAINING },
@@ -275,7 +293,9 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
             val (items, early, solid) = withContext(Dispatchers.IO) {
                 val states = store.allKanji()
                 Triple(
-                    SessionPlanner.plan(states, mixupCountByTarget(), day(), prefs.minutes) { store.wordsWith(it, 1).isNotEmpty() },
+                    SessionPlanner.plan(states, mixupCountByTarget(), day(), prefs.minutes, store.recall(System.currentTimeMillis())) {
+                        store.wordsWith(it, 1).isNotEmpty()
+                    },
                     store.nextEarly(),
                     states.filter { it.status == Status.SOLID }.map { it.kanji },
                 )
@@ -327,13 +347,14 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         val word = current.word
         val correct = !gaveUp && when (item.check) {
             Check.MEANING -> TypingAnswerMatcher.matches(ref.lookup, item.kanji, text, word?.takeIf { it.expression == item.kanji }?.meaning)
-            Check.READING -> word != null && TypedReadingPolicy.matches(text, word.reading)
+            Check.READING -> word != null && TypedReadingPolicy.matches(Romaji.finish(text), word.reading)
         }
         val day = day()
         var next = Progress.answer(state, day, correct, latencyMs)
         r.touched += item.kanji
         if (!gaveUp) r.latencies += latencyMs
-        store.logAnswer(KaniStore.Answer(day, item.kanji, correct, latencyMs))
+        store.logAnswer(KaniStore.Answer(day, item.kanji, item.check, correct, latencyMs, System.currentTimeMillis()))
+        viewModelScope.launch { memory.catchUp() }
 
         if (!correct && item.check == Check.MEANING && !gaveUp) {
             val picked = lookAlikeMatching(item.kanji, text)
@@ -387,12 +408,20 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** A pending sprint (and maybe writing) and where to go after it. */
-    private data class Drill(val target: String, val other: String, val advance: Boolean, val mayWrite: Boolean)
+    private data class Drill(
+        val target: String,
+        val other: String,
+        val advance: Boolean,
+        val mayWrite: Boolean,
+        /** The user was sure of the wrong answer, so the pair reaches writing sooner. */
+        val confident: Boolean = false,
+    )
 
     private var drill: Drill? = null
 
-    fun contrastTrain(target: String, picked: String) {
-        drill = Drill(target, picked, advance = true, mayWrite = true)
+    /** [sure] is the answer to "Were you sure?": null when the user skipped the question. */
+    fun contrastTrain(target: String, picked: String, sure: Boolean?) {
+        drill = Drill(target, picked, advance = true, mayWrite = true, confident = sure == true)
         screen = Screen.Sprint(SprintBuilder.build(target, picked, ref::similar))
     }
 
@@ -403,11 +432,17 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun sprintBlindSpots() {
-        val top = pairs().take(3)
-        if (top.isEmpty()) return goToday()
-        val per = (SprintBuilder.ROUNDS / top.size).coerceAtLeast(2)
-        drill = null
-        screen = Screen.Sprint(top.flatMap { SprintBuilder.build(it.target, it.other, ref::similar).take(per) }.shuffled())
+        viewModelScope.launch {
+            val trials = withContext(Dispatchers.IO) {
+                val top = pairs().take(3)
+                if (top.isEmpty()) return@withContext emptyList()
+                val per = (SprintBuilder.ROUNDS / top.size).coerceAtLeast(2)
+                top.flatMap { SprintBuilder.build(it.target, it.other, ref::similar).take(per) }.shuffled()
+            }
+            if (trials.isEmpty()) return@launch goToday()
+            drill = null
+            screen = Screen.Sprint(trials)
+        }
     }
 
     fun sprintAnswer(trial: SprintTrial, picked: String) {
@@ -423,7 +458,8 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         val d = drill
         if (d != null && d.mayWrite && prefs.handwriting && ref.strokes(d.target) != null && ref.strokes(d.other) != null) {
             val count = store.mixups().filter { setOf(it.target, it.picked) == setOf(d.target, d.other) }.sumOf { it.count }
-            if (count >= Escalation.WRITE_AFTER_MIXUPS) {
+            val threshold = if (d.confident) Escalation.WRITE_AFTER_CONFIDENT_MIXUPS else Escalation.WRITE_AFTER_MIXUPS
+            if (count >= threshold) {
                 screen = Screen.Write(d.target, d.other)
                 return
             }
@@ -445,7 +481,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         showCurrent()
     }
 
-    fun readingRetry(word: KaniStore.Word, typed: String): Boolean = TypedReadingPolicy.matches(typed, word.reading)
+    fun readingRetry(word: KaniStore.Word, typed: String): Boolean = TypedReadingPolicy.matches(Romaji.finish(typed), word.reading)
 
     fun readingDone() {
         val r = run ?: return goToday()
@@ -463,12 +499,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
             val summary = withContext(Dispatchers.IO) {
                 val rows = r.touched.mapNotNull { store.kanji(it) }
                 val solidNow = rows.filter { it.status == Status.SOLID && it.kanji !in r.solidBefore }
-                var tagged = 0
-                if (prefs.tagInAnki) {
-                    val notes = solidNow.filter { !it.tagged }.flatMap { it.noteIds }.toSet()
-                    tagged = runCatching { anki.tagSolid(notes) }.getOrDefault(0)
-                    if (tagged > 0) solidNow.forEach { store.save(it.copy(tagged = true)) }
-                }
+                val tagged = if (prefs.tagInAnki) tagPendingSolid() else 0
                 val sorted = r.latencies.sorted()
                 SessionSummary(
                     seconds = (System.currentTimeMillis() - r.startedAt) / 1000,
@@ -486,21 +517,53 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Tags the notes of every solid kanji not tagged yet, not just this session's: a kanji whose
+     * tagging failed, or that went solid before tagging was switched on, is caught up here.
+     * A kanji is marked tagged only when all of its notes now carry the tag. Returns the number
+     * of notes tagged.
+     */
+    private fun tagPendingSolid(): Int {
+        val pending = store.allKanji().filter { it.status == Status.SOLID && !it.tagged }
+        if (pending.isEmpty()) return 0
+        val done = runCatching { anki.tagSolid(pending.flatMap { it.noteIds }.toSet()) }.getOrDefault(emptySet())
+        for (k in pending) {
+            if (done.containsAll(k.noteIds)) store.save(k.copy(tagged = true))
+        }
+        return done.size
+    }
+
     // endregion
 
     // region views
 
-    fun wordRows(): List<dev.bee.kanjianki.kani.ui.WordRow> {
+    /** Rows for the Words screen; loaded off the main thread when it opens. */
+    var wordRows by mutableStateOf<List<dev.bee.kanjianki.kani.ui.WordRow>>(emptyList())
+        private set
+
+    fun openWords(from: Screen) {
+        wordRows = emptyList()
+        screen = Screen.Words(from)
+        loadWordRows()
+    }
+
+    private fun loadWordRows() {
+        viewModelScope.launch { wordRows = withContext(Dispatchers.IO) { buildWordRows() } }
+    }
+
+    private fun buildWordRows(): List<dev.bee.kanjianki.kani.ui.WordRow> {
         val states = store.allKanji().associateBy { it.kanji }
-        val noteIds = states.values.filter { it.status != Status.SOLID || it.reason != null }.flatMap { it.noteIds }.distinct()
-        return noteIds.mapNotNull { store.word(it) }.distinctBy { it.expression }.map { w ->
+        val noteIds = states.values.filter { it.status != Status.SOLID || it.reason != null }.flatMap { it.noteIds }
+        return store.words(noteIds).sortedBy { it.noteId }.distinctBy { it.expression }.map { w ->
             dev.bee.kanjianki.kani.ui.WordRow(w.expression, dev.bee.kanjianki.kani.core.AnkiText.kanjiIn(w.expression).map { it to states[it]?.status })
         }
     }
 
     fun checkAnyway(kanji: String) {
-        store.kanji(kanji)?.let { store.save(it.copy(status = Status.TRAINING)) }
-        (screen as? Screen.Words)?.let { screen = it.copy() }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { store.kanji(kanji)?.let { store.save(it.copy(status = Status.TRAINING)) } }
+            loadWordRows()
+        }
     }
 
     data class Family(
@@ -554,6 +617,13 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         version = dev.bee.kanjianki.BuildConfig.VERSION_NAME,
     )
 
+    /** One line for Settings: whether the memory model is running and how much it has seen. */
+    fun memoryLine(): String = when (val s = memory.status) {
+        KaniMemory.Status.Idle -> "RWKV SM92 · starting"
+        is KaniMemory.Status.Ready -> "RWKV SM92 · " + if (s.answers == 1L) "1 answer" else "${s.answers} answers"
+        is KaniMemory.Status.Failed -> "RWKV SM92 unavailable (${s.message})"
+    }
+
     fun updateSettings(change: KaniPrefs.() -> Unit) {
         prefs.change()
         themeMode = prefs.theme
@@ -572,6 +642,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         Screen.Connect, is Screen.Cards -> { screen = if (prefs.setupDone) Screen.Settings else Screen.Welcome; true }
         Screen.Daily -> { screen = Screen.Welcome; true }
         is Screen.Words -> { screen = (screen as Screen.Words).from; true }
+        is Screen.Sprint -> { sprintClose(); true }
         is Screen.CheckScreen, is Screen.Contrast, is Screen.ReadingFamily, is Screen.Hook, is Screen.Write -> { endSession(); true }
         else -> { goToday(); true }
     }

@@ -50,9 +50,16 @@ object DailyReminder {
         override fun doWork(): Result {
             val prefs = KaniPrefs(applicationContext)
             val store = KaniStore(applicationContext)
-            val due = SessionPlanner.due(store.allKanji(), emptyMap(), LocalDate.now().toEpochDay().toInt()).size
-            store.close()
-            if (due > 0) notify(applicationContext, due.coerceAtMost(SessionPlanner.sizeFor(prefs.minutes)))
+            val due = try {
+                // The model's cached curves: solid kanji it says are slipping count as due too.
+                SessionPlanner.count(
+                    store.allKanji(), emptyMap(), LocalDate.now().toEpochDay().toInt(), prefs.minutes,
+                    store.recall(System.currentTimeMillis()),
+                )
+            } finally {
+                store.close()
+            }
+            if (due > 0) notify(applicationContext, due)
             sync(applicationContext, prefs)
             return Result.success()
         }

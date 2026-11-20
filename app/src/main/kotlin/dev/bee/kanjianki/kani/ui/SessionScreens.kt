@@ -242,19 +242,22 @@ fun PairCards(
     glyph: Dp = 96.dp,
 ) {
     val c = Kani.colors
-    val ls = strokes(left)
-    val rs = strokes(right)
+    val ls = remember(left) { strokes(left) }
+    val rs = remember(right) { strokes(right) }
+    // The stroke diff searches ~1,900 alignments, so work it out once per pair, not per redraw.
+    val leftDeciding = remember(ls, rs) { if (ls != null && rs != null) StrokeDiff.decidingStrokes(ls, rs) else emptySet() }
+    val rightDeciding = remember(ls, rs) { if (ls != null && rs != null) StrokeDiff.decidingStrokes(rs, ls) else emptySet() }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        listOf(Triple(left, leftLabel, leftMeaning) to (ls to rs), Triple(right, rightLabel, rightMeaning) to (rs to ls))
+        listOf(Triple(left, leftLabel, leftMeaning) to (ls to leftDeciding), Triple(right, rightLabel, rightMeaning) to (rs to rightDeciding))
             .forEachIndexed { i, (info, pair) ->
                 val (k, label, meaning) = info
                 KCard(Modifier.weight(1f), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                     Eyebrow(label, color = if (i == 0) c.correct else c.accent)
                     Gap(10)
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        val (mine, theirs) = pair
-                        if (mine != null && theirs != null) {
-                            StrokeGlyph(mine, glyph, highlight = StrokeDiff.decidingStrokes(mine, theirs))
+                        val (mine, deciding) = pair
+                        if (mine != null && deciding.isNotEmpty()) {
+                            StrokeGlyph(mine, glyph, highlight = deciding)
                         } else {
                             KanjiText(k, (glyph.value * 0.8f).toInt())
                         }
@@ -272,7 +275,7 @@ fun ContrastScreen(
     picked: String,
     meaning: (String) -> String,
     strokes: (String) -> List<Stroke>?,
-    onTrain: () -> Unit,
+    onTrain: (sure: Boolean?) -> Unit,
     onSkip: () -> Unit,
 ) {
     val c = Kani.colors
@@ -298,7 +301,7 @@ fun ContrastScreen(
             Choice("Guessed", sure == false, Modifier.weight(1f)) { sure = false }
         }
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Train this pair · 1 min", onClick = onTrain)
+        PrimaryButton("Train this pair · 1 min") { onTrain(sure) }
         TextLink("Skip", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onSkip)
     }
 }

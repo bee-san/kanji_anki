@@ -64,7 +64,9 @@ class KaniActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleIntent(intent)
+        // A recreated activity (rotation, theme change) still holds the launch intent; only a
+        // fresh launch should act on it.
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
             KaniTheme(vm.themeMode) {
                 val c = Kani.colors
@@ -94,7 +96,7 @@ class KaniActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_SPRINT, false) == true && vm.prefs.setupDone) vm.sprintBlindSpots()
+        if (intent?.getBooleanExtra(EXTRA_SPRINT, false) == true) vm.requestSprint()
     }
 
     override fun onDestroy() {
@@ -154,7 +156,7 @@ class KaniActivity : ComponentActivity() {
                 onRetry = vm::changeCards,
                 onBack = { vm.back() },
             )
-            is Screen.Scanning -> ScanningScreen(screen.scanned, screen.result, !vm.prefs.setupDone, onContinue = vm::afterScan, onSeeWords = { vm.open(Screen.Words(screen)) })
+            is Screen.Scanning -> ScanningScreen(screen.scanned, screen.result, !vm.prefs.setupDone, onContinue = vm::afterScan, onSeeWords = { vm.openWords(screen) })
             Screen.Daily -> DailyScreen(vm.prefs.minutes, onBack = { vm.back() }) { minutes, reminder, handwriting, tag ->
                 if (reminder) askForNotifications()
                 vm.finishSetup(minutes, reminder, handwriting, tag, startNow = true)
@@ -179,7 +181,7 @@ class KaniActivity : ComponentActivity() {
             }
             is Screen.Contrast -> ContrastScreen(
                 screen.target, screen.picked, ref::meaning, ref::strokes,
-                onTrain = { vm.contrastTrain(screen.target, screen.picked) },
+                onTrain = { sure -> vm.contrastTrain(screen.target, screen.picked, sure) },
                 onSkip = vm::contrastSkip,
             )
             is Screen.Sprint -> SprintScreen(screen.trials, onAnswer = vm::sprintAnswer, onDone = vm::sprintDone, onClose = vm::sprintClose)
@@ -208,9 +210,9 @@ class KaniActivity : ComponentActivity() {
             )
             is Screen.Done -> DoneScreen(screen.summary, ref::meaning, onDone = vm::goToday)
             Screen.BlindSpots -> BlindSpotsScreen(remember { vm.pairs() }, onBack = vm::goToday, onSprint = vm::sprintBlindSpots)
-            is Screen.Words -> WordsScreen(remember(vm.screen) { vm.wordRows() }, onBack = { vm.back() }, onCheckAnyway = vm::checkAnyway)
+            is Screen.Words -> WordsScreen(vm.wordRows, onBack = { vm.back() }, onCheckAnyway = vm::checkAnyway)
             Screen.Settings -> SettingsScreen(
-                vm.settings,
+                vm.settings.copy(memory = vm.memoryLine()),
                 onBack = vm::goToday,
                 onTheme = { mode -> vm.updateSettings { theme = mode } },
                 onMinutes = { m -> vm.updateSettings { minutes = m } },
@@ -223,7 +225,7 @@ class KaniActivity : ComponentActivity() {
                 onSpeak = { vm.updateSettings { speak = !speak } },
                 onRescan = { vm.rescan() },
                 onChangeCards = vm::changeCards,
-                onWords = { vm.open(Screen.Words(Screen.Settings)) },
+                onWords = { vm.openWords(Screen.Settings) },
             )
         }
     }
