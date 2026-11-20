@@ -1,6 +1,7 @@
 package dev.bee.kanjianki.kani.memory
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import dev.bee.kanjianki.kani.core.Check
 import dev.bee.kanjianki.kani.core.MemoryModel
@@ -62,12 +63,22 @@ class KaniMemory(context: Context, private val store: KaniStore) {
         // The cache is already up to date and nothing new needs feeding: no need to load the model.
         if (current == null && meta.identity == MemoryRules.IDENTITY && meta.fedThrough == latest) return store.answerCount().toLong()
         val fresh = current == null
+        val loadStart = SystemClock.elapsedRealtime()
         val m = current ?: MemoryModel(engine()).also { model = it }
+        val loadMs = SystemClock.elapsedRealtime() - loadStart
         val touched = LinkedHashSet<Pair<String, Check>>()
-        for (answer in store.answersAfter(m.fedThrough)) {
+        val feedStart = SystemClock.elapsedRealtime()
+        val answers = store.answersAfter(m.fedThrough)
+        for (answer in answers) {
             m.feed(answer)
             touched += answer.kanji to answer.check
         }
+        Log.i(
+            TAG,
+            "${RwkvAlgorithmInfo.MODEL_FAMILY}: fed ${answers.size} answers in ${SystemClock.elapsedRealtime() - feedStart} ms" +
+                (if (fresh) " (full replay; weights loaded in $loadMs ms)" else "") +
+                (if (m.skipped > 0) ", ${m.skipped} skipped" else ""),
+        )
         val curves = HashMap<Pair<String, Check>, RwkvCardHistory>()
         for (key in touched) m.history(key.first, key.second)?.let { curves[key] = it }
         store.saveMemory(curves, KaniStore.MemoryMeta(MemoryRules.IDENTITY, m.fedThrough), replaceAll = fresh)
