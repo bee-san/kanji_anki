@@ -54,7 +54,7 @@ fun WelcomeScreen(onStart: () -> Unit) {
             PairChip("待", "持")
         }
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Get started", onClick = onStart)
+        Side { PrimaryButton("Get started", onClick = onStart) }
     }
 }
 
@@ -102,12 +102,14 @@ fun ConnectScreen(installed: Boolean, onAllow: () -> Unit, onInstall: () -> Unit
             Bullet("Sends anything off your phone")
         }
         Spacer(Modifier.weight(1f))
-        if (installed) {
-            PrimaryButton("Allow access", onClick = onAllow)
-        } else {
-            Body("AnkiDroid isn't installed on this phone.", color = Kani.colors.secondary)
-            Gap(12)
-            PrimaryButton("Get AnkiDroid", onClick = onInstall)
+        Side {
+            if (installed) {
+                PrimaryButton("Allow access", onClick = onAllow)
+            } else {
+                Body("AnkiDroid isn't installed on this phone.", color = Kani.colors.secondary)
+                Gap(12)
+                PrimaryButton("Get AnkiDroid", onClick = onInstall)
+            }
         }
     }
 }
@@ -131,7 +133,7 @@ fun CardsScreen(
     val c = Kani.colors
     var editing by remember { mutableStateOf(false) }
     var excluded by remember { mutableStateOf(setOf<String>()) }
-    Page {
+    Page(scroll = false) {
         SetupHeader(2, onBack)
         Title("Here's what Kani will use")
         Gap(20)
@@ -142,7 +144,7 @@ fun CardsScreen(
             detected == null || detected.models.isEmpty() -> {
                 Body(error ?: "Kani couldn't read AnkiDroid.", color = c.secondary)
                 Spacer(Modifier.weight(1f))
-                PrimaryButton("Try again", onClick = onRetry)
+                Side { PrimaryButton("Try again", onClick = onRetry) }
             }
             else -> {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -176,12 +178,14 @@ fun CardsScreen(
                         }
                     }
                 }
-                Gap(16)
                 val chosen = detected.copy(models = detected.models.filter { it.name !in excluded })
-                PrimaryButton("Looks good", enabled = chosen.models.isNotEmpty()) { onConfirm(chosen) }
-                if (!editing) {
-                    Gap(4)
-                    TextLink("Change something", modifier = Modifier.align(Alignment.CenterHorizontally)) { editing = true }
+                Side {
+                    Gap(16)
+                    PrimaryButton("Looks good", enabled = chosen.models.isNotEmpty()) { onConfirm(chosen) }
+                    if (!editing) {
+                        Gap(4)
+                        TextLink("Change something", modifier = Modifier.align(Alignment.CenterHorizontally)) { editing = true }
+                    }
                 }
             }
         }
@@ -273,7 +277,7 @@ fun ScanningScreen(scanned: Int, summary: ScanSummary?, inSetup: Boolean, onCont
         Gap(8)
         TextLink("How Kani picked these", onClick = onSeeWords)
         Spacer(Modifier.weight(1f))
-        PrimaryButton(if (summary.flagged == 0) "Done" else "Continue", onClick = onContinue)
+        Side { PrimaryButton(if (summary.flagged == 0) "Done" else "Continue", onClick = onContinue) }
     }
 }
 
@@ -324,6 +328,6 @@ fun DailyScreen(
         ToggleRow("Handwriting", handwriting) { handwriting = !handwriting }
         ToggleRow("Tag solid notes in Anki", tag) { tag = !tag }
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Start my first session") { onStart(minutes, reminder, handwriting, tag) }
+        Side { PrimaryButton("Start my first session") { onStart(minutes, reminder, handwriting, tag) } }
     }
 }

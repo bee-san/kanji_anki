@@ -139,7 +139,7 @@ fun CheckScreen(
         if (reveal != null && speakOnReveal && !spoken.isNullOrEmpty()) onSpeak(spoken)
     }
 
-    Page {
+    Page(scroll = false) {
         TopRow {
             TextLink("Close", color = c.secondary, onClick = onClose)
             Spacer(Modifier.weight(1f))
@@ -153,26 +153,28 @@ fun CheckScreen(
             if (reading) KanjiText(word!!.expression, if (word.expression.length <= 2) 96 else 64)
             else KanjiText(item.kanji, 168)
         }
-        if (reveal == null) {
-            AnswerField(
-                value = text,
-                onChange = {
-                    if (firstKeyAt == 0L && it.text.isNotEmpty()) firstKeyAt = System.currentTimeMillis()
-                    text = it
-                },
-                placeholder = if (reading) "Reading · type romaji or kana" else "Meaning",
-                kana = reading,
-                onSubmit = { if (text.text.isNotBlank()) onSubmit(text.text, latency(), false) },
-            )
-            Gap(12)
-            PrimaryButton("Check", enabled = text.text.isNotBlank()) { onSubmit(text.text, latency(), false) }
-            TextLink("I don't know", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                onSubmit("", latency(), true)
+        Side {
+            if (reveal == null) {
+                AnswerField(
+                    value = text,
+                    onChange = {
+                        if (firstKeyAt == 0L && it.text.isNotEmpty()) firstKeyAt = System.currentTimeMillis()
+                        text = it
+                    },
+                    placeholder = if (reading) "Reading · type romaji or kana" else "Meaning",
+                    kana = reading,
+                    onSubmit = { if (text.text.isNotBlank()) onSubmit(text.text, latency(), false) },
+                )
+                Gap(12)
+                PrimaryButton("Check", enabled = text.text.isNotBlank()) { onSubmit(text.text, latency(), false) }
+                TextLink("I don't know", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    onSubmit("", latency(), true)
+                }
+            } else {
+                RevealCard(item, reveal, onSpeak)
+                Gap(16)
+                PrimaryButton("Next", onClick = onNext)
             }
-        } else {
-            RevealCard(item, reveal, onSpeak)
-            Gap(16)
-            PrimaryButton("Next", onClick = onNext)
         }
     }
 }
@@ -301,8 +303,10 @@ fun ContrastScreen(
             Choice("Guessed", sure == false, Modifier.weight(1f)) { sure = false }
         }
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Train this pair · 1 min") { onTrain(sure) }
-        TextLink("Skip", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onSkip)
+        Side {
+            PrimaryButton("Train this pair · 1 min") { onTrain(sure) }
+            TextLink("Skip", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onSkip)
+        }
     }
 }
 
@@ -337,7 +341,7 @@ fun ReadingFamilyScreen(
     val c = Kani.colors
     var text by remember(word) { mutableStateOf(TextFieldValue("")) }
     var result by remember(word) { mutableStateOf<Boolean?>(null) }
-    Page {
+    Page(scroll = false) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Eyebrow("Wrong reading")
             Gap(8)
@@ -379,18 +383,20 @@ fun ReadingFamilyScreen(
             Gap(8)
             KanjiText(word.expression, 44, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
-        when (result) {
-            null -> {
-                AnswerField(text, { text = it }, "Reading · type romaji or kana", kana = true, onSubmit = {
-                    if (text.text.isNotBlank()) result = check(text.text)
-                })
-                Gap(12)
-                PrimaryButton("Check", enabled = text.text.isNotBlank()) { result = check(text.text) }
-            }
-            else -> {
-                Body(if (result == true) "Right: ${word.reading}" else "It's ${word.reading}", color = if (result == true) c.correct else c.accent, size = 17)
-                Gap(12)
-                PrimaryButton("Next", onClick = onDone)
+        Side {
+            when (result) {
+                null -> {
+                    AnswerField(text, { text = it }, "Reading · type romaji or kana", kana = true, onSubmit = {
+                        if (text.text.isNotBlank()) result = check(text.text)
+                    })
+                    Gap(12)
+                    PrimaryButton("Check", enabled = text.text.isNotBlank()) { result = check(text.text) }
+                }
+                else -> {
+                    Body(if (result == true) "Right: ${word.reading}" else "It's ${word.reading}", color = if (result == true) c.correct else c.accent, size = 17)
+                    Gap(12)
+                    PrimaryButton("Next", onClick = onDone)
+                }
             }
         }
     }
@@ -439,8 +445,10 @@ fun HookScreen(kanji: String, meaning: String, words: List<KaniStore.Word>, onSa
         Gap(10)
         Body("It stays hidden until after your next try.", color = c.secondary, size = 14)
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Save hook", enabled = text.text.isNotBlank()) { onSave(text.text) }
-        TextLink("Skip for now", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onSkip)
+        Side {
+            PrimaryButton("Save hook", enabled = text.text.isNotBlank()) { onSave(text.text) }
+            TextLink("Skip for now", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onSkip)
+        }
     }
 }
 
@@ -467,15 +475,17 @@ fun EarlyScreen(
         Gap(14)
         Body("Shown once, before you meet $newKanji in Anki.", color = c.secondary)
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Quick check · 3 flashes", onClick = onQuickCheck)
-        TextLink("Got it", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onGotIt)
+        Side {
+            PrimaryButton("Quick check · 3 flashes", onClick = onQuickCheck)
+            TextLink("Got it", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally), onClick = onGotIt)
+        }
     }
 }
 
 @Composable
 fun DoneScreen(summary: SessionSummary, meaning: (String) -> String, onDone: () -> Unit) {
     val c = Kani.colors
-    Page(top = 40.dp) {
+    Page(top = 40.dp, scroll = false) {
         val m = summary.seconds / 60
         val s = summary.seconds % 60
         Eyebrow("Session done · ${m} min ${s} s")
@@ -514,22 +524,24 @@ fun DoneScreen(summary: SessionSummary, meaning: (String) -> String, onDone: () 
                 if (summary.sprintTotal > 0) Stat("Look-alike sprint", "${summary.sprintRight} / ${summary.sprintTotal}", Modifier.weight(1f))
             }
         }
-        if (summary.tagged > 0) {
-            Row(
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 16.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(c.divider)
-                    .padding(horizontal = 18.dp, vertical = 10.dp),
-            ) {
-                Text(
-                    if (summary.tagged == 1) "✓  1 note tagged in Anki" else "✓  ${summary.tagged} notes tagged in Anki",
-                    style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = c.ink),
-                )
+        Side {
+            if (summary.tagged > 0) {
+                Row(
+                    Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(bottom = 16.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(c.divider)
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        if (summary.tagged == 1) "✓  1 note tagged in Anki" else "✓  ${summary.tagged} notes tagged in Anki",
+                        style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = c.ink),
+                    )
+                }
             }
+            PrimaryButton("Done", onClick = onDone)
         }
-        PrimaryButton("Done", onClick = onDone)
     }
 }
 

@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -26,11 +31,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,23 +63,121 @@ import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.kani.core.Stage
 import dev.bee.kanjianki.kani.core.Stroke
 
-/** Phone page: 24dp gutters, safe areas, scroll-free by design. */
+/**
+ * A screen shorter than [SHORTEST_PAGE] cannot hold a page laid out for a
+ * phone held upright: a handheld's landscape screen (the AYN Thor's two are
+ * about 470dp high), a phone on its side. There a page is two panes instead,
+ * its content on the left and its [Side] (the buttons, mostly) on the right,
+ * or, on a short screen that is not [WIDE_PAGE] wide, its side under its
+ * content and always in sight.
+ */
+private val SHORTEST_PAGE = 620.dp
+private val WIDE_PAGE = 700.dp
+private val WIDEST_PAGE = 920.dp
+private val WIDEST_ALONE = 640.dp
+
+/** Where a page's [Side] is drawn on a short screen; null on a tall one, where it stays in line. */
+private class SideSlot {
+    var content by mutableStateOf<(@Composable ColumnScope.() -> Unit)?>(null)
+    var owner: Any? = null
+}
+
+private val LocalSide = compositionLocalOf<SideSlot?> { null }
+
+/** True on a screen too short for an upright page ([Page] is in panes). */
+val LocalShortPage = compositionLocalOf { false }
+
+/**
+ * The part of a page that belongs at the thumb: its main button and what goes
+ * with it. On a tall screen it is drawn where it is written, at the bottom of
+ * the page's column. On a short one [Page] draws it in its own pane, beside the
+ * content or under it, so it never scrolls out of reach.
+ */
+@Composable
+fun ColumnScope.Side(content: @Composable ColumnScope.() -> Unit) {
+    val slot = LocalSide.current
+    if (slot == null) {
+        content()
+        return
+    }
+    // A page shows one side at a time, but in changing from one to the next the new one is set
+    // before the old one goes: the old one may only take away what is still its own.
+    val owner = remember { Any() }
+    slot.owner = owner
+    slot.content = content
+    DisposableEffect(slot) {
+        onDispose {
+            if (slot.owner === owner) {
+                slot.owner = null
+                slot.content = null
+            }
+        }
+    }
+}
+
+/**
+ * Phone page: 24dp gutters, safe areas, scroll-free by design on a phone held
+ * upright, with its main button pushed to the bottom by a weighted spacer.
+ *
+ * On a short screen the same page is in panes (see [SHORTEST_PAGE]). Its
+ * content scrolls when it is taller than the screen, unless [scroll] is off:
+ * a page whose content has its own list, or centres something in the room
+ * left over, keeps the screen's height and lays itself out in it.
+ */
 @Composable
 fun Page(
     modifier: Modifier = Modifier,
     top: Dp = 24.dp,
+    scroll: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .fillMaxSize()
-            .background(Kani.colors.bg)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(start = 24.dp, end = 24.dp, top = top, bottom = 24.dp),
-        content = content,
-    )
+    // The screen's own size, not the room left above the keyboard: a page must not change shape while one is typed in.
+    val screen = LocalConfiguration.current
+    val short = screen.screenHeightDp.dp < SHORTEST_PAGE
+    val frame = modifier
+        .fillMaxSize()
+        .background(Kani.colors.bg)
+        .statusBarsPadding()
+        .navigationBarsPadding()
+        .imePadding()
+    if (!short) {
+        Column(frame.padding(start = 24.dp, end = 24.dp, top = top, bottom = 24.dp), content = content)
+        return
+    }
+    val slot = remember { SideSlot() }
+    val wide = screen.screenWidthDp.dp >= WIDE_PAGE
+    CompositionLocalProvider(LocalSide provides slot, LocalShortPage provides true) {
+        Box(frame.padding(horizontal = 24.dp, vertical = 16.dp), contentAlignment = Alignment.TopCenter) {
+            if (wide) {
+                // How wide depends on whether the content set a side, which it does after this is composed:
+                // so it is read where the row is measured, not here.
+                val widest = Modifier.layout { measurable, constraints ->
+                    val most = (if (slot.content == null) WIDEST_ALONE else WIDEST_PAGE).roundToPx()
+                    val placed = measurable.measure(constraints.copy(maxWidth = minOf(constraints.maxWidth, most)))
+                    layout(placed.width, placed.height) { placed.place(0, 0) }
+                }
+                Row(widest.fillMaxSize()) {
+                    Column(Modifier.weight(1.2f).fillMaxHeight().scrolling(scroll), content = content)
+                    SidePane(slot, Modifier.padding(start = 32.dp).weight(1f).fillMaxHeight(), Arrangement.Center)
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    Column(Modifier.weight(1f).fillMaxWidth().scrolling(scroll), content = content)
+                    SidePane(slot, Modifier.padding(top = 12.dp).fillMaxWidth(), Arrangement.Top)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Modifier.scrolling(on: Boolean): Modifier = if (on) verticalScroll(rememberScrollState()) else this
+
+/** The page's [Side], when it has one. A scope of its own, so the page's content is not drawn again when the side changes. */
+@Composable
+private fun SidePane(slot: SideSlot, modifier: Modifier, arrangement: Arrangement.Vertical) {
+    val side = slot.content ?: return
+    Column(modifier, verticalArrangement = arrangement, content = side)
 }
 
 @Composable

@@ -98,7 +98,8 @@ fun SprintScreen(
     }
 
     Page(
-        Modifier
+        scroll = false,
+        modifier = Modifier
             .focusRequester(focus)
             .focusable()
             .onKeyEvent { e ->
@@ -129,10 +130,12 @@ fun SprintScreen(
                 Gap(12)
                 Body("Each kanji flashes for a moment. Then pick it from its look-alikes.", color = c.secondary)
                 Spacer(Modifier.weight(1f))
-                PrimaryButton("Start · ${trials.size} rounds") { phase = Phase.FLASH }
-                if (hasPad) {
-                    Gap(8)
-                    Body("or press A", color = c.dim, size = 14, modifier = Modifier.align(Alignment.CenterHorizontally))
+                Side {
+                    PrimaryButton("Start · ${trials.size} rounds") { phase = Phase.FLASH }
+                    if (hasPad) {
+                        Gap(8)
+                        Body("or press A", color = c.dim, size = 14, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    }
                 }
             }
             Phase.DONE -> {
@@ -141,10 +144,12 @@ fun SprintScreen(
                 Gap(8)
                 Title("$right of ${trials.size} right", size = 34)
                 Spacer(Modifier.weight(1f))
-                PrimaryButton("Continue", onClick = onDone)
-                Gap(8)
-                SecondaryButton("Run again") {
-                    round = 0; right = 0; picked = null; runKey++; phase = Phase.FLASH
+                Side {
+                    PrimaryButton("Continue", onClick = onDone)
+                    Gap(8)
+                    SecondaryButton("Run again") {
+                        round = 0; right = 0; picked = null; runKey++; phase = Phase.FLASH
+                    }
                 }
             }
             else -> {
@@ -161,28 +166,31 @@ fun SprintScreen(
                         else -> Unit
                     }
                 }
-                val cols = 2
-                t.options.chunked(cols).forEachIndexed { rowIndex, rowOptions ->
-                    Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        rowOptions.forEachIndexed { colIndex, option ->
-                            val i = rowIndex * cols + colIndex
-                            val state = when {
-                                phase != Phase.FEEDBACK -> 0
-                                option == t.shown -> 1
-                                option == picked -> 2
-                                else -> 0
+                // The choices: under the flash on a phone, beside it on a short screen.
+                Side {
+                    val cols = 2
+                    t.options.chunked(cols).forEachIndexed { rowIndex, rowOptions ->
+                        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            rowOptions.forEachIndexed { colIndex, option ->
+                                val i = rowIndex * cols + colIndex
+                                val state = when {
+                                    phase != Phase.FEEDBACK -> 0
+                                    option == t.shown -> 1
+                                    option == picked -> 2
+                                    else -> 0
+                                }
+                                // Choices stay hidden while the kanji flashes, so the pick tests memory.
+                                val showing = phase == Phase.PICK || phase == Phase.FEEDBACK
+                                Tile(
+                                    option,
+                                    state,
+                                    label = if (hasPad) FACE_LABELS.getOrNull(i) else null,
+                                    enabled = phase == Phase.PICK,
+                                    modifier = Modifier.weight(1f).alpha(if (showing) 1f else 0f),
+                                ) { pick(option) }
                             }
-                            // Choices stay hidden while the kanji flashes, so the pick tests memory.
-                            val showing = phase == Phase.PICK || phase == Phase.FEEDBACK
-                            Tile(
-                                option,
-                                state,
-                                label = if (hasPad) FACE_LABELS.getOrNull(i) else null,
-                                enabled = phase == Phase.PICK,
-                                modifier = Modifier.weight(1f).alpha(if (showing) 1f else 0f),
-                            ) { pick(option) }
+                            if (rowOptions.size < cols) Spacer(Modifier.weight(1f))
                         }
-                        if (rowOptions.size < cols) Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -271,52 +279,56 @@ fun WriteScreen(
                 null -> c.secondary
             },
         )
-        Gap(16)
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(c.card)
-                .border(1.dp, c.line, RoundedCornerShape(22.dp))
-                .pointerInput(target) {
-                    detectDragGestures(
-                        onDragStart = { o -> current = listOf(Pt(o.x / size.width, o.y / size.height)) },
-                        onDrag = { change, _ ->
-                            val p = change.position
-                            current = current + Pt(p.x / size.width, p.y / size.height)
-                        },
-                        onDragEnd = {
-                            if (current.size >= 2) drawn += current
-                            current = emptyList()
-                            verdict = null
-                        },
-                    )
-                },
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val w = size.width
-                // Shared strokes: a faint frame of what both kanji have.
-                targetStrokes.forEachIndexed { i, s -> if (i !in deciding) drawStroke(s, w, c.line, 0.05f) }
-                // Dashed box around where the deciding part goes.
-                val pts = expected.flatten()
-                if (pts.isNotEmpty()) {
-                    val pad = 0.05f
-                    val l = (pts.minOf { it.x } - pad) * w
-                    val t = (pts.minOf { it.y } - pad) * w
-                    val r = (pts.maxOf { it.x } + pad) * w
-                    val b = (pts.maxOf { it.y } + pad) * w
-                    drawRoundRect(
-                        c.accent.copy(alpha = 0.6f),
-                        topLeft = Offset(l, t),
-                        size = androidx.compose.ui.geometry.Size(r - l, b - t),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.03f),
-                        style = DrawStroke(width = 2.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))),
-                    )
+        // The square to write in: under the words on a phone, beside them on a short screen.
+        Side {
+            Gap(16)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    // As wide as the page on a phone; on a short screen no taller than its pane.
+                    .aspectRatio(1f, matchHeightConstraintsFirst = LocalShortPage.current)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(c.card)
+                    .border(1.dp, c.line, RoundedCornerShape(22.dp))
+                    .pointerInput(target) {
+                        detectDragGestures(
+                            onDragStart = { o -> current = listOf(Pt(o.x / size.width, o.y / size.height)) },
+                            onDrag = { change, _ ->
+                                val p = change.position
+                                current = current + Pt(p.x / size.width, p.y / size.height)
+                            },
+                            onDragEnd = {
+                                if (current.size >= 2) drawn += current
+                                current = emptyList()
+                                verdict = null
+                            },
+                        )
+                    },
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val w = size.width
+                    // Shared strokes: a faint frame of what both kanji have.
+                    targetStrokes.forEachIndexed { i, s -> if (i !in deciding) drawStroke(s, w, c.line, 0.05f) }
+                    // Dashed box around where the deciding part goes.
+                    val pts = expected.flatten()
+                    if (pts.isNotEmpty()) {
+                        val pad = 0.05f
+                        val l = (pts.minOf { it.x } - pad) * w
+                        val t = (pts.minOf { it.y } - pad) * w
+                        val r = (pts.maxOf { it.x } + pad) * w
+                        val b = (pts.maxOf { it.y } + pad) * w
+                        drawRoundRect(
+                            c.accent.copy(alpha = 0.6f),
+                            topLeft = Offset(l, t),
+                            size = androidx.compose.ui.geometry.Size(r - l, b - t),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(w * 0.03f),
+                            style = DrawStroke(width = 2.5f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))),
+                        )
+                    }
+                    if (showGuide) expected.forEach { drawStroke(it, w, c.accent.copy(alpha = 0.25f), 0.06f) }
+                    drawn.forEach { drawStroke(it, w, c.ink, 0.045f) }
+                    if (current.size >= 2) drawStroke(current, w, c.ink, 0.045f)
                 }
-                if (showGuide) expected.forEach { drawStroke(it, w, c.accent.copy(alpha = 0.25f), 0.06f) }
-                drawn.forEach { drawStroke(it, w, c.ink, 0.045f) }
-                if (current.size >= 2) drawStroke(current, w, c.ink, 0.045f)
             }
         }
         Spacer(Modifier.weight(1f))

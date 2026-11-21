@@ -76,13 +76,16 @@ fun TodayScreen(data: TodayData, onStart: () -> Unit, onSprint: () -> Unit, onBl
             )
         }
         if (data.pairs.isNotEmpty()) {
-            Gap(32)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Your blind spots", modifier = Modifier.weight(1f), style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = c.ink))
-                TextLink("See all", onClick = onBlindSpots)
+            Side {
+                // Under the card on a phone; beside it on a short screen, where the gap above is not wanted.
+                if (!LocalShortPage.current) Gap(32)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Your blind spots", modifier = Modifier.weight(1f), style = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.Bold, color = c.ink))
+                    TextLink("See all", onClick = onBlindSpots)
+                }
+                Gap(4)
+                data.pairs.forEach { PairRow(it, onClick = onBlindSpots) }
             }
-            Gap(4)
-            data.pairs.forEach { PairRow(it, onClick = onBlindSpots) }
         }
     }
 }
@@ -141,7 +144,7 @@ fun PairRow(pair: Pair2, onClick: (() -> Unit)? = null) {
 @Composable
 fun BlindSpotsScreen(pairs: List<Pair2>, onBack: () -> Unit, onSprint: () -> Unit) {
     val c = Kani.colors
-    Page {
+    Page(scroll = false) {
         TopRow { TextLink("← Today", color = c.secondary, onClick = onBack) }
         Gap(12)
         Eyebrow("From your own answers")
@@ -155,8 +158,10 @@ fun BlindSpotsScreen(pairs: List<Pair2>, onBack: () -> Unit, onSprint: () -> Uni
             LazyColumn(Modifier.weight(1f)) {
                 items(pairs, key = { it.target + it.other }) { PairRow(it) }
             }
-            Gap(16)
-            PrimaryButton("Sprint these · 2 min", onClick = onSprint)
+            Side {
+                Gap(16)
+                PrimaryButton("Sprint these · 2 min", onClick = onSprint)
+            }
         }
     }
 }
@@ -166,7 +171,7 @@ data class WordRow(val expression: String, val kanji: List<Pair<String, Status?>
 @Composable
 fun WordsScreen(rows: List<WordRow>, onBack: () -> Unit, onCheckAnyway: (String) -> Unit) {
     val c = Kani.colors
-    Page {
+    Page(scroll = false) {
         TopRow { TextLink("← Back", color = c.secondary, onClick = onBack) }
         Gap(12)
         Eyebrow("Which kanji is the problem")
@@ -245,7 +250,7 @@ fun SettingsScreen(
     onWords: () -> Unit,
 ) {
     val c = Kani.colors
-    Page {
+    Page(scroll = false) {
         TopRow { TextLink("← Today", color = c.secondary, onClick = onBack) }
         Gap(12)
         Title("Settings")
