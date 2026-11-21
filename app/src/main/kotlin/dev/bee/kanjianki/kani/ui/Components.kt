@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -131,9 +133,9 @@ fun Page(
     scroll: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // The screen's own size, not the room left above the keyboard: a page must not change shape while one is typed in.
-    val screen = LocalConfiguration.current
-    val short = screen.screenHeightDp.dp < SHORTEST_PAGE
+    // The window's own size, not the room left above the keyboard: a page must not change shape while one is typed in.
+    val window = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.let { DpSize(it.width.toDp(), it.height.toDp()) } }
+    val short = window.height < SHORTEST_PAGE
     val frame = modifier
         .fillMaxSize()
         .background(Kani.colors.bg)
@@ -145,7 +147,7 @@ fun Page(
         return
     }
     val slot = remember { SideSlot() }
-    val wide = screen.screenWidthDp.dp >= WIDE_PAGE
+    val wide = window.width >= WIDE_PAGE
     CompositionLocalProvider(LocalSide provides slot, LocalShortPage provides true) {
         Box(frame.padding(horizontal = 24.dp, vertical = 16.dp), contentAlignment = Alignment.TopCenter) {
             if (wide) {
