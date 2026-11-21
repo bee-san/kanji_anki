@@ -1,5 +1,9 @@
 package dev.bee.kanjianki.kani.ui
 
+import android.view.inputmethod.EditorInfo
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -102,6 +106,31 @@ fun KaniTheme(mode: ThemeMode, content: @Composable () -> Unit) {
         ThemeMode.AMOLED -> true
     }
     CompositionLocalProvider(LocalKaniColors provides if (dark) AmoledColors else LightColors) {
-        content()
+        KeyboardBesideThePage(content)
     }
+}
+
+/**
+ * Asks the keyboard not to take the whole screen. In landscape a keyboard may
+ * hide the app behind a text box of its own ("extract" mode), which on a
+ * handheld's short screen hides the kanji being asked about. Every text field
+ * under this asks for the keyboard alone, with both of Android's flags for it.
+ * They are requests: a keyboard may still ignore them.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun KeyboardBesideThePage(content: @Composable () -> Unit) {
+    InterceptPlatformTextInput(
+        interceptor = { request, next ->
+            next.startInputMethod(
+                PlatformTextInputMethodRequest { attributes ->
+                    request.createInputConnection(attributes).also {
+                        attributes.imeOptions = attributes.imeOptions or
+                            EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN
+                    }
+                },
+            )
+        },
+        content = content,
+    )
 }
