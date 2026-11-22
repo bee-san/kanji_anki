@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/bee-san/kanji_anki/releases">
-    <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?style=for-the-badge&logo=github&label=downloads">
+    <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?logo=github&label=downloads">
   </a>
   <a href="https://github.com/bee-san/kanji_anki/actions/workflows/sonarqube.yml">
     <img alt="SonarCloud quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=bee-san_kanji_anki&metric=alert_status">
