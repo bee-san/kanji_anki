@@ -53,37 +53,69 @@ class AnkiSource(context: Context) {
 
     /** Notes matching an Anki search string, e.g. `note:"Core 2k" tag:leech`. */
     fun notes(search: String, limit: Int = Int.MAX_VALUE): List<Note> {
-        val target = target() ?: return emptyList()
         val out = ArrayList<Note>()
+        forEachNote(search, limit) { out += it }
+        return out
+    }
+
+    /**
+     * Streams the notes matching [search] one at a time, so a large collection never sits in
+     * memory at once. [onCount] gets the number of matching rows before the first note.
+     */
+    fun forEachNote(search: String, limit: Int = Int.MAX_VALUE, onCount: (Int) -> Unit = {}, block: (Note) -> Unit) {
+        val target = target() ?: return
         val cursor = try {
             resolver.query(uri(target, "notes"), arrayOf("_id", "mid", "flds", "tags"), search, null, null)
         } catch (_: IllegalArgumentException) {
             resolver.query(uri(target, "notes"), null, search, null, null)
-        } ?: return emptyList()
+        } ?: return
         cursor.use { c ->
-            while (out.size < limit && c.moveToNext()) {
+            onCount(c.count)
+            var n = 0
+            while (n < limit && c.moveToNext()) {
                 val id = c.long("_id") ?: continue
-                out += Note(
-                    id = id,
-                    modelId = c.long("mid") ?: 0L,
-                    fields = c.string("flds").orEmpty().split(FIELD_SEPARATOR),
-                    tags = c.string("tags").orEmpty().trim().split(WHITESPACE).filter { it.isNotEmpty() },
+                n++
+                block(
+                    Note(
+                        id = id,
+                        modelId = c.long("mid") ?: 0L,
+                        fields = c.string("flds").orEmpty().split(FIELD_SEPARATOR),
+                        tags = c.string("tags").orEmpty().trim().split(WHITESPACE).filter { it.isNotEmpty() },
+                    ),
                 )
             }
         }
-        return out
     }
 
-    fun noteIds(search: String): Set<Long> {
-        val target = target() ?: return emptySet()
-        val ids = LinkedHashSet<Long>()
+    /** Ids of the notes matching [search], sorted, as primitives (no boxed Longs). */
+    fun noteIds(search: String): LongArray {
+        val target = target() ?: return LongArray(0)
         val cursor = try {
             resolver.query(uri(target, "notes"), arrayOf("_id"), search, null, null)
         } catch (_: IllegalArgumentException) {
             resolver.query(uri(target, "notes"), null, search, null, null)
-        } ?: return emptySet()
-        cursor.use { c -> while (c.moveToNext()) c.long("_id")?.let(ids::add) }
-        return ids
+        } ?: return LongArray(0)
+        cursor.use { c ->
+            var ids = LongArray(maxOf(16, c.count))
+            var n = 0
+            while (c.moveToNext()) {
+                val id = c.long("_id") ?: continue
+                if (n == ids.size) ids = ids.copyOf(n * 2)
+                ids[n++] = id
+            }
+            return ids.copyOf(n).also { it.sort() }
+        }
+    }
+
+    /** How many notes match [search], without reading any of them. */
+    fun noteCount(search: String): Int {
+        val target = target() ?: return 0
+        val cursor = try {
+            resolver.query(uri(target, "notes"), arrayOf("_id"), search, null, null)
+        } catch (_: IllegalArgumentException) {
+            resolver.query(uri(target, "notes"), null, search, null, null)
+        } ?: return 0
+        return cursor.use { it.count }
     }
 
     /** Every deck name in the collection. */
@@ -102,7 +134,7 @@ class AnkiSource(context: Context) {
      */
     fun noteCountsByDeck(baseSearch: String): List<Pair<String, Int>> = deckNames().mapNotNull { deck ->
         val q = deck.replace("\\", "\\\\").replace("\"", "\\\"")
-        val count = noteIds("$baseSearch deck:\"$q\" -deck:\"$q::*\"").size
+        val count = noteCount("$baseSearch deck:\"$q\" -deck:\"$q::*\"")
         if (count > 0) deck to count else null
     }.sortedByDescending { it.second }
 

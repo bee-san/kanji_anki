@@ -33,7 +33,7 @@ class Scanner(private val anki: AnkiSource, private val ref: Reference) {
         for (model in anki.models()) {
             val mapping = FieldPicker.pick(model.fields) ?: continue
             val search = AnkiSource.noteSearch(listOf(model.name))
-            val count = anki.noteIds(search).size
+            val count = anki.noteCount(search)
             if (count == 0) continue
             val notes = anki.notes(search, limit = DETECT_SAMPLE)
             val exprIndex = model.fields.indexOf(mapping.expression)
@@ -67,21 +67,21 @@ class Scanner(private val anki: AnkiSource, private val ref: Reference) {
     fun scan(source: KaniPrefs.Source, onProgress: (Int) -> Unit = {}): Scan {
         val models = anki.models().filter { it.name in source.modelNames }.associateBy { it.id }
         val base = AnkiSource.noteSearch(source.modelNames)
-        val notes = anki.notes(base)
-        onProgress(notes.size)
+        // Sorted primitive id arrays: a big collection must not become millions of boxed Longs.
         val leech = anki.noteIds("$base tag:leech")
         val failed = anki.noteIds("$base prop:lapses>=2")
         val suspended = anki.noteIds("$base is:suspended")
         val healthy = anki.noteIds("$base prop:ivl>=21 prop:lapses=0")
         val fresh = anki.noteIds("$base is:new")
 
-        val words = ArrayList<ScanAnalyzer.Word>(notes.size)
-        val stored = ArrayList<KaniStore.Word>(notes.size)
-        for (n in notes) {
-            val model = models[n.modelId] ?: continue
+        val words = ArrayList<ScanAnalyzer.Word>()
+        val stored = ArrayList<KaniStore.Word>()
+        // Notes are streamed and dropped as they are read; only the small word records stay.
+        anki.forEachNote(base, onCount = onProgress) { n ->
+            val model = models[n.modelId] ?: return@forEachNote
             fun field(name: String?): String? = name?.let { n.fields.getOrNull(model.fields.indexOf(it)) }
             val expression = AnkiText.expression(field(source.expressionField[model.name]))
-            if (AnkiText.kanjiIn(expression).isEmpty()) continue
+            if (AnkiText.kanjiIn(expression).isEmpty()) return@forEachNote
             val reading = AnkiText.reading(field(source.readingField[model.name]))
             val problem = when {
                 n.id in leech || n.tags.any { it.equals("leech", true) } -> ScanAnalyzer.Reason.LEECH
@@ -99,6 +99,8 @@ class Scanner(private val anki: AnkiSource, private val ref: Reference) {
         }
         return Scan(ScanAnalyzer.analyze(words, ref::similar), stored)
     }
+
+    private operator fun LongArray.contains(id: Long) = java.util.Arrays.binarySearch(this, id) >= 0
 
     private companion object {
         const val MAX_WORD_LENGTH = 8
