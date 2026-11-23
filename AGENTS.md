@@ -26,7 +26,10 @@ design lives in the "Kani App Design" artifact; the app is in
   (prereleases included). On launch it downloads the newest APK, checks the
   published `.sha256` and package/version, and the Today banner installs it
   through `PackageInstaller` (silent on Android 12+ once Kani is the installer
-  of record).
+  of record). When the install can be silent, Kani also installs it on its own
+  once the user leaves the app from a resting screen (never mid-session or
+  setup); an automatic install never asks, so a refused one is left to the
+  banner.
 
 The app depends only on `:core` (which exposes `:rwkv`), `:dictionary-core`
 and `:update-core` (release parsing and checksum checks). The adaptive

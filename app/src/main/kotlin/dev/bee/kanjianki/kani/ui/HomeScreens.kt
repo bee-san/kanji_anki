@@ -112,6 +112,8 @@ private fun UpdateBanner(update: UpdateOffer, onUpdate: () -> Unit) {
                 Text("Kani ${update.version} is ready", style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = c.ink))
                 if (update.error != null) {
                     Text(update.error, style = TextStyle(fontSize = 13.sp, color = c.dim))
+                } else if (update.installsOnLeave) {
+                    Text("Installs itself when you leave Kani", style = TextStyle(fontSize = 13.sp, color = c.dim))
                 }
             }
             HGap(12)

@@ -84,8 +84,12 @@ data class SessionSummary(
     val tagged: Int,
 )
 
-/** A downloaded, verified update waiting for the user's tap, or the last install failure. */
-data class UpdateOffer(val version: String, val apk: File, val error: String? = null)
+/**
+ * A downloaded, verified update waiting for the user's tap, or the last install failure.
+ * [installsOnLeave]: Android lets Kani install it without asking, so it installs itself once the
+ * user leaves Kani.
+ */
+data class UpdateOffer(val version: String, val apk: File, val error: String? = null, val installsOnLeave: Boolean = false)
 
 data class TodayData(val due: Int, val pairs: List<Pair2>, val solid: Int, val training: Int)
 
@@ -107,6 +111,12 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     private val updater = Updater(app)
     var update: UpdateOffer? by mutableStateOf(null)
         private set
+
+    /** Kani is in the background. */
+    private var away = false
+
+    /** One automatic install per process, so a refused one is not retried on every leave. */
+    private var autoInstallTried = false
 
     private var run: Run? = null
 
@@ -632,13 +642,48 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun fetchUpdate() {
         update = withContext(Dispatchers.IO) {
             try {
-                updater.check()?.let { UpdateOffer(it.version, updater.download(it)) }
+                updater.check()?.let { UpdateOffer(it.version, updater.download(it), installsOnLeave = updater.installsSilently()) }
             } catch (error: Exception) {
                 android.util.Log.w("KaniUpdate", "Update check failed.", error)
                 null
             }
         }
+        // The user may have left while it downloaded.
+        if (away) installOnLeave()
     }
+
+    /** Kani went to the background: the moment to install a ready update. */
+    fun onLeave() {
+        away = true
+        installOnLeave()
+    }
+
+    fun onReturn() {
+        away = false
+    }
+
+    /**
+     * Installs a ready update on its own when Android allows it without a tap and the user left
+     * from a resting screen, not a session, drill or setup. Android closes Kani to replace it,
+     * so the next open is the new version.
+     */
+    private fun installOnLeave() {
+        val offer = update ?: return
+        if (autoInstallTried || offer.error != null || !screen.resting || !updater.installsSilently()) return
+        autoInstallTried = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                updater.install(offer.apk, auto = true)
+            } catch (error: Exception) {
+                android.util.Log.w("KaniUpdate", "Automatic update failed.", error)
+            }
+        }
+    }
+
+    /** Screens where closing Kani loses nothing. */
+    private val Screen.resting: Boolean
+        get() = this is Screen.Welcome || this is Screen.Today || this is Screen.Done ||
+            this is Screen.BlindSpots || this is Screen.Words || this is Screen.Settings
 
     /** False when Android first needs the user to let Kani install apps. */
     fun installUpdate(): Boolean {

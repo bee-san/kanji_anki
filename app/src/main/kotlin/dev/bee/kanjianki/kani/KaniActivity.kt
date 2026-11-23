@@ -99,9 +99,20 @@ class KaniActivity : ComponentActivity() {
         if (intent?.getBooleanExtra(EXTRA_SPRINT, false) == true) vm.requestSprint()
     }
 
+    override fun onStart() {
+        super.onStart()
+        vm.onReturn()
+    }
+
     override fun onResume() {
         super.onResume()
         vm.onResume()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Turning the screen is not leaving.
+        if (!isChangingConfigurations) vm.onLeave()
     }
 
     private fun installUpdate() {

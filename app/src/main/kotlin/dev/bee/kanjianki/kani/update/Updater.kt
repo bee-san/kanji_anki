@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -90,11 +91,35 @@ class Updater(context: Context) {
     /** True when Android lets Kani install updates; otherwise the user has to allow it once. */
     fun canInstall(): Boolean = app.packageManager.canRequestPackageInstalls()
 
+    /**
+     * True when Android installs an update without asking: Android 12+, installs allowed, and
+     * Kani installed the current version itself (so the first update from a browser install
+     * still needs a tap). Kani then installs updates on its own.
+     */
+    fun installsSilently(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || !canInstall()) return false
+        val source = try {
+            app.packageManager.getInstallSourceInfo(app.packageName)
+        } catch (_: PackageManager.NameNotFoundException) {
+            return false
+        }
+        if (source.installingPackageName != app.packageName) return false
+        // Android 14+: a store that claimed the update ownership has every other installer ask.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val owner = source.updateOwnerPackageName
+            return owner == null || owner == app.packageName
+        }
+        return true
+    }
+
     fun allowInstallsIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, "package:${app.packageName}".toUri())
 
-    /** Starts the install; Android restarts Kani on the new version once it is done. */
-    fun install(apk: File) {
+    /**
+     * Starts the install; Android closes Kani to replace it. [auto] marks an install Kani
+     * started on its own: it never asks the user, see [InstallReceiver].
+     */
+    fun install(apk: File, auto: Boolean = false) {
         val installer = app.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(app.packageName)
@@ -108,7 +133,7 @@ class Updater(context: Context) {
                 apk.inputStream().use { it.copyTo(out) }
                 session.fsync(out)
             }
-            val callback = Intent(app, InstallReceiver::class.java).setAction(ACTION_INSTALL_STATUS)
+            val callback = Intent(app, InstallReceiver::class.java).setAction(ACTION_INSTALL_STATUS).putExtra(EXTRA_AUTO, auto)
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
                 (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0)
             session.commit(PendingIntent.getBroadcast(app, id, callback, flags).intentSender)
@@ -158,17 +183,35 @@ class Updater(context: Context) {
 
     companion object {
         const val ACTION_INSTALL_STATUS = "dev.bee.kanjianki.kani.INSTALL_STATUS"
+        const val EXTRA_AUTO = "dev.bee.kanjianki.kani.extra.AUTO_INSTALL"
         private const val TIMEOUT_MS = 30_000
         private val RELEASES_URL =
             "https://api.github.com/repos/${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}/releases?per_page=20"
     }
 }
 
-/** Shows Android's install confirmation when it asks for one, and logs the outcome. */
+/**
+ * Shows Android's install confirmation when it asks for one, and logs the outcome. An automatic
+ * install never asks: Kani is in the background then, so it is dropped and the Today banner
+ * stays for a tap.
+ */
 class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Updater.ACTION_INSTALL_STATUS) return
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+        val auto = intent.getBooleanExtra(Updater.EXTRA_AUTO, false)
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION && auto) {
+            val id = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+            Log.i(TAG, "Android wants a tap for the update; leaving it to the Today banner.")
+            if (id > 0) {
+                try {
+                    context.packageManager.packageInstaller.abandonSession(id)
+                } catch (error: SecurityException) {
+                    Log.w(TAG, "Could not drop the automatic install.", error)
+                }
+            }
+            return
+        }
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
             val confirm = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java) ?: return
             confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -181,7 +224,8 @@ class InstallReceiver : BroadcastReceiver() {
         }
         val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
         Log.i(TAG, "Install finished: status=$status $message")
-        if (status != PackageInstaller.STATUS_SUCCESS) {
+        // A failed automatic install stays quiet: the banner still offers the update.
+        if (status != PackageInstaller.STATUS_SUCCESS && !auto) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
                 putString(KEY_ERROR, message ?: "Android did not install the update.")
             }
