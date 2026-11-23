@@ -61,7 +61,7 @@ CURRENT_PROJECT_DEPENDENCIES = {
     "core": frozenset(
         {"dictionary-core", "domain", "sync-domain", "rwkv", "fsrs-java", "update-core"},
     ),
-    "app": frozenset({"core", "dictionary-core"}),
+    "app": frozenset({"core", "dictionary-core", "update-core"}),
 }
 TARGET_PROJECT_DEPENDENCIES = {
     "domain": frozenset(),
@@ -162,6 +162,7 @@ EDGE_RATIONALES = {
     ("app", "ui-common"): "The composition root hosts the shared app shell.",
     ("app", "widget"): "The application manifest installs widget components.",
     ("app", "core"): "Migration-only app code still consumes core directly.",
+    ("app", "update-core"): "The self-updater parses GitHub releases and checks checksums.",
     (
         "app",
         "dictionary-core",
