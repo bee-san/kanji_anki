@@ -10,7 +10,7 @@ Last updated: 2026-05-23
 ## Branch and PR
 
 - Rewrite branch: `codex-android-architecture-20260518`
-- Pull request: `https://github.com/bee-san/kanji_anki/pull/11`
+- Pull request: `https://github.com/bee-san/kani/pull/11`
 - Latest verified commit before this note: `d7ab9ba9 Fix remaining Sonar code smells`
 - Latest confirmed PR state before this note: draft branch `codex-android-architecture-20260518`, mergeable with green PR checks
 

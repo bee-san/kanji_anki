@@ -7,10 +7,10 @@
 <h1 align="center">Kani</h1>
 
 <p align="center">
-  <a href="https://github.com/bee-san/kanji_anki/releases">
-    <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kanji_anki/total?logo=github&label=downloads">
+  <a href="https://github.com/bee-san/kani/releases">
+    <img alt="GitHub downloads" src="https://img.shields.io/github/downloads/bee-san/kani/total?logo=github&label=downloads">
   </a>
-  <a href="https://github.com/bee-san/kanji_anki/actions/workflows/sonarqube.yml">
+  <a href="https://github.com/bee-san/kani/actions/workflows/sonarqube.yml">
     <img alt="SonarCloud quality gate" src="https://sonarcloud.io/api/project_badges/measure?project=bee-san_kanji_anki&metric=alert_status">
   </a>
   <a href="https://sonarcloud.io/summary/overall?id=bee-san_kanji_anki">
@@ -28,7 +28,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bee-san/kanji_anki/releases"><b>Download the APK</b></a> · needs <a href="https://github.com/ankidroid/Anki-Android">AnkiDroid</a>
+  <a href="https://github.com/bee-san/kani/releases"><b>Download the APK</b></a> · needs <a href="https://github.com/ankidroid/Anki-Android">AnkiDroid</a>
 </p>
 
 You know 待. You know 持. You still mix them up. Kani finds the kanji you keep getting wrong in Anki and trains just those, a few minutes a day.

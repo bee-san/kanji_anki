@@ -24,7 +24,7 @@ object MemoryModelTextCopy {
             "Kani本体のコードはEUPL-1.2、このモジュールとアプリ全体はAGPL-3.0-or-laterで公開されています。ソース: $SOURCE_URL",
     )
 
-    const val SOURCE_URL: String = "https://github.com/bee-san/kanji_anki"
+    const val SOURCE_URL: String = "https://github.com/bee-san/kani"
 
     @JvmStatic fun statusReady(): String = localized("Ready", "準備完了")
 

@@ -99,6 +99,21 @@ class KaniActivity : ComponentActivity() {
         if (intent?.getBooleanExtra(EXTRA_SPRINT, false) == true) vm.requestSprint()
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.onResume()
+    }
+
+    private fun installUpdate() {
+        if (!vm.installUpdate()) {
+            try {
+                startActivity(vm.allowInstallsIntent())
+            } catch (_: ActivityNotFoundException) {
+                // No settings screen to send the user to; the banner stays for another try.
+            }
+        }
+    }
+
     override fun onDestroy() {
         tts?.shutdown()
         super.onDestroy()
@@ -163,6 +178,8 @@ class KaniActivity : ComponentActivity() {
             }
             Screen.Today -> TodayScreen(
                 vm.today,
+                update = vm.update,
+                onUpdate = ::installUpdate,
                 onStart = vm::startSession,
                 onSprint = vm::sprintBlindSpots,
                 onBlindSpots = { vm.open(Screen.BlindSpots) },

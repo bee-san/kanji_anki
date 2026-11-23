@@ -18,8 +18,8 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
 1. Identify the exact failing check and commit.
 
    ```sh
-   gh run list --repo bee-san/kanji_anki --limit 10
-   gh run view RUN_ID --repo bee-san/kanji_anki --log-failed
+   gh run list --repo bee-san/kani --limit 10
+   gh run view RUN_ID --repo bee-san/kani --log-failed
    ```
 
    If the GitHub CLI is unavailable or not logged in, use the public Actions page and compare the run's head SHA with the branch or PR head before acting.
@@ -56,8 +56,8 @@ This runbook is the first stop when Android CI, SonarQube, or CodeQL looks flaky
    Workflow edits are service-integration changes. After pushing them, watch the first Actions run to a terminal state instead of relying on local Gradle success alone.
 
    ```sh
-   gh run list --repo bee-san/kanji_anki --branch BRANCH --limit 5
-   gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+   gh run list --repo bee-san/kani --branch BRANCH --limit 5
+   gh run watch RUN_ID --repo bee-san/kani --exit-status
    ```
 
 ## Release path invariants

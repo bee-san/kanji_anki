@@ -16,7 +16,7 @@ from typing import Callable, Iterable, Optional, Sequence, cast
 Runner = Callable[[list[str], Optional[Path]], CompletedProcess[str]]
 
 PROTECTED_BRANCHES = {"main", "master", "develop", "release", "production"}
-EXPECTED_REPO = "bee-san/kanji_anki"
+EXPECTED_REPO = "bee-san/kani"
 EXPECTED_ALL_SCREENSHOT_ROUTES = [
     "home",
     "study",

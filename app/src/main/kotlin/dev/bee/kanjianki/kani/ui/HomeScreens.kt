@@ -36,10 +36,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.bee.kanjianki.kani.Pair2
 import dev.bee.kanjianki.kani.TodayData
+import dev.bee.kanjianki.kani.UpdateOffer
 import dev.bee.kanjianki.kani.core.Status
 
 @Composable
-fun TodayScreen(data: TodayData, onStart: () -> Unit, onSprint: () -> Unit, onBlindSpots: () -> Unit, onSettings: () -> Unit) {
+fun TodayScreen(
+    data: TodayData,
+    update: UpdateOffer?,
+    onUpdate: () -> Unit,
+    onStart: () -> Unit,
+    onSprint: () -> Unit,
+    onBlindSpots: () -> Unit,
+    onSettings: () -> Unit,
+) {
     val c = Kani.colors
     Page {
         TopRow {
@@ -50,6 +59,10 @@ fun TodayScreen(data: TodayData, onStart: () -> Unit, onSprint: () -> Unit, onBl
             SettingsIcon(onSettings)
         }
         Gap(28)
+        if (update != null) {
+            UpdateBanner(update, onUpdate)
+            Gap(12)
+        }
         KCard(padding = androidx.compose.foundation.layout.PaddingValues(22.dp)) {
             Eyebrow("Today")
             Gap(10)
@@ -86,6 +99,23 @@ fun TodayScreen(data: TodayData, onStart: () -> Unit, onSprint: () -> Unit, onBl
                 Gap(4)
                 data.pairs.forEach { PairRow(it, onClick = onBlindSpots) }
             }
+        }
+    }
+}
+
+@Composable
+private fun UpdateBanner(update: UpdateOffer, onUpdate: () -> Unit) {
+    val c = Kani.colors
+    KCard(padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Kani ${update.version} is ready", style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = c.ink))
+                if (update.error != null) {
+                    Text(update.error, style = TextStyle(fontSize = 13.sp, color = c.dim))
+                }
+            }
+            HGap(12)
+            TextLink(if (update.error != null) "Try again" else "Update", onClick = onUpdate)
         }
     }
 }

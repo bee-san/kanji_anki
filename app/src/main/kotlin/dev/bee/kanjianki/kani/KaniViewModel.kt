@@ -27,9 +27,12 @@ import dev.bee.kanjianki.kani.data.Reference
 import dev.bee.kanjianki.kani.data.Scanner
 import dev.bee.kanjianki.kani.memory.KaniMemory
 import dev.bee.kanjianki.kani.reminder.DailyReminder
+import dev.bee.kanjianki.kani.update.InstallReceiver
+import dev.bee.kanjianki.kani.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.time.LocalDate
 
 /** A look-alike pair as the user sees it: the kanji they meant and the one they saw instead. */
@@ -81,6 +84,9 @@ data class SessionSummary(
     val tagged: Int,
 )
 
+/** A downloaded, verified update waiting for the user's tap, or the last install failure. */
+data class UpdateOffer(val version: String, val apk: File, val error: String? = null)
+
 data class TodayData(val due: Int, val pairs: List<Pair2>, val solid: Int, val training: Int)
 
 class KaniViewModel(app: Application) : AndroidViewModel(app) {
@@ -96,6 +102,10 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     var today: TodayData by mutableStateOf(TodayData(0, emptyList(), 0, 0))
         private set
     var themeMode by mutableStateOf(prefs.theme)
+        private set
+
+    private val updater = Updater(app)
+    var update: UpdateOffer? by mutableStateOf(null)
         private set
 
     private var run: Run? = null
@@ -119,6 +129,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                 app.deleteDatabase(KaniStore.LEGACY_NAME)
                 ref.warm()
             }
+            launch { fetchUpdate() }
             // Brings the cached curves up to date (e.g. after an upgrade or a model change).
             launch { memory.catchUp(); refreshToday() }
             when {
@@ -599,6 +610,46 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun toHiragana(s: String): String =
         s.map { ch -> if (ch in '\u30A1'..'\u30F6') (ch - 0x60) else ch }.joinToString("")
+
+    // endregion
+
+    // region update
+
+    private suspend fun fetchUpdate() {
+        update = withContext(Dispatchers.IO) {
+            try {
+                updater.check()?.let { UpdateOffer(it.version, updater.download(it)) }
+            } catch (error: Exception) {
+                android.util.Log.w("KaniUpdate", "Update check failed.", error)
+                null
+            }
+        }
+    }
+
+    /** False when Android first needs the user to let Kani install apps. */
+    fun installUpdate(): Boolean {
+        val offer = update ?: return true
+        if (!updater.canInstall()) return false
+        viewModelScope.launch {
+            update = withContext(Dispatchers.IO) {
+                try {
+                    updater.install(offer.apk)
+                    offer.copy(error = null)
+                } catch (error: Exception) {
+                    offer.copy(error = error.message ?: "Could not start the update.")
+                }
+            }
+        }
+        return true
+    }
+
+    fun allowInstallsIntent() = updater.allowInstallsIntent()
+
+    /** Picks up an install Android refused while Kani was in the background. */
+    fun onResume() {
+        val error = InstallReceiver.takeError(getApplication()) ?: return
+        update = update?.copy(error = error)
+    }
 
     // endregion
 

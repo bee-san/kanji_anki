@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/bee-san/kanji_anki/screenshots/kani-widget-family/manifest.schema.json",
+  "$id": "https://github.com/bee-san/kani/screenshots/kani-widget-family/manifest.schema.json",
   "title": "Kani widget screenshot evidence sidecar",
   "type": "object",
   "additionalProperties": false,

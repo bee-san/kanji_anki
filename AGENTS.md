@@ -20,9 +20,15 @@ design lives in the "Kani App Design" artifact; the app is in
 - `ui/`: Compose screens matching the design; light and AMOLED tokens in
   `KaniTheme`.
 
-The app depends only on `:core` (which exposes `:rwkv`) and
-`:dictionary-core`. The adaptive scheduler, FSRS, sync, writing and update
-modules below are no longer used by the app; their notes are kept for the
+- `update/Updater`: self-update from GitHub releases of `bee-san/kani`
+  (prereleases included). On launch it downloads the newest APK, checks the
+  published `.sha256` and package/version, and the Today banner installs it
+  through `PackageInstaller` (silent on Android 12+ once Kani is the installer
+  of record).
+
+The app depends only on `:core` (which exposes `:rwkv`), `:dictionary-core`
+and `:update-core` (release parsing and checksum checks). The adaptive
+scheduler, FSRS, sync and writing modules below are no longer used by the app; their notes are kept for the
 modules themselves. Kani 1.0 deliberately starts fresh: it deletes the pre-1.0
 `kanji_anki_simple.db`.
 
@@ -140,8 +146,8 @@ passes with the default 7,000-note threshold.
 Useful commands:
 
 ```sh
-gh run list --repo bee-san/kanji_anki --limit 10
-gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+gh run list --repo bee-san/kani --limit 10
+gh run watch RUN_ID --repo bee-san/kani --exit-status
 ```
 
 The CodeQL workflow uses manual Java/Kotlin analysis for this Android Gradle
@@ -512,8 +518,8 @@ patch version, appends the canonical `-beta` suffix to the tag, APK
 publishes the prerelease with no further gating. Watch it with:
 
 ```sh
-gh run list --repo bee-san/kanji_anki --workflow android-release.yml --limit 5
-gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+gh run list --repo bee-san/kani --workflow android-release.yml --limit 5
+gh run watch RUN_ID --repo bee-san/kani --exit-status
 ```
 
 For a deliberate (non-patch or re-cut) version, use the manual flow:
@@ -540,8 +546,8 @@ variants of the same numeric core share an Android `versionCode`.
 5. Watch the release workflow.
 
    ```sh
-   gh run list --repo bee-san/kanji_anki --workflow android-release.yml --limit 5
-   gh run watch RUN_ID --repo bee-san/kanji_anki --exit-status
+   gh run list --repo bee-san/kani --workflow android-release.yml --limit 5
+   gh run watch RUN_ID --repo bee-san/kani --exit-status
    ```
 
 Creating or publishing a GitHub Release directly in the UI does not trigger
@@ -550,7 +556,7 @@ this workflow. Use a tag push or `workflow_dispatch` for a deliberate release.
 6. Fetch the release asset URLs.
 
    ```sh
-   gh release view vX.Y.Z --repo bee-san/kanji_anki \
+   gh release view vX.Y.Z --repo bee-san/kani \
      --json url,tagName,name,assets,isDraft,isPrerelease,publishedAt
    ```
 

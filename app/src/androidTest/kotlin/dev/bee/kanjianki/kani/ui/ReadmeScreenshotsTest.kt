@@ -294,7 +294,7 @@ class ReadmeScreenshotsTest {
     }
 
     private fun home(mode: ThemeMode, suffix: String) {
-        show("today$suffix", mode) { TodayScreen(TodayData(7, pairs.take(3), 38, 47), {}, {}, {}, {}) }
+        show("today$suffix", mode) { TodayScreen(TodayData(7, pairs.take(3), 38, 47), null, {}, {}, {}, {}, {}) }
         save()
         show("blind-spots$suffix", mode) { BlindSpotsScreen(pairs, onBack = {}, onSprint = {}) }
         save()

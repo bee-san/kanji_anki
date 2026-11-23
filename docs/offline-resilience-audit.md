@@ -1,4 +1,4 @@
-# Offline Resilience Audit (Kani / bee-san/kanji_anki)
+# Offline Resilience Audit (Kani / bee-san/kani)
 
 Branch: `fix/offline-resilience`
 Scope: this document began as the audit + regression-harness baseline for the

@@ -183,22 +183,22 @@ root on a non-protected branch:
 
 ```sh
 gh workflow run android-screenshots.yml \
-  --repo bee-san/kanji_anki \
+  --repo bee-san/kani \
   --ref <branch> \
   -f screenshot_route=all
 
 gh run list \
-  --repo bee-san/kanji_anki \
+  --repo bee-san/kani \
   --workflow 'Android Screenshots' \
   --branch <branch> \
   --json databaseId,headSha,status,conclusion
 
 gh run watch <run_id> \
-  --repo bee-san/kanji_anki \
+  --repo bee-san/kani \
   --exit-status
 
 gh run download <run_id> \
-  --repo bee-san/kanji_anki \
+  --repo bee-san/kani \
   --name android-screenshots \
   --dir .ralph-loop/current/remote-screenshots
 ```

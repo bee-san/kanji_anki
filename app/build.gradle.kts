@@ -54,7 +54,7 @@ val resolvedAppVersion = try {
 val appVersionName = resolvedAppVersion.version.versionName
 val appVersionCode = resolvedAppVersion.version.versionCode
 val releaseOwner = renamedConfigValue("KANI_RELEASE_OWNER", "KANJI_ANKI_RELEASE_OWNER") ?: "bee-san"
-val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kanji_anki"
+val releaseRepo = renamedConfigValue("KANI_RELEASE_REPO", "KANJI_ANKI_RELEASE_REPO") ?: "kani"
 
 val signingStoreFile = renamedConfigValue("KANI_SIGNING_STORE_FILE", "KANJI_ANKI_SIGNING_STORE_FILE")
 val signingStorePassword = renamedConfigValue("KANI_SIGNING_STORE_PASSWORD", "KANJI_ANKI_SIGNING_STORE_PASSWORD")
@@ -249,6 +249,7 @@ dependencies {
 
     implementation(project(":core"))
     implementation(project(":dictionary-core"))
+    implementation(project(":update-core"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel)

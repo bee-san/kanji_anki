@@ -9,7 +9,7 @@ import org.junit.Test
 class GitHubReleaseParserTest {
     @Test
     fun parsesLatestReleaseAssets() {
-        val json = "{\"tag_name\":\"v0.3.1\",\"html_url\":\"https://github.com/bee-san/kanji_anki/releases/tag/v0.3.1\",\"assets\":[{\"name\":\"kani-android-0.3.1.apk\",\"browser_download_url\":\"https://example/apk\"},{\"name\":\"kani-android-0.3.1.apk.sha256\",\"browser_download_url\":\"https://example/sha\"}]}"
+        val json = "{\"tag_name\":\"v0.3.1\",\"html_url\":\"https://github.com/bee-san/kani/releases/tag/v0.3.1\",\"assets\":[{\"name\":\"kani-android-0.3.1.apk\",\"browser_download_url\":\"https://example/apk\"},{\"name\":\"kani-android-0.3.1.apk.sha256\",\"browser_download_url\":\"https://example/sha\"}]}"
 
         val info = GitHubReleaseParser.parseLatest(json)
         val apkAsset = info.apkAsset()!!
@@ -25,10 +25,10 @@ class GitHubReleaseParserTest {
         val json = (
             "{" +
                 "\"tag_name\":\"v0.3.2\"," +
-                "\"html_url\":\"https://github.com/bee-san/kanji_anki/releases/tag/v0.3.2\"," +
+                "\"html_url\":\"https://github.com/bee-san/kani/releases/tag/v0.3.2\"," +
                 "\"assets\":[" +
                 "{" +
-                "\"url\":\"https://api.github.com/repos/bee-san/kanji_anki/releases/assets/1\"," +
+                "\"url\":\"https://api.github.com/repos/bee-san/kani/releases/assets/1\"," +
                 "\"id\":1," +
                 "\"node_id\":\"RA_test\"," +
                 "\"name\":\"kani-android-0.3.2.apk\"," +
@@ -38,12 +38,12 @@ class GitHubReleaseParserTest {
                 "\"state\":\"uploaded\"," +
                 "\"size\":732006," +
                 "\"digest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"," +
-                "\"browser_download_url\":\"https://github.com/bee-san/kanji_anki/releases/download/v0.3.2/kani-android-0.3.2.apk\"" +
+                "\"browser_download_url\":\"https://github.com/bee-san/kani/releases/download/v0.3.2/kani-android-0.3.2.apk\"" +
                 "}," +
                 "{" +
                 "\"name\":\"kani-android-0.3.2.apk.sha256\"," +
                 "\"uploader\":{\"login\":\"bee-san\"}," +
-                "\"browser_download_url\":\"https://github.com/bee-san/kanji_anki/releases/download/v0.3.2/kani-android-0.3.2.apk.sha256\"" +
+                "\"browser_download_url\":\"https://github.com/bee-san/kani/releases/download/v0.3.2/kani-android-0.3.2.apk.sha256\"" +
                 "}" +
                 "]}"
         )
@@ -53,10 +53,10 @@ class GitHubReleaseParserTest {
         val checksumAsset = info.checksumAssetFor(apkAsset.name)!!
 
         assertEquals("v0.3.2", info.tagName)
-        assertEquals("https://github.com/bee-san/kanji_anki/releases/tag/v0.3.2", info.htmlUrl)
+        assertEquals("https://github.com/bee-san/kani/releases/tag/v0.3.2", info.htmlUrl)
         assertEquals("kani-android-0.3.2.apk", apkAsset.name)
         assertEquals(
-            "https://github.com/bee-san/kanji_anki/releases/download/v0.3.2/kani-android-0.3.2.apk.sha256",
+            "https://github.com/bee-san/kani/releases/download/v0.3.2/kani-android-0.3.2.apk.sha256",
             checksumAsset.downloadUrl
         )
     }
