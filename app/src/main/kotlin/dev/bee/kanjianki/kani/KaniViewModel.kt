@@ -307,7 +307,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                     SessionPlanner.plan(states, mixupCountByTarget(), day(), prefs.minutes, store.recall(System.currentTimeMillis())) {
                         store.wordsWith(it, 1).isNotEmpty()
                     },
-                    store.nextEarly(),
+                    nextEarly(),
                     states.filter { it.status == Status.SOLID }.map { it.kanji },
                 )
             }
@@ -320,11 +320,25 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * The next new kanji to introduce, with the closest look-alike the user knows. The pair is
+     * picked now, not at scan time: a row stored by an older scan may name a kanji that no
+     * longer counts as a look-alike, and that row is dropped.
+     */
+    private fun nextEarly(): Pair<String, String>? {
+        while (true) {
+            val kanji = store.nextEarly()?.first ?: return null
+            val known = ref.similar(kanji).firstOrNull(store::isKnown)
+            if (known != null) return kanji to known
+            store.markEarlyShown(kanji)
+        }
+    }
+
     fun earlyDone(newKanji: String, known: String, quickCheck: Boolean) {
         store.markEarlyShown(newKanji)
         if (quickCheck) {
             drill = Drill(newKanji, known, advance = false, mayWrite = false)
-            screen = Screen.Sprint(SprintBuilder.build(newKanji, known, ref::similar).take(3))
+            screen = Screen.Sprint(SprintBuilder.build(newKanji, known, ref::listedSimilar).take(3))
             return
         }
         if (run?.items.isNullOrEmpty()) goToday() else showCurrent()
@@ -394,7 +408,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
 
     /** If the typed meaning belongs to a look-alike, that is the kanji the user saw. */
     private fun lookAlikeMatching(kanji: String, typed: String): String? =
-        ref.similar(kanji).firstOrNull { TypingAnswerMatcher.matches(ref.lookup, it, typed, null) }
+        ref.listedSimilar(kanji).firstOrNull { TypingAnswerMatcher.matches(ref.lookup, it, typed, null) }
 
     /** After the reveal: a hook prompt if the meaning keeps slipping, else the next kanji. */
     fun afterReveal() {
@@ -433,7 +447,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     /** [sure] is the answer to "Were you sure?": null when the user skipped the question. */
     fun contrastTrain(target: String, picked: String, sure: Boolean?) {
         drill = Drill(target, picked, advance = true, mayWrite = true, confident = sure == true)
-        screen = Screen.Sprint(SprintBuilder.build(target, picked, ref::similar))
+        screen = Screen.Sprint(SprintBuilder.build(target, picked, ref::listedSimilar))
     }
 
     fun contrastSkip() {
@@ -448,7 +462,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                 val top = pairs().take(3)
                 if (top.isEmpty()) return@withContext emptyList()
                 val per = (SprintBuilder.ROUNDS / top.size).coerceAtLeast(2)
-                top.flatMap { SprintBuilder.build(it.target, it.other, ref::similar).take(per) }.shuffled()
+                top.flatMap { SprintBuilder.build(it.target, it.other, ref::listedSimilar).take(per) }.shuffled()
             }
             if (trials.isEmpty()) return@launch goToday()
             drill = null
@@ -588,7 +602,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         val reading = word.reading
         val sound = ref.onReadings(kanji).firstOrNull { on -> reading.contains(toHiragana(on)) }
             ?: return Family(null, emptyList(), emptyList())
-        val similar = ref.similar(kanji)
+        val similar = ref.listedSimilar(kanji)
         val members = listOf(kanji) + similar.filter { sound in ref.onReadings(it) }
         val watch = similar.filter { sound !in ref.onReadings(it) && ref.onReadings(it).isNotEmpty() }
             .take(2).map { it to ref.onReadings(it).first() }

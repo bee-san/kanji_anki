@@ -1,8 +1,8 @@
 package dev.bee.kanjianki.kani.core
 
 import java.io.BufferedReader
-import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.sqrt
 
 /** A stroke as normalised points in a 0..1 box (KanjiVG order). */
 data class Pt(val x: Float, val y: Float)
@@ -80,6 +80,17 @@ object StrokeDiff {
         return setOf(best.indices.maxBy { best[it] })
     }
 
+    /**
+     * How alike two kanji look, 0..1: the share of its strokes that each kanji has in common with
+     * the other, taken from the one that shares less. 待/持 score 0.67 (all of 寺); 退/眠 score 0.2,
+     * because only two strokes of 眠 line up with anything in 退.
+     */
+    fun likeness(a: List<Stroke>, b: List<Stroke>): Float {
+        if (a.isEmpty() || b.isEmpty()) return 0f
+        fun shared(x: List<Stroke>, y: List<Stroke>) = 1f - decidingStrokes(x, y).size.toFloat() / x.size
+        return minOf(shared(a, b), shared(b, a))
+    }
+
     private val SCALES = floatArrayOf(0.7f, 0.8f, 0.9f, 1f, 1.1f, 1.25f, 1.4f)
     private val OFFSETS = FloatArray(13) { -0.3f + it * 0.05f }
 
@@ -135,5 +146,10 @@ object StrokeDiff {
         return true
     }
 
-    private fun dist(a: Pt, b: Pt): Float = hypot(a.x - b.x, a.y - b.y)
+    /** Plain sqrt: `hypot` guards against overflow these 0..1 points cannot reach, at ten times the cost. */
+    private fun dist(a: Pt, b: Pt): Float {
+        val dx = a.x - b.x
+        val dy = a.y - b.y
+        return sqrt(dx * dx + dy * dy)
+    }
 }

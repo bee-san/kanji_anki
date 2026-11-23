@@ -8,7 +8,9 @@ design lives in the "Kani App Design" artifact; the app is in
   (auto-picks fields), `ScanAnalyzer` (problem kanji and culprit attribution),
   `Training` (3-day solid rule, session planner, sprint builder), `Strokes`
   (KanjiVG stroke diff for "the part that decides" and handwriting checks),
-  `Romaji` (live romaji → hiragana), `Memory` (how answers map onto the RWKV
+  `LookAlikes` (the bundled pairs ranked by stroke likeness from the generated
+  `look_alike_scores.tsv`; a pair under `MIN_LIKENESS` is never called a
+  look-alike), `Romaji` (live romaji → hiragana), `Memory` (how answers map onto the RWKV
   memory model: ratings, stream ids, the in-process `MemoryModel`, `Recall`).
 - `memory/KaniMemory`: runs RWKV SM92 over the answer log in the background
   and caches each card's forgetting curve in `kani1.db`.

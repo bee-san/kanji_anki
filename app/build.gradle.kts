@@ -189,6 +189,13 @@ tasks.withType<Test>().configureEach {
         systemProperty("kani.rwkvCompareDb", path)
         outputs.upToDateWhen { false }
     }
+    // Rewrite res/raw/look_alike_scores.tsv after changing the pair list, the stroke data or
+    // StrokeDiff (a few minutes):
+    // ./gradlew :app:testDebugUnitTest --tests '*LookAlikesTest' -PupdateLookAlikeScores
+    if (providers.gradleProperty("updateLookAlikeScores").isPresent) {
+        systemProperty("kani.updateLookAlikeScores", "true")
+        outputs.upToDateWhen { false }
+    }
     extensions.configure<JacocoTaskExtension>("jacoco") {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")

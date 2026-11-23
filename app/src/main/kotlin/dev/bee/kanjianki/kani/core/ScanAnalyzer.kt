@@ -43,6 +43,7 @@ object ScanAnalyzer {
 
     const val CLEARED_MIN_HEALTHY = 3
 
+    /** [similar] lists a kanji's look-alikes closest first: a new kanji is paired with the first one known. */
     fun analyze(words: List<Word>, similar: (String) -> List<String>): Result {
         val problemNotes = HashMap<String, MutableSet<Long>>()
         val problemReasons = HashMap<String, MutableList<Reason>>()
