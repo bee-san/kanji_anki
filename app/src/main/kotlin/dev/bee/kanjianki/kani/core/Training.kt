@@ -77,13 +77,16 @@ object SessionPlanner {
 
     /**
      * Today's training kanji: chains already in progress first, then the most mixed-up, then
-     * the ones the memory model expects the user to have forgotten most, then the longest unseen.
+     * kanji already asked before ones never asked (a kanji missed yesterday must not wait behind
+     * a big scan's worth of fresh ones), then the ones the memory model expects the user to have
+     * forgotten most, then the longest unseen.
      */
     fun due(states: List<KanjiState>, mixups: Map<String, Int>, day: Int, recall: Recall = Recall.NONE): List<KanjiState> =
         states.filter { it.status == Status.TRAINING && day !in it.goodDays && it.lastMissDay != day }
             .sortedWith(
                 compareByDescending<KanjiState> { it.goodDays.isNotEmpty() }
                     .thenByDescending { mixups[it.kanji] ?: 0 }
+                    .thenByDescending { it.lastSeenDay != null }
                     .thenBy { recall.weakest(it.kanji) ?: 0f }
                     .thenBy { it.lastSeenDay ?: Int.MIN_VALUE },
             )
@@ -169,4 +172,38 @@ object Escalation {
 
     /** Two misses on the meaning alone ask the user to build a hook. */
     const val HOOK_AFTER_MISSES = 2
+}
+
+/**
+ * Times an answer from the moment the check is shown to the first key, on a clock that stops
+ * while Kani is in the background: ten seconds in another app is not a slow answer.
+ */
+class AnswerClock(private val now: () -> Long) {
+    private var awayMs = 0L
+    private var leftAt: Long? = null
+    private var shownAt = 0L
+    private var firstKeyAt: Long? = null
+
+    private fun visibleNow(): Long = (leftAt ?: now()) - awayMs
+
+    fun shown() {
+        shownAt = visibleNow()
+        firstKeyAt = null
+    }
+
+    fun firstKey() {
+        if (firstKeyAt == null) firstKeyAt = visibleNow()
+    }
+
+    fun leave() {
+        if (leftAt == null) leftAt = now()
+    }
+
+    fun back() {
+        leftAt?.let { awayMs += now() - it }
+        leftAt = null
+    }
+
+    /** Time to the first key, or until now when nothing was typed (I don't know). */
+    fun latency(): Long = ((firstKeyAt ?: visibleNow()) - shownAt).coerceAtLeast(0)
 }

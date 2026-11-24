@@ -10,7 +10,9 @@ design lives in the "Kani App Design" artifact; the app is in
   (KanjiVG stroke diff for "the part that decides" and handwriting checks),
   `LookAlikes` (the bundled pairs ranked by stroke likeness from the generated
   `look_alike_scores.tsv`; a pair under `MIN_LIKENESS` is never called a
-  look-alike), `Romaji` (live romaji → hiragana), `Memory` (how answers map onto the RWKV
+  look-alike. Likeness counts whole KanjiVG parts from the test-only
+  `kanji_parts.tsv`: scraps of different parts or a shared side radical alone
+  never make 借 look like 供), `Romaji` (live romaji → hiragana), `Memory` (how answers map onto the RWKV
   memory model: ratings, stream ids, the in-process `MemoryModel`, `Recall`).
 - `memory/KaniMemory`: runs RWKV SM92 over the answer log in the background
   and caches each card's forgetting curve in `kani1.db`.
@@ -20,7 +22,9 @@ design lives in the "Kani App Design" artifact; the app is in
   (bundled dictionary, look-alike pairs, strokes), `Scanner`.
 - `KaniViewModel` + `KaniActivity`: one screen state, no tab bar.
 - `ui/`: Compose screens matching the design; light and AMOLED tokens in
-  `KaniTheme`.
+  `KaniTheme`. Use `ui.Text` (tags text Japanese so kanji never get Chinese
+  glyphs on a non-Japanese phone), never `material3.Text`; text field styles
+  call `.japanese()` and widget kanji go through `japaneseSpan`.
 
 - `update/Updater`: self-update from GitHub releases of `bee-san/kani`
   (prereleases included). On launch it downloads the newest APK, checks the

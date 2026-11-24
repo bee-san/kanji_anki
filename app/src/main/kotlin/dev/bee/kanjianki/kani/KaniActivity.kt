@@ -193,7 +193,7 @@ class KaniActivity : ComponentActivity() {
                 onUpdate = ::installUpdate,
                 onStart = vm::startSession,
                 onSprint = vm::sprintBlindSpots,
-                onBlindSpots = { vm.open(Screen.BlindSpots) },
+                onBlindSpots = vm::openBlindSpots,
                 onSettings = { vm.open(Screen.Settings) },
             )
             is Screen.CheckScreen -> {
@@ -202,6 +202,7 @@ class KaniActivity : ComponentActivity() {
                     screen.item, index, total, screen.word, screen.reveal,
                     speakOnReveal = vm.prefs.speak,
                     onSpeak = ::speak,
+                    onFirstKey = vm::answerStarted,
                     onSubmit = vm::submit,
                     onNext = vm::afterReveal,
                     onClose = vm::endSession,
@@ -237,7 +238,7 @@ class KaniActivity : ComponentActivity() {
                 onGotIt = { vm.earlyDone(screen.newKanji, screen.known, quickCheck = false) },
             )
             is Screen.Done -> DoneScreen(screen.summary, ref::meaning, onDone = vm::goToday)
-            Screen.BlindSpots -> BlindSpotsScreen(remember { vm.pairs() }, onBack = vm::goToday, onSprint = vm::sprintBlindSpots)
+            Screen.BlindSpots -> BlindSpotsScreen(vm.blindSpots, onBack = vm::goToday, onSprint = vm::sprintBlindSpots)
             is Screen.Words -> WordsScreen(vm.wordRows, onBack = { vm.back() }, onCheckAnyway = vm::checkAnyway)
             Screen.Settings -> SettingsScreen(
                 vm.settings.copy(memory = vm.memoryLine()),

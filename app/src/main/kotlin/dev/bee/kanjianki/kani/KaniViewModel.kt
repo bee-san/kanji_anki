@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dev.bee.kanjianki.core.TypedReadingPolicy
 import dev.bee.kanjianki.core.TypingAnswerMatcher
 import dev.bee.kanjianki.kani.anki.AnkiSource
+import dev.bee.kanjianki.kani.core.AnswerClock
 import dev.bee.kanjianki.kani.core.Check
 import dev.bee.kanjianki.kani.core.Escalation
 import dev.bee.kanjianki.kani.core.KanjiState
@@ -128,6 +129,23 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         var sprintTotal = 0
         val touched = LinkedHashSet<String>()
         val solidBefore = HashSet<String>()
+        var finishing = false
+    }
+
+    /**
+     * The screen the last [advance] left. Moving on shows the next kanji only after a database
+     * read, so a second tap lands on the same screen and would skip a kanji unasked.
+     */
+    private var advancedFrom: Screen? = null
+
+    /** On to the next kanji of the run, once per screen however often it is tapped. */
+    private fun advance() {
+        val from = screen
+        if (from === advancedFrom) return
+        advancedFrom = from
+        val r = run ?: return goToday()
+        r.index++
+        showCurrent()
     }
 
     /** Set when a widget tap arrives before startup has finished loading. */
@@ -174,6 +192,8 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     private fun detect() {
         viewModelScope.launch {
             val detected = withContext(Dispatchers.IO) { runCatching { scanner.detect() } }
+            // The user may have gone Back while AnkiDroid was being read.
+            if (screen !is Screen.Cards) return@launch
             screen = detected.fold(
                 onSuccess = { d ->
                     if (d.models.isEmpty()) Screen.Cards(d, "Kani couldn't find Japanese words in your AnkiDroid notes.") else Screen.Cards(d)
@@ -197,7 +217,8 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                     val scan = scanner.scan(source) { n ->
                         viewModelScope.launch(Dispatchers.Main) {
                             // A late progress tick must never replace the finished result.
-                            if ((screen as? Screen.Scanning)?.result == null) screen = Screen.Scanning(n, null)
+                            val shown = screen as? Screen.Scanning
+                            if (shown != null && shown.result == null) screen = Screen.Scanning(n, null)
                         }
                     }
                     store.applyScan(scan.result, scan.words)
@@ -205,11 +226,14 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                     summarize(scan.result)
                 }
             }
+            // The user may have left the Scanning screen (Back, then Start): never pull them out
+            // of a session for a scan they walked away from.
+            val stillWatching = screen is Screen.Scanning
             summary.onSuccess { s ->
-                screen = Screen.Scanning(s.wordsScanned, s)
+                if (stillWatching) screen = Screen.Scanning(s.wordsScanned, s)
                 if (!fromSetup) refreshToday()
             }.onFailure {
-                screen = Screen.Cards(null, it.message ?: "AnkiDroid didn't answer.")
+                if (stillWatching) screen = Screen.Cards(null, it.message ?: "AnkiDroid didn't answer.")
             }
         }
     }
@@ -271,6 +295,16 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun mixupCountByTarget(): Map<String, Int> =
         store.mixups().groupBy { it.target }.mapValues { (_, v) -> v.sumOf { it.count } }
+
+    /** Blind Spots' pairs; null while they load off the main thread. */
+    var blindSpots by mutableStateOf<List<Pair2>?>(null)
+        private set
+
+    fun openBlindSpots() {
+        blindSpots = null
+        screen = Screen.BlindSpots
+        viewModelScope.launch { blindSpots = withContext(Dispatchers.IO) { pairs() } }
+    }
 
     /** Mix-ups from the user's own answers first, then look-alikes found in their decks. */
     fun pairs(states: List<KanjiState> = store.allKanji()): List<Pair2> {
@@ -360,6 +394,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val word = withContext(Dispatchers.IO) { wordFor(item) }
             screen = Screen.CheckScreen(item, word, null)
+            answerClock.shown()
         }
     }
 
@@ -374,10 +409,18 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         return words.firstOrNull { w -> w.expression.length > 1 && sounds.any { w.reading.contains(it) } } ?: words.firstOrNull()
     }
 
-    fun submit(text: String, latencyMs: Long, gaveUp: Boolean) {
+    /** The current check's answer time; see [AnswerClock]. Lives here so rotation keeps it. */
+    private val answerClock = AnswerClock { android.os.SystemClock.elapsedRealtime() }
+
+    fun answerStarted() = answerClock.firstKey()
+
+    fun submit(text: String, gaveUp: Boolean) {
         val current = screen as? Screen.CheckScreen ?: return
+        // Done on the keyboard and a tap on Check in the same frame: answer once.
+        if (current.reveal != null) return
         val r = run ?: return
         val item = current.item
+        val latencyMs = answerClock.latency()
         val state = store.kanji(item.kanji) ?: KanjiState.fresh(item.kanji, null, emptySet())
         val word = current.word
         val correct = !gaveUp && when (item.check) {
@@ -431,15 +474,13 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
                 return
             }
         }
-        r.index++
-        showCurrent()
+        advance()
     }
 
     fun saveHook(kanji: String, hook: String?) {
+        if (screen === advancedFrom) return
         if (!hook.isNullOrBlank()) store.kanji(kanji)?.let { store.save(it.copy(hook = hook.trim())) }
-        val r = run ?: return goToday()
-        r.index++
-        showCurrent()
+        advance()
     }
 
     /** A pending sprint (and maybe writing) and where to go after it. */
@@ -460,11 +501,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         screen = Screen.Sprint(SprintBuilder.build(target, picked, ref::listedSimilar))
     }
 
-    fun contrastSkip() {
-        val r = run ?: return goToday()
-        r.index++
-        showCurrent()
-    }
+    fun contrastSkip() = advance()
 
     fun sprintBlindSpots() {
         viewModelScope.launch {
@@ -512,17 +549,12 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         drill = null
         val r = run
         if (r == null || r.items.isEmpty()) return goToday()
-        if (d?.advance == true) r.index++
-        showCurrent()
+        if (d?.advance == true) advance() else showCurrent()
     }
 
     fun readingRetry(word: KaniStore.Word, typed: String): Boolean = TypedReadingPolicy.matches(Romaji.finish(typed), word.reading)
 
-    fun readingDone() {
-        val r = run ?: return goToday()
-        r.index++
-        showCurrent()
-    }
+    fun readingDone() = advance()
 
     fun endSession() {
         if (run?.touched.isNullOrEmpty()) goToday() else finishSession()
@@ -530,6 +562,9 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun finishSession() {
         val r = run ?: return goToday()
+        // Tagging in AnkiDroid can take a while, and the last Next or Close stays tappable.
+        if (r.finishing) return
+        r.finishing = true
         viewModelScope.launch {
             val summary = withContext(Dispatchers.IO) {
                 val rows = r.touched.mapNotNull { store.kanji(it) }
@@ -642,6 +677,8 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun fetchUpdate() {
         update = withContext(Dispatchers.IO) {
             try {
+                // About 6 MB per beta, and one ships with every main push: wait for Wi-Fi.
+                if (updater.onMeteredNetwork()) return@withContext null
                 updater.check()?.let { UpdateOffer(it.version, updater.download(it), installsOnLeave = updater.installsSilently()) }
             } catch (error: Exception) {
                 android.util.Log.w("KaniUpdate", "Update check failed.", error)
@@ -655,11 +692,13 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
     /** Kani went to the background: the moment to install a ready update. */
     fun onLeave() {
         away = true
+        answerClock.leave()
         installOnLeave()
     }
 
     fun onReturn() {
         away = false
+        answerClock.back()
     }
 
     /**
@@ -754,6 +793,7 @@ class KaniViewModel(app: Application) : AndroidViewModel(app) {
         is Screen.Words -> { screen = (screen as Screen.Words).from; true }
         is Screen.Sprint -> { sprintClose(); true }
         is Screen.CheckScreen, is Screen.Contrast, is Screen.ReadingFamily, is Screen.Hook, is Screen.Write -> { endSession(); true }
+        is Screen.Scanning -> { if (prefs.setupDone) goToday() else startSetup(); true }
         else -> { goToday(); true }
     }
 

@@ -169,7 +169,7 @@ class ReadmeScreenshotsTest {
     private fun session(mode: ThemeMode, suffix: String) {
         val matsu = SessionItem("末", Check.MEANING)
         show("check$suffix", mode) {
-            CheckScreen(matsu, 2, 7, null, null, speakOnReveal = false, onSpeak = {}, onSubmit = { _, _, _ -> }, onNext = {}, onClose = {})
+            CheckScreen(matsu, 2, 7, null, null, speakOnReveal = false, onSpeak = {}, onFirstKey = {}, onSubmit = { _, _ -> }, onNext = {}, onClose = {})
         }
         rule.onNode(hasSetTextAction()).performTextInput("not yet")
         save()
@@ -177,7 +177,7 @@ class ReadmeScreenshotsTest {
         val reading = SessionItem("待", Check.READING)
         val kitai = KaniStore.Word(1, "期待", "きたい", "expectation, anticipation, hope")
         show("check-reading$suffix", mode) {
-            CheckScreen(reading, 4, 7, kitai, null, speakOnReveal = false, onSpeak = {}, onSubmit = { _, _, _ -> }, onNext = {}, onClose = {})
+            CheckScreen(reading, 4, 7, kitai, null, speakOnReveal = false, onSpeak = {}, onFirstKey = {}, onSubmit = { _, _ -> }, onNext = {}, onClose = {})
         }
         rule.onNode(hasSetTextAction()).performTextInput("kita")
         save()
@@ -185,7 +185,7 @@ class ReadmeScreenshotsTest {
         show("reveal$suffix", mode) {
             CheckScreen(
                 reading, 4, 7, kitai, Reveal(true, "きたい", kitai, null),
-                speakOnReveal = false, onSpeak = {}, onSubmit = { _, _, _ -> }, onNext = {}, onClose = {},
+                speakOnReveal = false, onSpeak = {}, onFirstKey = {}, onSubmit = { _, _ -> }, onNext = {}, onClose = {},
             )
         }
         save()

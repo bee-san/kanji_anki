@@ -43,6 +43,9 @@ class Updater(context: Context) {
             .map(GitHubReleaseMetadataParser::parseLatest)
             .filter { ReleaseVersion.isValidSemver(it.tagName()) }
             .filter { ReleaseVersion.isNewerSemver(BuildConfig.VERSION_NAME, it.tagName()) }
+            // A release that failed its checks once would fail again: fall back to an older one
+            // rather than downloading it on every launch.
+            .filter { it.tagName().removePrefix("v") !in rejected() }
             .sortedWith { a, b ->
                 when {
                     ReleaseVersion.isNewerSemver(a.tagName(), b.tagName()) -> 1
@@ -76,17 +79,33 @@ class Updater(context: Context) {
         }
         UpdateArtifactValidator.validateChecksum(expected, sha256(apk)).requireOk {
             apk.delete()
+            reject(release)
         }
         val info = app.packageManager.getPackageArchiveInfo(apk.path, 0)
-            ?: run { apk.delete(); throw IOException("The downloaded update is not an app.") }
+            ?: run { apk.delete(); reject(release); throw IOException("The downloaded update is not an app.") }
         if (info.packageName != app.packageName ||
             PackageInfoCompat.getLongVersionCode(info) <= BuildConfig.VERSION_CODE.toLong()
         ) {
             apk.delete()
+            reject(release)
             throw IOException("The downloaded update is not a newer Kani.")
         }
         return apk
     }
+
+    private val prefs get() = app.getSharedPreferences(InstallReceiver.PREFS, Context.MODE_PRIVATE)
+
+    /** Versions whose APK failed its checks (checksum, package or version). */
+    fun rejected(): Set<String> = prefs.getStringSet(KEY_REJECTED, null).orEmpty()
+
+    private fun reject(release: Release) {
+        val versions = rejected() + release.version
+        prefs.edit { putStringSet(KEY_REJECTED, versions) }
+    }
+
+    /** True on a metered network (mobile data): updates then wait for Wi-Fi. */
+    fun onMeteredNetwork(): Boolean =
+        app.getSystemService(android.net.ConnectivityManager::class.java)?.isActiveNetworkMetered ?: true
 
     /** True when Android lets Kani install updates; otherwise the user has to allow it once. */
     fun canInstall(): Boolean = app.packageManager.canRequestPackageInstalls()
@@ -129,9 +148,15 @@ class Updater(context: Context) {
         }
         val id = installer.createSession(params)
         installer.openSession(id).use { session ->
-            session.openWrite("kani.apk", 0, apk.length()).use { out ->
-                apk.inputStream().use { it.copyTo(out) }
-                session.fsync(out)
+            try {
+                session.openWrite("kani.apk", 0, apk.length()).use { out ->
+                    apk.inputStream().use { it.copyTo(out) }
+                    session.fsync(out)
+                }
+            } catch (error: IOException) {
+                // Low storage, say: don't leave a half-written copy staged until Android expires it.
+                session.abandon()
+                throw error
             }
             val callback = Intent(app, InstallReceiver::class.java).setAction(ACTION_INSTALL_STATUS).putExtra(EXTRA_AUTO, auto)
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or
@@ -185,6 +210,7 @@ class Updater(context: Context) {
         const val ACTION_INSTALL_STATUS = "dev.bee.kanjianki.kani.INSTALL_STATUS"
         const val EXTRA_AUTO = "dev.bee.kanjianki.kani.extra.AUTO_INSTALL"
         private const val TIMEOUT_MS = 30_000
+        private const val KEY_REJECTED = "rejected_versions"
         private val RELEASES_URL =
             "https://api.github.com/repos/${BuildConfig.RELEASE_OWNER}/${BuildConfig.RELEASE_REPO}/releases?per_page=20"
     }

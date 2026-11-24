@@ -44,7 +44,10 @@ object ScanAnalyzer {
     const val CLEARED_MIN_HEALTHY = 3
 
     /** [similar] lists a kanji's look-alikes closest first: a new kanji is paired with the first one known. */
-    fun analyze(words: List<Word>, similar: (String) -> List<String>): Result {
+    fun analyze(scanned: List<Word>, similar: (String) -> List<String>): Result {
+        // A new card suspended before it was ever studied says nothing about the user: it is no
+        // problem, and no kanji they are about to meet in Anki either.
+        val words = scanned.filterNot { it.isNew && it.problem == Reason.SUSPENDED }
         val problemNotes = HashMap<String, MutableSet<Long>>()
         val problemReasons = HashMap<String, MutableList<Reason>>()
         val healthyCount = HashMap<String, Int>()

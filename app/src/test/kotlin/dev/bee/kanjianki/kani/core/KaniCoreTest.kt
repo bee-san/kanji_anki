@@ -53,14 +53,32 @@ class KaniCoreTest {
 
     @Test
     fun romajiTurnsIntoHiragana() {
-        assertEquals("せいてん", Romaji.toKana("seitenn"))
+        assertEquals("せいてん", Romaji.finish("seitenn"))
         assertEquals("がっこう", Romaji.toKana("gakkou"))
         assertEquals("こんにちは", Romaji.toKana("konnichiha"))
         assertEquals("かんじ", Romaji.toKana("kanji"))
         assertEquals("みんな", Romaji.toKana("minna"))
         assertEquals("きょう", Romaji.toKana("kyou"))
-        assertEquals("しゃしん", Romaji.toKana("shashinn"))
+        assertEquals("しゃしん", Romaji.finish("shashinn"))
         assertEquals("まっちゃ", Romaji.toKana("matcha"))
+    }
+
+    /** The answer box converts its own text after every key, so check words typed one key at a time. */
+    @Test
+    fun typingKeyByKeyGivesTheSameKanaAsTheWholeWord() {
+        fun typed(romaji: String): String {
+            var field = ""
+            for (key in romaji) field = Romaji.toKana(field + key)
+            return Romaji.finish(field)
+        }
+        val words = mapOf(
+            "chichi" to "ちち", "haha" to "はは", "koko" to "ここ", "ookii" to "おおきい", "iie" to "いいえ",
+            "kawaii" to "かわいい", "minna" to "みんな", "onna" to "おんな", "konnichiha" to "こんにちは",
+            "zannen" to "ざんねん", "annai" to "あんない", "sannin" to "さんにん", "kitte" to "きって",
+            "gakkou" to "がっこう", "matcha" to "まっちゃ", "shinbun" to "しんぶん", "hon'ya" to "ほんや",
+            "honn" to "ほん", "konnbanha" to "こんばんは", "sasaeru" to "ささえる",
+        )
+        for ((romaji, kana) in words) assertEquals(romaji, kana, typed(romaji))
     }
 
     @Test
@@ -115,6 +133,17 @@ class KaniCoreTest {
         assertEquals(mapOf("持" to "待"), r.early)
         assertTrue("待" in r.known)
         assertFalse("持" in r.known)
+    }
+
+    @Test
+    fun aNewCardSuspendedBeforeStudyIsNeitherAProblemNorComingUp() {
+        val words = listOf(word(1, "待つ", healthy = true), word(2, "持つ", ScanAnalyzer.Reason.SUSPENDED, isNew = true))
+        val r = ScanAnalyzer.analyze(words) { if (it == "持") listOf("待") else emptyList() }
+        assertEquals(emptyList<String>(), r.flagged.map { it.kanji })
+        assertEquals(emptyMap<String, String>(), r.early)
+        // A studied card the user suspended still counts.
+        val studied = ScanAnalyzer.analyze(listOf(word(2, "持つ", ScanAnalyzer.Reason.SUSPENDED))) { emptyList() }
+        assertEquals(listOf("持"), studied.flagged.map { it.kanji })
     }
 
     // endregion
@@ -202,6 +231,37 @@ class KaniCoreTest {
         val recall = Recall { k, _ -> if (k == "未") 0.3f else 0.8f }
         assertEquals(listOf("未", "末"), SessionPlanner.due(listOf(a, b), emptyMap(), 10, recall).map { it.kanji })
         assertEquals(listOf("末", "未"), SessionPlanner.due(listOf(a, b), emptyMap(), 10).map { it.kanji })
+    }
+
+    @Test
+    fun answerTimeLeavesOutTimeSpentInOtherApps() {
+        var t = 0L
+        val clock = AnswerClock { t }
+        clock.shown()
+        t = 1_000
+        clock.leave()
+        t = 11_000
+        clock.back()
+        t = 12_000
+        clock.firstKey()
+        assertEquals(2_000, clock.latency())
+        // Only the first key counts, and the next check starts from zero.
+        t = 20_000
+        clock.firstKey()
+        assertEquals(2_000, clock.latency())
+        clock.shown()
+        t = 21_500
+        assertEquals(1_500, clock.latency())
+    }
+
+    @Test
+    fun aMissedKanjiDoesNotWaitBehindFreshOnes() {
+        val fresh = (1..20).map { KanjiState.fresh("$it", null, emptySet()) }
+        val missed = KanjiState.fresh("待", null, emptySet()).copy(lastSeenDay = 9, lastMissDay = 9)
+        val recall = Recall { k, _ -> if (k == "待") 0.2f else null }
+        val due = SessionPlanner.due(fresh + missed, emptyMap(), 10, recall)
+        assertEquals("待", due.first().kanji)
+        assertTrue(SessionPlanner.plan(fresh + missed, emptyMap(), 10, 15, recall) { true }.any { it.kanji == "待" })
     }
 
     @Test

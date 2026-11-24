@@ -11,6 +11,7 @@ can become invisible to code review (see Goal 41).
 from __future__ import annotations
 
 from collections.abc import Iterable
+import re
 import subprocess
 import tempfile
 import unittest
@@ -150,6 +151,32 @@ class SourceControlByteHygieneTest(unittest.TestCase):
             "tracked text sources contain forbidden control bytes:\n"
             + "\n".join(offenders),
         )
+
+
+class KaniJapaneseGlyphsTest(unittest.TestCase):
+    """Kani text must be tagged Japanese, or an English phone draws kanji in a Chinese font.
+
+    `ui/JapaneseText.kt` defines a `Text` that tags its style with the Japanese locale; the Kani
+    UI must use it rather than Material's, and every text field style must call `.japanese()`.
+    """
+
+    KANI = ROOT / "app/src/main/kotlin/dev/bee/kanjianki/kani"
+
+    def test_kani_ui_never_imports_materials_text(self) -> None:
+        offenders = [
+            str(path.relative_to(ROOT))
+            for path in sorted(self.KANI.rglob("*.kt"))
+            if re.search(r"^import androidx\.compose\.material3\.Text$", path.read_text(encoding="utf-8"), re.M)
+        ]
+        self.assertEqual([], offenders, "use dev.bee.kanjianki.kani.ui.Text, which tags text Japanese")
+
+    def test_kani_text_fields_are_tagged_japanese(self) -> None:
+        offenders = []
+        for path in sorted(self.KANI.rglob("*.kt")):
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if "textStyle = " in line and ".japanese()" not in line:
+                    offenders.append(f"{path.relative_to(ROOT)}:{number}")
+        self.assertEqual([], offenders, "text field styles need .japanese()")
 
 
 if __name__ == "__main__":

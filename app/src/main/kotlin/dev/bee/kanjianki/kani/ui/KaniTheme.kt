@@ -90,7 +90,10 @@ enum class ThemeMode { SYSTEM, LIGHT, AMOLED }
 
 val LocalKaniColors = staticCompositionLocalOf { LightColors }
 
-/** Kanji render in the system serif, which is Noto Serif CJK JP on most Android phones. */
+/**
+ * Kanji render in the system serif where the phone has a CJK serif, else its CJK sans. Either
+ * way [Text] tags them Japanese, so Android picks the Japanese glyphs, not the Chinese ones.
+ */
 val KanjiFont: FontFamily = FontFamily.Serif
 
 object Kani {

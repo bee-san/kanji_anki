@@ -66,6 +66,17 @@ class KaniMemory(context: Context, private val store: KaniStore) {
         val loadStart = SystemClock.elapsedRealtime()
         val m = current ?: MemoryModel(engine()).also { model = it }
         val loadMs = SystemClock.elapsedRealtime() - loadStart
+        return try {
+            feedAndSave(m, fresh, loadMs)
+        } catch (error: Exception) {
+            // The model has moved past answers whose curves never reached the cache (a failed
+            // write, say). Drop it: the next update replays the whole log and rewrites the cache.
+            model = null
+            throw error
+        }
+    }
+
+    private fun feedAndSave(m: MemoryModel, fresh: Boolean, loadMs: Long): Long {
         val touched = LinkedHashSet<Pair<String, Check>>()
         val feedStart = SystemClock.elapsedRealtime()
         val answers = store.answersAfter(m.fedThrough)

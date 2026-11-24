@@ -21,11 +21,9 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,7 +83,7 @@ fun AnswerField(
             }
         },
         singleLine = true,
-        textStyle = TextStyle(fontSize = 20.sp, color = c.ink, fontFamily = if (kana) KanjiFont else null),
+        textStyle = TextStyle(fontSize = 20.sp, color = c.ink, fontFamily = if (kana) KanjiFont else null).japanese(),
         cursorBrush = SolidColor(c.accent),
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.None,
@@ -121,16 +119,14 @@ fun CheckScreen(
     reveal: Reveal?,
     speakOnReveal: Boolean,
     onSpeak: (String) -> Unit,
-    onSubmit: (text: String, latencyMs: Long, gaveUp: Boolean) -> Unit,
+    onFirstKey: () -> Unit,
+    onSubmit: (text: String, gaveUp: Boolean) -> Unit,
     onNext: () -> Unit,
     onClose: () -> Unit,
 ) {
     val c = Kani.colors
-    val shownAt = remember(item) { System.currentTimeMillis() }
-    var firstKeyAt by remember(item) { mutableLongStateOf(0L) }
     var text by remember(item) { mutableStateOf(TextFieldValue("")) }
     val reading = item.check == Check.READING && word != null
-    fun latency() = (if (firstKeyAt > 0) firstKeyAt else System.currentTimeMillis()) - shownAt
 
     val focusManager = LocalFocusManager.current
     LaunchedEffect(reveal) {
@@ -158,17 +154,17 @@ fun CheckScreen(
                 AnswerField(
                     value = text,
                     onChange = {
-                        if (firstKeyAt == 0L && it.text.isNotEmpty()) firstKeyAt = System.currentTimeMillis()
+                        if (it.text.isNotEmpty()) onFirstKey()
                         text = it
                     },
                     placeholder = if (reading) "Reading · type romaji or kana" else "Meaning",
                     kana = reading,
-                    onSubmit = { if (text.text.isNotBlank()) onSubmit(text.text, latency(), false) },
+                    onSubmit = { if (text.text.isNotBlank()) onSubmit(text.text, false) },
                 )
                 Gap(12)
-                PrimaryButton("Check", enabled = text.text.isNotBlank()) { onSubmit(text.text, latency(), false) }
+                PrimaryButton("Check", enabled = text.text.isNotBlank()) { onSubmit(text.text, false) }
                 TextLink("I don't know", color = c.secondary, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    onSubmit("", latency(), true)
+                    onSubmit("", true)
                 }
             } else {
                 RevealCard(item, reveal, onSpeak)
@@ -428,7 +424,7 @@ fun HookScreen(kanji: String, meaning: String, words: List<KaniStore.Word>, onSa
         BasicTextField(
             value = text,
             onValueChange = { text = it },
-            textStyle = TextStyle(fontSize = 17.sp, color = c.ink, lineHeight = 24.sp),
+            textStyle = TextStyle(fontSize = 17.sp, color = c.ink, lineHeight = 24.sp).japanese(),
             cursorBrush = SolidColor(c.accent),
             modifier = Modifier
                 .fillMaxWidth()

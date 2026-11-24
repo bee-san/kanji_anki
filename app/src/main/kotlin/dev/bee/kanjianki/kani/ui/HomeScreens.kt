@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -174,7 +173,7 @@ fun PairRow(pair: Pair2, onClick: (() -> Unit)? = null) {
 }
 
 @Composable
-fun BlindSpotsScreen(pairs: List<Pair2>, onBack: () -> Unit, onSprint: () -> Unit) {
+fun BlindSpotsScreen(pairs: List<Pair2>?, onBack: () -> Unit, onSprint: () -> Unit) {
     val c = Kani.colors
     Page(scroll = false) {
         TopRow { TextLink("← Today", color = c.secondary, onClick = onBack) }
@@ -183,7 +182,10 @@ fun BlindSpotsScreen(pairs: List<Pair2>, onBack: () -> Unit, onSprint: () -> Uni
         Gap(8)
         Title("Blind spots")
         Gap(16)
-        if (pairs.isEmpty()) {
+        if (pairs == null) {
+            // Still loading.
+            Spacer(Modifier.weight(1f))
+        } else if (pairs.isEmpty()) {
             Body("No look-alikes yet. They show up here as you answer.", color = c.secondary)
             Spacer(Modifier.weight(1f))
         } else {

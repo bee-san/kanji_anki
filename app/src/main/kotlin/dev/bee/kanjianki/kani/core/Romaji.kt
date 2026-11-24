@@ -68,8 +68,9 @@ object Romaji {
                 i++
                 continue
             }
-            // Double consonant → っ (but "nn" is ん).
-            val doubled = i + 1 < s.length && c == s[i + 1] && c !in VOWELS && c != 'n' && c.isLetter()
+            // Double consonant → っ (but "nn" is ん). Latin only: the answer box converts its own
+            // text again on every key, and two kana in a row (ちち, おお) are no double consonant.
+            val doubled = i + 1 < s.length && c == s[i + 1] && c !in VOWELS && c != 'n' && c in 'a'..'z'
             if (doubled || s.startsWith("tch", i)) {
                 out.append('っ')
                 i++
@@ -86,6 +87,8 @@ object Romaji {
                         if (after != null && (after in VOWELS || after == 'y')) {
                             out.append('ん'); i++; continue
                         }
+                        // At the end, wait for the next key: "minn" + "a" must still be みんな.
+                        if (after == null) { out.append("nn"); i += 2; continue }
                         out.append('ん'); i += 2; continue
                     }
                     next !in VOWELS && next != 'y' -> { out.append('ん'); i++; continue }
@@ -109,11 +112,15 @@ object Romaji {
     }
 
     /**
-     * The submitted answer: [toKana], with a trailing `n` settled as ん, since no next key is
-     * coming to decide it (`hon` → ほん).
+     * The submitted answer: [toKana], with a trailing `n` or `nn` settled as ん, since no next key
+     * is coming to decide it (`hon`, `honn` → ほん).
      */
     fun finish(input: String): String {
         val kana = toKana(input.trimEnd())
-        return if (kana.endsWith('n')) kana.dropLast(1) + "ん" else kana
+        return when {
+            kana.endsWith("nn") -> kana.dropLast(2) + "ん"
+            kana.endsWith('n') -> kana.dropLast(1) + "ん"
+            else -> kana
+        }
     }
 }

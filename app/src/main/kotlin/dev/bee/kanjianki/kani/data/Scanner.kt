@@ -64,9 +64,15 @@ class Scanner(private val anki: AnkiSource, private val ref: Reference) {
 
     data class Scan(val result: ScanAnalyzer.Result, val words: List<KaniStore.Word>)
 
+    /** A scan that found nothing usable; its message is shown to the user. */
+    class ScanFailed(message: String) : Exception(message)
+
     fun scan(source: KaniPrefs.Source, onProgress: (Int) -> Unit = {}): Scan {
         val models = anki.models().filter { it.name in source.modelNames }.associateBy { it.id }
         val base = AnkiSource.noteSearch(source.modelNames)
+        // An empty answer is far more likely a closed collection or a renamed note type than a
+        // deck with no cards. Fail, so the words and kanji from the last good scan are kept.
+        if (models.isEmpty()) throw ScanFailed("AnkiDroid has no note type named ${source.modelNames.joinToString()}.")
         // Sorted primitive id arrays: a big collection must not become millions of boxed Longs.
         val leech = anki.noteIds("$base tag:leech")
         val failed = anki.noteIds("$base prop:lapses>=2")
@@ -97,6 +103,7 @@ class Scanner(private val anki: AnkiSource, private val ref: Reference) {
                 stored += KaniStore.Word(n.id, expression, reading, meaning)
             }
         }
+        if (words.isEmpty()) throw ScanFailed("AnkiDroid returned no words with kanji. Check that AnkiDroid can open your collection and the fields in Settings.")
         return Scan(ScanAnalyzer.analyze(words, ref::similar), stored)
     }
 
