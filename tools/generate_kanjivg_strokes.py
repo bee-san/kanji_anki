@@ -14,6 +14,9 @@ from pathlib import Path
 COMMAND_RE = re.compile(r"[AaCcHhLlMmQqSsTtVvZz]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
 KVG_NS = "{http://kanjivg.tagaini.net}"
 VIEWBOX_SIZE = 109.0
+# KanjiVG marks a radical "general" (the dictionary radical) or "tradit" (the traditional one);
+# its "nelson" and "jis" marks follow other dictionaries and often name the phonetic part.
+CLASSIFIER_RADICALS = ("general", "tradit")
 SAMPLES_PER_CURVE = 4
 KANJI_RANGES = (
     (0x3400, 0x4DBF),
@@ -235,8 +238,17 @@ def stroke_text(points: list[tuple[float, float]]) -> str:
 
 
 def read_kanjivg(input_path: Path) -> list[tuple[str, list[list[tuple[float, float]]]]]:
+    return [(char, strokes) for char, strokes, _parts in read_kanjivg_with_parts(input_path)]
+
+
+Parts = tuple[list[int], list[int]]
+
+
+def read_kanjivg_with_parts(input_path: Path) -> list[tuple[str, list[list[tuple[float, float]]], Parts]]:
+    """Each kanji's strokes, plus which top-level part (see [top_level_parts]) each stroke is in
+    and which of those parts are radicals."""
     opener = gzip.open if input_path.suffix == ".gz" else open
-    records: list[tuple[str, list[list[tuple[float, float]]]]] = []
+    records: list[tuple[str, list[list[tuple[float, float]]], Parts]] = []
     with opener(input_path, "rb") as source:
         for _event, elem in ET.iterparse(source, events=("end",)):
             if elem.tag != "kanji":
@@ -246,18 +258,55 @@ def read_kanjivg(input_path: Path) -> list[tuple[str, list[list[tuple[float, flo
             if not should_include(char):
                 elem.clear()
                 continue
+            part_of, radicals = top_level_parts(elem)
             strokes: list[list[tuple[float, float]]] = []
+            parts: list[int] = []
             for path in elem.iter("path"):
                 data = path.attrib.get("d")
                 if data:
                     points = parse_path(data)
                     if len(points) >= 2:
                         strokes.append(points)
+                        parts.append(part_of[path])
             if strokes:
-                records.append((char, strokes))
+                order = renumber(parts)
+                records.append((char, strokes, ([order[part] for part in parts], sorted(order[part] for part in radicals if part in order))))
             elem.clear()
     records.sort(key=lambda record: ord(record[0]))
     return records
+
+
+def top_level_parts(kanji: ET.Element) -> tuple[dict[ET.Element, int], set[int]]:
+    """Maps each stroke path to the top-level part it belongs to, and names the parts KanjiVG
+    marks as a radical (亻 in 借, 木 in 末).
+
+    The top level is the first group with more than one child: 借 splits into 亻 and 昔, 末 into
+    its first stroke and 木. A part KanjiVG splits around another (囗 in 国, written as part 1
+    and part 2) is one part. A stroke directly under the top level is a part of its own.
+    """
+    node = kanji
+    while len(node) == 1 and node[0].tag == "g":
+        node = node[0]
+    keys: dict[object, int] = {}
+    part_of: dict[ET.Element, int] = {}
+    radicals: set[int] = set()
+    for child in node:
+        element = child.attrib.get(f"{KVG_NS}element")
+        key: object = ("split", element) if element and child.attrib.get(f"{KVG_NS}part") else id(child)
+        part = keys.setdefault(key, len(keys))
+        if child.attrib.get(f"{KVG_NS}radical") in CLASSIFIER_RADICALS:
+            radicals.add(part)
+        for path in child.iter("path") if child.tag == "g" else (child,):
+            part_of[path] = part
+    return part_of, radicals
+
+
+def renumber(parts: list[int]) -> dict[int, int]:
+    """Numbers parts 0, 1, 2 … in order of their first stroke."""
+    order: dict[int, int] = {}
+    for part in parts:
+        order.setdefault(part, len(order))
+    return order
 
 
 def should_include(char: str) -> bool:
@@ -281,15 +330,29 @@ def write_tsv(records: list[tuple[str, list[list[tuple[float, float]]]]], output
             out.write("\n")
 
 
+def write_parts_tsv(records: list[tuple[str, list[list[tuple[float, float]]], Parts]], output_path: Path, source_name: str) -> None:
+    with output_path.open("w", encoding="utf-8", newline="\n") as out:
+        out.write("# Top-level parts of each kanji, generated from KanjiVG (CC BY-SA 3.0).\n")
+        out.write(f"# Source: {source_name}\n")
+        out.write("# Format: kanji<TAB>part of stroke 1,part of stroke 2,...<TAB>radical parts\n")
+        out.write("# Strokes are numbered as in kanji_strokes.tsv, parts from 0 in order of first stroke.\n")
+        for char, _strokes, (parts, radicals) in records:
+            out.write(f"{char}\t{','.join(str(part) for part in parts)}\t{','.join(str(part) for part in radicals)}\n")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path, help="KanjiVG XML or XML.GZ export")
     parser.add_argument("output", type=Path, help="Output TSV path")
+    parser.add_argument("--parts-output", type=Path, help="Also write each kanji's top-level parts here")
     args = parser.parse_args()
 
-    records = read_kanjivg(args.input)
-    write_tsv(records, args.output, args.input.name)
+    records = read_kanjivg_with_parts(args.input)
+    write_tsv([(char, strokes) for char, strokes, _parts in records], args.output, args.input.name)
     print(f"Wrote {len(records)} stroke guides to {args.output}")
+    if args.parts_output:
+        write_parts_tsv(records, args.parts_output, args.input.name)
+        print(f"Wrote {len(records)} part maps to {args.parts_output}")
 
 
 if __name__ == "__main__":
